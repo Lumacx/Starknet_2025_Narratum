@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Legal Disclaimer - Narratum</title>
+    <!-- Google Fonts: Using a classic serif like 'Georgia' or 'Merriweather' -->
+    <link href="https://fonts.googleapis.com/css2?family=Georgia:wght@400;700&family=Merriweather:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="disclaimer-container">
+        <header class="page-title">
+            <h1>LEGAL<br>DISCLAIMER</h1>
+        </header>
+
+        <section class="disclaimer-content">
+            <div class="text-box">
+                <p>By accessing or using this website, you agree to our <a href="terms-and-conditions.html" target="_blank" class="terms-link">Terms and Conditions</a>.</p>
+            </div>
+        </section>
+
+        <section class="acceptance-section">
+            <input type="checkbox" id="accept-checkbox" name="accept-terms">
+            <label for="accept-checkbox">I accept the terms and conditions</label>
+        </section>
+
+        <section class="action-section">
+            <button type="button" id="accept-button" class="accept-btn" disabled>ACCEPT</button>
+        </section>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const acceptCheckbox = document.getElementById('accept-checkbox');
+            const acceptButton = document.getElementById('accept-button');
+
+            acceptCheckbox.addEventListener('change', function() {
+                acceptButton.disabled = !this.checked;
+                if (this.checked) {
+                    acceptButton.classList.remove('disabled');
+                } else {
+                    acceptButton.classList.add('disabled');
+                }
+            });
+
+            acceptButton.addEventListener('click', function() {
+                if (!acceptCheckbox.checked) {
+                    alert("Please accept the terms and conditions to proceed.");
+                    return;
+                }
+
+                // --- Logic to save agreement ---
+                // This is where you would typically send data to your backend.
+                const agreementData = {
+                    userId: 'USER_ID_HERE', // Replace with actual user ID if available
+                    agreedAt: new Date().toISOString(),
+                    termsVersion: '1.0' // Example version, fetch from a reliable source or config
+                };
+
+                console.log("Agreement accepted. Data to send to backend:", agreementData);
+                alert("Thank you for accepting the terms and conditions.");
+
+                // Example: Using fetch to send data to a backend endpoint
+                /*
+                fetch('/api/record-agreement', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(agreementData),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Success:', data);
+                    // Redirect user or perform next action
+                    // window.location.href = '/next-page.html';
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                    alert('There was an issue saving your agreement. Please try again.');
+                });
+                */
+                // For now, we'll just log it and show an alert.
+                // In a real app, you'd redirect or unlock content after successful backend confirmation.
+            });
+        });
+    </script>
+</body>
+</html>

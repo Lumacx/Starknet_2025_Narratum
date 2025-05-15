@@ -1,0 +1,194 @@
+body {
+    margin: 0;
+    font-family: 'Lato', sans-serif; /* Fallback font */
+    background: linear-gradient(to bottom, #D4E1EE, #F3E4D7, #F0D1B0); /* User-provided gradient */
+    color: #4A3B31; /* Default dark text color */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 30px 20px; /* Add some padding around the content */
+    box-sizing: border-box;
+    text-align: center;
+}
+
+.subscription-container {
+    width: 100%;
+    max-width: 960px; /* Adjust max width as needed */
+}
+
+.page-header {
+    margin-bottom: 50px;
+}
+
+.narratum-logo {
+    width: 150px; /* Adjust size as needed */
+    height: auto;
+    margin-bottom: 25px;
+    filter: drop-shadow(0px 2px 5px rgba(0,0,0,0.15)); /* Subtle shadow for logo */
+}
+
+.main-title, .sub-title {
+    font-family: 'Merriweather', serif; /* Classic serif font */
+    color: #2C3E50; /* Dark blue font color for titles */
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin: 0;
+    font-weight: 700;
+}
+
+.main-title {
+    font-size: 2.2em; /* Adjust size */
+    margin-bottom: 5px;
+}
+
+.sub-title {
+    font-size: 1.8em; /* Adjust size */
+    font-weight: 400; /* Slightly less bold for "IN NARRATUM" */
+}
+
+.pricing-plans {
+    display: flex;
+    justify-content: center;
+    gap: 30px; /* Space between cards */
+    flex-wrap: wrap; /* Allow cards to wrap on smaller screens */
+}
+
+.plan-card {
+    background-color: #F9F6F0; /* Light cream/parchment card background */
+    border: 2px solid #C1A98A; /* Muted gold/brown border */
+    border-radius: 12px; /* Rounded corners */
+    padding: 30px 25px;
+    width: 260px; /* Adjust card width */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08); /* Subtle shadow for cards */
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.plan-card:hover {
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* Optional styling if you want to make the middle plan stand out more visually
+.featured-plan {
+    border-color: #A9834F; / A slightly richer gold for featured plan border /
+    transform: scale(1.05); / Make it slightly larger /
+}
+.featured-plan:hover {
+    transform: translateY(-5px) scale(1.07);
+}
+*/
+
+.plan-icon {
+    width: 70px; /* Adjust icon size */
+    height: 70px;
+    object-fit: contain; /* Ensure icon fits well */
+    margin-bottom: 25px;
+}
+
+.plan-name {
+    font-family: 'Merriweather', serif;
+    font-size: 1.8em; /* Plan name size */
+    font-weight: 900; /* Extra bold for plan name */
+    color: #4A3B31; /* Dark brown text */
+    text-transform: uppercase;
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+.plan-price {
+    font-family: 'Merriweather', serif;
+    font-size: 2em; /* Price size */
+    font-weight: 700;
+    color: #3D2B1F; /* Slightly darker for price */
+    margin-top: 0;
+    margin-bottom: 25px;
+}
+
+.plan-price .price-period {
+    font-size: 0.5em; /* Smaller text for "/ month" */
+    font-weight: 400;
+    text-transform: none;
+    display: block; /* Puts "month" on a new line or aligns with the bottom */
+    line-height: 1;
+    margin-top: 2px;
+    color: #5C4B3E;
+}
+
+.subscribe-button {
+    font-family: 'Lato', sans-serif; /* Sans-serif for button text often looks good */
+    background-color: #5D6D7E; /* Muted dark blue/grey button */
+    color: #FDFCFB; /* Off-white text */
+    border: none;
+    border-radius: 8px;
+    padding: 12px 25px;
+    font-size: 1em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    width: 80%; /* Button width relative to card */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.subscribe-button:hover {
+    background-color: #4E5C6A; /* Darker shade on hover */
+    transform: translateY(-2px);
+}
+
+/* Responsive adjustments */
+@media (max-width: 900px) {
+    .pricing-plans {
+        gap: 20px;
+    }
+    .plan-card {
+        width: 240px; /* Slightly smaller cards */
+    }
+}
+
+@media (max-width: 768px) {
+    .main-title {
+        font-size: 1.8em;
+    }
+    .sub-title {
+        font-size: 1.5em;
+    }
+    .pricing-plans {
+        flex-direction: column;
+        align-items: center;
+    }
+    .plan-card {
+        width: 280px; /* Allow cards to be a bit wider when stacked */
+        margin-bottom: 20px; /* Add margin when stacked */
+    }
+    .plan-card:last-child {
+        margin-bottom: 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .narratum-logo {
+        width: 120px;
+    }
+    .main-title {
+        font-size: 1.6em;
+    }
+    .sub-title {
+        font-size: 1.3em;
+    }
+    .plan-card {
+        width: 90%; /* Make cards take more width */
+        max-width: 300px;
+        padding: 25px 20px;
+    }
+    .plan-name {
+        font-size: 1.6em;
+    }
+    .plan-price {
+        font-size: 1.8em;
+    }
+}

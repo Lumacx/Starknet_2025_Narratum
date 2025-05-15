@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Narratum – AI Storytelling Toolkit</title>
+    <style>
+        /* === Basic Reset & Font === */
+        body, h1, h2, h3, p, ul {
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: "Segoe UI", sans-serif;
+            background: #f9f9fb;
+            color: #333;
+        }
+        /* === Layout Grid === */
+        .container {
+            display: grid;
+            grid-template-columns: 250px 1fr 300px; /* sidebar-left, main, sidebar-right */
+            grid-template-rows: auto 1fr auto; /* header, content, footer */
+            height: 100vh;
+        }
+
+        header, footer {
+            grid-column: 1 / -1;
+            background: #4A4E69;
+            color: #fff;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+            header h1 {
+                font-size: 1.2em;
+            }
+        /* === Panels === */
+        #sidebar-left {
+            background: #EFF0F3;
+            padding: 10px;
+            overflow-y: auto;
+            border-right: 1px solid #ccc;
+        }
+
+        #sidebar-right {
+            background: #EFF0F3;
+            padding: 10px;
+            overflow-y: auto;
+            border-left: 1px solid #ccc;
+        }
+
+        #editor-panel {
+            padding: 15px;
+            overflow-y: auto;
+            position: relative;
+            /* The main writing area */
+        }
+        /* === Sidebar Sections === */
+        .section {
+            margin-bottom: 20px;
+        }
+
+            .section h2 {
+                font-size: 1em;
+                margin-bottom: 8px;
+                color: #4A4E69;
+            }
+
+        .character-list li, .plot-list li {
+            margin: 5px 0;
+            cursor: pointer;
+        }
+
+            .character-list li:hover, .plot-list li:hover {
+                text-decoration: underline;
+            }
+        /* === Editor Area === */
+        #story-title {
+            width: 100%;
+            font-size: 1.5em;
+            border: none;
+            border-bottom: 2px solid #ddd;
+            padding: 5px;
+            margin-bottom: 10px;
+        }
+
+        #story-text {
+            width: 100%;
+            height: calc(100% - 60px);
+            border: none;
+            resize: none;
+            font-size: 1em;
+            line-height: 1.5;
+            padding: 5px;
+            background: #fff;
+        }
+        /* Collaboration notice (for multiple users editing) */
+        #collab-status {
+            font-size: 0.9em;
+            color: #555;
+        }
+        /* === Buttons and Menus === */
+        .toolbar {
+            background: #ddd;
+            padding: 5px;
+            position: sticky;
+            top: 0;
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+            .toolbar button {
+                background: #4A4E69;
+                color: #fff;
+                border: none;
+                padding: 6px 10px;
+                border-radius: 4px;
+                font-size: 0.9em;
+                cursor: pointer;
+            }
+
+                .toolbar button:hover {
+                    background: #6D7187;
+                }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header with title and export options -->
+        <header>
+            <h1>Narratum</h1>
+            <div id="export-options">
+                <!-- Export Buttons/Icons -->
+                <button onclick="exportStory('html')">Export HTML</button>
+                <button onclick="exportStory('pdf')">Export PDF</button>
+                <button onclick="exportStory('json')">Export JSON</button>
+            </div>
+        </header>
+
+        <!-- Left Sidebar: Characters & Plot management -->
+        <aside id="sidebar-left">
+            <div class="section" id="characters-section">
+                <h2>Characters</h2>
+                <ul class="character-list">
+                    <!-- List of characters -->
+                    <li data-char="Alice">Alice (Protagonist)</li>
+                    <li data-char="Dragon">Dragon (Villain)</li>
+                    <!-- ... more characters ... -->
+                </ul>
+                <button onclick="addCharacter()">+ Add Character</button>
+            </div>
+            <div class="section" id="plot-section">
+                <h2>Plot Points</h2>
+                <ul class="plot-list">
+                    <!-- List of plot points/chapters -->
+                    <li data-plot="Intro">Intro: Arriving at the Enchanted Forest</li>
+                    <li data-plot="Climax">Climax: The Final Showdown</li>
+                    <!-- ... more plot items ... -->
+                </ul>
+                <button onclick="addPlotPoint()">+ Add Plot Point</button>
+            </div>
+        </aside>
+
+        <!-- Main Editor Panel -->
+        <main id="editor-panel">
+            <!-- Collaboration status (e.g., "John is also editing") -->
+            <div id="collab-status">You are editing. (Invite link: https://app.narratum/collab?room=XYZ)</div>
+            <!-- Document Title -->
+            <input type="text" id="story-title" placeholder="Story Title..." />
+            <!-- Toolbar with AI integration buttons -->
+            <div class="toolbar">
+                <button onclick="aiAssist('continue')">✨ AI Continue</button>
+                <button onclick="aiAssist('rewrite')">🔄 Rewrite Selection</button>
+                <button onclick="aiAssist('describe')">🖋️ Describe</button>
+                <!-- ... other AI tools: e.g., summarize, in-character dialogue ... -->
+            </div>
+            <!-- Story text area -->
+            <textarea id="story-text" placeholder="Start writing your story..."></textarea>
+        </main>
+
+        <!-- Right Sidebar: AI assistant chat / suggestions -->
+        <aside id="sidebar-right">
+            <div class="section" id="ai-chat-section">
+                <h2>AI Assistant</h2>
+                <div id="ai-chat-log">
+                    <!-- AI and user messages will appear here -->
+                    <p><em>Assistant is ready to help you. Ask for ideas or type a prompt.</em></p>
+                </div>
+                <input type="text" id="ai-chat-input" placeholder="Ask the AI or type '/*' for commands..."
+                       onkeydown="if(event.key==='Enter'){ sendAIChat(); }" />
+            </div>
+            <div class="section" id="notes-section">
+                <h2>Notes</h2>
+                <p><em>Double-click a character or plot item on the left to see details here.</em></p>
+                <!-- Character or plot details editing form could appear here dynamically -->
+            </div>
+        </aside>
+
+        <!-- Footer with maybe a status or simple copyright -->
+        <footer>
+            <div>Story saved <span id="save-status">just now</span>.</div>
+            <div>&copy; 2025 Narratum</div>
+        </footer>
+    </div>
+
+    <!-- Scripts (for illustrative purposes, not fully implemented) -->
+    <script>
+        // Placeholder functions to illustrate where functionality would tie in.
+        function aiAssist(mode) {
+            /*
+              mode could be 'continue', 'rewrite', 'describe', etc.
+              Here you would gather context (like current story text or selection),
+              send it to your AI backend (via API), and then insert the AI's response
+              into the story or chat.
+            */
+            alert("AI assist triggered: " + mode);
+        }
+        function sendAIChat() {
+            const input = document.getElementById('ai-chat-input');
+            const log = document.getElementById('ai-chat-log');
+            if (input.value.trim() === "") return;
+            const userMsg = document.createElement('p');
+            userMsg.textContent = "🧑: " + input.value;
+            log.appendChild(userMsg);
+            // Here you'd send input.value to AI and get response...
+            const aiMsg = document.createElement('p');
+            aiMsg.textContent = "🤖: " + "(AI response to '" + input.value + "')";
+            aiMsg.style.color = "#4A4E69";
+            log.appendChild(aiMsg);
+            input.value = "";
+            log.scrollTop = log.scrollHeight;
+        }
+        function addCharacter() {
+            // logic to add a new character (could open a prompt or form)
+            const list = document.querySelector('.character-list');
+            const li = document.createElement('li');
+            li.textContent = "New Character";
+            list.appendChild(li);
+        }
+        function addPlotPoint() {
+            const list = document.querySelector('.plot-list');
+            const li = document.createElement('li');
+            li.textContent = "New Plot Point";
+            list.appendChild(li);
+        }
+        function exportStory(format) {
+            // send current story content to server for export, or trigger client-side download
+            alert("Exporting story as " + format.toUpperCase());
+        }
+    </script>
+</body>
+</html>

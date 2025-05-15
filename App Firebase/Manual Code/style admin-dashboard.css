@@ -1,0 +1,225 @@
+body {
+    margin: 0;
+    font-family: 'Lato', sans-serif; /* Default sans-serif */
+    background-color: #F5EFE3; /* Light parchment background for main content area */
+    color: #3E5062; /* Default dark blue/grey text color */
+    display: flex;
+    min-height: 100vh;
+}
+
+.dashboard-container {
+    display: flex;
+    width: 100%;
+}
+
+/* Sidebar Styling */
+.sidebar {
+    background-color: #3E5062; /* Dark teal/blue for sidebar */
+    width: 80px; /* Adjust sidebar width */
+    padding-top: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0; /* Prevent sidebar from shrinking */
+}
+
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 25px; /* Space between icons */
+}
+
+.nav-item {
+    color: #D4DDE4; /* Light icon color */
+    font-size: 1.8em; /* Icon size */
+    text-decoration: none;
+    padding: 10px;
+    border-radius: 5px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.nav-item:hover,
+.nav-item.active {
+    color: #FFFFFF; /* Brighter white for hover/active */
+    background-color: rgba(255, 255, 255, 0.1); /* Subtle background highlight */
+}
+
+/* Main Content Styling */
+.main-content {
+    flex-grow: 1; /* Take remaining space */
+    padding: 40px 50px;
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center content horizontally */
+}
+
+.dashboard-header {
+    text-align: center;
+    margin-bottom: 50px;
+    width: 100%;
+    max-width: 700px; /* Limit header width */
+}
+
+.logo-title {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 5px;
+}
+
+.header-book-icon {
+    font-size: 2.8em; /* Adjust book icon size */
+    color: #B08D57; /* Gold/brown for book outline */
+    margin-right: 15px;
+    /* If your book icon has a fill, you might need to style its path elements if it's an SVG */
+}
+/* Example of styling the fill if the icon was complex:
+.header-book-icon path.book-fill {
+    fill: #3E5062; / Dark blue fill /
+}
+*/
+
+.app-name {
+    font-family: 'Merriweather', serif; /* Classic serif for NARRATUM */
+    font-size: 2.8em; /* NARRATUM text size */
+    font-weight: 900;
+    color: #3E5062; /* Dark blue/grey */
+    letter-spacing: 1px;
+}
+
+.page-subtitle {
+    font-family: 'Lato', sans-serif;
+    font-size: 1.3em;
+    font-weight: 700;
+    color: #5D7081; /* Slightly lighter blue/grey */
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin: 0;
+}
+
+.stats-overview {
+    width: 100%;
+    max-width: 700px; /* Match header width or adjust */
+    margin-bottom: 40px;
+}
+
+.stats-box {
+    background-color: #FAF6EE; /* Lighter cream for stats box background */
+    border: 2px solid #C1A98A; /* Muted gold/brown border */
+    border-radius: 12px;
+    padding: 30px;
+    display: flex;
+    flex-wrap: wrap; /* Allow items to wrap */
+    justify-content: space-around; /* Distribute space */
+    gap: 20px; /* Gap between stat items */
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.07);
+}
+
+.stat-item {
+    text-align: center;
+    flex-basis: calc(50% - 20px); /* Two items per row, considering gap */
+    min-width: 150px; /* Minimum width for a stat item */
+}
+
+.stat-item-centered { /* For the third item to be centered on its own row */
+    flex-basis: 100%; /* Take full width to center itself */
+    margin-top: 20px; /* Add some top margin if it's on a new line */
+}
+
+
+.stat-number {
+    font-family: 'Georgia', serif; /* Or 'Merriweather' for consistency */
+    font-size: 3.5em; /* Large numbers */
+    font-weight: 700;
+    color: #3E5062; /* Dark blue/grey */
+    line-height: 1.1;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-family: 'Lato', sans-serif;
+    font-size: 0.9em;
+    font-weight: 700;
+    color: #5D7081; /* Lighter blue/grey */
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    line-height: 1.3;
+}
+
+.action-area {
+    margin-top: 20px; /* Space above button */
+}
+
+.accept-button {
+    font-family: 'Lato', sans-serif;
+    background-color: #5D6D7E; /* Muted dark blue/grey button */
+    color: #FDFCFB; /* Off-white text */
+    border: none;
+    border-radius: 8px;
+    padding: 12px 35px;
+    font-size: 1.1em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.accept-button:hover {
+    background-color: #4E5C6A; /* Darker shade on hover */
+}
+
+/* Responsive Adjustments */
+@media (max-width: 992px) {
+    .main-content {
+        padding: 30px 30px;
+    }
+    .stat-item {
+        flex-basis: calc(50% - 15px); /* Adjust for smaller screens if needed */
+    }
+}
+
+
+@media (max-width: 768px) {
+    .dashboard-container {
+        flex-direction: column; /* Stack sidebar and content */
+    }
+    .sidebar {
+        width: 100%;
+        height: auto; /* Adjust height */
+        padding: 15px 0;
+        flex-direction: row; /* Icons in a row */
+        justify-content: space-around; /* Space out icons */
+    }
+    .sidebar-nav {
+        flex-direction: row; /* Icons in a row */
+        gap: 15px;
+    }
+    .nav-item {
+        font-size: 1.5em;
+    }
+    .main-content {
+        padding: 30px 20px;
+    }
+    .app-name, .header-book-icon {
+        font-size: 2.2em;
+    }
+    .page-subtitle {
+        font-size: 1.1em;
+    }
+    .stat-number {
+        font-size: 2.8em;
+    }
+    .stat-item {
+        flex-basis: 100%; /* Stack stat items */
+        margin-bottom: 20px;
+    }
+    .stat-item:last-child {
+        margin-bottom: 0;
+    }
+    .stat-item-centered {
+        margin-top: 0; /* Remove extra margin when stacked */
+    }
+
+}

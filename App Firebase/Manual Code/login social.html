@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Narratum Login</title>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <!-- Google Fonts: Lato and Georgia -->
+    <link href="https://fonts.googleapis.com/css2?family=Georgia&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Lato', Arial, sans-serif;
+            background: linear-gradient(to bottom, #D4E1EE, #F3E4D7, #F0D1B0);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .login-container {
+            text-align: center;
+            max-width: 360px;
+            width: 100%;
+            background-color: transparent;
+        }
+
+        .logo {
+            margin-bottom: 35px;
+        }
+
+        .book-icon {
+            font-size: 48px;
+            color: #C1905F;
+            margin-bottom: 15px;
+            display: inline-block;
+            
+            /* Base shadow for when not actively animating or as part of the animation */
+            text-shadow: 0 0 10px rgba(193, 144, 95, 0.5);
+            /* Animation properties */
+            animation-name: glow;
+            animation-duration: 3.5s; /* Duration of one cycle */
+            animation-timing-function: ease-in-out;
+            animation-iteration-count: infinite;
+            animation-direction: alternate; /* Makes it pulse in and out */
+        }
+
+        @keyframes glow {
+            0% {
+                text-shadow: 0 0 20px rgba(228, 125, 23, 0.815); /* Start with a softer glow */
+            }
+            50% {
+                text-shadow: 0 0 35px rgba(223, 226, 35, 0.7); /* Peak glow */
+            }
+            100% {
+                text-shadow: 0 0 20px rgba(235, 220, 16, 0.932); /* Return to softer glow */
+            }
+        }
+        
+
+        .logo h1 {
+            font-family: 'Georgia', serif;
+            font-size: 44px;
+            color: #475B6D;
+            margin: 0;
+            letter-spacing: 1.5px;
+            font-weight: 400;
+        }
+
+        .login-form {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .input-fields-wrapper {
+            background-color: #F9F6F2;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+        }
+
+        .input-field {
+            display: flex;
+            align-items: center;
+            padding: 16px 18px;
+        }
+
+        .input-field .icon {
+            color: #8FA0AF;
+            margin-right: 12px;
+            font-size: 17px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .input-field input {
+            flex-grow: 1;
+            border: none;
+            outline: none;
+            background-color: transparent;
+            font-family: 'Lato', Arial, sans-serif;
+            font-size: 16px;
+            color: #444;
+        }
+
+        .input-field input::placeholder {
+            color: #8FA0AF;
+            font-weight: 400;
+        }
+
+        .separator {
+            border: none;
+            height: 1px;
+            background-color: #EDE7DF;
+            margin: 0;
+        }
+
+        .login-button, .social-login-button {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Lato', Arial, sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+        }
+
+        .login-button {
+            background-color: #627C90;
+            color: #FDFCFB;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .login-button:hover {
+            background-color: #536A7D;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .social-divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            color: #707C88;
+            font-size: 13px;
+            margin: 20px 0;
+        }
+
+        .social-divider::before,
+        .social-divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid #D5DCE2;
+        }
+
+        .social-divider:not(:empty)::before {
+            margin-right: .5em;
+        }
+
+        .social-divider:not(:empty)::after {
+            margin-left: .5em;
+        }
+
+        .social-login-button .social-icon {
+            margin-right: 10px;
+            font-size: 18px;
+        }
+
+        .google-button {
+            background-color: #FFFFFF;
+            color: #444444;
+            border: 1px solid #DADCE0;
+        }
+        .google-button:hover {
+            background-color: #F8F9FA;
+            border-color: #C6CACC;
+        }
+        .google-button .social-icon {
+            color: #DB4437;
+        }
+
+        .facebook-button {
+            background-color: #1877F2;
+            color: #FFFFFF;
+        }
+        .facebook-button:hover {
+            background-color: #166FE5;
+        }
+        .facebook-button .social-icon {
+            color: #FFFFFF;
+        }
+
+
+        .footer-links {
+            font-size: 14px;
+            line-height: 1.6;
+            margin-top: 20px;
+        }
+
+        .footer-links p {
+            margin: 0 0 8px 0;
+            color: #475B6D;
+        }
+
+        .footer-links a {
+            color: #475B6D;
+            text-decoration: none;
+            font-weight: 400;
+        }
+
+        .footer-links p a {
+            text-decoration: underline;
+            font-weight: 700;
+        }
+
+        .footer-links a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo">
+            <i class="fas fa-book-open book-icon"></i>
+            <h1>NARRATUM</h1>
+        </div>
+
+        <form class="login-form" action="#" method="post" id="email-login-form">
+            <div class="input-fields-wrapper">
+                <div class="input-field">
+                    <i class="fas fa-envelope icon"></i>
+                    <input type="email" name="email" placeholder="Email" required>
+                </div>
+                <hr class="separator">
+                <div class="input-field">
+                    <i class="fas fa-lock icon"></i>
+                    <input type="password" name="password" placeholder="Password" required>
+                </div>
+            </div>
+            <button type="submit" class="login-button">LOG IN</button>
+        </form>
+
+        <div class="social-divider">OR</div>
+
+        <button type="button" class="social-login-button google-button" id="google-signin-button">
+            <i class="fab fa-google social-icon"></i>
+            Log in with Google
+        </button>
+        <button type="button" class="social-login-button facebook-button" id="facebook-signin-button">
+            <i class="fab fa-facebook-f social-icon"></i>
+            Log in with Facebook
+        </button>
+
+        <div class="footer-links">
+            <p>New to Narratum? <a href="#">Sign up</a></p>
+            <a href="#">Forgot password?</a>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <!-- The core Firebase JS SDK is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <!-- Add SDKs for Firebase products that you want to use -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <!-- TODO: Add SDKs for Firebase products like Firestore, etc. if you use them -->
+
+    <script>
+        // Your web app's Firebase configuration
+        // IMPORTANT: Replace with your actual Firebase project configuration!
+        const firebaseConfig = {
+            apiKey: "AIzaSyCwED8ecLP9ig2QNmBUO_HAWiI9X2ujV0U",
+            authDomain: "narratum.firebaseapp.com",
+            projectId: "narratum",
+            storageBucket: "narratum.firebasestorage.app",
+            messagingSenderId: "286262915752",
+            appId: "1:286262915752:web:ac40643ae383df467e089d"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth(); // Get the auth instance
+
+        // Google Sign-In
+        const googleSignInButton = document.getElementById('google-signin-button');
+        if (googleSignInButton) {
+            googleSignInButton.addEventListener('click', () => {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                auth.signInWithPopup(provider)
+                    .then((result) => {
+                        // This gives you a Google Access Token. You can use it to access the Google API.
+                        const credential = result.credential;
+                        const token = credential.accessToken;
+                        // The signed-in user info.
+                        const user = result.user;
+                        
+                        console.log("Signed in with Google successfully!");
+                        console.log("User:", user);
+                        console.log("UID:", user.uid);
+                        console.log("Display Name:", user.displayName);
+                        console.log("Email:", user.email);
+
+                        // NEXT STEPS:
+                        // 1. Check if this user (user.uid) exists in your Firestore/RTDB 'users' collection.
+                        // 2. If not, create a new user document with info from `user` object.
+                        // 3. If yes, update their `lastLoginAt` timestamp.
+                        // 4. Redirect to the main app page or dashboard.
+                        // Example: window.location.href = '/dashboard.html';
+
+                    }).catch((error) => {
+                        // Handle Errors here.
+                        const errorCode = error.code;
+                        const errorMessage = error.message;
+                        // The email of the user's account used.
+                        const email = error.email;
+                        // The firebase.auth.AuthCredential type that was used.
+                        const credential = error.credential;
+
+                        console.error("Google Sign-In Error:", errorCode, errorMessage);
+                        alert(`Error signing in with Google: ${errorMessage}`);
+                    });
+            });
+        }
+
+        // Placeholder for Facebook Sign-In (you'll need to enable Facebook auth in Firebase console too)
+        const facebookSignInButton = document.getElementById('facebook-signin-button');
+        if (facebookSignInButton) {
+            facebookSignInButton.addEventListener('click', () => {
+                alert('Facebook Sign-In not yet implemented. Please configure in Firebase and add code.');
+                // const provider = new firebase.auth.FacebookAuthProvider();
+                // auth.signInWithPopup(provider)
+                //  .then((result) => { /* ... handle success ... */ })
+                //  .catch((error) => { /* ... handle error ... */ });
+            });
+        }
+
+        // Placeholder for Email/Password Login
+        const emailLoginForm = document.getElementById('email-login-form');
+        if (emailLoginForm) {
+            emailLoginForm.addEventListener('submit', (event) => {
+                event.preventDefault(); // Prevent default form submission
+                alert('Email/Password login not yet implemented with Firebase. Please add Firebase auth code.');
+                // const email = event.target.email.value;
+                // const password = event.target.password.value;
+                // auth.signInWithEmailAndPassword(email, password)
+                //   .then((userCredential) => { /* ... handle success ... */ })
+                //   .catch((error) => { /* ... handle error ... */ });
+            });
+        }
+
+    </script>
+
+</body>
+</html>

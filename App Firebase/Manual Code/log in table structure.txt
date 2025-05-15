@@ -1,0 +1,45 @@
+{
+  // --- Fields often mirrored from Firebase Auth for convenience/querying ---
+  "uid": "abcdef123456xyz", // The Firebase Auth UID (can be redundant if doc ID is UID, but useful for querying)
+  "email": "user@example.com", // User's email
+  "displayName": "Jane Doe", // User's display name
+  "photoURL": "https://lh3.googleusercontent.com/a-/...", // URL to profile picture
+
+  // --- Timestamps ---
+  "createdAt": "2023-10-27T10:00:00Z", // ISO 8601 Timestamp or Firebase Server Timestamp
+                                      // (When the user record was created in *your* database)
+  "lastLoginAt": "2023-10-28T12:30:00Z", // ISO 8601 Timestamp or Firebase Server Timestamp
+                                       // (Updated on each successful login)
+  "updatedAt": "2023-10-27T10:05:00Z", // ISO 8601 Timestamp or Firebase Server Timestamp
+                                      // (When this user document was last modified by your app)
+
+  // --- Application-Specific Fields ---
+  "username": "janedoe123",           // Optional: A unique username chosen by the user, if your app uses them
+  "bio": "Loves reading and coding.", // User's biography
+  "preferences": {
+    "theme": "dark",
+    "receiveNewsletter": true,
+    "notifications": {
+      "newFollower": true,
+      "newComment": false
+    }
+  },
+  "role": "user", // or "admin", "editor", etc. (for authorization)
+  "subscription": {
+    "plan": "premium", // "free", "basic", "premium"
+    "expiresAt": "2024-10-27T10:00:00Z", // If applicable
+    "status": "active" // "active", "cancelled", "past_due"
+  },
+  "readingHistory": [ // Example of an array of objects or IDs
+    { "bookId": "book123", "lastReadPage": 50, "status": "reading" },
+    { "bookId": "book456", "status": "finished" }
+  ],
+  "favorites": ["book789", "authorABC"], // Example of an array of IDs
+
+  // --- Social Provider Information (Optional, as Auth already has it) ---
+  // You *could* store which provider they last used or primarily use,
+  // but Firebase Auth's `providerData` is the source of truth.
+  // "primaryProvider": "google.com",
+
+  "isSetupComplete": true // A flag to indicate if the user has completed any initial setup/onboarding steps
+}

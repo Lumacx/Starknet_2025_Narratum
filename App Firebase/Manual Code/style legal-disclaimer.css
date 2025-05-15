@@ -1,0 +1,140 @@
+body {
+    margin: 0;
+    font-family: 'Georgia', serif; /* Default serif font */
+    background-color: #F5EFE3; /* Light parchment background */
+    color: #4A3B31; /* Dark brown for text */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 40px 20px;
+    box-sizing: border-box;
+    text-align: center;
+}
+
+.disclaimer-container {
+    width: 100%;
+    max-width: 500px; /* Adjust as needed */
+}
+
+.page-title h1 {
+    font-family: 'Merriweather', serif;
+    font-size: 2.8em; /* Adjust title size */
+    font-weight: 900;
+    color: #3E5062; /* Dark blue/grey for title */
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    line-height: 1.2;
+    margin-top: 0;
+    margin-bottom: 35px;
+}
+
+.disclaimer-content {
+    margin-bottom: 30px;
+}
+
+.text-box {
+    background-color: #FAF6EE; /* Very light cream for text box */
+    border: 2px solid #C1A98A; /* Muted gold/brown border */
+    border-radius: 12px;
+    padding: 20px 25px;
+    display: inline-block;
+    max-width: 90%;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.07);
+}
+
+.text-box p {
+    font-family: 'Georgia', serif;
+    font-size: 1.15em; /* Adjust text size */
+    line-height: 1.6;
+    color: #4A3B31;
+    margin: 0;
+}
+
+.terms-link {
+    color: #3E5062; /* Same as title for consistency */
+    text-decoration: underline;
+    font-weight: bold;
+}
+
+.terms-link:hover {
+    color: #2C3E50; /* Darker shade on hover */
+}
+
+.acceptance-section {
+    margin-bottom: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#accept-checkbox {
+    /* Basic styling for the checkbox - more advanced styling is complex */
+    appearance: none;
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #A88F72; /* Muted brown border for checkbox */
+    border-radius: 3px;
+    background-color: #FDFBF5; /* Slightly off-white checkbox background */
+    margin-right: 10px;
+    cursor: pointer;
+    position: relative; /* For custom checkmark if desired */
+    vertical-align: middle; /* Align with label text */
+}
+
+#accept-checkbox:checked {
+    background-color: #A88F72; /* Fill color when checked */
+    border-color: #8B6F4E;
+}
+
+/* Optional: Add a simple checkmark using pseudo-element */
+#accept-checkbox:checked::after {
+    content: '';
+    position: absolute;
+    left: 6px;
+    top: 2px;
+    width: 5px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+
+.acceptance-section label {
+    font-family: 'Georgia', serif;
+    font-size: 1em;
+    color: #5C4B3E; /* Slightly lighter brown for label */
+    cursor: pointer;
+    vertical-align: middle; /* Align with checkbox */
+}
+
+.action-section {
+    /* Spacing handled by container padding or other sections */
+}
+
+.accept-btn {
+    font-family: 'Merriweather', serif; /* Or 'Lato' for a common button style */
+    background-color: #5D6D7E; /* Muted dark blue/grey button */
+    color: #FDFCFB; /* Off-white text */
+    border: none;
+    border-radius: 10px; /* More rounded than image for softer look */
+    padding: 14px 40px;
+    font-size: 1.1em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, opacity 0.3s ease;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+}
+
+.accept-btn.disabled,
+.accept-btn:disabled { /* Ensure both class and attribute state are styled */
+    background-color: #85929E; /* Lighter, desaturated color for disabled */
+    color: #CDD3D8;
+    cursor: not-allowed;
+    box-shadow: none;
+}

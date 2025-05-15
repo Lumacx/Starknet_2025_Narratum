@@ -1,0 +1,170 @@
+body {
+    margin: 0;
+    font-family: 'Georgia', serif;
+    background-color: #F5EFE3; /* Light parchment background color */
+    color: #4A3B31; /* Dark brown for text, similar to image */
+    display: flex;
+    justify-content: center;
+    align-items: flex-start; /* Align to top, page might not be full height */
+    min-height: 100vh;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.profile-container {
+    width: 100%;
+    max-width: 700px; /* Adjust as needed based on content width */
+    text-align: center;
+}
+
+.profile-header {
+    margin-bottom: 25px;
+}
+
+.avatar-section {
+    position: relative; /* For positioning flourish SVG if used */
+    display: inline-block; /* To center the block */
+    margin-bottom: 15px;
+}
+
+.avatar-frame {
+    width: 160px; /* Adjust size of the frame */
+    height: 160px;
+    border-radius: 50%;
+    border: 4px solid #8B6F4E; /* Outer darker ring of the frame */
+    padding: 6px; /* Space between outer and inner ring */
+    background-color: #F5EFE3; /* Match page background to create the gap */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Subtle shadow for frame */
+}
+
+.avatar-image {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 3px solid #A88F72; /* Inner lighter ring directly on image or frame */
+    object-fit: cover; /* Ensures the image covers the area without distortion */
+}
+
+/* --- Placeholder for SVG flourish styling ---
+.avatar-flourish {
+    position: absolute;
+    bottom: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 70px; / Adjust /
+    height: auto;
+    z-index: 10;
+}
+------------------------------------------ */
+
+
+.user-name {
+    font-size: 2.8em; /* Adjust size as needed */
+    font-weight: 700;
+    color: #3D2B1F; /* Slightly darker for name for emphasis */
+    margin: 0;
+}
+
+.separator {
+    border: 0;
+    height: 1.5px;
+    background-color: #B09A7A; /* Muted brown for separator lines */
+    margin: 30px 0;
+}
+
+.bottom-separator {
+    margin-top: 40px; /* More space before bottom separator */
+}
+
+.profile-navigation {
+    display: flex;
+    justify-content: space-around; /* Distributes links evenly */
+    align-items: center;
+    margin-bottom: 30px;
+    padding: 0 10px; /* Some horizontal padding */
+}
+
+.nav-link {
+    font-size: 1.1em;
+    font-weight: 700;
+    text-decoration: none;
+    color: #5C4B3E; /* Color for nav links */
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 5px 10px;
+    transition: color 0.3s ease;
+}
+
+.nav-link:hover {
+    color: #8B6F4E; /* Lighter color on hover */
+}
+
+.content-grid {
+    display: flex;
+    justify-content: center; /* Center cards if they don't fill the space */
+    gap: 20px; /* Space between cards */
+    flex-wrap: wrap; /* Allow cards to wrap on smaller screens */
+}
+
+.content-card {
+    width: 160px; /* Adjust card width */
+    background-color: #F0E6D2; /* Slightly different bg for card itself */
+    border: 3px solid #A88F72; /* Border color for cards */
+    border-radius: 8px; /* Rounded corners for cards */
+    padding: 6px; /* Padding around the image inside the card */
+    display: block; /* To make it a block-level link */
+    text-decoration: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.content-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+}
+
+.content-card img {
+    width: 100%;
+    height: auto; /* Maintain aspect ratio, or set a fixed height if all cards are same ratio */
+    display: block;
+    border-radius: 4px; /* Slight rounding for the image inside the card padding */
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+    .avatar-frame {
+        width: 120px;
+        height: 120px;
+        padding: 4px;
+    }
+    .user-name {
+        font-size: 2.2em;
+    }
+    .nav-link {
+        font-size: 0.9em;
+        padding: 5px;
+    }
+    .content-grid {
+        gap: 15px;
+    }
+    .content-card {
+        width: calc(50% - 20px); /* Two cards per row, accounting for gap and padding */
+    }
+}
+
+@media (max-width: 400px) {
+    .profile-navigation {
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+    .content-card {
+        width: 100%; /* One card per row */
+        max-width: 200px; /* Max width for single card */
+        margin-left: auto;
+        margin-right: auto;
+    }
+}

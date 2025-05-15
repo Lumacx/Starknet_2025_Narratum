@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catalog of Stories - Narratum</title>
+    <!-- Google Fonts: Cinzel Decorative for NARRATUM, Merriweather for card titles, Lato for other text -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Merriweather:wght@400;700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="catalog-container">
+        <header class="page-header">
+            <h1 class="app-title">NARRATUM</h1>
+            <h2 class="page-subtitle">CATALOG OF STORIES</h2>
+        </header>
+
+        <nav class="filter-nav">
+            <a href="#all" class="filter-link active">All stories</a>
+            <a href="#popular" class="filter-link">Popular</a>
+            <a href="#recent" class="filter-link">Recent</a>
+        </nav>
+
+        <main class="story-grid">
+            <!-- Story Card 1 -->
+            <a href="story-details-enchanted-forest.html" class="story-card">
+                <div class="card-art-container">
+                    <img src="https://picsum.photos/seed/forest/300/200" alt="The Enchanted Forest">
+                </div>
+                <h3 class="story-title">The Enchanted Forest</h3>
+                <span class="read-button">READ</span>
+            </a>
+
+            <!-- Story Card 2 -->
+            <a href="story-details-space-adventure.html" class="story-card">
+                <div class="card-art-container">
+                    <img src="https://picsum.photos/seed/space/300/200" alt="Space Adventure">
+                </div>
+                <h3 class="story-title">Space Adventure</h3>
+                <span class="read-button">READ</span>
+            </a>
+
+            <!-- Story Card 3 -->
+            <a href="story-details-wizards-spell.html" class="story-card">
+                <div class="card-art-container">
+                    <img src="https://picsum.photos/seed/wizard/300/200" alt="Wizard's Spell">
+                </div>
+                <h3 class="story-title">Wizard's Spell</h3>
+                <span class="read-button">READ</span>
+            </a>
+
+            <!-- Story Card 4: The Flying Bananas -->
+            <a href="http://studioswai.com/abi-tales/flying-bananas/" target="_blank" rel="noopener noreferrer" class="story-card">
+                <div class="card-art-container">
+                    <img src="flying-bananas.jpg" alt="The Flying Bananas">
+                    <!-- Make sure 'flying-bananas.jpg' is in the same directory or update path -->
+                </div>
+                <h3 class="story-title">The Flying Bananas</h3>
+                <span class="read-button">READ</span>
+            </a>
+
+            <!-- Story Card 5 -->
+            <a href="story-details-mystery-manor.html" class="story-card">
+                <div class="card-art-container">
+                    <img src="https://picsum.photos/seed/manor/300/200" alt="Mystery Manor">
+                </div>
+                <h3 class="story-title">Mystery Manor</h3>
+                <span class="read-button">READ</span>
+            </a>
+
+            <!-- Story Card 6 -->
+            <a href="story-details-moon-journey.html" class="story-card">
+                <div class="card-art-container">
+                    <img src="https://picsum.photos/seed/moon/300/200" alt="Moon Journey">
+                </div>
+                <h3 class="story-title">Moon Journey</h3>
+                <span class="read-button">READ</span>
+            </a>
+
+            <!-- Story Card 7 -->
+            <a href="story-details-heros-journey.html" class="story-card">
+                <div class="card-art-container">
+                    <img src="https://picsum.photos/seed/hero/300/200" alt="Hero's Journey">
+                </div>
+                <h3 class="story-title">Hero's Journey</h3>
+                <span class="read-button">READ</span>
+            </a>
+
+            <!-- Story Card 8 -->
+            <a href="story-details-lost-city.html" class="story-card">
+                <div class="card-art-container">
+                    <img src="https://picsum.photos/seed/city/300/200" alt="The Lost City">
+                </div>
+                <h3 class="story-title">The Lost City</h3>
+                <span class="read-button">READ</span>
+            </a>
+        </main>
+    </div>
+    <script>
+        // Simple active class toggler for filters
+        const filterLinks = document.querySelectorAll('.filter-nav .filter-link');
+        filterLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                // e.preventDefault(); // Prevent navigation if these are for JS filtering
+                filterLinks.forEach(el => el.classList.remove('active'));
+                this.classList.add('active');
+                // Add actual filtering logic here if needed
+            });
+        });
+    </script>
+</body>
+</html>

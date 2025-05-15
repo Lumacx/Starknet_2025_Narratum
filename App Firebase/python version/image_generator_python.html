@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate Tools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Lora', serif;
+            background-color: #F5EFE6; 
+            /*padding-top: 20px; /* Add padding to prevent overlap with fixed screen size display */
+        }
+        /*#screenSizeDisplay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            font-size: 0.75rem; *//* text-xs */
+            /*padding: 2px 5px;
+            z-index: 1000;
+            text-align: center;
+            font-family: monospace;
+        }*/
+        .canvas-wrapper { 
+            width: 100%;
+            position: relative; 
+            padding-bottom: 70%; /* Aspect Ratio: Height is 70% of Width */
+            background-color: #FFFBF5; 
+            border: 1px solid #A0937D;
+            overflow: hidden; 
+            border-radius: 0.375rem; /* rounded-md */
+        }
+        #sketchCanvas {
+            position: absolute; 
+            top: 0;
+            left: 0;
+            width: 100%; 
+            height: 100%; 
+            cursor: crosshair;
+            touch-action: none;
+            background-color: #FFFFFF; 
+        }
+        .input-output-panel {
+            border: 1px solid #A0937D; 
+            background-color: #FFFBF5; 
+            min-height: 380px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: flex-start; 
+            overflow: hidden; 
+            border-radius: 0.5rem; /* rounded-lg */
+        }
+        .input-panel-content { 
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start; 
+            padding: 0.75rem; /* p-3 */
+        }
+        .output-panel-content-wrapper {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            padding: 0.75rem; /* p-3 */
+        }
+        #imageResult { 
+            flex-grow: 1; 
+            flex-shrink: 1; 
+            min-height: 340px; 
+            margin-bottom: 0.25rem; /* mb-3 */
+            display: flex;
+            justify-content: center; 
+            align-items: center; 
+            width: 100%;
+            overflow: hidden; 
+        }
+        #generatedImage {
+            max-width: 100%;
+            max-height: 100%; 
+            object-fit: contain; 
+            border-radius: 1rem;
+            /*padding: 0.5rem; */
+            box-shadow: 0 1px 5px 0 rgba(0, 0, 0, 0.1), 0 1px 5px 0 rgba(0, 0, 0, 0.06); 
+        }
+        #imageDescriptionContainer { 
+            width: 100%;
+            height: 6rem; 
+            flex-shrink: 0;
+            /*margin-top: 0.15rem; */
+            display: flex; 
+        }
+        #imageDescription {
+            font-size: 0.8rem; 
+            color: #44403c; 
+            padding: 0.15rem;
+            border: 1px solid #d6d3d1; 
+            /*border-radius: 0.375rem; */
+            background-color: white;
+            width: 100%;
+            height: 100%; 
+            overflow-y: auto; 
+            white-space: pre-wrap;
+            justify-content: flex-start; 
+            line-height: 1.4;
+        }
+        .loader {
+            border: 4px solid #EAE0D5; 
+            border-top: 4px solid #675D50; 
+            border-radius: 50%;
+            width: 30px; 
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 15px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .custom-btn {
+            background-color: #EAE0D5; 
+            border: 1px solid #A0937D;
+            color: #3C3633; 
+            padding: 8px 12px; 
+            border-radius: 6px;
+            font-weight: 500;
+            transition: background-color 0.2s ease-in-out;
+            white-space: nowrap; 
+            font-size: 0.875rem; /* text-sm */
+        }
+        .custom-btn:hover {
+            background-color: #DCD0C0; 
+        }
+        .custom-btn-primary {
+            background-color: #A0937D; 
+            color: #FFFBF5;
+            padding: 10px 15px; 
+            font-size: 1rem; /* text-base */
+        }
+        .custom-btn-primary:hover {
+            background-color: #8A7F6C;
+        }
+        textarea {
+            background-color: #FFFBF5;
+            border: 1px solid #A0937D;
+            color: #3C3633;
+            font-size: 0.875rem; 
+        }
+        textarea::placeholder {
+            color: #78716c; 
+        }
+        .canvas-container { 
+            width: 100%; 
+            margin: 0 auto; 
+            flex-grow: 1; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center;
+            justify-content: center;
+            min-height: 120px; 
+        }
+        .sketch-controls { 
+            display: flex;
+            flex-wrap: nowrap; 
+            gap: 0.5rem; 
+            align-items: center;
+            justify-content: space-between; 
+            margin-top: 0.5rem; 
+            padding-bottom: 0.25rem; 
+            width: 100%; 
+            overflow-x: auto; 
+            -webkit-overflow-scrolling: touch; 
+            scrollbar-width: none; 
+        }
+        .sketch-controls::-webkit-scrollbar { 
+            display: none;
+        }
+        .sketch-controls > * { 
+            flex-shrink: 0; 
+        }
+        .sketch-controls .custom-btn { 
+            padding: 5px 8px; 
+            font-size: 0.7rem; 
+        }
+        .sketch-controls label {
+            font-size: 0.7rem; 
+            white-space: nowrap;
+        }
+        .sketch-controls input[type="color"] {
+            width: 1.25rem; 
+            height: 1.25rem; 
+        }
+        .sketch-controls input[type="range"] {
+            width: 50px; 
+            height: 0.875rem; 
+        }
+        .main-instruction-label {
+            font-weight: 500; 
+            color: #57534e; 
+            margin-bottom: 0.25rem; 
+            align-self: flex-start;
+            font-size: 0.875rem; 
+        }
+    </style>
+</head>
+<body class="text-stone-800">
+    <div id="screenSizeDisplay"></div> <div class="container mx-auto p-2 sm:p-4 md:p-8 max-w-4xl"> 
+        <header class="my-4 md:my-6 text-center">  
+            <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-stone-700">GENERATE TOOLS</h1>
+        </header>
+
+        <div class="bg-[#FFFBF5] p-3 sm:p-4 md:p-6 rounded-lg shadow-lg border border-[#A0937D]"> 
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-4 md:mb-6"> 
+                <div class="input-output-panel md:min-h-[420px] lg:min-h-[450px]"> 
+                    <div class="input-panel-content">
+                        <label for="textPrompt" class="main-instruction-label">Describe a scene or character:</label>
+                        <textarea id="textPrompt" rows="3" class="w-full p-2 rounded-md focus:ring-1 focus:ring-[#675D50] focus:border-[#675D50] outline-none mb-2 text-sm"placeholder="e.g., A majestic elf queen in an enchanted forest..."></textarea>
+                        
+                        <label class="main-instruction-label mt-1 sm:mt-2">...or draw a sketch (optional):</label>
+                        <div class="canvas-container">
+                             <div class="canvas-wrapper">
+                                <canvas id="sketchCanvas"></canvas>
+                             </div>
+                        </div>
+                        <div class="sketch-controls">
+                            <button id="clearCanvasBtn" class="custom-btn">Clear Sketch</button>
+                            <div class="flex items-center">
+                                <label for="brushColor" class="text-xs text-stone-700 mr-1">Color:</label>
+                                <input type="color" id="brushColor" value="#000000" class="w-5 h-5 sm:w-6 sm:h-6 rounded border-none cursor-pointer">
+                            </div>
+                            <div class="flex items-center">
+                                <label for="brushSize" class="text-xs text-stone-700 mr-1">Size:</label>
+                                <input type="range" id="brushSize" min="1" max="20" value="3" class="cursor-pointer h-4 align-middle">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-output-panel md:min-h-[420px] lg:min-h-[450px]"> 
+                    <div class="output-panel-content-wrapper">
+                        <div id="loadingIndicator" class="hidden text-center w-full">
+                            <div class="loader"></div>
+                            <p class="text-stone-600 text-xs sm:text-sm">Generating your image...</p>
+                        </div>
+                        <div id="errorDisplay" class="hidden p-2 sm:p-3 bg-red-100 border border-red-400 text-red-700 rounded-md text-xs sm:text-sm w-full"></div>
+                        
+                        <div id="imageResult" class="w-full"> 
+                            <img id="generatedImage" src="https://placehold.co/400x300/FFFBF5/A0937D?text=Your+Image" alt="Generated Image Area">
+                        </div>
+                        
+                        <div id="imageDescriptionContainer" class="w-full hidden"> 
+                            <p id="imageDescription" class=""></p> 
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center mb-4 md:mb-6"> 
+                <button id="generateBtn" class="custom-btn custom-btn-primary w-full sm:w-3/4 md:w-1/2 py-2.5 sm:py-3 text-base sm:text-lg"> 
+                    Generate
+                </button>
+            </div>
+
+            <div class="flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-3"> 
+                <button id="retryBtn" class="custom-btn w-full sm:w-auto">Retry</button>
+                <button id="saveBtn" class="custom-btn w-full sm:w-auto">Save</button>
+                <button id="generateGifBtn" class="custom-btn w-full sm:w-auto">Generate GIF</button>
+            </div>
+        </div>
+
+        <footer class="text-center text-stone-500 mt-6 md:mt-10 text-xs"> 
+            <p>Powered by Google Gemini. Ensure your backend is running and API key is set.</p>
+        </footer>
+    </div>
+
+    <script>
+        // Get DOM elements
+        const canvas = document.getElementById('sketchCanvas');
+        const canvasWrapper = document.querySelector('.canvas-wrapper'); 
+        const ctx = canvas.getContext('2d');
+        const textPromptInput = document.getElementById('textPrompt');
+        const generateBtn = document.getElementById('generateBtn');
+        const clearCanvasBtn = document.getElementById('clearCanvasBtn');
+        const generatedImage = document.getElementById('generatedImage');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const errorDisplay = document.getElementById('errorDisplay');
+        const imageResultDiv = document.getElementById('imageResult'); 
+        const imageDescription = document.getElementById('imageDescription'); 
+        const imageDescriptionContainer = document.getElementById('imageDescriptionContainer'); 
+        const screenSizeDisplay = document.getElementById('screenSizeDisplay'); 
+
+        const brushColorInput = document.getElementById('brushColor');
+        const brushSizeInput = document.getElementById('brushSize');
+        const retryBtn = document.getElementById('retryBtn');
+        const saveBtn = document.getElementById('saveBtn'); 
+        const generateGifBtn = document.getElementById('generateGifBtn'); 
+
+        // Backend API URL
+        const API_URL = 'http://127.0.0.1:5000/generate-image'; 
+
+        // Drawing state variables
+        let drawing = false;
+        let brushColor = '#000000';
+        let brushSize = 3;
+        let hasSketched = false; 
+
+        // --- Screen Size Display Function ---
+        /*function updateScreenSizeDisplay() {
+            if (screenSizeDisplay) {
+                screenSizeDisplay.textContent = `Screen: ${window.innerWidth}px x ${window.innerHeight}px`;
+            }
+        }*/
+
+        // --- Canvas Setup and Drawing Functions ---
+        function setupCanvas() {
+            const dpr = window.devicePixelRatio || 1; 
+            const rect = canvasWrapper.getBoundingClientRect(); 
+            
+            if (rect.width > 0 && rect.height > 0) {
+                canvas.width = rect.width * dpr;
+                canvas.height = rect.height * dpr;
+                ctx.scale(dpr, dpr);
+                clearCanvasBackground(rect.width, rect.height); 
+            }
+        }
+        
+        function clearCanvasBackground(width, height) {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, width, height); 
+        }
+
+        function clearCanvas() {
+            const rect = canvasWrapper.getBoundingClientRect();
+            if (rect.width > 0 && rect.height > 0) {
+                clearCanvasBackground(rect.width, rect.height);
+            }
+            hasSketched = false; 
+        }
+        
+        brushColorInput.addEventListener('input', (e) => brushColor = e.target.value);
+        brushSizeInput.addEventListener('input', (e) => brushSize = e.target.value);
+        
+        function getRelativePos(canvasDom, eventOrTouch) {
+            const rect = canvasDom.getBoundingClientRect(); 
+            let clientX, clientY;
+            if (eventOrTouch.touches && eventOrTouch.touches.length > 0) {
+                clientX = eventOrTouch.touches[0].clientX;
+                clientY = eventOrTouch.touches[0].clientY;
+            } else {
+                clientX = eventOrTouch.clientX;
+                clientY = eventOrTouch.clientY;
+            }
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        function startDrawing(e) {
+            e.preventDefault(); 
+            const rect = canvasWrapper.getBoundingClientRect();
+            if (!rect.width || !rect.height) return; 
+
+            drawing = true;
+            hasSketched = true; 
+            const pos = getRelativePos(canvas, e);
+            
+            ctx.beginPath(); 
+            ctx.moveTo(pos.x, pos.y); 
+            
+            ctx.lineWidth = brushSize; 
+            ctx.lineCap = 'round'; 
+            ctx.strokeStyle = brushColor;
+            
+            ctx.lineTo(pos.x, pos.y); 
+            ctx.stroke(); 
+        }
+
+        function stopDrawing(e) {
+            e.preventDefault();
+            if (drawing) {
+                 ctx.closePath(); 
+                 drawing = false; 
+            }
+        }
+        
+        function draw(e) {
+            if (!drawing) return; 
+            e.preventDefault(); 
+            const pos = getRelativePos(canvas, e);
+            ctx.lineTo(pos.x, pos.y); 
+            ctx.stroke(); 
+        }
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseleave', stopDrawing); 
+        canvas.addEventListener('mousemove', draw);
+
+        canvas.addEventListener('touchstart', startDrawing, { passive: false });
+        canvas.addEventListener('touchend', stopDrawing, { passive: false });
+        canvas.addEventListener('touchmove', draw, { passive: false });
+        
+        clearCanvasBtn.addEventListener('click', clearCanvas);
+
+        async function triggerImageGeneration() {
+            const promptText = textPromptInput.value.trim();
+            let sketchDataUrl = null; 
+
+            if (hasSketched && canvas.width > 0 && canvas.height > 0) { 
+                sketchDataUrl = canvas.toDataURL('image/png'); 
+            }
+
+            if (!promptText && !sketchDataUrl) {
+                showError('Please provide a text prompt or a sketch.');
+                return;
+            }
+
+            loadingIndicator.classList.remove('hidden');
+            imageResultDiv.classList.add('hidden'); 
+            imageDescriptionContainer.classList.add('hidden'); 
+            imageDescription.textContent = ''; 
+            errorDisplay.classList.add('hidden'); 
+            generatedImage.src = "https://placehold.co/400x300/FFFBF5/A0937D?text=Generating..."; 
+            generatedImage.alt = "Generating image...";
+            
+
+            try {
+                const response = await fetch(API_URL, { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: promptText, sketch: sketchDataUrl }),
+                });
+
+                if (!response.ok) {
+                    let errorMsg = `HTTP error! status: ${response.status}`;
+                    try {
+                        const errorData = await response.json();
+                        errorMsg = errorData.error || errorMsg;
+                    } catch (jsonError) {
+                        try {
+                            const textError = await response.text();
+                            errorMsg = textError || errorMsg;
+                        } catch (textParseError) {
+                            // Fallback
+                        }
+                    }
+                    throw new Error(errorMsg);
+                }
+
+                const data = await response.json(); 
+                console.log("Received data from backend:", data); 
+                if (data.imageUrl) {
+                    console.log("Attempting to set image src to:", data.imageUrl); 
+                    generatedImage.src = data.imageUrl;
+                    generatedImage.alt = promptText || "Generated Sketch";
+                    imageResultDiv.classList.remove('hidden'); 
+                    
+                    if (data.description && data.description.trim() !== "") {
+                        imageDescription.textContent = data.description;
+                        imageDescriptionContainer.classList.remove('hidden');
+                        console.log("Received description:", data.description);
+                    } else {
+                        imageDescription.textContent = 'No text description provided.';
+                        imageDescriptionContainer.classList.remove('hidden'); 
+                    }
+                } else if (data.error) {
+                    throw new Error(data.error); 
+                } else {
+                    throw new Error("Received an unexpected response from the server (no imageUrl or error).");
+                }
+            } catch (error) {
+                console.error('Error generating image:', error);
+                showError(`Failed to generate image: ${error.message}`);
+                generatedImage.src = "https://placehold.co/400x300/FFFBF5/A0937D?text=Error"; 
+                generatedImage.alt = "Error generating image";
+                imageResultDiv.classList.remove('hidden'); 
+                imageDescriptionContainer.classList.add('hidden'); 
+            } finally {
+                loadingIndicator.classList.add('hidden');
+            }
+        }
+
+        generateBtn.addEventListener('click', triggerImageGeneration);
+        retryBtn.addEventListener('click', triggerImageGeneration); 
+
+        saveBtn.addEventListener('click', () => {
+            if (generatedImage.src && !generatedImage.src.startsWith('https://placehold.co') && generatedImage.src !== 'data:,') { 
+                const link = document.createElement('a'); 
+                link.href = generatedImage.src; 
+                const filename = (textPromptInput.value.trim().substring(0, 50).replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'generated_image') + '.png';
+                link.download = filename; 
+                document.body.appendChild(link); 
+                link.click(); 
+                document.body.removeChild(link); 
+            } else {
+                showError("No valid image to save.");
+            }
+        });
+        
+        generateGifBtn.addEventListener('click', () => {
+            showError('Generate GIF functionality is not yet implemented.');
+        });
+
+        function showError(message) {
+            errorDisplay.textContent = message;
+            errorDisplay.classList.remove('hidden'); 
+            imageResultDiv.classList.add('hidden'); 
+            imageDescriptionContainer.classList.add('hidden'); 
+        }
+        
+        function resizeAndRedrawCanvas() {
+            let currentCanvasData = null;
+            if(hasSketched && canvas.width > 0 && canvas.height > 0){ 
+                try {
+                    currentCanvasData = canvas.toDataURL(); 
+                } catch (e) {
+                    console.error("Error getting canvas data URL during resize:", e);
+                    currentCanvasData = null; 
+                }
+            }
+            
+            setupCanvas(); 
+
+            if (hasSketched && currentCanvasData && currentCanvasData !== 'data:,') { 
+                const img = new Image();
+                img.onload = () => {
+                    const rect = canvasWrapper.getBoundingClientRect(); 
+                    if (rect.width > 0 && rect.height > 0) {
+                        ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, rect.width, rect.height);
+                    }
+                };
+                img.onerror = () => {
+                    console.error("Error loading previous canvas image for redraw.");
+                    const rect = canvasWrapper.getBoundingClientRect();
+                    if (rect.width > 0 && rect.height > 0) {
+                         clearCanvasBackground(rect.width, rect.height);
+                    }
+                }
+                img.src = currentCanvasData; 
+            } else {
+                const rect = canvasWrapper.getBoundingClientRect();
+                if (rect.width > 0 && rect.height > 0) {
+                     clearCanvasBackground(rect.width, rect.height);
+                }
+            }
+        }
+        
+        // --- Event Listeners for Window ---
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                resizeAndRedrawCanvas();
+                /*updateScreenSizeDisplay(); // Update screen size on resize*/
+            }, 150); 
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (imageDescriptionContainer) { 
+                imageDescriptionContainer.classList.add('hidden');
+            }
+            /*updateScreenSizeDisplay(); // Initial screen size display*/
+            requestAnimationFrame(() => {
+                setupCanvas(); 
+                clearCanvas(); 
+            });
+        });
+
+    </script>
+</body>
+</html>

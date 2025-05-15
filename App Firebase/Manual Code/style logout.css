@@ -1,0 +1,109 @@
+body {
+    margin: 0;
+    font-family: 'Lato', Arial, sans-serif; /* Default sans-serif font */
+    background-color: #F8F5F0; /* Light cream/off-white background */
+    color: #333; /* Default text color */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    text-align: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.logout-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 50px; /* Space between main sections */
+    width: 100%;
+    max-width: 500px; /* Limit width for larger screens */
+}
+
+.app-header {
+    margin-bottom: 20px; /* Space below NARRATUM title */
+}
+
+.app-title {
+    font-family: 'Merriweather', 'Georgia', serif; /* Serif font for NARRATUM */
+    font-size: 4em; /* Adjust size as needed */
+    font-weight: 900; /* Bold */
+    color: #2C3E50; /* Dark navy blue */
+    margin: 0;
+    letter-spacing: 1px;
+}
+
+.action-section {
+    margin-bottom: 30px; /* Space below button */
+}
+
+.continue-button {
+    font-family: 'Lato', Arial, sans-serif;
+    background-color: #2C3E50; /* Dark navy blue background */
+    color: #FFFFFF; /* White text */
+    padding: 15px 35px;
+    border: none;
+    border-radius: 8px; /* Rounded corners */
+    font-size: 1.1em;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    display: inline-block; /* To apply padding and be treated as a block for centering */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.continue-button:hover {
+    background-color: #34495E; /* Slightly lighter navy on hover */
+    transform: translateY(-2px);
+}
+
+.page-footer {
+    /* Spacing handled by container gap */
+}
+
+.footer-nav {
+    margin-bottom: 20px;
+}
+
+.footer-nav a {
+    font-family: 'Lato', Arial, sans-serif;
+    color: #4A4A4A; /* Dark grey for links */
+    text-decoration: none;
+    margin: 0 15px; /* Space between links */
+    font-size: 1em;
+    transition: color 0.3s ease;
+}
+
+.footer-nav a:hover {
+    color: #2C3E50; /* Dark navy blue on hover */
+    text-decoration: underline;
+}
+
+.copyright {
+    font-family: 'Lato', Arial, sans-serif;
+    color: #555; /* Medium grey for copyright */
+    font-size: 0.9em;
+    margin: 0;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 480px) {
+    .app-title {
+        font-size: 3em;
+    }
+    .continue-button {
+        font-size: 1em;
+        padding: 12px 30px;
+    }
+    .footer-nav a {
+        margin: 0 10px;
+        font-size: 0.9em;
+    }
+    .logout-container {
+        gap: 40px;
+    }
+}

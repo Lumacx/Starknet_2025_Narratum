@@ -1,0 +1,204 @@
+body {
+    margin: 0;
+    font-family: 'Lato', sans-serif; /* Default sans-serif */
+    background-color: #1A2533; /* Dark blue/teal background */
+    color: #E0C9A0; /* Light gold/beige for text */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+    box-sizing: border-box;
+    min-height: 100vh;
+}
+
+.catalog-container {
+    width: 100%;
+    max-width: 1200px; /* Adjust as needed */
+    text-align: center;
+}
+
+.page-header {
+    margin-bottom: 30px;
+}
+
+.app-title {
+    font-family: 'Cinzel Decorative', serif; /* Ornate serif for NARRATUM */
+    font-size: 3.5em; /* Adjust size */
+    font-weight: 700;
+    color: #E0C9A0;
+    margin: 0 0 5px 0;
+    letter-spacing: 1px;
+}
+
+.page-subtitle {
+    font-family: 'Lato', sans-serif;
+    font-size: 1.4em;
+    font-weight: 700;
+    color: #BFA071; /* Slightly darker gold for subtitle */
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin: 0;
+}
+
+.filter-nav {
+    margin-bottom: 40px;
+    display: flex;
+    justify-content: center;
+    gap: 25px;
+}
+
+.filter-link {
+    font-family: 'Lato', sans-serif;
+    color: #BFA071;
+    text-decoration: none;
+    font-size: 1.1em;
+    font-weight: 700;
+    padding: 5px 10px;
+    border-bottom: 2px solid transparent;
+    transition: color 0.3s ease, border-bottom-color 0.3s ease;
+}
+
+.filter-link:hover,
+.filter-link.active {
+    color: #E0C9A0; /* Brighter gold for active/hover */
+    border-bottom-color: #E0C9A0;
+}
+
+.story-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 30px; /* Space between cards */
+}
+
+.story-card {
+    background-color: #233446; /* Slightly lighter dark blue for card background */
+    border: 2px solid #4A5C6E; /* Outer border */
+    padding: 10px; /* Padding for the double border effect */
+    border-radius: 10px; /* Outer border radius */
+    width: 260px; /* Adjust card width */
+    text-decoration: none;
+    color: #E0C9A0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    position: relative; /* For corner decorations */
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.story-card:hover {
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: 0 8px 15px rgba(0,0,0,0.3);
+}
+
+/* Inner border and corner stars using pseudo-elements */
+.story-card::before, .story-card::after {
+    content: '';
+    position: absolute;
+    width: calc(100% - 12px); /* Adjust based on desired inner border offset */
+    height: calc(100% - 12px);
+    top: 4px;  /* Adjust based on desired inner border offset */
+    left: 4px; /* Adjust based on desired inner border offset */
+    border: 1px solid #BFA071; /* Inner gold line */
+    border-radius: 6px; /* Inner border radius, slightly smaller */
+    pointer-events: none; /* So they don't interfere with clicks */
+    z-index: 1;
+}
+
+/* Corner "stars" - simplified */
+.story-card .card-art-container::before, .story-card .card-art-container::after,
+.story-card .read-button::before, .story-card .read-button::after {
+    content: '*'; /* Using a simple star character */
+    font-family: serif; /* For a more star-like asterisk if available */
+    color: #BFA071;
+    position: absolute;
+    font-size: 1.5em; /* Adjust star size */
+    z-index: 2; /* Above the inner border */
+    pointer-events: none;
+}
+
+.story-card .card-art-container::before { top: -2px; left: -2px; } /* Top-left of card art area */
+.story-card .card-art-container::after  { top: -2px; right: -2px; } /* Top-right */
+.story-card .read-button::before { bottom: -2px; left: -2px; } /* Bottom-left of card relative to button parent */
+.story-card .read-button::after  { bottom: -2px; right: -2px; } /* Bottom-right */
+
+
+.card-art-container {
+    width: 100%;
+    height: 150px; /* Fixed height for art, adjust as needed */
+    margin-bottom: 15px;
+    border-radius: 4px; /* Slight rounding for the art container */
+    overflow: hidden; /* Clip image to rounded corners */
+    position: relative; /* For positioning corner stars */
+    z-index: 2; /* Above card's ::before/::after */
+}
+
+.card-art-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Ensure image covers the area */
+    display: block;
+}
+
+.story-title {
+    font-family: 'Merriweather', serif;
+    font-size: 1.3em;
+    font-weight: 700;
+    margin: 0 0 15px 0;
+    line-height: 1.3;
+    min-height: 2.6em; /* Ensure space for two lines of text to keep alignment */
+    z-index: 2;
+}
+
+.read-button {
+    font-family: 'Lato', sans-serif;
+    background-color: #BFA071; /* Gold background for button */
+    color: #1A2533; /* Dark text for button */
+    padding: 8px 25px;
+    border-radius: 6px;
+    font-size: 0.9em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: inline-block;
+    margin-bottom: 5px; /* Space from bottom of card */
+    transition: background-color 0.3s ease, color 0.3s ease;
+    position: relative; /* For positioning corner stars */
+    z-index: 2;
+}
+
+.story-card:hover .read-button {
+    background-color: #E0C9A0;
+}
+
+
+/* Responsive Adjustments */
+@media (max-width: 1200px) {
+    .story-card {
+        width: calc(25% - 30px); /* 4 cards per row, adjust gap calc */
+    }
+}
+@media (max-width: 992px) {
+    .story-card {
+        width: calc(33.333% - 30px); /* 3 cards per row */
+    }
+}
+@media (max-width: 768px) {
+    .app-title { font-size: 2.8em; }
+    .page-subtitle { font-size: 1.2em; }
+    .story-card {
+        width: calc(50% - 25px); /* 2 cards per row */
+    }
+}
+@media (max-width: 576px) {
+    .filter-nav {
+        gap: 15px;
+        flex-wrap: wrap; /* Allow filters to wrap */
+    }
+    .filter-link { font-size: 1em; }
+    .story-card {
+        width: calc(100% - 20px); /* 1 card per row */
+        max-width: 320px; /* Max width for single card */
+    }
+}

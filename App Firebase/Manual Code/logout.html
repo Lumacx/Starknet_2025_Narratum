@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log Out - Narratum</title>
+    <!-- Google Fonts: Merriweather for title, Lato for other text -->
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@700;900&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="logout-container">
+        <header class="app-header">
+            <h1 class="app-title">NARRATUM</h1>
+        </header>
+
+        <main class="action-section">
+            <a href="login.html" class="continue-button">Thanks. Continue?</a>
+            <!-- Make sure login.html is the correct path to your login page -->
+        </main>
+
+        <footer class="page-footer">
+            <nav class="footer-nav">
+                <a href="stories.html">Stories</a>
+                <a href="profile.html">Profile</a>
+                <a href="create.html">Create</a>
+            </nav>
+            <p class="copyright">&copy; <span id="current-year">2024</span> Narratum</p>
+        </footer>
+    </div>
+
+    <script>
+        // Dynamically set the current year in the copyright
+        document.getElementById('current-year').textContent = new Date().getFullYear();
+    </script>
+</body>
+</html>
