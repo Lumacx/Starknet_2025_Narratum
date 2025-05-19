@@ -1,0 +1,1 @@
+{"version":1,"contracts":[{"id":"krtoj9vo88nh0","package_name":"first_project","contract_name":"NarratumContract","module_path":"first_project::NarratumContract","artifacts":{"sierra":"first_project_NarratumContract.contract_class.json","casm":"first_project_NarratumContract.compiled_contract_class.json"}}]}

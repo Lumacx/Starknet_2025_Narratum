@@ -1,0 +1,1 @@
+{"version":1,"contracts":[{"id":"9akda25iclbtu","package_name":"narratum_backend","contract_name":"NarratumContract","module_path":"narratum_backend::NarratumContract","artifacts":{"sierra":"narratum_backend_NarratumContract.contract_class.json","casm":"narratum_backend_NarratumContract.compiled_contract_class.json"}}]}
