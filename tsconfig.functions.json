@@ -1,0 +1,30 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "outDir": "lib",
+    "rootDir": "src",
+    "baseUrl": ".",
+    "noEmit": false,
+    "sourceMap": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true, // Ensure esModuleInterop is true
+    "types": ["node", "firebase-functions"],
+    "typeRoots": [
+      "./node_modules/@types",
+      "./node_modules"
+    ]
+  },
+  "include": [
+    "src/ai/functions/**/*.ts",
+    "src/ai/genkit.ts",
+    "../../dataconnect/connector/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "lib",
+    "src/app",
+    "src/components",
+    "src/hooks"
+  ]
+}

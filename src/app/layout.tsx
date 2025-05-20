@@ -16,8 +16,8 @@ const openSans = Open_Sans({
 });
 
 export const metadata: Metadata = {
-  title: 'Narrative Nexus', // Updated App Name
-  description: 'Immersive storytelling platform by Narrative Nexus', // Updated description
+  title: 'Narratum', // Updated App Name
+  description: 'Immersive storytelling platform by Narratum', // Updated description
 };
 
 export default function RootLayout({

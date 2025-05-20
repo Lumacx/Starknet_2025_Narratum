@@ -42,6 +42,5 @@ next-env.d.ts
 
 # firebase
 public/_auth/*
-firebase.json
 firebase-debug.log
 firestore-debug.log

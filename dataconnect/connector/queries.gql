@@ -1,0 +1,12 @@
+# Queries
+query GetUserProfile($userId: String!) @auth(level: USER) {
+  User(id: $userId) {
+    id
+    username
+    email
+    displayname
+    avatarUrl
+    role
+    createdAt
+  }
+}

@@ -1,22 +1,161 @@
-import Header from '@/components/header';
-import InteractiveStoryDisplay from '@/components/interactive-story-display';
-import TemplateDrivenStoryCreation from '@/components/template-driven-story-creation';
-import { Separator } from '@/components/ui/separator';
+// src/app/page.tsx
+"use client"; 
+
+import React, { useState, useEffect } from 'react';
+import { functions, auth } from "@/lib/firebase"; 
+import { httpsCallable } from "firebase/functions";
+import { onAuthStateChanged, User, signInWithEmailAndPassword } from "firebase/auth";
 
 export default function HomePage() {
+  const [loading, setLoading] = useState(false);
+  const [resultMessage, setResultMessage] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      if (user) {
+        console.log("User signed in:", user.uid);
+      } else {
+        console.log("No user signed in.");
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleQuickSignIn = async () => {
+    setResultMessage("Attempting quick sign-in...");
+    try {
+      // IMPORTANT: Replace with actual test user credentials that exist in your Firebase Auth
+      // (either in the deployed project or your local emulator if you're using it)
+      await signInWithEmailAndPassword(auth, "test@gmail.com", "123456");
+      setResultMessage("Quick sign-in successful! You can now try generating an image.");
+      alert("Quick sign-in successful! Try generating image.");
+    } catch (error: any) {
+      console.error("Quick sign-in error", error);
+      setResultMessage(`Quick sign-in failed: ${error.message}`);
+      alert(`Quick sign-in failed: ${error.message}`);
+    }
+  };
+
+  const handleGenerateImage = async () => {
+    if (!currentUser) {
+      setResultMessage("Error: You must be signed in to generate an image.");
+      alert("Please sign in to generate an image.");
+      return;
+    }
+
+    setLoading(true);
+    setResultMessage("Calling function...");
+    setImageUrl("");
+
+    try {
+      console.log("Calling generateNarratumImage function with test data...");
+      const callGenerateImage = httpsCallable(functions, 'generateNarratumImage');
+      
+      const result = await callGenerateImage({ 
+        description: "A whimsical clockwork owl with glowing amber eyes, intricate gears visible",
+      });
+
+      const data = result.data as { imageUrl?: string, imageId?: string, message?: string };
+      console.log("Function returned:", data);
+
+      if (data.imageUrl) {
+        setResultMessage(`Success! Image ID: ${data.imageId || 'N/A'}. Message: ${data.message || 'Image generated.'}`);
+        setImageUrl(data.imageUrl);
+      } else {
+        setResultMessage(`Function completed, but no image URL. Message: ${data.message || 'No specific message returned.'}`);
+      }
+    } catch (error: any) {
+      console.error("Error calling generateNarratumImage function:", error);
+      setResultMessage(`Error: ${error.code} - ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="flex flex-col min-h-screen">
-      <Header />
-      <main className="flex-grow">
-        <InteractiveStoryDisplay />
-        <div className="container mx-auto px-4">
-           <Separator className="my-8 md:my-12 border-accent/30" />
-        </div>
-        <TemplateDrivenStoryCreation />
+    <> 
+      <main>         
+        <section style={{ padding: '20px', borderBottom: '1px solid #eee', marginBottom: '20px' }}>
+          <h2>Test AI Image Generation</h2>
+          {!currentUser && <p style={{color: 'red'}}>Please sign in to test image generation.</p>}
+          {currentUser && <p style={{color: 'green'}}>Signed in as: {currentUser.email}</p>}
+          
+          <button 
+            onClick={handleGenerateImage} 
+            disabled={loading || !currentUser}
+            className="action-btn" 
+            style={{ 
+              padding: '10px 15px', 
+              fontSize: '16px', 
+              cursor: 'pointer', 
+              margin: '10px 0',
+              backgroundColor: (loading || !currentUser) ? '#ccc' : '#007bff', 
+              color: 'white',
+              border: 'none',
+              borderRadius: '5px'
+            }}
+          >
+            {loading ? 'Generating...' : 'Generate Test Image'}
+          </button>
+
+          {/* ADDED THIS NEW BUTTON FOR QUICK SIGN-IN */}
+          {!currentUser && (
+            <button 
+              onClick={handleQuickSignIn} 
+              style={{
+                marginLeft: '10px',
+                padding: '10px 15px', 
+                fontSize: '16px', 
+                cursor: 'pointer', 
+                backgroundColor: '#28a745',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px'
+              }}
+            >
+              Quick Sign-In (Test User)
+            </button>
+          )}
+
+          {resultMessage && <p style={{ marginTop: '10px', whiteSpace: 'pre-wrap' }}>{resultMessage}</p>}
+          
+          {imageUrl && (
+            <div style={{ marginTop: '20px' }}>
+              <h3>Generated Image Preview:</h3>
+              <img src={imageUrl} alt="Generated by AI" style={{ maxWidth: '100%', maxHeight: '400px', border: '1px solid #ccc', marginTop: '10px' }} />
+            </div>
+          )}
+        </section>
+
+        <section className="output-panel">
+          <h2>Generated Output</h2>
+          <div id="imageOutputContainer">
+            <p id="placeholderText">Your generated image will appear here.</p>
+            <img id="generatedImage" src="#" alt="Generated Image" style={{ display: 'none' }} />
+            <div id="loadingSpinner" style={{ display: 'none' }}>
+              <div className="spinner"></div>
+              <p>Generating, please wait...</p>
+            </div>
+          </div>
+          <div className="output-controls">
+            <button id="retryBtn" className="action-btn" disabled>Retry</button>
+            <button id="saveImageBtn" className="action-btn" disabled>Save Image</button>
+            <button id="generateGifBtn" className="action-btn" disabled>Generate GIF (with Veo2)</button>
+          </div>
+          <div id="gifOutputContainer" style={{ display: 'none', marginTop: '20px' }}>
+            <h3>Generated GIF:</h3>
+            <img id="generatedGif" src="#" alt="Generated GIF" style={{ maxWidth: '100%', border: '1px solid #ccc' }} />
+            <p id="gifLoadingSpinner" style={{ display: 'none' }}>Generating GIF...</p>
+          </div>
+        </section>
       </main>
-      <footer className="py-6 px-4 md:px-8 bg-primary text-primary-foreground text-center mt-12">
-        <p className="text-sm">&copy; {new Date().getFullYear()} Narrative Nexus. All rights reserved.</p>
+      
+      <footer>
+        <p>&copy; Narratum Storytelling Tool</p>
       </footer>
-    </div>
+    </>
   );
 }

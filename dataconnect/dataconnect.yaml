@@ -1,0 +1,6 @@
+location: us-central1
+schema:
+  source: schema
+connectors:
+  - id: default
+    source: connector

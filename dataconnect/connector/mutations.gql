@@ -1,0 +1,4 @@
+# Mutations
+# mutation CreateUserProfile($username: String!, $email: String!, $displayname: String!, $avatarUrl: String) @auth(level: USER) {
+#  user_insert( data: { username: $username, email: $email, displayname: $displayname, avatarUrl: $avatarUrl } )
+# }

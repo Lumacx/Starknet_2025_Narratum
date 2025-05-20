@@ -1,0 +1,44 @@
+I0520 01:38:56.121419   85354 load.go:37] Reloading schema and connectors...
+I0520 01:38:56.400403   85354 control.go:73] [/emulator/studio-v0 0c9e] UpdateResources(): done
+Schema: sources: schema/schema.gql [3507B] 
+Connector "default": sources: connector/mutations.gql [2572B] connector/queries.gql [1518B] 
+I0520 01:38:56.613250   85354 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "/home/user/studio/dataconnect-generated/js/default-connector"
+I0520 01:38:56.717706   85354 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: prelude.gql [71117B] main/implicit.gql [3267B] main/input.gql [89640B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] 
+I0520 01:38:56.748758   85354 collector.go:107] connector "default" javascriptSdk wrote into "/home/user/studio/dataconnect-generated/js/default-connector"
+Generated sources: react/package.json [468B] react/index.cjs.js [8849B] angular/index.d.ts [10109B] angular/esm/index.esm.js [8167B] index.cjs.js [11043B] react/index.d.ts [11137B] angular/README.md [111516B] esm/package.json [17B] package.json [1110B] react/esm/index.esm.js [8322B] react/README.md [109415B] angular/esm/package.json [17B] angular/index.cjs.js [8770B] index.d.ts [22357B] react/esm/package.json [17B] angular/package.json [661B] esm/index.esm.js [9534B] README.md [106064B] 
+I0520 01:38:56.758487   85354 installsdk.go:49] Package @firebasegen/default-connector is already installed. Skipping installation
+I0520 01:38:56.760245   85354 load.go:115] Finished reloading
+I0520 01:38:56.761863   85354 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:9399
+I0520 01:39:10.605057   85354 migrate.go:24] Running migration SQL:
+Step 1: CREATE EXTENSION IF NOT EXISTS "uuid-ossp"
+Step 2: CREATE TABLE "public"."app_subscription" ("id" text NOT NULL DEFAULT replace((uuid_generate_v4())::text, '-'::text, ''::text), "created_at" timestamptz NOT NULL, "features_json" text NULL, "name" text NOT NULL, "price" double precision NULL, PRIMARY KEY ("id"))
+Step 3: CREATE TYPE "AnalyticsAction" AS ENUM ('viewed', 'liked', 'favorited', 'created')
+Step 4: CREATE TYPE "PaymentStatus" AS ENUM ('completed', 'failed', 'pending')
+Step 5: CREATE TYPE "StoryStatus" AS ENUM ('draft', 'published', 'archived')
+Step 6: CREATE TYPE "ImageGenerationStatus" AS ENUM ('generated', 'saved', 'discarded')
+Step 7: CREATE TABLE "public"."user" ("id" text NOT NULL, "app_subscription_id" text NULL, "avatar_url" text NULL, "created_at" timestamptz NOT NULL, "displayname" text NOT NULL, "email" text NOT NULL, "role" text NOT NULL DEFAULT '''reader''', "updated_at" timestamptz NOT NULL, "username" text NOT NULL, PRIMARY KEY ("id"), CONSTRAINT "user_app_subscription_id_fkey" FOREIGN KEY ("app_subscription_id") REFERENCES "public"."app_subscription" ("id") ON DELETE SET NULL)
+Step 8: CREATE INDEX "user_appSubscriptionId_idx" ON "public"."user" ("app_subscription_id")
+Step 9: CREATE TABLE "public"."a_i_generated_image" ("id" text NOT NULL, "user_id" text NOT NULL, "created_at" timestamptz NOT NULL, "generated_image_url" text NULL, "prompt_text" text NULL, "sketch_url" text NULL, "status" text NOT NULL DEFAULT '''generated''', PRIMARY KEY ("id"), CONSTRAINT "a_i_generated_image_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."user" ("id") ON DELETE CASCADE)
+Step 10: CREATE INDEX "a_i_generated_image_userId_idx" ON "public"."a_i_generated_image" ("user_id")
+Step 11: CREATE TABLE "public"."a_i_generated_g_i_f" ("id" text NOT NULL DEFAULT replace((uuid_generate_v4())::text, '-'::text, ''::text), "image_id" text NOT NULL, "created_at" timestamptz NOT NULL, "gif_url" text NULL, PRIMARY KEY ("id"), CONSTRAINT "a_i_generated_g_i_f_image_id_fkey" FOREIGN KEY ("image_id") REFERENCES "public"."a_i_generated_image" ("id") ON DELETE CASCADE)
+Step 12: CREATE INDEX "a_i_generated_g_i_f_imageId_idx" ON "public"."a_i_generated_g_i_f" ("image_id")
+Step 13: CREATE TABLE "public"."admin_action" ("id" text NOT NULL DEFAULT replace((uuid_generate_v4())::text, '-'::text, ''::text), "admin_id" text NOT NULL, "action_date" timestamptz NOT NULL, "action_type" text NOT NULL, "description" text NULL, "target_id" text NULL, PRIMARY KEY ("id"), CONSTRAINT "admin_action_admin_id_fkey" FOREIGN KEY ("admin_id") REFERENCES "public"."user" ("id") ON DELETE CASCADE)
+Step 14: CREATE INDEX "admin_action_adminId_idx" ON "public"."admin_action" ("admin_id")
+Step 15: CREATE TABLE "public"."story" ("id" text NOT NULL DEFAULT replace((uuid_generate_v4())::text, '-'::text, ''::text), "creator_id" text NOT NULL, "cover_image_url" text NULL, "created_at" timestamptz NOT NULL, "description" text NULL, "genre" text NULL, "status" text NOT NULL DEFAULT '''draft''', "title" text NULL, "updated_at" timestamptz NOT NULL, PRIMARY KEY ("id"), CONSTRAINT "story_creator_id_fkey" FOREIGN KEY ("creator_id") REFERENCES "public"."user" ("id") ON DELETE CASCADE)
+Step 16: CREATE INDEX "story_creatorId_idx" ON "public"."story" ("creator_id")
+Step 17: CREATE TABLE "public"."analytics" ("id" text NOT NULL DEFAULT replace((uuid_generate_v4())::text, '-'::text, ''::text), "story_id" text NOT NULL, "user_id" text NOT NULL, "action" text NOT NULL, "action_timestamp" timestamptz NOT NULL, PRIMARY KEY ("id"), CONSTRAINT "analytics_story_id_fkey" FOREIGN KEY ("story_id") REFERENCES "public"."story" ("id") ON DELETE CASCADE, CONSTRAINT "analytics_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."user" ("id") ON DELETE CASCADE)
+Step 18: CREATE INDEX "analytics_storyId_idx" ON "public"."analytics" ("story_id")
+Step 19: CREATE INDEX "analytics_userId_idx" ON "public"."analytics" ("user_id")
+Step 20: CREATE TABLE "public"."legal_disclaimer" ("id" text NOT NULL DEFAULT replace((uuid_generate_v4())::text, '-'::text, ''::text), "user_id" text NOT NULL, "accepted" boolean NOT NULL DEFAULT false, "accepted_date" timestamptz NULL, "created_at" timestamptz NOT NULL, PRIMARY KEY ("id"), CONSTRAINT "legal_disclaimer_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."user" ("id") ON DELETE CASCADE)
+Step 21: CREATE INDEX "legal_disclaimer_userId_idx" ON "public"."legal_disclaimer" ("user_id")
+Step 22: CREATE TABLE "public"."payment" ("id" text NOT NULL DEFAULT replace((uuid_generate_v4())::text, '-'::text, ''::text), "app_subscription_id" text NOT NULL, "user_id" text NOT NULL, "amount" double precision NULL, "created_at" timestamptz NOT NULL, "payment_date" timestamptz NOT NULL, "status" text NOT NULL DEFAULT '''pending''', PRIMARY KEY ("id"), CONSTRAINT "payment_app_subscription_id_fkey" FOREIGN KEY ("app_subscription_id") REFERENCES "public"."app_subscription" ("id") ON DELETE CASCADE, CONSTRAINT "payment_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."user" ("id") ON DELETE CASCADE)
+Step 23: CREATE INDEX "payment_appSubscriptionId_idx" ON "public"."payment" ("app_subscription_id")
+Step 24: CREATE INDEX "payment_userId_idx" ON "public"."payment" ("user_id")
+Step 25: CREATE TABLE "public"."story_content" ("id" text NOT NULL DEFAULT replace((uuid_generate_v4())::text, '-'::text, ''::text), "story_id" text NOT NULL, "audio_url" text NULL, "created_at" timestamptz NOT NULL, "image_url" text NULL, "page_number" integer NULL, "text_content" text NULL, PRIMARY KEY ("id"), CONSTRAINT "story_content_story_id_fkey" FOREIGN KEY ("story_id") REFERENCES "public"."story" ("id") ON DELETE CASCADE)
+Step 26: CREATE INDEX "story_content_storyId_idx" ON "public"."story_content" ("story_id")
+Step 27: CREATE TABLE "public"."template" ("id" text NOT NULL DEFAULT replace((uuid_generate_v4())::text, '-'::text, ''::text), "example_story_id" text NULL, "created_at" timestamptz NOT NULL, "structure_json" text NULL, "title" text NULL, PRIMARY KEY ("id"), CONSTRAINT "template_example_story_id_fkey" FOREIGN KEY ("example_story_id") REFERENCES "public"."story" ("id") ON DELETE SET NULL)
+Step 28: CREATE INDEX "template_exampleStoryId_idx" ON "public"."template" ("example_story_id")
+I0520 01:39:13.631309   85354 control.go:73] [/emulator/studio-v0 3059] UpdateResources(): done
+Schema: sources: schema/schema.gql [3507B] 
+Connector "default": sources: connector/mutations.gql [2572B] connector/queries.gql [1518B] 

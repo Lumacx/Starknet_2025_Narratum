@@ -1,0 +1,1344 @@
+extend type Mutation {
+  """
+  ✨ Insert a single `AIGeneratedGIF` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  aIGeneratedGIF_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: AIGeneratedGIF_Data!
+  ): AIGeneratedGIF_KeyOutput! @fdc_generated(from: "AIGeneratedGIF", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `AIGeneratedImage` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  aIGeneratedImage_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: AIGeneratedImage_Data!
+  ): AIGeneratedImage_KeyOutput! @fdc_generated(from: "AIGeneratedImage", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `AdminAction` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  adminAction_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: AdminAction_Data!
+  ): AdminAction_KeyOutput! @fdc_generated(from: "AdminAction", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `Analytics` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  analytics_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: Analytics_Data!
+  ): Analytics_KeyOutput! @fdc_generated(from: "Analytics", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `AppSubscription` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  appSubscription_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: AppSubscription_Data!
+  ): AppSubscription_KeyOutput! @fdc_generated(from: "AppSubscription", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `LegalDisclaimer` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  legalDisclaimer_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: LegalDisclaimer_Data!
+  ): LegalDisclaimer_KeyOutput! @fdc_generated(from: "LegalDisclaimer", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `Payment` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  payment_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: Payment_Data!
+  ): Payment_KeyOutput! @fdc_generated(from: "Payment", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `Story` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  story_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: Story_Data!
+  ): Story_KeyOutput! @fdc_generated(from: "Story", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `StoryContent` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  storyContent_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: StoryContent_Data!
+  ): StoryContent_KeyOutput! @fdc_generated(from: "StoryContent", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `Template` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  template_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: Template_Data!
+  ): Template_KeyOutput! @fdc_generated(from: "Template", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `User` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  user_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: User_Data!
+  ): User_KeyOutput! @fdc_generated(from: "User", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert `AIGeneratedGIF` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  aIGeneratedGIF_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [AIGeneratedGIF_Data!]!
+  ): [AIGeneratedGIF_KeyOutput!]! @fdc_generated(from: "AIGeneratedGIF", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `AIGeneratedImage` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  aIGeneratedImage_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [AIGeneratedImage_Data!]!
+  ): [AIGeneratedImage_KeyOutput!]! @fdc_generated(from: "AIGeneratedImage", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `AdminAction` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  adminAction_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [AdminAction_Data!]!
+  ): [AdminAction_KeyOutput!]! @fdc_generated(from: "AdminAction", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `Analytics` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  analytics_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [Analytics_Data!]!
+  ): [Analytics_KeyOutput!]! @fdc_generated(from: "Analytics", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `AppSubscription` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  appSubscription_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [AppSubscription_Data!]!
+  ): [AppSubscription_KeyOutput!]! @fdc_generated(from: "AppSubscription", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `LegalDisclaimer` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  legalDisclaimer_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [LegalDisclaimer_Data!]!
+  ): [LegalDisclaimer_KeyOutput!]! @fdc_generated(from: "LegalDisclaimer", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `Payment` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  payment_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [Payment_Data!]!
+  ): [Payment_KeyOutput!]! @fdc_generated(from: "Payment", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `Story` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  story_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [Story_Data!]!
+  ): [Story_KeyOutput!]! @fdc_generated(from: "Story", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `StoryContent` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  storyContent_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [StoryContent_Data!]!
+  ): [StoryContent_KeyOutput!]! @fdc_generated(from: "StoryContent", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `Template` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  template_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [Template_Data!]!
+  ): [Template_KeyOutput!]! @fdc_generated(from: "Template", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `User` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  user_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [User_Data!]!
+  ): [User_KeyOutput!]! @fdc_generated(from: "User", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert or update a single `AIGeneratedGIF` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `AIGeneratedGIF`.
+  """
+  aIGeneratedGIF_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: AIGeneratedGIF_Data!
+  ): AIGeneratedGIF_KeyOutput! @fdc_generated(from: "AIGeneratedGIF", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `AIGeneratedImage` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `AIGeneratedImage`.
+  """
+  aIGeneratedImage_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: AIGeneratedImage_Data!
+  ): AIGeneratedImage_KeyOutput! @fdc_generated(from: "AIGeneratedImage", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `AdminAction` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `AdminAction`.
+  """
+  adminAction_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: AdminAction_Data!
+  ): AdminAction_KeyOutput! @fdc_generated(from: "AdminAction", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `Analytics` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Analytics`.
+  """
+  analytics_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: Analytics_Data!
+  ): Analytics_KeyOutput! @fdc_generated(from: "Analytics", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `AppSubscription` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `AppSubscription`.
+  """
+  appSubscription_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: AppSubscription_Data!
+  ): AppSubscription_KeyOutput! @fdc_generated(from: "AppSubscription", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `LegalDisclaimer` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `LegalDisclaimer`.
+  """
+  legalDisclaimer_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: LegalDisclaimer_Data!
+  ): LegalDisclaimer_KeyOutput! @fdc_generated(from: "LegalDisclaimer", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `Payment` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Payment`.
+  """
+  payment_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: Payment_Data!
+  ): Payment_KeyOutput! @fdc_generated(from: "Payment", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `Story` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Story`.
+  """
+  story_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: Story_Data!
+  ): Story_KeyOutput! @fdc_generated(from: "Story", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `StoryContent` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `StoryContent`.
+  """
+  storyContent_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: StoryContent_Data!
+  ): StoryContent_KeyOutput! @fdc_generated(from: "StoryContent", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `Template` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Template`.
+  """
+  template_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: Template_Data!
+  ): Template_KeyOutput! @fdc_generated(from: "Template", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `User` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `User`.
+  """
+  user_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: User_Data!
+  ): User_KeyOutput! @fdc_generated(from: "User", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update `AIGeneratedGIF` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `AIGeneratedGIF`.
+  """
+  aIGeneratedGIF_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [AIGeneratedGIF_Data!]!
+  ): [AIGeneratedGIF_KeyOutput!]! @fdc_generated(from: "AIGeneratedGIF", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `AIGeneratedImage` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `AIGeneratedImage`.
+  """
+  aIGeneratedImage_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [AIGeneratedImage_Data!]!
+  ): [AIGeneratedImage_KeyOutput!]! @fdc_generated(from: "AIGeneratedImage", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `AdminAction` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `AdminAction`.
+  """
+  adminAction_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [AdminAction_Data!]!
+  ): [AdminAction_KeyOutput!]! @fdc_generated(from: "AdminAction", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `Analytics` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Analytics`.
+  """
+  analytics_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [Analytics_Data!]!
+  ): [Analytics_KeyOutput!]! @fdc_generated(from: "Analytics", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `AppSubscription` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `AppSubscription`.
+  """
+  appSubscription_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [AppSubscription_Data!]!
+  ): [AppSubscription_KeyOutput!]! @fdc_generated(from: "AppSubscription", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `LegalDisclaimer` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `LegalDisclaimer`.
+  """
+  legalDisclaimer_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [LegalDisclaimer_Data!]!
+  ): [LegalDisclaimer_KeyOutput!]! @fdc_generated(from: "LegalDisclaimer", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `Payment` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Payment`.
+  """
+  payment_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [Payment_Data!]!
+  ): [Payment_KeyOutput!]! @fdc_generated(from: "Payment", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `Story` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Story`.
+  """
+  story_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [Story_Data!]!
+  ): [Story_KeyOutput!]! @fdc_generated(from: "Story", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `StoryContent` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `StoryContent`.
+  """
+  storyContent_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [StoryContent_Data!]!
+  ): [StoryContent_KeyOutput!]! @fdc_generated(from: "StoryContent", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `Template` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Template`.
+  """
+  template_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [Template_Data!]!
+  ): [Template_KeyOutput!]! @fdc_generated(from: "Template", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `User` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `User`.
+  """
+  user_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [User_Data!]!
+  ): [User_KeyOutput!]! @fdc_generated(from: "User", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Update a single `AIGeneratedGIF` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `AIGeneratedGIF` or `null` if not found.
+  """
+  aIGeneratedGIF_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: AIGeneratedGIF_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: AIGeneratedGIF_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: AIGeneratedGIF_Data!
+  ): AIGeneratedGIF_KeyOutput @fdc_generated(from: "AIGeneratedGIF", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `AIGeneratedImage` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `AIGeneratedImage` or `null` if not found.
+  """
+  aIGeneratedImage_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: AIGeneratedImage_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: AIGeneratedImage_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: AIGeneratedImage_Data!
+  ): AIGeneratedImage_KeyOutput @fdc_generated(from: "AIGeneratedImage", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `AdminAction` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `AdminAction` or `null` if not found.
+  """
+  adminAction_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: AdminAction_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: AdminAction_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: AdminAction_Data!
+  ): AdminAction_KeyOutput @fdc_generated(from: "AdminAction", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `Analytics` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `Analytics` or `null` if not found.
+  """
+  analytics_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Analytics_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Analytics_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: Analytics_Data!
+  ): Analytics_KeyOutput @fdc_generated(from: "Analytics", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `AppSubscription` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `AppSubscription` or `null` if not found.
+  """
+  appSubscription_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: AppSubscription_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: AppSubscription_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: AppSubscription_Data!
+  ): AppSubscription_KeyOutput @fdc_generated(from: "AppSubscription", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `LegalDisclaimer` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `LegalDisclaimer` or `null` if not found.
+  """
+  legalDisclaimer_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: LegalDisclaimer_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: LegalDisclaimer_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: LegalDisclaimer_Data!
+  ): LegalDisclaimer_KeyOutput @fdc_generated(from: "LegalDisclaimer", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `Payment` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `Payment` or `null` if not found.
+  """
+  payment_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Payment_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Payment_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: Payment_Data!
+  ): Payment_KeyOutput @fdc_generated(from: "Payment", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `Story` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `Story` or `null` if not found.
+  """
+  story_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Story_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Story_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: Story_Data!
+  ): Story_KeyOutput @fdc_generated(from: "Story", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `StoryContent` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `StoryContent` or `null` if not found.
+  """
+  storyContent_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: StoryContent_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: StoryContent_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: StoryContent_Data!
+  ): StoryContent_KeyOutput @fdc_generated(from: "StoryContent", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `Template` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `Template` or `null` if not found.
+  """
+  template_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Template_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Template_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: Template_Data!
+  ): Template_KeyOutput @fdc_generated(from: "Template", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `User` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `User` or `null` if not found.
+  """
+  user_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: User_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: User_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: User_Data!
+  ): User_KeyOutput @fdc_generated(from: "User", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update `AIGeneratedGIF` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  aIGeneratedGIF_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: AIGeneratedGIF_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: AIGeneratedGIF_Data!
+  ): Int! @fdc_generated(from: "AIGeneratedGIF", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `AIGeneratedImage` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  aIGeneratedImage_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: AIGeneratedImage_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: AIGeneratedImage_Data!
+  ): Int! @fdc_generated(from: "AIGeneratedImage", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `AdminAction` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  adminAction_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: AdminAction_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: AdminAction_Data!
+  ): Int! @fdc_generated(from: "AdminAction", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `Analytics` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  analytics_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: Analytics_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: Analytics_Data!
+  ): Int! @fdc_generated(from: "Analytics", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `AppSubscription` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  appSubscription_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: AppSubscription_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: AppSubscription_Data!
+  ): Int! @fdc_generated(from: "AppSubscription", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `LegalDisclaimer` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  legalDisclaimer_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: LegalDisclaimer_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: LegalDisclaimer_Data!
+  ): Int! @fdc_generated(from: "LegalDisclaimer", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `Payment` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  payment_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: Payment_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: Payment_Data!
+  ): Int! @fdc_generated(from: "Payment", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `Story` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  story_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: Story_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: Story_Data!
+  ): Int! @fdc_generated(from: "Story", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `StoryContent` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  storyContent_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: StoryContent_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: StoryContent_Data!
+  ): Int! @fdc_generated(from: "StoryContent", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `Template` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  template_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: Template_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: Template_Data!
+  ): Int! @fdc_generated(from: "Template", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `User` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  user_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: User_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: User_Data!
+  ): Int! @fdc_generated(from: "User", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Delete a single `AIGeneratedGIF` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  aIGeneratedGIF_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: AIGeneratedGIF_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: AIGeneratedGIF_FirstRow
+  ): AIGeneratedGIF_KeyOutput @fdc_generated(from: "AIGeneratedGIF", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `AIGeneratedImage` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  aIGeneratedImage_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: AIGeneratedImage_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: AIGeneratedImage_FirstRow
+  ): AIGeneratedImage_KeyOutput @fdc_generated(from: "AIGeneratedImage", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `AdminAction` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  adminAction_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: AdminAction_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: AdminAction_FirstRow
+  ): AdminAction_KeyOutput @fdc_generated(from: "AdminAction", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `Analytics` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  analytics_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Analytics_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Analytics_FirstRow
+  ): Analytics_KeyOutput @fdc_generated(from: "Analytics", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `AppSubscription` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  appSubscription_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: AppSubscription_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: AppSubscription_FirstRow
+  ): AppSubscription_KeyOutput @fdc_generated(from: "AppSubscription", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `LegalDisclaimer` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  legalDisclaimer_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: LegalDisclaimer_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: LegalDisclaimer_FirstRow
+  ): LegalDisclaimer_KeyOutput @fdc_generated(from: "LegalDisclaimer", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `Payment` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  payment_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Payment_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Payment_FirstRow
+  ): Payment_KeyOutput @fdc_generated(from: "Payment", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `Story` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  story_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Story_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Story_FirstRow
+  ): Story_KeyOutput @fdc_generated(from: "Story", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `StoryContent` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  storyContent_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: StoryContent_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: StoryContent_FirstRow
+  ): StoryContent_KeyOutput @fdc_generated(from: "StoryContent", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `Template` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  template_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Template_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Template_FirstRow
+  ): Template_KeyOutput @fdc_generated(from: "Template", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `User` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  user_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: User_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: User_FirstRow
+  ): User_KeyOutput @fdc_generated(from: "User", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete `AIGeneratedGIF` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  aIGeneratedGIF_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: AIGeneratedGIF_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "AIGeneratedGIF", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `AIGeneratedImage` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  aIGeneratedImage_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: AIGeneratedImage_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "AIGeneratedImage", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `AdminAction` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  adminAction_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: AdminAction_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "AdminAction", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `Analytics` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  analytics_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: Analytics_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "Analytics", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `AppSubscription` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  appSubscription_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: AppSubscription_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "AppSubscription", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `LegalDisclaimer` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  legalDisclaimer_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: LegalDisclaimer_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "LegalDisclaimer", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `Payment` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  payment_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: Payment_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "Payment", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `Story` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  story_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: Story_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "Story", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `StoryContent` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  storyContent_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: StoryContent_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "StoryContent", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `Template` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  template_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: Template_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "Template", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `User` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  user_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: User_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "User", purpose: DELETE_MULTIPLE)
+}

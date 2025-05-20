@@ -1,0 +1,68 @@
+extend type AIGeneratedGIF {
+  """
+  ✨ Implicit foreign key field based on `AIGeneratedGIF`.`image`. It must match the value of `AIGeneratedImage`.`id`. See `@ref` for how to customize it.
+  """
+  imageId: String! @fdc_generated(from: "AIGeneratedGIF.image", purpose: IMPLICIT_REF_FIELD)
+}
+extend type AIGeneratedImage {
+  """
+  ✨ Implicit foreign key field based on `AIGeneratedImage`.`user`. It must match the value of `User`.`id`. See `@ref` for how to customize it.
+  """
+  userId: String! @fdc_generated(from: "AIGeneratedImage.user", purpose: IMPLICIT_REF_FIELD)
+}
+extend type AdminAction {
+  """
+  ✨ Implicit foreign key field based on `AdminAction`.`admin`. It must match the value of `User`.`id`. See `@ref` for how to customize it.
+  """
+  adminId: String! @fdc_generated(from: "AdminAction.admin", purpose: IMPLICIT_REF_FIELD)
+}
+extend type Analytics {
+  """
+  ✨ Implicit foreign key field based on `Analytics`.`story`. It must match the value of `Story`.`id`. See `@ref` for how to customize it.
+  """
+  storyId: String! @fdc_generated(from: "Analytics.story", purpose: IMPLICIT_REF_FIELD)
+  """
+  ✨ Implicit foreign key field based on `Analytics`.`user`. It must match the value of `User`.`id`. See `@ref` for how to customize it.
+  """
+  userId: String! @fdc_generated(from: "Analytics.user", purpose: IMPLICIT_REF_FIELD)
+}
+extend type LegalDisclaimer {
+  """
+  ✨ Implicit foreign key field based on `LegalDisclaimer`.`user`. It must match the value of `User`.`id`. See `@ref` for how to customize it.
+  """
+  userId: String! @fdc_generated(from: "LegalDisclaimer.user", purpose: IMPLICIT_REF_FIELD)
+}
+extend type Payment {
+  """
+  ✨ Implicit foreign key field based on `Payment`.`appSubscription`. It must match the value of `AppSubscription`.`id`. See `@ref` for how to customize it.
+  """
+  appSubscriptionId: String! @fdc_generated(from: "Payment.appSubscription", purpose: IMPLICIT_REF_FIELD)
+  """
+  ✨ Implicit foreign key field based on `Payment`.`user`. It must match the value of `User`.`id`. See `@ref` for how to customize it.
+  """
+  userId: String! @fdc_generated(from: "Payment.user", purpose: IMPLICIT_REF_FIELD)
+}
+extend type Story {
+  """
+  ✨ Implicit foreign key field based on `Story`.`creator`. It must match the value of `User`.`id`. See `@ref` for how to customize it.
+  """
+  creatorId: String! @fdc_generated(from: "Story.creator", purpose: IMPLICIT_REF_FIELD)
+}
+extend type StoryContent {
+  """
+  ✨ Implicit foreign key field based on `StoryContent`.`story`. It must match the value of `Story`.`id`. See `@ref` for how to customize it.
+  """
+  storyId: String! @fdc_generated(from: "StoryContent.story", purpose: IMPLICIT_REF_FIELD)
+}
+extend type Template {
+  """
+  ✨ Implicit foreign key field based on `Template`.`exampleStory`. It must match the value of `Story`.`id`. See `@ref` for how to customize it.
+  """
+  exampleStoryId: String @fdc_generated(from: "Template.exampleStory", purpose: IMPLICIT_REF_FIELD)
+}
+extend type User {
+  """
+  ✨ Implicit foreign key field based on `User`.`appSubscription`. It must match the value of `AppSubscription`.`id`. See `@ref` for how to customize it.
+  """
+  appSubscriptionId: String @fdc_generated(from: "User.appSubscription", purpose: IMPLICIT_REF_FIELD)
+}

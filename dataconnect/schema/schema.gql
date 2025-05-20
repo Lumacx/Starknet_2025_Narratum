@@ -1,0 +1,130 @@
+# Schema for Narratum App
+
+# ---------- ENUMS ----------
+enum StoryStatus { # For reference/application logic
+  draft
+  published
+  archived
+}
+
+enum ImageGenerationStatus { # For reference/application logic
+  generated
+  saved
+  discarded
+}
+
+enum PaymentStatus { # For reference/application logic
+  completed
+  failed
+  pending
+}
+
+enum AnalyticsAction { # For reference/application logic
+  viewed
+  liked
+  favorited
+  created
+}
+
+# ---------- TABLES ----------
+type User @table(key: "id") {
+  id: String! @default(expr: "auth.uid")
+  username: String!
+  email: String!
+  avatarUrl: String
+  displayname: String!
+  role: String! @default(value: "'reader'") # Role as String
+  appSubscription: AppSubscription
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+}
+
+type AppSubscription @table {
+  id: String! @default(expr: "uuidV4()")
+  name: String!
+  price: Float
+  featuresJson: String
+  createdAt: Timestamp! @default(expr: "request.time")
+}
+
+type Story @table {
+  id: String! @default(expr: "uuidV4()")
+  title: String
+  genre: String
+  description: String
+  coverImageUrl: String
+  creator: User! # Foreign key to Users table
+  status: String! @default(value: "'draft'") # Status as String
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+}
+
+type StoryContent @table {
+  id: String! @default(expr: "uuidV4()")
+  story: Story! # Foreign key to Stories table
+  textContent: String
+  pageNumber: Int
+  imageUrl: String
+  audioUrl: String
+  createdAt: Timestamp! @default(expr: "request.time")
+}
+
+type Template @table {
+  id: String! @default(expr: "uuidV4()")
+  title: String
+  structureJson: String # Store JSON as a string
+  exampleStory: Story # Optional foreign key to Stories table
+  createdAt: Timestamp! @default(expr: "request.time")
+}
+
+type AIGeneratedImage @table {
+  id: String! # @default directive removed, ID will be provided by function
+  user: User! # Foreign key to Users table
+  promptText: String
+  sketchUrl: String
+  generatedImageUrl: String
+  status: String! @default(value: "'generated'") # Status as String
+  createdAt: Timestamp! @default(expr: "request.time")
+}
+
+type AIGeneratedGIF @table {
+  id: String! @default(expr: "uuidV4()")
+  image: AIGeneratedImage! # Foreign key to AIGeneratedImages table
+  gifUrl: String
+  createdAt: Timestamp! @default(expr: "request.time")
+}
+
+type Payment @table {
+  id: String! @default(expr: "uuidV4()")
+  user: User!
+  appSubscription: AppSubscription!
+  amount: Float
+  paymentDate: Timestamp! @default(expr: "request.time")
+  status: String! @default(value: "'pending'") # Status as String
+  createdAt: Timestamp! @default(expr: "request.time")
+}
+
+type AdminAction @table {
+  id: String! @default(expr: "uuidV4()")
+  admin: User! # Assuming admin is a User, FK to User table
+  actionType: String!
+  targetId: String # Generic ID, context provided by actionType
+  description: String
+  actionDate: Timestamp! @default(expr: "request.time")
+}
+
+type Analytics @table {
+  id: String! @default(expr: "uuidV4()") # Simple ID for now
+  user: User!
+  story: Story!
+  action: String! # Action as String
+  actionTimestamp: Timestamp! @default(expr: "request.time")
+}
+
+type LegalDisclaimer @table {
+  id: String! @default(expr: "uuidV4()")
+  user: User!
+  accepted: Boolean! @default(value: false)
+  acceptedDate: Timestamp # Nullable, set when accepted by application logic
+  createdAt: Timestamp! @default(expr: "request.time")
+}

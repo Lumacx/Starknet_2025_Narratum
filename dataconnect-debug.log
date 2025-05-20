@@ -1,0 +1,3 @@
+I0520 20:42:56.712589   62410 load.go:37] Reloading schema and connectors...
+I0520 20:42:56.999896   62410 control.go:73] [/emulator/ 1300] UpdateResources(): done
+Schema: sources: schema/schema.gql [3507B] 

@@ -1,0 +1,640 @@
+extend type Query {
+  """
+  ✨ Look up a single `AIGeneratedGIF` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  aIGeneratedGIF(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: AIGeneratedGIF_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: AIGeneratedGIF_FirstRow
+  ): AIGeneratedGIF @fdc_generated(from: "AIGeneratedGIF", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `AIGeneratedImage` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  aIGeneratedImage(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: AIGeneratedImage_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: AIGeneratedImage_FirstRow
+  ): AIGeneratedImage @fdc_generated(from: "AIGeneratedImage", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `AdminAction` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  adminAction(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: AdminAction_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: AdminAction_FirstRow
+  ): AdminAction @fdc_generated(from: "AdminAction", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `Analytics` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  analytics(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Analytics_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Analytics_FirstRow
+  ): Analytics @fdc_generated(from: "Analytics", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `AppSubscription` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  appSubscription(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: AppSubscription_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: AppSubscription_FirstRow
+  ): AppSubscription @fdc_generated(from: "AppSubscription", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `LegalDisclaimer` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  legalDisclaimer(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: LegalDisclaimer_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: LegalDisclaimer_FirstRow
+  ): LegalDisclaimer @fdc_generated(from: "LegalDisclaimer", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `Payment` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  payment(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Payment_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Payment_FirstRow
+  ): Payment @fdc_generated(from: "Payment", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `Story` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  story(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Story_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Story_FirstRow
+  ): Story @fdc_generated(from: "Story", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `StoryContent` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  storyContent(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: StoryContent_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: StoryContent_FirstRow
+  ): StoryContent @fdc_generated(from: "StoryContent", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `Template` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  template(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Template_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Template_FirstRow
+  ): Template @fdc_generated(from: "Template", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `User` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  user(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: User_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: User_FirstRow
+  ): User @fdc_generated(from: "User", purpose: QUERY_SINGLE)
+  """
+  ✨ List `AIGeneratedGIF` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  aIGeneratedGIFS(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: AIGeneratedGIF_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [AIGeneratedGIF_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: AIGeneratedGIF_Having
+  ): [AIGeneratedGIF!]! @fdc_generated(from: "AIGeneratedGIF", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `AIGeneratedImage` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  aIGeneratedImages(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: AIGeneratedImage_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [AIGeneratedImage_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: AIGeneratedImage_Having
+  ): [AIGeneratedImage!]! @fdc_generated(from: "AIGeneratedImage", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `AdminAction` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  adminActions(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: AdminAction_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [AdminAction_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: AdminAction_Having
+  ): [AdminAction!]! @fdc_generated(from: "AdminAction", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `Analytics` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  analyticss(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Analytics_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Analytics_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Analytics_Having
+  ): [Analytics!]! @fdc_generated(from: "Analytics", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `AppSubscription` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  appSubscriptions(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: AppSubscription_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [AppSubscription_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: AppSubscription_Having
+  ): [AppSubscription!]! @fdc_generated(from: "AppSubscription", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `LegalDisclaimer` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  legalDisclaimers(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: LegalDisclaimer_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [LegalDisclaimer_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: LegalDisclaimer_Having
+  ): [LegalDisclaimer!]! @fdc_generated(from: "LegalDisclaimer", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `Payment` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  payments(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Payment_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Payment_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Payment_Having
+  ): [Payment!]! @fdc_generated(from: "Payment", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `Story` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  stories(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Story_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Story_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Story_Having
+  ): [Story!]! @fdc_generated(from: "Story", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `StoryContent` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  storyContents(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: StoryContent_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [StoryContent_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: StoryContent_Having
+  ): [StoryContent!]! @fdc_generated(from: "StoryContent", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `Template` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  templates(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Template_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Template_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Template_Having
+  ): [Template!]! @fdc_generated(from: "Template", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `User` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  users(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: User_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [User_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: User_Having
+  ): [User!]! @fdc_generated(from: "User", purpose: QUERY_MULTIPLE)
+}

@@ -1,0 +1,184 @@
+body {
+    font-family: sans-serif;
+    margin: 0;
+    background-color: #f4f7f6;
+    color: #333;
+    line-height: 1.6;
+}
+
+header {
+    background-color: #2c3e50;
+    color: #ecf0f1;
+    padding: 1rem 0;
+    text-align: center;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 1.8rem;
+}
+
+.container {
+    display: flex;
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+    gap: 20px;
+    padding: 20px;
+    max-width: 1200px;
+    margin: 20px auto;
+}
+
+.input-panel, .output-panel {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    flex: 1; /* Each panel takes up equal space */
+    min-width: 300px; /* Minimum width before wrapping */
+}
+
+.input-panel h2, .output-panel h2 {
+    margin-top: 0;
+    color: #3498db;
+    border-bottom: 2px solid #ecf0f1;
+    padding-bottom: 10px;
+}
+
+.input-group {
+    margin-bottom: 15px;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+textarea, input[type="text"] {
+    width: calc(100% - 20px); /* Account for padding */
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+#sketchCanvas {
+    border: 1px solid #ccc;
+    cursor: crosshair;
+    touch-action: none; /* Prevent scrolling on touch devices while drawing */
+    background-color: #f9f9f9;
+}
+
+.canvas-controls {
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.canvas-controls label {
+    margin-bottom: 0;
+}
+
+.action-btn {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.action-btn:hover:not(:disabled) {
+    background-color: #2980b9;
+}
+
+.action-btn:disabled {
+    background-color: #bdc3c7;
+    cursor: not-allowed;
+}
+
+#imageOutputContainer {
+    width: 100%;
+    min-height: 300px; /* Same as canvas height for consistency */
+    border: 1px dashed #ccc;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    position: relative;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+    overflow: hidden; /* To contain the image */
+}
+
+#generatedImage {
+    max-width: 100%;
+    max-height: 400px; /* Adjust as needed */
+    display: none; /* Initially hidden */
+    object-fit: contain;
+}
+
+#placeholderText {
+    color: #7f8c8d;
+}
+
+.output-controls {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap; /* For responsiveness */
+}
+
+#loadingSpinner {
+    text-align: center;
+}
+
+.spinner {
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border-left-color: #3498db;
+    animation: spin 1s ease infinite;
+    margin: 0 auto 10px auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#gifOutputContainer img {
+    display: block;
+    margin: 10px auto;
+    border: 1px solid #ccc;
+    max-width: 100%;
+}
+
+footer {
+    text-align: center;
+    padding: 1rem;
+    background-color: #34495e;
+    color: #ecf0f1;
+    margin-top: 30px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+    }
+    .input-panel, .output-panel {
+        min-width: unset; /* Remove min-width to allow full stacking */
+    }
+    #sketchCanvas {
+        width: 100%; /* Make canvas responsive */
+        max-width: 400px; /* But not too large */
+        height: auto; /* Adjust height proportionally or set fixed */
+    }
+}
