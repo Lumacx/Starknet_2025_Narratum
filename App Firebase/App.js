@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 // Import Firebase modules
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore'; // Import Firestore for user data persistence
 
 // IMPORTANT: Ensure Font Awesome and Google Fonts are loaded globally in your public/index.html.
@@ -111,7 +111,7 @@ const LandingPage = ({ onNavigate, isLoggedIn, user, onLogout }) => {
 
 /**
  * LoginPage Component
- * Handles social logins (Google implemented).
+ * Handles social logins (Google implemented) and provides link to Sign Up.
  *
  * @param {object} props - Component props
  * @param {function} props.onNavigate - Function to navigate to other pages.
@@ -119,6 +119,8 @@ const LandingPage = ({ onNavigate, isLoggedIn, user, onLogout }) => {
  */
 const LoginPage = ({ onNavigate, onLoginSuccess }) => {
   const [message, setMessage] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   /**
    * Handles Google Sign-In using Firebase.
@@ -164,6 +166,33 @@ const LoginPage = ({ onNavigate, onLoginSuccess }) => {
     }
   };
 
+  /**
+   * Handles Email/Password Login using Firebase.
+   */
+  const handleEmailLogin = async (e) => {
+    e.preventDefault(); // Prevent default form submission
+    setMessage('');
+    try {
+      const auth = getAuth();
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Update last login time
+      const db = getFirestore();
+      const userId = user.uid;
+      const userDocRef = doc(db, 'artifacts', typeof __app_id !== 'undefined' ? __app_id : 'default-app-id', 'users', userId, 'userData', 'profile');
+      await setDoc(userDocRef, { lastLoginAt: new Date() }, { merge: true });
+
+      setMessage('Successfully logged in with email!');
+      onLoginSuccess(user);
+      onNavigate('landing');
+    } catch (error) {
+      console.error("Email Login Error:", error);
+      setMessage(`Error logging in: ${error.message}`);
+    }
+  };
+
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#D4E1EE] to-[#F0D1B0] p-4 text-center font-sans">
       <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12 max-w-md w-full">
@@ -194,17 +223,48 @@ const LoginPage = ({ onNavigate, onLoginSuccess }) => {
           >
             <i className="fab fa-facebook-f mr-3 text-xl"></i> Log in with Facebook
           </button>
-          {/* Placeholder for Email/Password Login */}
-          <button
-            className="w-full py-3 px-6 bg-gray-800 text-white font-semibold rounded-full shadow-md hover:bg-gray-900 transition duration-300 flex items-center justify-center"
-            onClick={() => setMessage('Email/Password login not yet implemented. Please add Firebase auth code.')}
-          >
-            <i className="fas fa-envelope mr-3 text-xl"></i> Log in with Email
-          </button>
+
+          <div className="social-divider flex items-center text-center text-gray-500 text-sm my-4">
+            <span className="flex-grow border-b border-gray-300"></span>
+            <span className="mx-4">OR</span>
+            <span className="flex-grow border-b border-gray-300"></span>
+          </div>
+
+          <form onSubmit={handleEmailLogin} className="w-full">
+            <div className="input-fields-wrapper bg-[#F9F6F2] rounded-lg mb-4 shadow-sm overflow-hidden">
+              <div className="input-field flex items-center p-3 border-b border-[#EDE7DF]">
+                <i className="fas fa-envelope icon text-gray-500 mr-3 text-lg w-5 text-center"></i>
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="flex-grow border-none outline-none bg-transparent text-gray-700 placeholder-gray-400 text-base"
+                  required
+                />
+              </div>
+              <div className="input-field flex items-center p-3">
+                <i className="fas fa-lock icon text-gray-500 mr-3 text-lg w-5 text-center"></i>
+                <input
+                  type="password"
+                  name="password"
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="flex-grow border-none outline-none bg-transparent text-gray-700 placeholder-gray-400 text-base"
+                  required
+                />
+              </div>
+            </div>
+            <button type="submit" className="w-full py-3 px-6 bg-[#627C90] text-white font-semibold rounded-full shadow-md hover:bg-[#536A7D] transition duration-300 uppercase tracking-wide">
+              Log in with Email
+            </button>
+          </form>
         </div>
 
         <div className="text-sm text-gray-600 mt-8">
-          <p className="mb-2">New to Narratum? <a href="#" onClick={() => setMessage('Sign up functionality not yet implemented.')} className="text-blue-600 hover:underline font-bold">Sign up</a></p>
+          <p className="mb-2">New to Narratum? <a href="#" onClick={() => onNavigate('signUp')} className="text-blue-600 hover:underline font-bold">Sign up</a></p>
           <a href="#" onClick={() => setMessage('Forgot password functionality not yet implemented.')} className="text-blue-600 hover:underline">Forgot password?</a>
         </div>
 
@@ -213,6 +273,131 @@ const LoginPage = ({ onNavigate, onLoginSuccess }) => {
     </div>
   );
 };
+
+/**
+ * SignUpPage Component
+ * Allows users to create a new account with email and password.
+ *
+ * @param {object} props - Component props
+ * @param {function} props.onNavigate - Function to navigate to other pages.
+ * @param {function} props.onLoginSuccess - Callback function after successful sign-up/login.
+ */
+const SignUpPage = ({ onNavigate, onLoginSuccess }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [message, setMessage] = useState('');
+
+  const handleSignUp = async (e) => {
+    e.preventDefault();
+    setMessage('');
+
+    if (password !== confirmPassword) {
+      setMessage('Passwords do not match.');
+      return;
+    }
+
+    try {
+      const auth = getAuth();
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Create user document in Firestore
+      const db = getFirestore();
+      const userId = user.uid;
+      const userDocRef = doc(db, 'artifacts', typeof __app_id !== 'undefined' ? __app_id : 'default-app-id', 'users', userId, 'userData', 'profile');
+      await setDoc(userDocRef, {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName || 'New User',
+        photoURL: user.photoURL || null,
+        createdAt: new Date(),
+        lastLoginAt: new Date(),
+        role: 'user',
+        isSetupComplete: false,
+      });
+
+      setMessage('Account created successfully! You are now logged in.');
+      onLoginSuccess(user); // Log in the user after sign-up
+      onNavigate('landing'); // Navigate to landing page
+    } catch (error) {
+      console.error("Sign Up Error:", error);
+      setMessage(`Error signing up: ${error.message}`);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#D4E1EE] to-[#F0D1B0] p-4 text-center font-sans">
+      <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12 max-w-md w-full">
+        <div className="mb-8">
+          <i className="fas fa-book-open text-6xl text-[#C1905F] mb-4 inline-block animate-glow"></i>
+          <h1 className="font-['Georgia'] text-4xl text-[#475B6D] font-normal tracking-wide">NARRATUM</h1>
+        </div>
+
+        <p className="text-lg text-gray-700 mb-8">Create your account to start your story.</p>
+
+        {message && (
+          <div className={`mb-4 p-3 rounded-lg text-sm ${message.includes('Error') || message.includes('match') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+            {message}
+          </div>
+        )}
+
+        <form onSubmit={handleSignUp} className="w-full">
+          <div className="input-fields-wrapper bg-[#F9F6F2] rounded-lg mb-4 shadow-sm overflow-hidden">
+            <div className="input-field flex items-center p-3 border-b border-[#EDE7DF]">
+              <i className="fas fa-envelope icon text-gray-500 mr-3 text-lg w-5 text-center"></i>
+              <input
+                type="email"
+                name="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="flex-grow border-none outline-none bg-transparent text-gray-700 placeholder-gray-400 text-base"
+                required
+              />
+            </div>
+            <hr className="separator border-0 h-px bg-[#EDE7DF]" />
+            <div className="input-field flex items-center p-3 border-b border-[#EDE7DF]">
+              <i className="fas fa-lock icon text-gray-500 mr-3 text-lg w-5 text-center"></i>
+              <input
+                type="password"
+                name="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="flex-grow border-none outline-none bg-transparent text-gray-700 placeholder-gray-400 text-base"
+                required
+              />
+            </div>
+            <hr className="separator border-0 h-px bg-[#EDE7DF]" />
+            <div className="input-field flex items-center p-3">
+              <i className="fas fa-lock icon text-gray-500 mr-3 text-lg w-5 text-center"></i>
+              <input
+                type="password"
+                name="confirmPassword"
+                placeholder="Confirm Password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="flex-grow border-none outline-none bg-transparent text-gray-700 placeholder-gray-400 text-base"
+                required
+              />
+            </div>
+          </div>
+          <button type="submit" className="w-full py-3 px-6 bg-[#627C90] text-white font-semibold rounded-full shadow-md hover:bg-[#536A7D] transition duration-300 uppercase tracking-wide">
+            SIGN UP
+          </button>
+        </form>
+
+        <div className="text-sm text-gray-600 mt-8">
+          <p className="mb-2">Already have an account? <a href="#" onClick={() => onNavigate('login')} className="text-blue-600 hover:underline font-bold">Log in</a></p>
+        </div>
+
+        <button onClick={() => onNavigate('landing')} className="mt-8 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-400 transition duration-300">Back to Landing</button>
+      </div>
+    </div>
+  );
+};
+
 
 /**
  * LogoutPage Component
@@ -866,230 +1051,6 @@ const CatalogPage = ({ onNavigate }) => {
 
 
 /**
- * CreateStoryPage Component
- * Allows users to input details for creating a story, based on the provided design.
- *
- * @param {object} props - Component props
- * @param {function} props.onNavigate - Function to navigate to other pages.
- */
-const CreateStoryPage = ({ onNavigate }) => {
-  const [formData, setFormData] = useState({
-    title: '',
-    genre: 'Fantasy',
-    characters: [], // Array to hold character data/names
-    setting: 'Forest',
-    beginning: false,
-    conflict: false,
-    climax: false,
-    ending: false,
-  });
-  const [message, setMessage] = useState('');
-
-  const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData((prevData) => ({
-      ...prevData,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
-  };
-
-  const handleCharacterAdd = () => {
-    setMessage('Character addition functionality not yet implemented.');
-    // In a real app, you'd open a modal or add an input for character name/image
-    // setFormData(prevData => ({ ...prevData, characters: [...prevData.characters, 'New Character'] }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log('Story Data Submitted:', formData);
-    setMessage('Story data submitted! (Functionality not yet implemented)');
-    // Here you would typically send data to a backend or save it locally
-  };
-
-  const characterPlaceholders = [
-    'https://placehold.co/80x80/C1A98A/FFFFFF?text=Char1',
-    'https://placehold.co/80x80/A9834F/FFFFFF?text=Char2',
-    'https://placehold.co/80x80/8B6F4E/FFFFFF?text=Char3',
-  ];
-
-
-  return (
-    <div className="min-h-screen relative flex flex-col items-center justify-center p-5 md:p-10 bg-gradient-to-br from-[#D4E1EE] via-[#F3E4D7] to-[#F0D1B0] text-[#4A3B31] font-sans">
-      {/* Back to Landing Button in top-right corner, fixed */}
-      <div className="fixed top-4 right-4 z-50">
-        <button
-          onClick={() => onNavigate('landing')}
-          className="px-6 py-2 bg-gray-600 text-white font-semibold rounded-full shadow-md hover:bg-gray-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300"
-        >
-          Back to Landing
-        </button>
-      </div>
-
-      <div className="w-full max-w-5xl bg-[#F9F6F0] border-2 border-[#C1A98A] rounded-2xl shadow-xl p-8 md:p-12 grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-        {/* Decorative Feather Icon */}
-        <i className="fas fa-feather-alt absolute top-4 right-4 text-6xl text-[#A9834F] opacity-30 rotate-12 -z-0 hidden md:block"></i>
-
-        {/* Main Content Area */}
-        <div className="md:col-span-2 text-center md:text-left">
-          <h1 className="font-['Merriweather'] text-5xl md:text-6xl font-extrabold text-[#5D4037] mb-8 uppercase tracking-wide">SUMMON YOUR<br />STORY</h1>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Title Input */}
-            <div>
-              <label htmlFor="title" className="block text-xl font-bold text-[#4A3B31] mb-2">Title</label>
-              <input
-                type="text"
-                id="title"
-                name="title"
-                value={formData.title}
-                onChange={handleInputChange}
-                className="w-full p-3 border-2 border-[#C1A98A] rounded-lg bg-[#FDFBF5] text-[#4A3B31] focus:outline-none focus:border-[#A9834F]"
-                placeholder="Enter your story title"
-                required
-              />
-            </div>
-
-            {/* Genre Dropdown */}
-            <div>
-              <label htmlFor="genre" className="block text-xl font-bold text-[#4A3B31] mb-2">Genre</label>
-              <select
-                id="genre"
-                name="genre"
-                value={formData.genre}
-                onChange={handleInputChange}
-                className="w-full p-3 border-2 border-[#C1A98A] rounded-lg bg-[#FDFBF5] text-[#4A3B31] focus:outline-none focus:border-[#A9834F]"
-              >
-                <option>Fantasy</option>
-                <option>Science Fiction</option>
-                <option>Mystery</option>
-                <option>Romance</option>
-                <option>Thriller</option>
-                <option>Historical</option>
-              </select>
-            </div>
-
-            {/* Characters Section */}
-            <div>
-              <label className="block text-xl font-bold text-[#4A3B31] mb-2">Characters</label>
-              <div className="flex items-center gap-4 flex-wrap">
-                {characterPlaceholders.map((src, index) => (
-                  <div key={index} className="w-20 h-20 rounded-full border-2 border-[#A9834F] overflow-hidden flex-shrink-0">
-                    <img src={src} alt={`Character ${index + 1}`} className="w-full h-full object-cover" />
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={handleCharacterAdd}
-                  className="w-20 h-20 rounded-full border-2 border-dashed border-[#C1A98A] text-[#A9834F] text-4xl flex items-center justify-center bg-[#FDFBF5] hover:bg-[#F0E6D2] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#A9834F]"
-                  title="Add Character"
-                >
-                  <i className="fas fa-plus"></i>
-                </button>
-              </div>
-            </div>
-
-            {/* Setting Dropdown */}
-            <div>
-              <label htmlFor="setting" className="block text-xl font-bold text-[#4A3B31] mb-2">Setting</label>
-              <select
-                id="setting"
-                name="setting"
-                value={formData.setting}
-                onChange={handleInputChange}
-                className="w-full p-3 border-2 border-[#C1A98A] rounded-lg bg-[#FDFBF5] text-[#4A3B31] focus:outline-none focus:border-[#A9834F]"
-              >
-                <option>Forest</option>
-                <option>City</option>
-                <option>Space</option>
-                <option>Underwater</option>
-                <option>Desert</option>
-              </select>
-            </div>
-
-            {/* Story Structure Checkboxes */}
-            <div>
-              <label className="block text-xl font-bold text-[#4A3B31] mb-2">Story Structure</label>
-              <div className="grid grid-cols-2 gap-4 text-left">
-                <label className="flex items-center text-lg text-[#4A3B31]">
-                  <input
-                    type="checkbox"
-                    name="beginning"
-                    checked={formData.beginning}
-                    onChange={handleInputChange}
-                    className="form-checkbox h-5 w-5 text-[#A9834F] rounded-md border-gray-300 focus:ring-[#A9834F]"
-                  />
-                  <span className="ml-2">Beginning</span>
-                </label>
-                <label className="flex items-center text-lg text-[#4A3B31]">
-                  <input
-                    type="checkbox"
-                    name="conflict"
-                    checked={formData.conflict}
-                    onChange={handleInputChange}
-                    className="form-checkbox h-5 w-5 text-[#A9834F] rounded-md border-gray-300 focus:ring-[#A9834F]"
-                  />
-                  <span className="ml-2">Conflict</span>
-                </label>
-                <label className="flex items-center text-lg text-[#4A3B31]">
-                  <input
-                    type="checkbox"
-                    name="climax"
-                    checked={formData.climax}
-                    onChange={handleInputChange}
-                    className="form-checkbox h-5 w-5 text-[#A9834F] rounded-md border-gray-300 focus:ring-[#A9834F]"
-                  />
-                  <span className="ml-2">Climax</span>
-                </label>
-                <label className="flex items-center text-lg text-[#4A3B31]">
-                  <input
-                    type="checkbox"
-                    name="ending"
-                    checked={formData.ending}
-                    onChange={handleInputChange}
-                    className="form-checkbox h-5 w-5 text-[#A9834F] rounded-md border-gray-300 focus:ring-[#A9834F]"
-                  />
-                  <span className="ml-2">Ending</span>
-                </label>
-              </div>
-            </div>
-
-            {message && (
-              <div className={`mt-4 p-3 rounded-lg text-sm ${message.includes('Error') ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
-                {message}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              className="w-full py-3 px-6 bg-[#A9834F] text-white font-bold rounded-lg shadow-md hover:bg-[#8B6F4E] transition duration-300 focus:outline-none focus:ring-4 focus:ring-[#A9834F]"
-            >
-              SUMMON STORY
-            </button>
-          </form>
-        </div>
-
-        {/* Tips Section */}
-        <div className="md:col-span-1 space-y-6 md:space-y-8 mt-8 md:mt-0">
-          <div className="bg-[#E0C9A0] border-2 border-[#C1A98A] rounded-xl p-6 shadow-md">
-            <h3 className="font-['Merriweather'] text-xl font-bold text-[#4A3B31] mb-3 uppercase">TIPS</h3>
-            <p className="text-base text-[#5C4B3E]">Start with an intriguing hook to capture attention.</p>
-          </div>
-          <div className="bg-[#E0C9A0] border-2 border-[#C1A98A] rounded-xl p-6 shadow-md">
-            <h3 className="font-['Merriweather'] text-xl font-bold text-[#4A3B31] mb-3 uppercase">TIPS</h3>
-            <p className="text-base text-[#5C4B3E]">Focus on vivid, sensory details to bring scenes to life.</p>
-          </div>
-          <div className="bg-[#E0C9A0] border-2 border-[#C1A98A] rounded-xl p-6 shadow-md">
-            <h3 className="font-['Merriweather'] text-xl font-bold text-[#4A3B31] mb-3 uppercase">TIPS</h3>
-            <p className="text-base text-[#5C4B3E]">Develop well-rounded characters with clear motivations.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-
-/**
  * Main App Component
  * This component acts as the central hub for the application, managing routing,
  * Firebase authentication state, and integrating different modules/pages.
@@ -1205,6 +1166,8 @@ const App = () => {
         return <LandingPage onNavigate={handleNavigation} isLoggedIn={!!user} user={user} onLogout={handleLogoutSuccess} />;
       case 'login':
         return <LoginPage onNavigate={handleNavigation} onLoginSuccess={handleLoginSuccess} />;
+      case 'signUp':
+        return <SignUpPage onNavigate={handleNavigation} onLoginSuccess={handleLoginSuccess} />;
       case 'logout':
         return <LogoutPage onNavigate={handleNavigation} onLogoutSuccess={handleLogoutSuccess} />;
       case 'discover': // Now renders the CatalogPage
