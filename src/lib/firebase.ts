@@ -30,7 +30,12 @@ const db: Firestore = getFirestore(app);
 
 export const firestoreAppId = firebaseConfig.appId || 'default-app-id';
 
-if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+// Decide if we are in an environment where emulators *should* be reliably reachable by the client SDK
+// For IDX, direct client-to-127.0.0.1 emulator operational requests seem to be failing.
+// You can create a new env variable like NEXT_PUBLIC_USE_FIREBASE_EMULATORS=false in your IDX .env.local
+const useEmulators = process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS !== 'false';
+
+if (useEmulators && typeof window !== 'undefined') {
   console.log("Development mode: Attempting to connect to Firebase emulators.");
 
   const authHost = "127.0.0.1";
@@ -44,11 +49,12 @@ if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
 
   const emulatorOptions = { disableWarnings: true };
 
-  // Auth Emulator
   const authEmulatorUrl = `http://${authHost}:${authPort}`;
   console.log(`Auth Emulator: Checking config. Target URL: ${authEmulatorUrl}`);
   if (!(auth as any).emulatorConfig) { 
       try {
+        // For Auth, only connect if we are certain client can reach 127.0.0.1 for operations
+        // Given current IDX issues, this might often be skipped if NEXT_PUBLIC_USE_FIREBASE_EMULATORS is 'false'
         connectAuthEmulator(auth, authEmulatorUrl, emulatorOptions);
         console.log(`SUCCESS: connectAuthEmulator called for ${authEmulatorUrl}`);
       } catch (e: any) {
@@ -58,7 +64,6 @@ if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
     console.log("Auth emulator already configured. Current config:", (auth as any).emulatorConfig);
   }
 
-  // Firestore Emulator
   console.log(`Firestore Emulator: Attempting to connect to host: ${firestoreHost}, port: ${firestorePort}`);
   try {
       connectFirestoreEmulator(db, firestoreHost, firestorePort);
@@ -71,7 +76,6 @@ if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
       }
   }
 
-  // Functions Emulator
   console.log(`Functions Emulator: Attempting to connect to host: ${functionsHost}, port: ${functionsPort}`);
   try {
     connectFunctionsEmulator(functions, functionsHost, functionsPort);
@@ -83,6 +87,8 @@ if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
         console.log("Functions emulator already connected or successfully reconnected.");
     }
   }
+} else if (process.env.NODE_ENV === 'development') {
+    console.log("Development mode: Firebase emulators are NOT being used by the client SDK based on NEXT_PUBLIC_USE_FIREBASE_EMULATORS setting.");
 }
 
 export { app, auth, db, functions };
