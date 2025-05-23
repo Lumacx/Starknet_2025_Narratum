@@ -301,8 +301,8 @@
         const saveBtn = document.getElementById('saveBtn'); 
         const generateGifBtn = document.getElementById('generateGifBtn'); 
 
-        // Backend API URL - Pointing to the Python Flask backend
-        const API_URL = 'http://127.0.0.1:5000/generate-image'; 
+        // MODIFIED API URL - Pointing to the Next.js API route
+        const API_URL = '/api/generate-image-via-python'; 
 
         // Drawing state variables
         let drawing = false;

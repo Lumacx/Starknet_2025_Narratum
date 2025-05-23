@@ -1,97 +1,47 @@
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Georgia:ital,wght@0,400;0,700;1,400&family=Lato:wght@300;400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    --background: 40 33% 97%; /* Pale Linen - very light warm gray */
-    --foreground: 210 22% 31%; /* Navy */
-    --card: 33 67% 81%; /* Pale Gold/Beige */
-    --card-foreground: 210 22% 31%; /* Navy */
-    --popover: 33 67% 81%; /* Pale Gold/Beige */
-    --popover-foreground: 210 22% 31%; /* Navy */
-    --primary: 210 22% 31%; /* Navy */
-    --primary-foreground: 40 50% 98%; /* Very Light Cream for text on navy */
-    --secondary: 210 53% 88%; /* Pale Blue */
-    --secondary-foreground: 210 22% 31%; /* Navy for text on pale blue */
-    --muted: 210 53% 92%; /* Lighter Pale Blue */
-    --muted-foreground: 210 20% 50%; /* Muted Navy/Dark Gray */
-    --accent: 14 78% 62%; /* Burnt Sienna */
-    --accent-foreground: 40 50% 98%; /* Very Light Cream for text on Burnt Sienna */
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 210 22% 31%; /* Navy, for card borders as specified */
-    --input: 210 53% 95%; /* Very Light Pale Blue */
-    --ring: 14 78% 62%; /* Burnt Sienna */
-    --radius: 0.5rem;
-
-    /* Chart colors can remain default or be adjusted later if charts are used */
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    
-    /* Sidebar colors (can be customized if sidebar is heavily used) */
-    --sidebar-background: 210 22% 25%; /* Darker Navy for sidebar */
-    --sidebar-foreground: 40 33% 90%; /* Light Cream/Pale Gold for sidebar text */
-    --sidebar-primary: 33 67% 81%; /* Pale Gold for sidebar primary elements */
-    --sidebar-primary-foreground: 210 22% 31%; /* Navy for text on Pale Gold */
-    --sidebar-accent: 14 78% 62%; /* Burnt Sienna for sidebar accent */
-    --sidebar-accent-foreground: 40 50% 98%; /* Very Light Cream */
-    --sidebar-border: 210 22% 40%; /* Slightly lighter Navy for borders */
-    --sidebar-ring: 14 78% 62%; /* Burnt Sienna */
-  }
-
-  .dark {
-    /* For dark theme, we can invert or adjust. Sticking to light theme for now as per prompt. */
-    /* Keeping existing dark theme as a fallback, can be refined later. */
-    --background: 210 22% 15%; /* Dark Navy */
-    --foreground: 40 33% 90%; /* Light Cream/Pale Gold */
-    --card: 210 22% 20%; /* Slightly Lighter Dark Navy */
-    --card-foreground: 40 33% 90%; /* Light Cream/Pale Gold */
-    --popover: 210 22% 20%;
-    --popover-foreground: 40 33% 90%;
-    --primary: 33 67% 81%; /* Pale Gold/Beige */
-    --primary-foreground: 210 22% 31%; /* Navy */
-    --secondary: 210 22% 35%; /* Muted Dark Blue */
-    --secondary-foreground: 40 33% 90%; /* Light Cream/Pale Gold */
-    --muted: 210 22% 25%;
-    --muted-foreground: 210 20% 60%;
-    --accent: 14 78% 68%; /* Slightly lighter Burnt Sienna for dark */
-    --accent-foreground: 210 22% 15%; /* Dark Navy */
-    --destructive: 0 70% 50%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 210 22% 40%; /* Slightly lighter Navy */
-    --input: 210 22% 25%;
-    --ring: 14 78% 68%; /* Slightly lighter Burnt Sienna */
-
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-
-    --sidebar-background: 210 22% 10%; /* Very Dark Navy */
-    --sidebar-foreground: 40 33% 85%;
-    --sidebar-primary: 33 67% 75%; 
-    --sidebar-primary-foreground: 210 22% 15%;
-    --sidebar-accent: 14 78% 65%;
-    --sidebar-accent-foreground: 210 22% 10%;
-    --sidebar-border: 210 22% 20%;
-    --sidebar-ring: 14 78% 65%;
-  }
+body {
+  font-family: 'Lato', sans-serif;
 }
 
-@layer base {
-  * {
-    @apply border-border;
+.font-lato {
+  font-family: 'Lato', sans-serif;
+}
+.font-georgia {
+  font-family: 'Georgia', serif;
+}
+.font-merriweather {
+  font-family: 'Merriweather', serif;
+}
+.font-cinzel {
+  font-family: 'Cinzel Decorative', cursive;
+}
+
+/* Custom text shadows */
+.text-shadow-sm {
+  text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.3);
+}
+.text-shadow-md {
+  text-shadow: 1px 1px 5px rgba(255, 255, 255, 0.15);
+}
+
+/* Additional styles for glowing icon if needed */
+.animate-glow {
+  animation: glow 1.5s infinite alternate;
+}
+
+@keyframes glow {
+  from {
+    text-shadow: 0 0 5px #C1905F, 0 0 10px #C1905F, 0 0 15px #C1905F;
   }
-  body {
-    @apply bg-background text-foreground font-body;
-    font-size: 16px; /* Default body font size 16pt, can be adjusted with Tailwind classes */
-  }
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-titles;
+  to {
+    text-shadow: 0 0 10px #E0C9A0, 0 0 20px #E0C9A0, 0 0 30px #E0C9A0;
   }
 }

@@ -1,8 +1,8 @@
 // src/lib/firebase.ts
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
-import { getAuth, connectAuthEmulator } from "firebase/auth"; 
-import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
-import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
+import { getAuth, connectAuthEmulator, Auth } from "firebase/auth";
+import { getFunctions, connectFunctionsEmulator, Functions } from "firebase/functions";
+import { getFirestore, connectFirestoreEmulator, Firestore } from "firebase/firestore";
 
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -10,68 +10,71 @@ const firebaseConfig = {
     projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
     storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
     messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+    measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID, // Added measurementId
 };
 
 let app: FirebaseApp;
 if (!getApps().length) {
   if (!firebaseConfig.apiKey) {
     console.error("Firebase API Key is missing. Check your .env.local file.");
+    // Potentially throw an error or use a default/mock app for critical failures
   }
   app = initializeApp(firebaseConfig);
 } else {
-  app = getApp(); 
+  app = getApp();
 }
 
-const auth = getAuth(app);
-const functions = getFunctions(app);
-const db = getFirestore(app);
+const auth: Auth = getAuth(app);
+const functions: Functions = getFunctions(app);
+const db: Firestore = getFirestore(app);
+
+// Consistent App ID for Firestore paths, taken from your config
+export const firestoreAppId = firebaseConfig.appId || 'default-app-id';
 
 if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
-  const localEmulatorHost = "127.0.0.1"; 
-  
-  const authEmulatorPublicHost = process.env.NEXT_PUBLIC_AUTH_EMULATOR_PUBLIC_HOST;
-  const authPort = parseInt(process.env.NEXT_PUBLIC_AUTH_EMULATOR_PORT || "9095", 10);
+  // Check if emulators are already running to avoid re-connecting
+  // This simple check might not be foolproof for all HMR scenarios but is a starting point.
+  // Firebase JS SDK v9+ doesn't throw an error if you connect multiple times, but it's good to be mindful.
 
-  // For Firestore Emulator, use its publicly forwarded host if available for client-side connections
-  const firestoreEmulatorPublicHost = process.env.NEXT_PUBLIC_FIRESTORE_EMULATOR_PUBLIC_HOST;
-  const firestorePort = parseInt(process.env.NEXT_PUBLIC_FIRESTORE_EMULATOR_PORT || "8085", 10);
+  const localEmulatorHost = "127.0.0.1"; // Or "localhost"
 
-  console.log(`Attempting to connect to Firebase Emulators.`);
-  console.log(`Auth Emulator Public Host (for redirect): ${authEmulatorPublicHost || 'Not set, will use local for auth redirect'}`);
-  console.log(`Firestore Emulator Public Host (for client-side): ${firestoreEmulatorPublicHost || 'Not set, will use local for Firestore'}`);
-  console.log(`Local Emulator Host (for services like Functions): ${localEmulatorHost}`);
-
-  try {
-    const functionsPort = parseInt(process.env.NEXT_PUBLIC_FUNCTIONS_EMULATOR_PORT || "5005", 10);
-
-    if (authEmulatorPublicHost) {
-      connectAuthEmulator(auth, `https://${authEmulatorPublicHost}`, { disableWarnings: true });
-      console.log(`Connected Auth Emulator for redirects to: https://${authEmulatorPublicHost}`);
-    } else {
+  // Auth Emulator
+  const authPort = parseInt(process.env.NEXT_PUBLIC_AUTH_EMULATOR_PORT || "9099", 10); // Default 9099
+  // Check if auth emulator is already connected, not straightforward with SDK v9
+  // For now, we'll call connectAuthEmulator, subsequent calls are usually no-ops or idempotent.
+  if (!(auth as any).emulatorConfig) { // Basic check
       connectAuthEmulator(auth, `http://${localEmulatorHost}:${authPort}`, { disableWarnings: true });
-      console.log(`Connected Auth Emulator for redirects to: http://${localEmulatorHost}:${authPort}`);
-    }
+      console.log(`Auth emulator connected to http://${localEmulatorHost}:${authPort}`);
+  }
 
-    // For Firestore, if a public host is available, the client-side SDK should use it.
-    // The SDK often still needs the original port number, even if the public URL is on 443.
-    // Firebase Studio's forwarding should handle mapping https://public-host -> http://internal-host:internal-port
-    if (firestoreEmulatorPublicHost) {
-        // Firestore connectEmulator expects host and port separately.
-        // It will use HTTP for emulators unless SSL is explicitly configured for the emulator itself.
-        // The public URL being HTTPS is handled by Studio's reverse proxy.
-        connectFirestoreEmulator(db, firestoreEmulatorPublicHost, firestorePort );
-        console.log(`Configured Firestore Emulator for client-side to use: host=${firestoreEmulatorPublicHost}, port=${firestorePort}`);
-    } else {
-        connectFirestoreEmulator(db, localEmulatorHost, firestorePort);
-        console.log(`Configured Firestore Emulator for client-side to use: host=${localEmulatorHost}, port=${firestorePort}`);
-    }
 
+  // Firestore Emulator
+  const firestorePort = parseInt(process.env.NEXT_PUBLIC_FIRESTORE_EMULATOR_PORT || "8080", 10); // Default 8080
+  // Similar to Auth, checking Firestore emulator connection state isn't direct.
+  // We connect, and the SDK handles subsequent calls.
+  // Firestore emulator connection doesn't have a simple 'emulatorConfig' like property to check before connecting.
+  try {
+      connectFirestoreEmulator(db, localEmulatorHost, firestorePort);
+      console.log(`Firestore emulator connected to http://${localEmulatorHost}:${firestorePort}`);
+  } catch (error: any) {
+      // Potential error if trying to connect when already connected in some strict modes or older SDKs, though typically safe.
+      if (error.code !== 'failed-precondition' && error.message && !error.message.includes('already connected')) { // Firestore specific error for already connected
+          console.warn("Error connecting to Firestore emulator:", error.message);
+      }
+  }
+
+  // Functions Emulator
+  const functionsPort = parseInt(process.env.NEXT_PUBLIC_FUNCTIONS_EMULATOR_PORT || "5001", 10); // Default 5001
+  // Similar to Auth, checking Functions emulator connection state isn't direct.
+  try {
     connectFunctionsEmulator(functions, localEmulatorHost, functionsPort);
-    console.log("Successfully attempted to connect relevant Firebase Emulators.");
-  } catch (error) {
-    console.warn("Could not connect to Firebase emulators. Ensure they are running on configured ports.", error);
+    console.log(`Functions emulator connected to http://${localEmulatorHost}:${functionsPort}`);
+  } catch (error: any) {
+    if (error.code !== 'functions/already-initialized' && error.message && !error.message.includes('already connected')) {
+        console.warn("Error connecting to Functions emulator:", error.message);
+    }
   }
 }
 
-export { app, auth, functions, db };
+export { app, auth, db, functions };

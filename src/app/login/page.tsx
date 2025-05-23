@@ -1,16 +1,16 @@
 // src/app/login/page.tsx
 'use client';
 
-import { useEffect, useState, useCallback } from 'react'; // Added useCallback
+import { useEffect, useState, useCallback } from 'react';
 import Head from 'next/head';
 import { auth } from '../../lib/firebase';
-import { 
-  GoogleAuthProvider, 
-  signInWithRedirect, 
-  getRedirectResult, 
-  signInWithEmailAndPassword, 
-  UserCredential, 
-  AuthError 
+import {
+  GoogleAuthProvider,
+  signInWithRedirect,
+  getRedirectResult,
+  signInWithEmailAndPassword,
+  UserCredential,
+  AuthError
 } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { manageUserInFirestore } from '../../lib/userUtils';
@@ -25,7 +25,6 @@ export default function LoginPage() {
     console.log("Firebase auth object on login page mount:", auth);
   }, []);
 
-  // Check for redirect result on component mount
   useEffect(() => {
     if (!authActionInProgress && !loadingGoogle) {
       setLoadingGoogle(true);
@@ -36,7 +35,7 @@ export default function LoginPage() {
             const user = result.user;
             console.log("Signed in with Google (redirect) successfully!", user);
             await manageUserInFirestore(user);
-            router.push('/'); 
+            router.push('/python_image_tester.html'); // MODIFIED: Redirect to python_image_tester.html
           } else {
             console.log("No redirect result found on initial load.");
           }
@@ -49,9 +48,8 @@ export default function LoginPage() {
         });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]); // Removed authActionInProgress and loadingGoogle as they might cause re-runs; router is stable.
+  }, [router]);
 
-  // Define handlers in component scope, memoize with useCallback
   const handleGoogleSignInRedirect = useCallback(async () => {
     if (authActionInProgress) return;
     console.log("Google Sign-In button clicked. Attempting signInWithRedirect...");
@@ -60,13 +58,14 @@ export default function LoginPage() {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithRedirect(auth, provider);
+      // The redirect will be handled by the useEffect hook above when the user returns to the app
     } catch (error: any) {
       console.error("Google Sign-In Redirect synchronous initiation error:", error);
       alert(`Error starting Google Sign-In: ${error.message || 'Unknown error'}`);
       setLoadingGoogle(false);
       setAuthActionInProgress(false);
     }
-  }, [auth, authActionInProgress]); // Include dependencies
+  }, [auth, authActionInProgress]);
 
   const handleEmailLogin = useCallback(async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -87,7 +86,7 @@ export default function LoginPage() {
       const userCredential: UserCredential = await signInWithEmailAndPassword(auth, email, password);
       console.log("Signed in with Email/Password successfully!", userCredential.user);
       await manageUserInFirestore(userCredential.user);
-      router.push('/');
+      router.push('/python_image_tester.html'); // MODIFIED: Redirect to python_image_tester.html
     } catch (error: any) {
       const authError = error as AuthError;
       console.error("Email/Password Sign-In Error:", authError.code, authError.message);
@@ -102,22 +101,20 @@ export default function LoginPage() {
       setLoadingEmail(false);
       setAuthActionInProgress(false);
     }
-  }, [auth, router, authActionInProgress]); // Include dependencies
+  }, [auth, router, authActionInProgress]);
 
-  // Effect for attaching/detaching non-React event listeners
   useEffect(() => {
     const googleButton = document.getElementById('google-signin-button');
     if (googleButton) {
       googleButton.addEventListener('click', handleGoogleSignInRedirect);
-    } 
-    // No need to getElementById for emailLoginForm since onSubmit is handled by React
+    }
 
     return () => {
       if (googleButton) {
         googleButton.removeEventListener('click', handleGoogleSignInRedirect);
       }
     };
-  }, [handleGoogleSignInRedirect]); // Dependency on the memoized handler
+  }, [handleGoogleSignInRedirect]);
 
   return (
     <>
@@ -243,10 +240,10 @@ export default function LoginPage() {
 
         <div className="social-divider">OR</div>
 
-        <button 
-            type="button" 
-            className="social-login-button google-button" 
-            id="google-signin-button" // Still using getElementById for this one in useEffect
+        <button
+            type="button"
+            className="social-login-button google-button"
+            id="google-signin-button"
             disabled={loadingGoogle || authActionInProgress}
         >
             {(loadingGoogle && !auth.currentUser) ? <span className="loader"></span> : <i className="fab fa-google social-icon"></i>}

@@ -18,6 +18,9 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  experimental: {
+    allowedDevOrigins: ["9003-idx-studio-1746560064210.cluster-f4iwdviaqvc2ct6pgytzw4xqy4.cloudworkstations.dev"],
+  },
   // Removed devIndicators block as allowedDevOrigins was causing a type error
   // and is not the standard way to handle cross-origin requests.
   // The warning message might be a bit misleading in this context.

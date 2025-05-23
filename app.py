@@ -4,6 +4,8 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import google.generativeai as genai
 import google.api_core.exceptions
+# MODIFIED: Import GenerationConfig directly from google.generativeai, removed Modality
+from google.generativeai import GenerationConfig 
 import os
 import mimetypes
 import base64
@@ -82,25 +84,25 @@ def generate_image_route():
         app.logger.error("No valid content parts to send to API (prompt_parts is empty after processing inputs).")
         return jsonify({"error": "No valid content to send to API."}), 400
 
-    # Using your provided try-except block for the API call and response parsing
     try:
         model = genai.GenerativeModel(model_name="gemini-2.0-flash-preview-image-generation")
         
-        generation_config_dict = {
-            "response_mime_type": "text/plain", # As per your snippet
-            "response_modalities": ["IMAGE", "TEXT"] # As per your snippet
-        }
-        app.logger.info(f"Sending content to Gemini. Number of parts: {len(prompt_parts)}. Content: {prompt_parts}. Config: {generation_config_dict}")
+        # MODIFIED: Instantiate GenerationConfig directly with response_modalities
+        config = GenerationConfig(
+            response_modalities=['IMAGE', 'TEXT']
+        )
+        
+        app.logger.info(f"Sending content to Gemini. Number of parts: {len(prompt_parts)}. Content: {prompt_parts}. Config object: {config}")
 
         response = model.generate_content(
             contents=prompt_parts, 
-            generation_config=generation_config_dict 
+            generation_config=config # Pass the instantiated config object
         ) 
         
         generated_image_data_url = None
         generated_text_description = None 
 
-        # Using your parsing logic from the snippet
+        # Your existing parsing logic for response.parts
         if response.parts:
             app.logger.info(f"Gemini response has {len(response.parts)} parts.")
             for part in response.parts:
@@ -120,19 +122,40 @@ def generate_image_route():
                         generated_image_data_url = f"data:{mime_type};base64,{final_base64_str}"
                         app.logger.info(f"Successfully extracted and formatted generated image: {mime_type}")
                 elif hasattr(part, 'text') and part.text:
-                    generated_text_description = part.text # Simpler assignment from your snippet
+                    generated_text_description = part.text
                     app.logger.info(f"Received text part from Gemini: {generated_text_description[:100]}...")
         else:
-            app.logger.warning("Gemini response did not have the expected 'parts' attribute or it was empty.")
-            if hasattr(response, 'text') and response.text: # Fallback if only text is present
-                 generated_text_description = response.text
-                 app.logger.info(f"Response had no parts, but had text: {generated_text_description[:100]}...")
+            # Fallback/alternative parsing for candidates if response.parts is empty
+            if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
+                app.logger.info(f"Processing parts from response.candidates[0].content.parts")
+                for part in response.candidates[0].content.parts:
+                    if hasattr(part, 'inline_data') and part.inline_data and part.inline_data.data:
+                        img_base64_data_from_sdk = part.inline_data.data
+                        mime_type = part.inline_data.mime_type
+                        final_base64_str = None
+                        if isinstance(img_base64_data_from_sdk, bytes):
+                            final_base64_str = base64.b64encode(img_base64_data_from_sdk).decode('utf-8')
+                        elif isinstance(img_base64_data_from_sdk, str):
+                            final_base64_str = img_base64_data_from_sdk
+                        else:
+                            app.logger.error(f"Unexpected image data type from SDK part (candidate): {type(img_base64_data_from_sdk)}")
+                            continue
+                        if final_base64_str:
+                            generated_image_data_url = f"data:{mime_type};base64,{final_base64_str}"
+                            app.logger.info(f"Successfully extracted and formatted generated image (candidate): {mime_type}")
+                    elif hasattr(part, 'text') and part.text:
+                        generated_text_description = part.text
+                        app.logger.info(f"Received text part from Gemini (candidate): {generated_text_description[:100]}...")
+            else:
+                app.logger.warning("Gemini response did not have 'parts' or parsable candidate parts.")
+                if hasattr(response, 'text') and response.text: # Fallback if only text is present
+                     generated_text_description = response.text
+                     app.logger.info(f"Response had no parts, but had text: {generated_text_description[:100]}...")
 
         if generated_image_data_url:
             return jsonify({"imageUrl": generated_image_data_url, "description": generated_text_description or ""})
         else:
             error_message = "No image data was generated or found in the AI service response."
-            # Using finish_reason logic from your snippet
             if hasattr(response, 'prompt_feedback') and response.prompt_feedback.block_reason:
                  error_message = f"Image generation blocked. Reason: {response.prompt_feedback.block_reason_message or response.prompt_feedback.block_reason}"
                  app.logger.warning(error_message)
@@ -148,7 +171,7 @@ def generate_image_route():
 
     except google.api_core.exceptions.InvalidArgument as e: 
         app.logger.error(f"InvalidArgument Error from Gemini API: {e}", exc_info=True)
-        return jsonify({"error": f"AI service error (InvalidArgument): {str(e)}"}), 400 # Kept 400 for InvalidArgument
+        return jsonify({"error": f"AI service error (InvalidArgument): {str(e)}"}), 400
     except TypeError as e: 
         app.logger.error(f"TypeError: {e}", exc_info=True)
         return jsonify({"error": f"Internal server error (TypeError): {str(e)}"}), 500
@@ -160,8 +183,8 @@ def generate_image_route():
         return jsonify({"error": f"An error occurred with the AI service: {error_detail}"}), 500
 
 if __name__ == '__main__':
-    print("Flask server starting on http://127.0.0.1:5000")
-    print("To test the image generation, open http://127.0.0.1:5000/python_image_tester.html in your browser.")
+    print("Flask server starting on http://127.0.0.1:8765") 
+    print("To test the image generation, open http://127.0.0.1:8765/python_image_tester.html in your browser.") 
     print("Ensure your GEMINI_API_KEY environment variable is set (e.g., in a .env file).")
-    print("Ensure Python dependencies are installed: pip install Flask Flask-CORS google-generativeai python-dotenv")
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    print("Ensure Python dependencies are installed: pip install Flask Flask-CORS google-generativeai python-dotenv pillow")
+    app.run(host='0.0.0.0', port=8765, debug=True)

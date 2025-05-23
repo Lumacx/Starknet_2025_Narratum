@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 
 // The URL of your running Python Flask API
-const PYTHON_API_URL = 'http://127.0.0.1:5000/generate-image';
+const PYTHON_API_URL = 'http://127.0.0.1:8765/generate-image';
 
 export async function POST(request: Request) {
   try {
