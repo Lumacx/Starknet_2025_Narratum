@@ -34,8 +34,17 @@ const ProfilePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-start bg-[#F5EFE3] text-[#4A3B31] font-['Georgia'] p-5 md:p-10 box-border">
-      <div className="profile-container w-full max-w-3xl text-center">
+    <div className="min-h-screen relative flex flex-col items-center justify-start bg-[#F5EFE3] text-[#4A3B31] font-['Georgia'] p-5 md:p-10 box-border">
+      <div className="fixed top-4 right-4 z-50">
+        <Link
+          href="/"
+          className="px-6 py-2 bg-gray-600 text-white font-semibold rounded-full shadow-md hover:bg-gray-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300"
+        >
+          Back to Landing
+        </Link>
+      </div>
+      {/* Added pt-16 to profile-container to avoid overlap with fixed button */}
+      <div className="profile-container w-full max-w-3xl text-center pt-16">
         <header className="profile-header mb-8">
           <div className="avatar-section relative inline-block mb-4">
             <div className="avatar-frame w-40 h-40 md:w-48 md:h-48 rounded-full border-4 border-[#8B6F4E] p-1.5 bg-[#F5EFE3] flex justify-center items-center shadow-md">
@@ -73,9 +82,7 @@ const ProfilePage: React.FC = () => {
           ))}
         </main>
 
-        <hr className="separator bottom-separator border-0 h-0.5 bg-[#B09A7A] my-10" />
-
-        <Link href="/" className="mt-8 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-400 transition duration-300">Back to Landing</Link>
+        {/* Removed the old Back to Landing button from here */}
       </div>
     </div>
   );

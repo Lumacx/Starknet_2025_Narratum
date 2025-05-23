@@ -16,15 +16,23 @@ const LegalDisclaimerPage: React.FC = () => {
     if (isChecked) {
       console.log("Agreement accepted. User ID (placeholder): USER_ID_HERE");
       setMessage("Thank you for accepting the terms and conditions.");
-      // Optionally navigate away: router.push('/');
     } else {
       setMessage("Please accept the terms and conditions to proceed.");
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#F5EFE3] text-[#4A3B31] font-['Georgia'] p-5 md:p-10 box-border text-center">
-      <div className="disclaimer-container w-full max-w-xl">
+    <div className="min-h-screen relative flex flex-col items-center justify-center bg-[#F5EFE3] text-[#4A3B31] font-['Georgia'] p-5 md:p-10 box-border text-center">
+      <div className="fixed top-4 right-4 z-50">
+        <Link
+          href="/"
+          className="px-6 py-2 bg-gray-600 text-white font-semibold rounded-full shadow-md hover:bg-gray-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300"
+        >
+          Back to Landing
+        </Link>
+      </div>
+      {/* Added pt-16 to disclaimer-container to avoid overlap */}
+      <div className="disclaimer-container w-full max-w-xl pt-16">
         <header className="page-title mb-10 md:mb-12">
           <h1 className="font-['Merriweather'] text-4xl md:text-5xl font-extrabold uppercase tracking-wide text-[#3E5062] leading-tight m-0">
             LEGAL<br />DISCLAIMER
@@ -32,7 +40,7 @@ const LegalDisclaimerPage: React.FC = () => {
         </header>
 
         <section className="disclaimer-content mb-8">
-          <div className="text-box bg-[#FAF6EE] border-2 border-[#C1A98A] rounded-xl p-6 md:p-8 inline-block max-w-[90%] shadow-md">
+          <div className="text-box bg-[#FAF6EE] border-2 border-[#C1A98A] rounded-xl p-6 md:p-8 inline-block max-w-[90%] shadow-md mx-auto">
             <p className="font-['Georgia'] text-lg md:text-xl leading-relaxed text-[#4A3B31] m-0">
               By accessing or using this website, you agree to our <a href="#" onClick={(e) => {e.preventDefault(); setMessage('Terms and Conditions link clicked! (Content not implemented)')}} className="text-[#3E5062] underline font-bold hover:text-[#2C3E50]">Terms and Conditions</a>.
             </p>
@@ -70,7 +78,7 @@ const LegalDisclaimerPage: React.FC = () => {
             ACCEPT
           </button>
         </section>
-        <Link href="/" className="mt-12 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-400 transition duration-300">Back to Landing</Link>
+        {/* Removed old Back to Landing button */}
       </div>
     </div>
   );

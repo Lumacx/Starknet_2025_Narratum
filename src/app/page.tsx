@@ -3,17 +3,14 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '@/context/AuthContext'; // Import the real useAuth
+import { useAuth } from '@/context/AuthContext';
 
 const LandingPage: React.FC = () => {
   const router = useRouter();
-  const { user, loading, logout } = useAuth(); // Use the real auth hook
-
-  // isLoggedIn can be derived directly from the user object
+  const { user, loading, logout } = useAuth();
   const isLoggedIn = !!user;
 
   if (loading) {
-    // You can make this a more sophisticated loading spinner or skeleton screen
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-xl font-semibold">Loading...</p>
@@ -24,18 +21,27 @@ const LandingPage: React.FC = () => {
   const handleLogout = async () => {
     try {
       await logout();
-      // Optional: Add a toast notification for successful logout
-      // router.push('/login'); // Optionally redirect to login page after logout
     } catch (error) {
       console.error('Logout failed:', error);
-      // Optional: Add a toast notification for logout failure
     }
   };
 
   return (
     <div className="min-h-screen relative flex flex-col items-center justify-center p-5 md:p-10 bg-gradient-to-br from-[#D4E1EE] via-[#F3E4D7] to-[#F0D1B0] text-[#3A4B5C] font-sans">
-      <div className="max-w-4xl w-full text-center pb-24">
-        <div className="absolute top-4 right-4 z-10">
+      {/* Container for top-corner buttons */}
+      <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-10">
+        {/* Top-left buttons */}
+        <div className="flex items-center space-x-4">
+          <Link
+            href="/subscription"
+            className="px-6 py-2 bg-purple-600 text-white font-semibold rounded-full shadow-md hover:bg-purple-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-purple-300"
+          >
+            Subscriptions
+          </Link>
+        </div>
+        
+        {/* Top-right Login/Logout button */}
+        <div>
           {isLoggedIn ? (
             <button
               onClick={handleLogout}
@@ -52,43 +58,40 @@ const LandingPage: React.FC = () => {
             </Link>
           )}
         </div>
+      </div>
+
+      <div className="max-w-4xl w-full text-center pt-24 pb-24"> {/* Added pt-24 to make space for top buttons */}
         <header className="mb-10 md:mb-16">
           <p className="font-['Lato'] text-xl md:text-2xl font-light tracking-widest mb-1 text-shadow-sm">WELCOME TO</p>
           <h1 className="font-['Georgia'] text-6xl md:text-7xl lg:text-8xl font-bold m-0 text-shadow-md">NARRATUM</h1>
         </header>
         <nav className="flex flex-wrap justify-center gap-6 md:gap-8 mb-12 md:mb-16">
           <Link
-            href="/discover" // Assuming a route for discovering stories
+            href="/discover"
             className="flex flex-col items-center justify-center p-6 md:p-8 w-48 h-60 md:w-56 md:h-72 bg-[#F3EADF] border-2 border-[#CBBBA0] rounded-2xl shadow-lg text-[#3A4B5C] transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-[#CBBBA0]"
           >
             <i className="fas fa-book-open text-5xl md:text-6xl text-[#A9834F] mb-6 md:mb-8"></i>
             <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase leading-tight mb-0.5">DISCOVER</span>
             <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase leading-tight">STORIES</span>
           </Link>
-          
           <Link
               href={isLoggedIn ? "/create" : "/login"} 
               className={`flex flex-col items-center justify-center p-6 md:p-8 w-48 h-60 md:w-56 md:h-72 bg-[#F3EADF] border-2 border-[#CBBBA0] rounded-2xl shadow-lg text-[#3A4B5C] transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-[#CBBBA0] ${!isLoggedIn ? 'opacity-70' : ''}`}
               onClick={(e) => {
                 if (!isLoggedIn) {
-                  // If you want to strictly prevent navigation and show a message before redirecting
-                  // e.preventDefault(); 
-                  // alert("Please log in to create a story.");
                   // router.push('/login'); 
-                  // Otherwise, the Link's href will handle the redirect to /login
                 }
               }}
-              aria-disabled={!isLoggedIn} // Good for accessibility
-              tabIndex={!isLoggedIn ? -1 : undefined} // Prevents tabbing if disabled
+              aria-disabled={!isLoggedIn}
+              tabIndex={!isLoggedIn ? -1 : undefined}
             >
               <i className="fas fa-feather-alt text-5xl md:text-6xl text-[#A9834F] mb-6 md:mb-8"></i>
               <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase leading-tight mb-0.5">CREATE</span>
               <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase leading-tight">STORY</span>
           </Link>
-
           {isLoggedIn ? (
             <Link
-              href="/profile" // Assuming a route for user profile
+              href="/profile"
               className="flex flex-col items-center justify-center p-6 md:p-8 w-48 h-60 md:w-56 md:h-72 bg-[#F3EADF] border-2 border-[#CBBBA0] rounded-2xl shadow-lg text-[#3A4B5C] transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-[#CBBBA0]"
             >
               <i className="fas fa-user-circle text-5xl md:text-6xl text-[#A9834F] mb-6 md:mb-8"></i>
@@ -96,7 +99,7 @@ const LandingPage: React.FC = () => {
               <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase leading-tight">PROFILE</span>
             </Link>
           ) : (
-            <div // Visually disabled "My Profile" button
+            <div 
               className="flex flex-col items-center justify-center p-6 md:p-8 w-48 h-60 md:w-56 md:h-72 bg-[#E0E0E0] border-2 border-[#CBBBA0] rounded-2xl shadow-lg text-[#A0A0A0] opacity-70 cursor-not-allowed"
               title="Please log in to view your profile"
               aria-disabled="true"
@@ -110,12 +113,7 @@ const LandingPage: React.FC = () => {
         <footer className="font-['Georgia'] italic text-xl md:text-2xl text-[#3A4B5C] text-shadow-sm mt-8">
           <p>Where your words come to life</p>
         </footer>
-        <Link
-          href="/subscription" // Assuming a route for subscriptions
-          className="mt-8 px-8 py-4 bg-purple-600 text-white font-semibold rounded-full shadow-lg hover:bg-purple-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-purple-300"
-        >
-          View Subscriptions
-        </Link>
+        {/* View Subscriptions button removed from here as it was moved to the top */}
       </div>
     </div>
   );
