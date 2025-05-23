@@ -1,6 +1,6 @@
 // src/lib/firebase.ts
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
-import { getAuth, connectAuthEmulator, Auth } from "firebase/auth";
+import { getAuth, connectAuthEmulator, Auth } from "firebase/auth"; 
 import { getFunctions, connectFunctionsEmulator, Functions } from "firebase/functions";
 import { getFirestore, connectFirestoreEmulator, Firestore } from "firebase/firestore";
 
@@ -11,14 +11,13 @@ const firebaseConfig = {
     storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
     messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-    measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID, // Added measurementId
+    measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
 let app: FirebaseApp;
 if (!getApps().length) {
   if (!firebaseConfig.apiKey) {
     console.error("Firebase API Key is missing. Check your .env.local file.");
-    // Potentially throw an error or use a default/mock app for critical failures
   }
   app = initializeApp(firebaseConfig);
 } else {
@@ -29,50 +28,59 @@ const auth: Auth = getAuth(app);
 const functions: Functions = getFunctions(app);
 const db: Firestore = getFirestore(app);
 
-// Consistent App ID for Firestore paths, taken from your config
 export const firestoreAppId = firebaseConfig.appId || 'default-app-id';
 
 if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
-  // Check if emulators are already running to avoid re-connecting
-  // This simple check might not be foolproof for all HMR scenarios but is a starting point.
-  // Firebase JS SDK v9+ doesn't throw an error if you connect multiple times, but it's good to be mindful.
+  console.log("Development mode: Attempting to connect to Firebase emulators.");
 
-  const localEmulatorHost = "127.0.0.1"; // Or "localhost"
+  const authHost = "127.0.0.1";
+  const authPort = parseInt(process.env.NEXT_PUBLIC_AUTH_EMULATOR_PORT || "9099", 10);
+  
+  const firestoreHost = "127.0.0.1";
+  const firestorePort = parseInt(process.env.NEXT_PUBLIC_FIRESTORE_EMULATOR_PORT || "8080", 10);
+
+  const functionsHost = "127.0.0.1";
+  const functionsPort = parseInt(process.env.NEXT_PUBLIC_FUNCTIONS_EMULATOR_PORT || "5001", 10);
+
+  const emulatorOptions = { disableWarnings: true };
 
   // Auth Emulator
-  const authPort = parseInt(process.env.NEXT_PUBLIC_AUTH_EMULATOR_PORT || "9099", 10); // Default 9099
-  // Check if auth emulator is already connected, not straightforward with SDK v9
-  // For now, we'll call connectAuthEmulator, subsequent calls are usually no-ops or idempotent.
-  if (!(auth as any).emulatorConfig) { // Basic check
-      connectAuthEmulator(auth, `http://${localEmulatorHost}:${authPort}`, { disableWarnings: true });
-      console.log(`Auth emulator connected to http://${localEmulatorHost}:${authPort}`);
+  const authEmulatorUrl = `http://${authHost}:${authPort}`;
+  console.log(`Auth Emulator: Checking config. Target URL: ${authEmulatorUrl}`);
+  if (!(auth as any).emulatorConfig) { 
+      try {
+        connectAuthEmulator(auth, authEmulatorUrl, emulatorOptions);
+        console.log(`SUCCESS: connectAuthEmulator called for ${authEmulatorUrl}`);
+      } catch (e: any) {
+        console.error(`ERROR calling connectAuthEmulator with URL ${authEmulatorUrl}:`, e);
+      }
+  } else {
+    console.log("Auth emulator already configured. Current config:", (auth as any).emulatorConfig);
   }
 
-
   // Firestore Emulator
-  const firestorePort = parseInt(process.env.NEXT_PUBLIC_FIRESTORE_EMULATOR_PORT || "8080", 10); // Default 8080
-  // Similar to Auth, checking Firestore emulator connection state isn't direct.
-  // We connect, and the SDK handles subsequent calls.
-  // Firestore emulator connection doesn't have a simple 'emulatorConfig' like property to check before connecting.
+  console.log(`Firestore Emulator: Attempting to connect to host: ${firestoreHost}, port: ${firestorePort}`);
   try {
-      connectFirestoreEmulator(db, localEmulatorHost, firestorePort);
-      console.log(`Firestore emulator connected to http://${localEmulatorHost}:${firestorePort}`);
+      connectFirestoreEmulator(db, firestoreHost, firestorePort);
+      console.log(`SUCCESS: connectFirestoreEmulator called for host: ${firestoreHost}, port: ${firestorePort}`);
   } catch (error: any) {
-      // Potential error if trying to connect when already connected in some strict modes or older SDKs, though typically safe.
-      if (error.code !== 'failed-precondition' && error.message && !error.message.includes('already connected')) { // Firestore specific error for already connected
-          console.warn("Error connecting to Firestore emulator:", error.message);
+      if (error.code !== 'failed-precondition' && (!error.message || !error.message.includes('already connected'))) {
+          console.warn("ERROR connecting to Firestore emulator:", error.message, error.code);
+      } else {
+          console.log("Firestore emulator already connected or successfully reconnected.");
       }
   }
 
   // Functions Emulator
-  const functionsPort = parseInt(process.env.NEXT_PUBLIC_FUNCTIONS_EMULATOR_PORT || "5001", 10); // Default 5001
-  // Similar to Auth, checking Functions emulator connection state isn't direct.
+  console.log(`Functions Emulator: Attempting to connect to host: ${functionsHost}, port: ${functionsPort}`);
   try {
-    connectFunctionsEmulator(functions, localEmulatorHost, functionsPort);
-    console.log(`Functions emulator connected to http://${localEmulatorHost}:${functionsPort}`);
+    connectFunctionsEmulator(functions, functionsHost, functionsPort);
+    console.log(`SUCCESS: connectFunctionsEmulator called for host: ${functionsHost}, port: ${functionsPort}`);
   } catch (error: any) {
-    if (error.code !== 'functions/already-initialized' && error.message && !error.message.includes('already connected')) {
-        console.warn("Error connecting to Functions emulator:", error.message);
+    if (error.code !== 'functions/already-initialized' && (!error.message || !error.message.includes('already connected'))) {
+        console.warn("ERROR connecting to Functions emulator:", error.message, error.code);
+    } else {
+        console.log("Functions emulator already connected or successfully reconnected.");
     }
   }
 }

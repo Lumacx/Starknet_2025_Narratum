@@ -1,264 +1,154 @@
-// src/app/login/page.tsx
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import Head from 'next/head';
-import { auth } from '../../lib/firebase';
-import {
-  GoogleAuthProvider,
-  signInWithRedirect,
-  getRedirectResult,
-  signInWithEmailAndPassword,
-  UserCredential,
-  AuthError
-} from 'firebase/auth';
+import React, { useState, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { manageUserInFirestore } from '../../lib/userUtils';
+import { useAuth } from '@/context/AuthContext'; // Import the real useAuth
+import { auth, db } from '@/lib/firebase';
+import {
+    GoogleAuthProvider,
+    signInWithPopup,
+    signInWithEmailAndPassword,
+} from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import Link from 'next/link';
 
-export default function LoginPage() {
+const LoginPage: React.FC = () => {
+  const [message, setMessage] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const router = useRouter();
-  const [loadingGoogle, setLoadingGoogle] = useState(false);
-  const [loadingEmail, setLoadingEmail] = useState(false);
-  const [authActionInProgress, setAuthActionInProgress] = useState(false);
+  const { user, loading } = useAuth();
 
   useEffect(() => {
-    console.log("Firebase auth object on login page mount:", auth);
-  }, []);
+    if (!loading && user) {
+      router.push('/'); // Redirect to landing page if user is already logged in
+    }
+  }, [user, loading, router]);
 
-  useEffect(() => {
-    if (!authActionInProgress && !loadingGoogle) {
-      setLoadingGoogle(true);
-      console.log("Checking for Google redirect result...");
-      getRedirectResult(auth)
-        .then(async (result) => {
-          if (result) {
-            const user = result.user;
-            console.log("Signed in with Google (redirect) successfully!", user);
-            await manageUserInFirestore(user);
-            router.push('/python_image_tester.html'); // MODIFIED: Redirect to python_image_tester.html
-          } else {
-            console.log("No redirect result found on initial load.");
-          }
-        })
-        .catch((error) => {
-          console.error("Google Sign-In (redirect) Error during getRedirectResult:", error.code, error.message);
-        })
-        .finally(() => {
-          setLoadingGoogle(false);
+  const handleGoogleLogin = async () => {
+    if (!auth || !db) {
+        setMessage("Firebase is not initialized. Cannot log in.");
+        return;
+    }
+    setMessage('');
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const loggedInUser = result.user;
+      const userId = loggedInUser.uid;
+      const userDocRef = doc(db, 'users', userId);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (!userDocSnap.exists()) {
+        await setDoc(userDocRef, {
+          uid: loggedInUser.uid, email: loggedInUser.email, displayName: loggedInUser.displayName, photoURL: loggedInUser.photoURL,
+          createdAt: new Date(), lastLoginAt: new Date(), role: 'user', isSetupComplete: false,
         });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]);
-
-  const handleGoogleSignInRedirect = useCallback(async () => {
-    if (authActionInProgress) return;
-    console.log("Google Sign-In button clicked. Attempting signInWithRedirect...");
-    setAuthActionInProgress(true);
-    setLoadingGoogle(true);
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithRedirect(auth, provider);
-      // The redirect will be handled by the useEffect hook above when the user returns to the app
-    } catch (error: any) {
-      console.error("Google Sign-In Redirect synchronous initiation error:", error);
-      alert(`Error starting Google Sign-In: ${error.message || 'Unknown error'}`);
-      setLoadingGoogle(false);
-      setAuthActionInProgress(false);
-    }
-  }, [auth, authActionInProgress]);
-
-  const handleEmailLogin = useCallback(async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (authActionInProgress) return;
-    setAuthActionInProgress(true);
-    setLoadingEmail(true);
-    const email = (event.currentTarget.elements.namedItem('email') as HTMLInputElement)?.value;
-    const password = (event.currentTarget.elements.namedItem('password') as HTMLInputElement)?.value;
-    
-    if (!email || !password) {
-      alert("Please enter both email and password.");
-      setLoadingEmail(false);
-      setAuthActionInProgress(false);
-      return;
-    }
-
-    try {
-      const userCredential: UserCredential = await signInWithEmailAndPassword(auth, email, password);
-      console.log("Signed in with Email/Password successfully!", userCredential.user);
-      await manageUserInFirestore(userCredential.user);
-      router.push('/python_image_tester.html'); // MODIFIED: Redirect to python_image_tester.html
-    } catch (error: any) {
-      const authError = error as AuthError;
-      console.error("Email/Password Sign-In Error:", authError.code, authError.message);
-      if (authError.code === 'auth/user-not-found' || authError.code === 'auth/wrong-password' || authError.code === 'auth/invalid-credential') {
-        alert("Invalid email or password. Please try again.");
-      } else if (authError.code === 'auth/invalid-email') {
-        alert("The email address is not valid.");
+        // setMessage('Successfully signed in and created user profile!'); // Message can be removed as page will redirect
       } else {
-        alert(`Error signing in: ${authError.message}`);
+        await setDoc(userDocRef, { lastLoginAt: new Date() }, { merge: true });
+        // setMessage('Successfully signed in!'); // Message can be removed
       }
-    } finally {
-      setLoadingEmail(false);
-      setAuthActionInProgress(false);
+      // console.log("Signed in with Google successfully!", loggedInUser);
+      // No need for router.push('/') here, useEffect will handle it.
+    } catch (error: any) {
+      console.error("Google Sign-In Error:", error);
+      setMessage(`Error signing in with Google: ${error.message}`);
     }
-  }, [auth, router, authActionInProgress]);
+  };
 
-  useEffect(() => {
-    const googleButton = document.getElementById('google-signin-button');
-    if (googleButton) {
-      googleButton.addEventListener('click', handleGoogleSignInRedirect);
+  const handleEmailLogin = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!auth || !db) {
+        setMessage("Firebase is not initialized. Cannot log in.");
+        return;
     }
+    setMessage('');
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      // const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      // const loggedInUser = userCredential.user;
+      // const userId = loggedInUser.uid;
+      // const userDocRef = doc(db, 'users', userId);
+      // await setDoc(userDocRef, { lastLoginAt: new Date() }, { merge: true });
+      // setMessage('Successfully logged in with email!'); // Message can be removed
+      // No need for router.push('/') here, useEffect will handle it.
+    } catch (error: any) {
+      console.error("Email Login Error:", error);
+      setMessage(`Error logging in: ${error.message}`);
+    }
+  };
 
-    return () => {
-      if (googleButton) {
-        googleButton.removeEventListener('click', handleGoogleSignInRedirect);
-      }
-    };
-  }, [handleGoogleSignInRedirect]);
+  if (loading || (!loading && user)) {
+    // Show loading indicator or nothing while redirecting
+    return (
+        <div className="min-h-screen flex items-center justify-center">
+            <p className="text-xl font-semibold">Loading...</p>
+        </div>
+    );
+  }
 
   return (
-    <>
-      <Head>
-        <title>Narratum Login</title>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
-        <link href="https://fonts.googleapis.com/css2?family=Georgia&family=Lato:wght@400;700&display=swap" rel="stylesheet" />
-      </Head>
-      <style jsx global>{`
-        body {
-            margin: 0;
-            font-family: 'Lato', Arial, sans-serif;
-            background: linear-gradient(to bottom, #D4E1EE, #F3E4D7, #F0D1B0);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-        .login-page-container {
-            text-align: center;
-            max-width: 360px;
-            width: 100%;
-            background-color: transparent;
-        }
-        .login-page-container .logo { margin-bottom: 35px; }
-        .login-page-container .book-icon {
-            font-size: 48px; color: #C1905F; margin-bottom: 15px; display: inline-block;
-            text-shadow: 0 0 10px rgba(193, 144, 95, 0.5);
-            animation-name: glow; animation-duration: 3.5s; animation-timing-function: ease-in-out;
-            animation-iteration-count: infinite; animation-direction: alternate;
-        }
-        @keyframes glow {
-            0% { text-shadow: 0 0 20px rgba(228, 125, 23, 0.815); }
-            50% { text-shadow: 0 0 35px rgba(223, 226, 35, 0.7); }
-            100% { text-shadow: 0 0 20px rgba(235, 220, 16, 0.932); }
-        }
-        .login-page-container .logo h1 {
-            font-family: 'Georgia', serif; font-size: 44px; color: #475B6D;
-            margin: 0; letter-spacing: 1.5px; font-weight: 400;
-        }
-        .login-page-container .login-form { width: 100%; margin-bottom: 20px; }
-        .login-page-container .input-fields-wrapper {
-            background-color: #F9F6F2; border-radius: 12px; margin-bottom: 25px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); overflow: hidden;
-        }
-        .login-page-container .input-field {
-            display: flex; align-items: center; padding: 16px 18px;
-        }
-        .login-page-container .input-field .icon {
-            color: #8FA0AF; margin-right: 12px; font-size: 17px; width: 20px; text-align: center;
-        }
-        .login-page-container .input-field input {
-            flex-grow: 1; border: none; outline: none; background-color: transparent;
-            font-family: 'Lato', Arial, sans-serif; font-size: 16px; color: #444;
-        }
-        .login-page-container .input-field input::placeholder { color: #8FA0AF; font-weight: 400; }
-        .login-page-container .separator { border: none; height: 1px; background-color: #EDE7DF; margin: 0; }
-        .login-page-container .login-button, .login-page-container .social-login-button {
-            width: 100%; padding: 15px; border: none; border-radius: 10px;
-            font-family: 'Lato', Arial, sans-serif; font-size: 16px; font-weight: 700; cursor: pointer;
-            transition: background-color 0.3s ease, box-shadow 0.3s ease;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-            display: flex; align-items: center; justify-content: center; margin-bottom: 12px;
-        }
-        .login-page-container .login-button {
-            background-color: #627C90; color: #FDFCFB; letter-spacing: 1.5px; text-transform: uppercase;
-        }
-        .login-page-container .login-button:hover { background-color: #536A7D; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
-        .login-page-container .social-divider {
-            display: flex; align-items: center; text-align: center; color: #707C88;
-            font-size: 13px; margin: 20px 0;
-        }
-        .login-page-container .social-divider::before, .login-page-container .social-divider::after {
-            content: ''; flex: 1; border-bottom: 1px solid #D5DCE2;
-        }
-        .login-page-container .social-divider:not(:empty)::before { margin-right: .5em; }
-        .login-page-container .social-divider:not(:empty)::after { margin-left: .5em; }
-        .login-page-container .social-login-button .social-icon { margin-right: 10px; font-size: 18px; }
-        .login-page-container .google-button {
-            background-color: #FFFFFF; color: #444444; border: 1px solid #DADCE0;
-        }
-        .login-page-container .google-button .loader { /* Simple loader for example */
-            border: 2px solid #f3f3f3; border-top: 2px solid #DB4437; border-radius: 50%;
-            width: 16px; height: 16px; animation: spin 1s linear infinite; margin-right: 8px;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .login-page-container .google-button:hover { background-color: #F8F9FA; border-color: #C6CACC; }
-        .login-page-container .google-button .social-icon { color: #DB4437; }
-        .login-page-container .facebook-button { background-color: #1877F2; color: #FFFFFF; }
-        .login-page-container .facebook-button:hover { background-color: #166FE5; }
-        .login-page-container .facebook-button .social-icon { color: #FFFFFF; }
-        .login-page-container .footer-links { font-size: 14px; line-height: 1.6; margin-top: 20px; }
-        .login-page-container .footer-links p { margin: 0 0 8px 0; color: #475B6D; }
-        .login-page-container .footer-links a { color: #475B6D; text-decoration: none; font-weight: 400; }
-        .login-page-container .footer-links p a { text-decoration: underline; font-weight: 700; }
-        .login-page-container .footer-links a:hover { text-decoration: underline; }
-      `}</style>
-
-      <div className="login-page-container">
-        <div className="logo">
-            <i className="fas fa-book-open book-icon"></i>
-            <h1>NARRATUM</h1>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#D4E1EE] to-[#F0D1B0] p-4 text-center font-sans">
+      <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12 max-w-md w-full">
+        <div className="mb-8">
+          <i className="fas fa-book-open text-6xl text-[#C1905F] mb-4 inline-block animate-glow"></i>
+          <h1 className="font-['Georgia'] text-4xl text-[#475B6D] font-normal tracking-wide">NARRATUM</h1>
         </div>
-
-        <form className="login-form" onSubmit={handleEmailLogin}>
-            <div className="input-fields-wrapper">
-                <div className="input-field">
-                    <i className="fas fa-envelope icon"></i>
-                    <input type="email" name="email" placeholder="Email" required />
-                </div>
-                <hr className="separator" />
-                <div className="input-field">
-                    <i className="fas fa-lock icon"></i>
-                    <input type="password" name="password" placeholder="Password" required />
-                </div>
+        <p className="text-lg text-gray-700 mb-8">Connect with your favorite social accounts to get started.</p>
+        {message && (
+          <div className={`mb-4 p-3 rounded-lg text-sm ${message.includes('Error') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+            {message}
+          </div>
+        )}
+        <div className="flex flex-col space-y-4">
+          <button
+            onClick={handleGoogleLogin}
+            className="w-full py-3 px-6 bg-white text-gray-700 font-semibold rounded-full shadow-md hover:bg-gray-50 transition duration-300 flex items-center justify-center border border-gray-300"
+          >
+            <i className="fab fa-google mr-3 text-xl text-red-500"></i> Log in with Google
+          </button>
+          <button
+            className="w-full py-3 px-6 bg-[#1877F2] text-white font-semibold rounded-full shadow-md hover:bg-[#166FE5] transition duration-300 flex items-center justify-center"
+            onClick={() => setMessage('Facebook Sign-In not yet implemented.')}
+          >
+            <i className="fab fa-facebook-f mr-3 text-xl"></i> Log in with Facebook
+          </button>
+          <div className="social-divider flex items-center text-center text-gray-500 text-sm my-4">
+            <span className="flex-grow border-b border-gray-300"></span>
+            <span className="mx-4">OR</span>
+            <span className="flex-grow border-b border-gray-300"></span>
+          </div>
+          <form onSubmit={handleEmailLogin} className="w-full">
+            <div className="input-fields-wrapper bg-[#F9F6F2] rounded-lg mb-4 shadow-sm overflow-hidden">
+              <div className="input-field flex items-center p-3 border-b border-[#EDE7DF]">
+                <i className="fas fa-envelope icon text-gray-500 mr-3 text-lg w-5 text-center"></i>
+                <input
+                  type="email" name="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)}
+                  className="flex-grow border-none outline-none bg-transparent text-gray-700 placeholder-gray-400 text-base" required
+                />
+              </div>
+              <div className="input-field flex items-center p-3">
+                <i className="fas fa-lock icon text-gray-500 mr-3 text-lg w-5 text-center"></i>
+                <input
+                  type="password" name="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)}
+                  className="flex-grow border-none outline-none bg-transparent text-gray-700 placeholder-gray-400 text-base" required
+                />
+              </div>
             </div>
-            <button type="submit" className="login-button" disabled={loadingEmail || authActionInProgress}>
-              {loadingEmail ? 'Logging in...' : 'LOG IN'}
+            <button type="submit" className="w-full py-3 px-6 bg-[#627C90] text-white font-semibold rounded-full shadow-md hover:bg-[#536A7D] transition duration-300 uppercase tracking-wide">
+              Log in with Email
             </button>
-        </form>
-
-        <div className="social-divider">OR</div>
-
-        <button
-            type="button"
-            className="social-login-button google-button"
-            id="google-signin-button"
-            disabled={loadingGoogle || authActionInProgress}
-        >
-            {(loadingGoogle && !auth.currentUser) ? <span className="loader"></span> : <i className="fab fa-google social-icon"></i>}
-            {(loadingGoogle && !auth.currentUser) ? 'Processing...' : 'Log in with Google'}
-        </button>
-        <button type="button" className="social-login-button facebook-button" id="facebook-signin-button">
-            <i className="fab fa-facebook-f social-icon"></i>
-            Log in with Facebook
-        </button>
-
-        <div className="footer-links">
-            <p>New to Narratum? <a href="/signup">Sign up</a></p>
-            <a href="/forgot-password">Forgot password?</a>
+          </form>
         </div>
+        <div className="text-sm text-gray-600 mt-8">
+          <p className="mb-2">New to Narratum? <Link href="/signup" className="text-blue-600 hover:underline font-bold">Sign up</Link></p>
+          <a href="#" onClick={(e) => {e.preventDefault(); setMessage('Forgot password functionality not yet implemented.')}} className="text-blue-600 hover:underline">Forgot password?</a>
+        </div>
+        <Link href="/" className="mt-8 inline-block px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-400 transition duration-300">Back to Landing</Link>
       </div>
-    </>
+    </div>
   );
-}
+};
+
+export default LoginPage;

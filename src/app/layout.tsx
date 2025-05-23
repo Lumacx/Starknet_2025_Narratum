@@ -1,35 +1,39 @@
-import type {Metadata} from 'next';
-import { Cinzel, Open_Sans } from 'next/font/google';
-import './globals.css';
-import { Toaster } from "@/components/ui/toaster"; // Import Toaster
-
-const cinzel = Cinzel({
-  subsets: ['latin'],
-  variable: '--font-cinzel',
-  weight: ['400', '700'], // Specify weights if needed
-});
-
-const openSans = Open_Sans({
-  subsets: ['latin'],
-  variable: '--font-open-sans',
-  weight: ['400', '700'], // Specify weights if needed
-});
+import type { Metadata } from 'next';
+import './globals.css'; 
+import { AuthProvider } from '@/context/AuthContext';
+import Footer from '@/components/layout/Footer'; // Import Footer
 
 export const metadata: Metadata = {
-  title: 'Narratum', // Updated App Name
-  description: 'Immersive storytelling platform by Narratum', // Updated description
+  title: 'Narratum',
+  description: 'Where your words come to life',
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
+interface RootLayoutProps {
   children: React.ReactNode;
-}>) {
+}
+
+export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en">
-      <body className={`${cinzel.variable} ${openSans.variable} font-sans antialiased`}>
-        {children}
-        <Toaster />
+      <head>
+        {/* Font Awesome CDN - ensure this is the best way for your setup */}
+        <link 
+            rel="stylesheet" 
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" 
+            integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" 
+            crossOrigin="anonymous" 
+            referrerPolicy="no-referrer" 
+          />
+      </head>
+      <body>
+        <AuthProvider>
+          <div className="flex flex-col min-h-screen">
+            <main className="flex-grow">
+              {children}
+            </main>
+            <Footer />
+          </div>
+        </AuthProvider>
       </body>
     </html>
   );
