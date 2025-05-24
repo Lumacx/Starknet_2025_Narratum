@@ -5,11 +5,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 
-// Define a type for your form data for better type safety
 interface StoryFormData {
   title: string;
   genre: string;
-  // characters: string[]; // Or a more complex character type if needed
   setting: string;
   beginning: boolean;
   conflict: boolean;
@@ -18,13 +16,13 @@ interface StoryFormData {
 }
 
 const CreateStoryPage: React.FC = () => {
-  const { user, loading } = useAuth();
+  const { user, starknetAddress, loading } = useAuth(); // Added starknetAddress
   const router = useRouter();
+  const isLoggedIn = !!user || !!starknetAddress; // Combined login check
 
   const [formData, setFormData] = useState<StoryFormData>({
     title: '',
     genre: 'Fantasy',
-    // characters: [], 
     setting: 'Forest',
     beginning: false,
     conflict: false,
@@ -34,10 +32,10 @@ const CreateStoryPage: React.FC = () => {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login'); // Redirect to login if not authenticated
+    if (!loading && !isLoggedIn) { // Use combined isLoggedIn check
+      router.push('/login'); 
     }
-  }, [user, loading, router]);
+  }, [isLoggedIn, loading, router]); // Added isLoggedIn to dependencies
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const target = e.target as HTMLInputElement; 
@@ -49,23 +47,17 @@ const CreateStoryPage: React.FC = () => {
   };
 
   const handleCharacterAdd = () => {
-    // Placeholder: Implement character addition logic (e.g., modal, new input fields)
-    // For now, we can add a simple string to an array if you adjust StoryFormData
-    // setFormData(prev => ({ ...prev, characters: [...prev.characters, 'New Character'] }));
     setMessage('Character addition functionality not yet implemented.');
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!user) {
+    if (!isLoggedIn) { // Use combined isLoggedIn check
       setMessage('Error: You must be logged in to create a story.');
       return;
     }
     console.log('Story Data Submitted:', formData);
-    // Here you would typically send the formData to your backend (e.g., Firebase Firestore)
-    // Example: await addDoc(collection(db, 'stories'), { ...formData, userId: user.uid, createdAt: new Date() });
     setMessage('Story data submitted! (Backend functionality not yet implemented)');
-    // Optionally, redirect or clear form: router.push('/my-stories'); setFormData({...initialState});
   };
 
   const characterPlaceholders = [
@@ -74,8 +66,7 @@ const CreateStoryPage: React.FC = () => {
     'https://placehold.co/80x80/8B6F4E/FFFFFF?text=Char3',
   ];
 
-  if (loading || !user) {
-    // Show loading indicator or a message while checking auth / redirecting
+  if (loading || !isLoggedIn) { // Use combined isLoggedIn check
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
         <p className="text-xl font-semibold">{loading ? 'Loading user...' : 'Redirecting to login...'}</p>

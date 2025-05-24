@@ -6,20 +6,22 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 
 const DashboardPage: React.FC = () => {
-  const { user, loading } = useAuth();
+  const { user, starknetAddress, loading } = useAuth(); // Added starknetAddress
   const router = useRouter();
+  const isLoggedIn = !!user || !!starknetAddress; // Combined login check
+
   const [message, setMessage] = useState('');
   const [activeUsers, setActiveUsers] = useState(0);
   const [storiesCreated, setStoriesCreated] = useState(0);
   const [paidUsers, setPaidUsers] = useState(0);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !isLoggedIn) { // Use combined isLoggedIn check
       router.push('/login');
-    } else if (!loading && user /* && !user.isAdmin */) {
-      // Admin role check placeholder
+    } else if (!loading && isLoggedIn /* && !user.isAdmin */) {
+      // Admin role check placeholder - if you have admin logic, ensure it works with either user or starknetAddress if applicable
     }
-  }, [user, loading, router]);
+  }, [isLoggedIn, loading, router]); // Added isLoggedIn to dependencies
 
   const animateValue = (setter: React.Dispatch<React.SetStateAction<number>>, start: number, end: number, duration: number) => {
     let startTimestamp: number | null = null;
@@ -35,7 +37,7 @@ const DashboardPage: React.FC = () => {
   };
 
   useEffect(() => {
-    if (user) {
+    if (isLoggedIn) { // Use combined isLoggedIn check for animations
       const targetActiveUsers = 1200;
       const targetStoriesCreated = 3500;
       const targetPaidUsers = 120;
@@ -43,9 +45,9 @@ const DashboardPage: React.FC = () => {
       animateValue(setStoriesCreated, 0, targetStoriesCreated, 1500);
       animateValue(setPaidUsers, 0, targetPaidUsers, 1500);
     }
-  }, [user]);
+  }, [isLoggedIn]); // Depend on isLoggedIn
 
-  if (loading || !user) {
+  if (loading || !isLoggedIn) { // Use combined isLoggedIn check for loading/redirect message
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
         <p className="text-xl font-semibold">{loading ? 'Loading dashboard...' : 'Redirecting...'}</p>
@@ -55,7 +57,6 @@ const DashboardPage: React.FC = () => {
 
   return (
     <div className="min-h-screen relative flex flex-col md:flex-row bg-[#F5EFE3] text-[#3E5062] font-sans">
-      {/* Sidebar is part of the main content scroll for now, adjust if it needs to be fixed */}
       <aside className="sidebar bg-[#3E5062] w-full md:w-20 pt-8 flex flex-row md:flex-col items-center justify-around md:justify-start flex-shrink-0 p-4 md:p-0">
         <nav className="sidebar-nav flex flex-row md:flex-col gap-4 md:gap-6">
           <button onClick={() => setMessage('Analytics clicked! (Not implemented)')} className="nav-item text-[#D4DDE4] text-2xl md:text-3xl p-2 md:p-3 rounded-md transition-colors duration-200 hover:text-white hover:bg-white hover:bg-opacity-10 focus:outline-none">
@@ -67,10 +68,9 @@ const DashboardPage: React.FC = () => {
         </nav>
       </aside>
 
-      {/* Main Content with Back to Landing Button */}
       <main className="main-content flex-grow p-8 md:p-12 flex flex-col items-center relative">
-        <div className="fixed top-4 right-4 z-50" style={{ transform: 'translateX(calc(100% - (100vw - 100%))) calc(100vh - 100%)' }}> {/* Positioning for top right within this main scrollable area*/}
-         <div className="absolute top-4 right-4 z-50 md:right-8 lg:right-12"> {/* Adjust right padding based on screen size if needed*/}
+        <div className="fixed top-4 right-4 z-50" style={{ transform: 'translateX(calc(100% - (100vw - 100%))) calc(100vh - 100%)' }}>
+         <div className="absolute top-4 right-4 z-50 md:right-8 lg:right-12">
             <Link
               href="/"
               className="px-6 py-2 bg-gray-600 text-white font-semibold rounded-full shadow-md hover:bg-gray-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300"
@@ -80,7 +80,6 @@ const DashboardPage: React.FC = () => {
           </div>
         </div>
         
-        {/* Added pt-16 to dashboard-header to avoid overlap */}
         <header className="dashboard-header text-center mb-12 w-full max-w-3xl pt-16">
           <div className="logo-title flex items-center justify-center mb-1">
             <i className="fas fa-book-open text-5xl text-[#B08D57] mr-4"></i>
@@ -117,7 +116,6 @@ const DashboardPage: React.FC = () => {
             MAIN ACTION
           </button>
         </section>
-        {/* Removed old Back to Landing button from here */}
       </main>
     </div>
   );

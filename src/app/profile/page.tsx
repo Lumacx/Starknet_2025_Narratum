@@ -6,15 +6,16 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 
 const ProfilePage: React.FC = () => {
-  const { user, loading } = useAuth();
+  const { user, starknetAddress, loading } = useAuth(); // Added starknetAddress
   const router = useRouter();
   const [message, setMessage] = useState('');
+  const isLoggedIn = !!user || !!starknetAddress; // Combined login check
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !isLoggedIn) { // Use combined isLoggedIn check
       router.push('/login');
     }
-  }, [user, loading, router]);
+  }, [isLoggedIn, loading, router]); // Added isLoggedIn to dependencies
 
   const contentImages = [
     'https://placehold.co/160x160/A88F72/FFFFFF?text=Story+1',
@@ -25,12 +26,22 @@ const ProfilePage: React.FC = () => {
     'https://placehold.co/160x160/F3E4D7/4A3B31?text=Story+6',
   ];
 
-  if (loading || !user) {
+  if (loading || !isLoggedIn) { // Use combined isLoggedIn check
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
         <p className="text-xl font-semibold">{loading ? 'Loading profile...' : 'Redirecting to login...'}</p>
       </div>
     );
+  }
+  
+  // Determine display name: Firebase user displayName, then email, then Starknet address, then fallback
+  let displayName = 'Narratum User';
+  if (user?.displayName) {
+    displayName = user.displayName;
+  } else if (user?.email) {
+    displayName = user.email;
+  } else if (starknetAddress) {
+    displayName = `${starknetAddress.substring(0, 6)}...${starknetAddress.substring(starknetAddress.length - 4)}`;
   }
 
   return (
@@ -43,20 +54,19 @@ const ProfilePage: React.FC = () => {
           Back to Landing
         </Link>
       </div>
-      {/* Added pt-16 to profile-container to avoid overlap with fixed button */}
       <div className="profile-container w-full max-w-3xl text-center pt-16">
         <header className="profile-header mb-8">
           <div className="avatar-section relative inline-block mb-4">
             <div className="avatar-frame w-40 h-40 md:w-48 md:h-48 rounded-full border-4 border-[#8B6F4E] p-1.5 bg-[#F5EFE3] flex justify-center items-center shadow-md">
               <img
-                src={user?.photoURL || 'https://placehold.co/160x160/A88F72/FFFFFF?text=User'}
-                alt={user?.displayName || 'User Avatar'}
+                src={user?.photoURL || 'https://placehold.co/160x160/A88F72/FFFFFF?text=User'} // Firebase photoURL if available
+                alt={displayName}
                 className="avatar-image w-full h-full rounded-full border-3 border-[#A88F72] object-cover"
               />
             </div>
           </div>
           <h1 className="user-name text-4xl md:text-5xl font-bold text-[#3D2B1F] m-0">
-            {user?.displayName || user?.email || 'Narratum User'}
+            {displayName}
           </h1>
         </header>
 
@@ -81,8 +91,6 @@ const ProfilePage: React.FC = () => {
             </a>
           ))}
         </main>
-
-        {/* Removed the old Back to Landing button from here */}
       </div>
     </div>
   );
