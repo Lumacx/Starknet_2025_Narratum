@@ -1,0 +1,51 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Custom Tailwind Configuration (optional, but good for fonts and shadows) */
+/* These styles are applied globally if this index.html is used. */
+.font-lato {
+  font-family: 'Lato', sans-serif;
+}
+.font-georgia {
+  font-family: 'Georgia', serif;
+}
+.font-merriweather {
+  font-family: 'Merriweather', serif;
+}
+
+.text-shadow-sm {
+  text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.3);
+}
+.text-shadow-md {
+  text-shadow: 1px 1px 5px rgba(255, 255, 255, 0.15);
+}
+
+/* Example of how you might want to ensure body takes full height if not using a CSS reset/normalize that does this */
+body, #root, .App {
+  min-height: 100vh; /* Ensure the app can fill the screen height */
+  display: flex; /* Allow App to grow if its content needs it */
+  flex-direction: column; /* Stack content vertically */
+}
+
+/* Additional global styles or Tailwind component styles can go here */
+
+/* Animation for glowing effect (example from LoginPage) */
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 5px #C1905F, 0 0 10px #C1905F; }
+  50% { box-shadow: 0 0 20px #C1905F, 0 0 30px #C1905F; }
+}
+
+.animate-glow {
+  animation: glow 2s infinite ease-in-out;
+}
