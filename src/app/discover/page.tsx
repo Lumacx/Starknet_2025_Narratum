@@ -8,21 +8,21 @@ interface Story {
   image: string;
 }
 
-const CatalogPage: React.FC = () => {
-  const allStories: Story[] = [
-    { title: 'The Enchanted Forest', image: 'https://picsum.photos/seed/forest/300/200' },
-    { title: 'Space Adventure', image: 'https://picsum.photos/seed/space/300/200' },
-    { title: "Wizard's Spell", image: 'https://picsum.photos/seed/wizard/300/200' },
-    { title: 'The Flying Bananas', image: 'https://placehold.co/300x200/BFA071/1A2533?text=Flying+Bananas' },
-    { title: 'Mystery Manor', image: 'https://picsum.photos/seed/manor/300/200' },
-    { title: 'Moon Journey', image: 'https://picsum.photos/seed/moon/300/200' },
-    { title: "Hero's Journey", image: 'https://picsum.photos/seed/hero/300/200' },
-    { title: 'The Lost City', image: 'https://picsum.photos/seed/city/300/200' },
-    { title: "Dragon's Hoard", image: 'https://picsum.photos/seed/dragon/300/200' },
-    { title: 'Ancient Prophecy', image: 'https://picsum.photos/seed/prophecy/300/200' },
-    { title: 'Cyberpunk City', image: 'https://picsum.photos/seed/cyberpunk/300/200' },
-  ];
+const allStories: Story[] = [
+  { title: 'The Enchanted Forest', image: 'https://picsum.photos/seed/forest/300/200' },
+  { title: 'Space Adventure', image: 'https://picsum.photos/seed/space/300/200' },
+  { title: "Wizard's Spell", image: 'https://picsum.photos/seed/wizard/300/200' },
+  { title: 'The Flying Bananas', image: 'https://placehold.co/300x200/BFA071/1A2533?text=Flying+Bananas' },
+  { title: 'Mystery Manor', image: 'https://picsum.photos/seed/manor/300/200' },
+  { title: 'Moon Journey', image: 'https://picsum.photos/seed/moon/300/200' },
+  { title: "Hero's Journey", image: 'https://picsum.photos/seed/hero/300/200' },
+  { title: 'The Lost City', image: 'https://picsum.photos/seed/city/300/200' },
+  { title: "Dragon's Hoard", image: 'https://picsum.photos/seed/dragon/300/200' },
+  { title: 'Ancient Prophecy', image: 'https://picsum.photos/seed/prophecy/300/200' },
+  { title: 'Cyberpunk City', image: 'https://picsum.photos/seed/cyberpunk/300/200' },
+];
 
+const CatalogPage: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [displayedStories, setDisplayedStories] = useState<Story[]>(allStories);
@@ -37,7 +37,7 @@ const CatalogPage: React.FC = () => {
       setDisplayedStories(allStories); 
       setSearchMessage(`Filter set to: ${activeFilter}. (Actual filtering logic not implemented)`);
     }
-  }, [activeFilter, allStories]);
+  }, [activeFilter]);
 
   const handleFilterClick = (filter: string) => {
     setActiveFilter(filter);

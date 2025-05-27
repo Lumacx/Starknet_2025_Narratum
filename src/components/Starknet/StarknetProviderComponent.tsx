@@ -14,12 +14,20 @@ import { RpcProviderOptions } from "starknet"; // Import RpcProviderOptions for 
 // Define the chains supported
 const chains = [sepolia];
 
+import type { Chain } from "@starknet-react/chains"; // ⬅️ Add this line
 // Define the RPC provider function
-function rpc(chain: (typeof chains)[number]): RpcProviderOptions {
+
+function rpc(chain: typeof sepolia): RpcProviderOptions {
   return {
     nodeUrl: `https://starknet-${chain.network}.public.blastapi.io/rpc/v0_7`,
   };
 }
+
+//function rpc(chain: (typeof chains)[number]): RpcProviderOptions {
+//  return {
+//    nodeUrl: `https://starknet-${chain.network}.public.blastapi.io/rpc/v0_7`,
+//  };
+//}
 
 export function StarknetProviderComponent({ children }: { children: React.ReactNode }) {
   const { connectors } = useInjectedConnectors({
