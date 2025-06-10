@@ -4,172 +4,189 @@ import React, { useState, useEffect, ChangeEvent, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+// Fix 1: Import hook and type from their correct, separate locations.
+import { useCreateStory } from '../../../dataconnect-generated/js/default-connector/react';
+import type { CreateStoryData } from '../../../dataconnect-generated/js/default-connector';
 
-interface StoryFormData {
+// Feather Icon SVG Component
+const FeatherIcon = ({ className }: { className?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 512 512"
+    className={className}
+    fill="currentColor"
+  >
+    <path d="M495.9 32.1c-1.2-1.2-2.8-2.3-4.4-3.1C443.5 1.7 416.5 0 384 0c-48.4 0-89.2 26.2-128 57.6C234.3 35.8 211.3 22.3 186.3 14.1 174.6 10.1 162.1 8 149.2 8 96.6 8 48 35.1 48 84.8c0 23.3 10.3 53.6 33.9 87.2-23.2 25.1-50.5 45.4-81.8 58.4-2.2.9-4.3 2.1-6.2 3.6-5.3 4.1-8 11.1-7.1 18.2.9 7.1 5.4 13.2 12.4 16.1 29.3 12.1 61.3 19.1 94.6 19.1 33.4 0 65.6-7.1 94.9-19.4 6.9-2.9 11.4-8.9 12.4-16.1.9-7.1-1.9-14.2-7.1-18.2-3.4-2.6-7.4-4.6-11.6-6.2-27.1-10.4-53.4-26.1-78.3-46.7 23.3-32.2 34.6-61.9 34.6-84.5 0-23.7-18-42.8-48-42.8-13.2 0-26.1 3.1-39.7 9.4-15.3 7-29.4 17.4-42.3 30.5 3.3 3.5 6.5 7.1 9.5 10.8 17.4 21.2 31.2 46.2 39.5 73.7 2.2 7.3 8.3 12.6 16 13.5 7.7.9 15-2.9 19-9.2 18.1-28.7 30.2-61.9 30.2-93.5 0-2.3-.2-4.6-.5-6.9 38.3-29 76.5-52.9 120.5-52.9 29.5 0 53.4 10.1 71.1 20.3-1.2 1.9-2.3 3.8-3.4 5.8-11.6 20.9-23.9 42.4-36.8 64.6-3.8 6.5-2.6 14.6 2.9 19.9 5.5 5.3 13.6 6.5 20.1 2.8 14.3-8.2 29.4-16.3 45.4-24.3 1.8-.9 3.6-1.8 5.4-2.7zM144 320c-17.7 0-32 14.3-32 32s14.3 32 32 32 32-14.3 32-32-14.3-32-32-32zm64-160c-17.7 0-32 14.3-32 32s14.3 32 32 32 32-14.3 32-32-14.3-32-32-32zm160 32c0-17.7-14.3-32-32-32s-32 14.3-32 32 14.3 32 32 32 32-14.3 32-32z"/>
+  </svg>
+);
+
+interface Template {
+  id: string;
   title: string;
-  genre: string;
-  setting: string;
-  beginning: boolean;
-  conflict: boolean;
-  climax: boolean;
-  ending: boolean;
+  description: string;
 }
 
+interface NewStoryData {
+  title: string;
+  description: string;
+  genre: string;
+  templateId: string;
+}
+
+const mockTemplates: Template[] = [
+    { id: 'three-act', title: 'Three-Act Structure', description: 'A classic model dividing a story into Setup, Confrontation, and Resolution.' },
+    { id: 'heros-journey', title: "The Hero's Journey", description: 'A common narrative archetype involving a hero who goes on an adventure.' },
+    { id: 'frettags-pyramid', title: "Freytag's Pyramid", description: 'A five-part structure focusing on Exposition, Rising Action, Climax, Falling Action, and Dénouement.' },
+  ];
+
 const CreateStoryPage: React.FC = () => {
-  const { user, starknetAddress, loading } = useAuth(); // Added starknetAddress
+  const { user, starknetAddress, loading } = useAuth();
   const router = useRouter();
-  const isLoggedIn = !!user || !!starknetAddress; // Combined login check
+  const { mutate: createStory, isPending, error } = useCreateStory();
+  const isLoggedIn = !!user || !!starknetAddress;
 
-  const [formData, setFormData] = useState<StoryFormData>({
+  const [formData, setFormData] = useState<NewStoryData>({
     title: '',
+    description: '',
     genre: 'Fantasy',
-    setting: 'Forest',
-    beginning: false,
-    conflict: false,
-    climax: false,
-    ending: false,
+    templateId: mockTemplates[0].id,
   });
-  const [message, setMessage] = useState('');
-
+  
   useEffect(() => {
-    if (!loading && !isLoggedIn) { // Use combined isLoggedIn check
-      router.push('/login'); 
+    if (!loading && !isLoggedIn) {
+      router.push('/login');
     }
-  }, [isLoggedIn, loading, router]); // Added isLoggedIn to dependencies
+  }, [isLoggedIn, loading, router]);
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const target = e.target as HTMLInputElement; 
-    const { name, value, type } = target;
+    const { name, value } = e.target;
     setFormData((prevData) => ({
       ...prevData,
-      [name]: type === 'checkbox' ? target.checked : value,
+      [name]: value,
     }));
   };
-
-  const handleCharacterAdd = () => {
-    setMessage('Character addition functionality not yet implemented.');
+  
+  const handleTemplateSelect = (templateId: string) => {
+    setFormData(prev => ({ ...prev, templateId }));
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!isLoggedIn) { // Use combined isLoggedIn check
-      setMessage('Error: You must be logged in to create a story.');
-      return;
-    }
-    console.log('Story Data Submitted:', formData);
-    setMessage('Story data submitted! (Backend functionality not yet implemented)');
+    if (!isLoggedIn) return;
+
+    createStory({
+      title: formData.title,
+      description: formData.description,
+      genre: formData.genre,
+    }, {
+      // Fix 2: Add explicit type for the 'data' parameter
+      onSuccess: (data: CreateStoryData) => {
+        // Fix 3: Access the ID from the correct nested property
+        const newStoryId = data.story_insert?.id;
+        if (newStoryId) {
+          router.push(`/story/edit/${newStoryId}`);
+        } else {
+            console.error("Story creation succeeded but no ID was returned.");
+        }
+      },
+      // Fix 4: Add explicit type for the 'err' parameter
+      onError: (err: Error) => {
+          console.error("Story creation failed:", err);
+      }
+    });
   };
 
-  const characterPlaceholders = [
-    'https://placehold.co/80x80/C1A98A/FFFFFF?text=Char1',
-    'https://placehold.co/80x80/A9834F/FFFFFF?text=Char2',
-    'https://placehold.co/80x80/8B6F4E/FFFFFF?text=Char3',
-  ];
-
-  if (loading || !isLoggedIn) { // Use combined isLoggedIn check
+  if (loading || !isLoggedIn) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <p className="text-xl font-semibold">{loading ? 'Loading user...' : 'Redirecting to login...'}</p>
+      <div className="min-h-screen flex items-center justify-center bg-[#F0D1B0]">
+        <p className="text-xl font-semibold text-[#3D4F60]">
+          {loading ? 'Verifying authentication...' : 'Redirecting to login...'}
+        </p>
       </div>
     );
   }
   
   return (
-    <div className="min-h-screen relative flex flex-col items-center justify-center p-5 md:p-10 bg-gradient-to-br from-[#D4E1EE] via-[#F3E4D7] to-[#F0D1B0] text-[#4A3B31] font-sans">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] font-sans">
       <div className="fixed top-4 right-4 z-50">
-        <Link
-          href="/"
-          className="px-6 py-2 bg-gray-600 text-white font-semibold rounded-full shadow-md hover:bg-gray-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300"
-        >
+        <Link href="/" className="px-5 py-2 bg-[#3D4F60] text-white font-semibold rounded-full shadow-lg hover:bg-[#2c3a47] transition-transform transform hover:scale-105">
           Back to Landing
         </Link>
       </div>
-      <div className="w-full max-w-5xl bg-[#F9F6F0] border-2 border-[#C1A98A] rounded-2xl shadow-xl p-8 md:p-12 grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-        <i className="fas fa-feather-alt absolute top-4 right-4 text-6xl text-[#A9834F] opacity-30 rotate-12 -z-0 hidden md:block"></i>
-        <div className="md:col-span-2 text-center md:text-left">
-          <h1 className="font-['Merriweather'] text-5xl md:text-6xl font-extrabold text-[#5D4037] mb-8 uppercase tracking-wide">SUMMON YOUR<br />STORY</h1>
-          <form onSubmit={handleSubmit} className="space-y-6">
+
+      <div className="w-full max-w-4xl mx-auto">
+        <div className="bg-[#F9F6F0] border-2 border-[#3D4F60] rounded-xl shadow-2xl p-8 relative">
+          <FeatherIcon className="absolute top-8 right-8 text-5xl text-[#3D4F60] opacity-10" />
+          
+          <div className="text-center mb-10">
+            <h1 className="font-serif text-5xl font-bold text-[#3D4F60] tracking-wider" style={{ fontFamily: '"Cinzel", serif' }}>
+              Begin a New Tale
+            </h1>
+            <p className="text-[#3D4F60] mt-2 text-lg">First, let's establish the foundation of your world.</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="title" className="block text-sm font-bold text-[#3D4F60] mb-2 uppercase tracking-wide">Title</label>
+                <input
+                  type="text" id="title" name="title" value={formData.title} onChange={handleInputChange}
+                  className="w-full p-3 border-2 border-[#B0C4DE] rounded-md bg-white text-[#3D4F60] focus:outline-none focus:ring-2 focus:ring-[#E97451]"
+                  placeholder="The Rise of the Shadow Dragon" required
+                />
+              </div>
+              <div>
+                <label htmlFor="genre" className="block text-sm font-bold text-[#3D4F60] mb-2 uppercase tracking-wide">Genre</label>
+                <select
+                  id="genre" name="genre" value={formData.genre} onChange={handleInputChange}
+                  className="w-full p-3 border-2 border-[#B0C4DE] rounded-md bg-white text-[#3D4F60] focus:outline-none focus:ring-2 focus:ring-[#E97451]"
+                >
+                  <option>Fantasy</option><option>Science Fiction</option><option>Mystery</option><option>Romance</option><option>Thriller</option>
+                </select>
+              </div>
+            </div>
+
             <div>
-              <label htmlFor="title" className="block text-xl font-bold text-[#4A3B31] mb-2">Title</label>
-              <input
-                type="text" id="title" name="title" value={formData.title} onChange={handleInputChange}
-                className="w-full p-3 border-2 border-[#C1A98A] rounded-lg bg-[#FDFBF5] text-[#4A3B31] focus:outline-none focus:border-[#A9834F]"
-                placeholder="Enter your story title" required
+              <label htmlFor="description" className="block text-sm font-bold text-[#3D4F60] mb-2 uppercase tracking-wide">Brief Synopsis</label>
+              <textarea
+                id="description" name="description" value={formData.description} onChange={handleInputChange}
+                className="w-full p-3 border-2 border-[#B0C4DE] rounded-md bg-white text-[#3D4F60] focus:outline-none focus:ring-2 focus:ring-[#E97451]"
+                placeholder="A young mage discovers a hidden power that could save or shatter the kingdom..." rows={3} required
               />
             </div>
+            
             <div>
-              <label htmlFor="genre" className="block text-xl font-bold text-[#4A3B31] mb-2">Genre</label>
-              <select
-                id="genre" name="genre" value={formData.genre} onChange={handleInputChange}
-                className="w-full p-3 border-2 border-[#C1A98A] rounded-lg bg-[#FDFBF5] text-[#4A3B31] focus:outline-none focus:border-[#A9834F]"
-              >
-                <option>Fantasy</option><option>Science Fiction</option><option>Mystery</option><option>Romance</option><option>Thriller</option><option>Historical</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xl font-bold text-[#4A3B31] mb-2">Characters</label>
-              <div className="flex items-center gap-4 flex-wrap">
-                {characterPlaceholders.map((src, index) => (
-                  <div key={index} className="w-20 h-20 rounded-full border-2 border-[#A9834F] overflow-hidden flex-shrink-0">
-                    <img src={src} alt={`Character ${index + 1}`} className="w-full h-full object-cover" />
+              <h3 className="text-sm font-bold text-[#3D4F60] mb-3 uppercase tracking-wide">Choose a Narrative Structure</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {mockTemplates.map(template => (
+                  <div
+                    key={template.id}
+                    onClick={() => handleTemplateSelect(template.id)}
+                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${formData.templateId === template.id ? 'border-[#E97451] bg-[#F0D1B0]/30 scale-105' : 'border-[#B0C4DE] hover:border-[#3D4F60]'}`}
+                  >
+                    <h4 className="font-bold text-[#3D4F60]">{template.title}</h4>
+                    <p className="text-sm text-[#3D4F60]/80 mt-1">{template.description}</p>
                   </div>
                 ))}
-                <button
-                  type="button" onClick={handleCharacterAdd}
-                  className="w-20 h-20 rounded-full border-2 border-dashed border-[#C1A98A] text-[#A9834F] text-4xl flex items-center justify-center bg-[#FDFBF5] hover:bg-[#F0E6D2] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#A9834F]"
-                  title="Add Character"
-                ><i className="fas fa-plus"></i></button>
               </div>
             </div>
-            <div>
-              <label htmlFor="setting" className="block text-xl font-bold text-[#4A3B31] mb-2">Setting</label>
-              <select
-                id="setting" name="setting" value={formData.setting} onChange={handleInputChange}
-                className="w-full p-3 border-2 border-[#C1A98A] rounded-lg bg-[#FDFBF5] text-[#4A3B31] focus:outline-none focus:border-[#A9834F]"
+
+            {error && (
+              <div className="mt-4 p-3 rounded-md text-sm text-center bg-red-100 text-red-800">
+                Story creation failed: {error.message}
+              </div>
+            )}
+            
+            <div className="text-center pt-4">
+              <button
+                type="submit"
+                disabled={isPending}
+                className="px-12 py-3 bg-[#E97451] text-white font-bold text-lg rounded-full shadow-lg hover:bg-[#d8633f] transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-[#F0D1B0] disabled:opacity-50"
               >
-                <option>Forest</option><option>City</option><option>Space</option><option>Underwater</option><option>Desert</option>
-              </select>
+                {isPending ? 'Creating...' : 'Start Writing'}
+              </button>
             </div>
-            <div>
-              <label className="block text-xl font-bold text-[#4A3B31] mb-2">Story Structure</label>
-              <div className="grid grid-cols-2 gap-4 text-left">
-                <label className="flex items-center text-lg text-[#4A3B31]">
-                  <input type="checkbox" name="beginning" checked={formData.beginning} onChange={handleInputChange} className="form-checkbox h-5 w-5 text-[#A9834F] rounded-md border-gray-300 focus:ring-[#A9834F]" />
-                  <span className="ml-2">Beginning</span>
-                </label>
-                <label className="flex items-center text-lg text-[#4A3B31]">
-                  <input type="checkbox" name="conflict" checked={formData.conflict} onChange={handleInputChange} className="form-checkbox h-5 w-5 text-[#A9834F] rounded-md border-gray-300 focus:ring-[#A9834F]" />
-                  <span className="ml-2">Conflict</span>
-                </label>
-                <label className="flex items-center text-lg text-[#4A3B31]">
-                  <input type="checkbox" name="climax" checked={formData.climax} onChange={handleInputChange} className="form-checkbox h-5 w-5 text-[#A9834F] rounded-md border-gray-300 focus:ring-[#A9834F]" />
-                  <span className="ml-2">Climax</span>
-                </label>
-                <label className="flex items-center text-lg text-[#4A3B31]">
-                  <input type="checkbox" name="ending" checked={formData.ending} onChange={handleInputChange} className="form-checkbox h-5 w-5 text-[#A9834F] rounded-md border-gray-300 focus:ring-[#A9834F]" />
-                  <span className="ml-2">Ending</span>
-                </label>
-              </div>
-            </div>
-            {message && (<div className={`mt-4 p-3 rounded-lg text-sm ${message.includes('Error') ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>{message}</div>)}
-            <button type="submit" className="w-full py-3 px-6 bg-[#A9834F] text-white font-bold rounded-lg shadow-md hover:bg-[#8B6F4E] transition duration-300 focus:outline-none focus:ring-4 focus:ring-[#A9834F]">
-              SUMMON STORY
-            </button>
           </form>
-        </div>
-        <div className="md:col-span-1 space-y-6 md:space-y-8 mt-8 md:mt-0">
-          <div className="bg-[#E0C9A0] border-2 border-[#C1A98A] rounded-xl p-6 shadow-md">
-            <h3 className="font-['Merriweather'] text-xl font-bold text-[#4A3B31] mb-3 uppercase">TIPS</h3>
-            <p className="text-base text-[#5C4B3E]">Start with an intriguing hook to capture attention.</p>
-          </div>
-          <div className="bg-[#E0C9A0] border-2 border-[#C1A98A] rounded-xl p-6 shadow-md">
-            <h3 className="font-['Merriweather'] text-xl font-bold text-[#4A3B31] mb-3 uppercase">TIPS</h3>
-            <p className="text-base text-[#5C4B3E]">Focus on vivid, sensory details to bring scenes to life.</p>
-          </div>
-          <div className="bg-[#E0C9A0] border-2 border-[#C1A98A] rounded-xl p-6 shadow-md">
-            <h3 className="font-['Merriweather'] text-xl font-bold text-[#4A3B31] mb-3 uppercase">TIPS</h3>
-            <p className="text-base text-[#5C4B3E]">Develop well-rounded characters with clear motivations.</p>
-          </div>
         </div>
       </div>
     </div>
