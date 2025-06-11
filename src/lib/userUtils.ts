@@ -1,6 +1,7 @@
 import {
   getUserProfile as dcGetUserProfile,
   createUserProfile as dcCreateUserProfile,
+  isUsernameAvailable as dcIsUsernameAvailable,
 } from '../../dataconnect-generated/js/default-connector';
 import type { GetUserProfileData } from '../../dataconnect-generated/js/default-connector';
 
@@ -50,16 +51,15 @@ export const createUserProfile = async (
 };
 
 /**
- * Placeholder for checking username availability.
- * This should be refactored to use a DataConnect query for consistency.
+ * Checks if a username is available using a DataConnect query.
  */
-import { getFirestore, collection, query, where, getDocs } from 'firebase/firestore';
-import { app } from './firebase';
-
-const db = getFirestore(app);
-export const isUsernameAvailable = async (username: string) => {
-  const usersRef = collection(db, 'users');
-  const q = query(usersRef, where('username', '==', username));
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.empty;
+export const isUsernameAvailable = async (username: string): Promise<boolean> => {
+  try {
+    const { data } = await dcIsUsernameAvailable({ username });
+    return data.users.length === 0;
+  } catch (error) {
+    console.error("DataConnect error in isUsernameAvailable:", error);
+    // In case of an error, assume the username is not available to be safe.
+    return false;
+  }
 };

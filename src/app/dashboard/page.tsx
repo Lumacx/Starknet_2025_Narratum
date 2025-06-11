@@ -1,121 +1,88 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { useListStoriesByUser } from '../../../dataconnect-generated/js/default-connector/react';
 
 const DashboardPage: React.FC = () => {
-  const { user, starknetAddress, loading } = useAuth(); // Added starknetAddress
+  const { user, loading } = useAuth();
   const router = useRouter();
-  const isLoggedIn = !!user || !!starknetAddress; // Combined login check
+  
+  // Fetch stories using the generated hook, only if the user exists.
+  const { data: storiesData, isLoading: storiesLoading, error } = useListStoriesByUser(
+    user ? { userId: user.uid } : undefined,
+    { enabled: !!user } // React Query option: only run the query if the user is available
+  );
 
-  const [message, setMessage] = useState('');
-  const [activeUsers, setActiveUsers] = useState(0);
-  const [storiesCreated, setStoriesCreated] = useState(0);
-  const [paidUsers, setPaidUsers] = useState(0);
-
-  useEffect(() => {
-    if (!loading && !isLoggedIn) { // Use combined isLoggedIn check
+  // Redirect to login if not authenticated.
+  React.useEffect(() => {
+    if (!loading && !user) {
       router.push('/login');
-    } else if (!loading && isLoggedIn /* && !user.isAdmin */) {
-      // Admin role check placeholder - if you have admin logic, ensure it works with either user or starknetAddress if applicable
     }
-  }, [isLoggedIn, loading, router]); // Added isLoggedIn to dependencies
+  }, [user, loading, router]);
 
-  const animateValue = (setter: React.Dispatch<React.SetStateAction<number>>, start: number, end: number, duration: number) => {
-    let startTimestamp: number | null = null;
-    const step = (timestamp: number) => {
-      if (!startTimestamp) startTimestamp = timestamp;
-      const progress = Math.min((timestamp - startTimestamp!) / duration, 1);
-      setter(Math.floor(progress * (end - start) + start));
-      if (progress < 1) {
-        window.requestAnimationFrame(step);
-      }
-    };
-    window.requestAnimationFrame(step);
-  };
-
-  useEffect(() => {
-    if (isLoggedIn) { // Use combined isLoggedIn check for animations
-      const targetActiveUsers = 1200;
-      const targetStoriesCreated = 3500;
-      const targetPaidUsers = 120;
-      animateValue(setActiveUsers, 0, targetActiveUsers, 1500);
-      animateValue(setStoriesCreated, 0, targetStoriesCreated, 1500);
-      animateValue(setPaidUsers, 0, targetPaidUsers, 1500);
-    }
-  }, [isLoggedIn]); // Depend on isLoggedIn
-
-  if (loading || !isLoggedIn) { // Use combined isLoggedIn check for loading/redirect message
+  if (loading || storiesLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <p className="text-xl font-semibold">{loading ? 'Loading dashboard...' : 'Redirecting...'}</p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <p className="text-xl font-semibold text-gray-700">Loading dashboard...</p>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen relative flex flex-col md:flex-row bg-[#F5EFE3] text-[#3E5062] font-sans">
-      <aside className="sidebar bg-[#3E5062] w-full md:w-20 pt-8 flex flex-row md:flex-col items-center justify-around md:justify-start flex-shrink-0 p-4 md:p-0">
-        <nav className="sidebar-nav flex flex-row md:flex-col gap-4 md:gap-6">
-          <button onClick={() => setMessage('Analytics clicked! (Not implemented)')} className="nav-item text-[#D4DDE4] text-2xl md:text-3xl p-2 md:p-3 rounded-md transition-colors duration-200 hover:text-white hover:bg-white hover:bg-opacity-10 focus:outline-none">
-            <i className="fas fa-chart-bar"></i>
-          </button>
-          <button onClick={() => setMessage('Manage Stories clicked!')} className="nav-item text-[#D4DDE4] text-2xl md:text-3xl p-2 md:p-3 rounded-md transition-colors duration-200 hover:text-white hover:bg-white hover:bg-opacity-10 focus:outline-none"><i className="fas fa-pencil-alt"></i></button>
-          <button onClick={() => setMessage('User Reports clicked!')} className="nav-item text-[#D4DDE4] text-2xl md:text-3xl p-2 md:p-3 rounded-md transition-colors duration-200 hover:text-white hover:bg-white hover:bg-opacity-10 focus:outline-none"><i className="fas fa-file-alt"></i></button>
-          <button onClick={() => setMessage('Settings clicked!')} className="nav-item text-[#D4DDE4] text-2xl md:text-3xl p-2 md:p-3 rounded-md transition-colors duration-200 hover:text-white hover:bg-white hover:bg-opacity-10 focus:outline-none"><i className="fas fa-cog"></i></button>
-        </nav>
-      </aside>
-
-      <main className="main-content flex-grow p-8 md:p-12 flex flex-col items-center relative">
-        <div className="fixed top-4 right-4 z-50" style={{ transform: 'translateX(calc(100% - (100vw - 100%))) calc(100vh - 100%)' }}>
-         <div className="absolute top-4 right-4 z-50 md:right-8 lg:right-12">
-            <Link
-              href="/"
-              className="px-6 py-2 bg-gray-600 text-white font-semibold rounded-full shadow-md hover:bg-gray-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300"
-            >
-              Back to Landing
-            </Link>
-          </div>
+  if (error) {
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-red-50">
+            <p className="text-xl font-semibold text-red-700">Error loading stories: {error.message}</p>
         </div>
-        
-        <header className="dashboard-header text-center mb-12 w-full max-w-3xl pt-16">
-          <div className="logo-title flex items-center justify-center mb-1">
-            <i className="fas fa-book-open text-5xl text-[#B08D57] mr-4"></i>
-            <span className="font-['Merriweather'] text-5xl font-extrabold text-[#3E5062] tracking-wide">NARRATUM</span>
-          </div>
-          <h1 className="font-['Lato'] text-xl md:text-2xl font-bold uppercase tracking-wide text-[#5D7081] m-0">ADMIN DASHBOARD</h1>
-        </header>
+    );
+  }
 
-        {message && (
-          <div className="mb-6 p-3 rounded-lg text-sm bg-blue-100 text-blue-700">
-            {message}
-          </div>
-        )}
+  const stories = storiesData?.stories || [];
 
-        <section className="stats-overview w-full max-w-3xl mb-10">
-          <div className="stats-box bg-[#FAF6EE] border-2 border-[#C1A98A] rounded-xl p-8 flex flex-wrap justify-around gap-5 shadow-md">
-            <div className="stat-item text-center flex-grow basis-1/2 min-w-[150px] md:basis-auto">
-              <div className="font-['Georgia'] text-6xl font-bold text-[#3E5062] leading-tight mb-1">{activeUsers}</div>
-              <div className="font-['Lato'] text-sm font-bold uppercase tracking-wide text-[#5D7081]">ACTIVE USERS</div>
-            </div>
-            <div className="stat-item text-center flex-grow basis-1/2 min-w-[150px] md:basis-auto">
-              <div className="font-['Georgia'] text-6xl font-bold text-[#3E5062] leading-tight mb-1">{storiesCreated}</div>
-              <div className="font-['Lato'] text-sm font-bold uppercase tracking-wide text-[#5D7081]">STORIES CREATED</div>
-            </div>
-            <div className="stat-item text-center flex-grow basis-full md:basis-auto mt-5 md:mt-0">
-              <div className="font-['Georgia'] text-6xl font-bold text-[#3E5062] leading-tight mb-1">{paidUsers}</div>
-              <div className="font-['Lato'] text-sm font-bold uppercase tracking-wide text-[#5D7081]">PAID USERS</div>
-            </div>
-          </div>
-        </section>
+  return (
+    <div className="min-h-screen bg-gray-50 text-gray-800 font-sans">
+      {/* Header */}
+      <header className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+          <h1 className="text-3xl font-bold leading-tight text-gray-900">
+            My Stories
+          </h1>
+          <Link href="/create" className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-md shadow-sm hover:bg-blue-700 transition duration-300">
+            Create New Story
+          </Link>
+        </div>
+      </header>
 
-        <section className="action-area mt-8">
-          <button type="button" onClick={() => setMessage('Main dashboard action clicked!')} className="font-['Lato'] bg-[#5D6D7E] text-[#FDFCFB] border-none rounded-lg py-3 px-10 text-lg font-bold uppercase tracking-wide cursor-pointer transition-colors duration-300 shadow-md hover:bg-[#4E5C6A]">
-            MAIN ACTION
-          </button>
-        </section>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div className="px-4 py-6 sm:px-0">
+          {stories.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {stories.map(story => (
+                <div key={story.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
+                  <div className="p-6">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">{story.title}</h2>
+                    <p className="text-gray-600 mb-1"><strong>Genre:</strong> {story.genre}</p>
+                    <p className="text-gray-600 mb-4"><strong>Status:</strong> <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${story.status === 'published' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{story.status}</span></p>
+                    <Link href={`/story/edit/${story.id}`} className="font-medium text-indigo-600 hover:text-indigo-500">
+                      Edit Story &rarr;
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <h2 className="text-2xl font-semibold text-gray-700 mb-2">No Stories Yet</h2>
+              <p className="text-gray-500 mb-4">You haven't created any stories. Get started now!</p>
+              <Link href="/create" className="px-6 py-2 bg-green-600 text-white font-semibold rounded-md shadow-sm hover:bg-green-700 transition duration-300">
+                Create Your First Story
+              </Link>
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );

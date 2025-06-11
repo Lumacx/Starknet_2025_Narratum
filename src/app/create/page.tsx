@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, ChangeEvent, FormEvent } from 'react';
+import React, { useState, useEffect, ChangeEvent, FormEvent, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
@@ -55,6 +55,10 @@ const CreateStoryPage: React.FC = () => {
     templateId: mockTemplates[0].id,
   });
   
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const genreSelectRef = useRef<HTMLSelectElement>(null);
+  const descriptionTextareaRef = useRef<HTMLTextAreaElement>(null);
+
   useEffect(() => {
     if (!loading && !isLoggedIn) {
       router.push('/login');
@@ -166,30 +170,33 @@ const CreateStoryPage: React.FC = () => {
 
           <form onSubmit={handleSubmit} className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
+              <div className="cursor-pointer" onClick={() => titleInputRef.current?.focus()}>
                 <label htmlFor="title" className="block text-sm font-bold text-[#3D4F60] mb-2 uppercase tracking-wide">Title</label>
                 <input
+                  ref={titleInputRef}
                   type="text" id="title" name="title" value={formData.title} onChange={handleInputChange}
-                  className="w-full p-3 border-2 border-[#B0C4DE] rounded-md bg-white text-[#3D4F60] focus:outline-none focus:ring-2 focus:ring-[#E97451]"
+                  className="w-full p-3 border-2 border-[#B0C4DE] rounded-md bg-white text-[#3D4F60] focus:outline-none focus:ring-2 focus:ring-[#E97451] cursor-pointer"
                   placeholder="The Rise of the Shadow Dragon" required
                 />
               </div>
-              <div>
+              <div className="cursor-pointer" onClick={() => genreSelectRef.current?.focus()}>
                 <label htmlFor="genre" className="block text-sm font-bold text-[#3D4F60] mb-2 uppercase tracking-wide">Genre</label>
                 <select
+                  ref={genreSelectRef}
                   id="genre" name="genre" value={formData.genre} onChange={handleInputChange}
-                  className="w-full p-3 border-2 border-[#B0C4DE] rounded-md bg-white text-[#3D4F60] focus:outline-none focus:ring-2 focus:ring-[#E97451]"
+                  className="w-full p-3 border-2 border-[#B0C4DE] rounded-md bg-white text-[#3D4F60] focus:outline-none focus:ring-2 focus:ring-[#E97451] cursor-pointer"
                 >
                   <option>Fantasy</option><option>Science Fiction</option><option>Mystery</option><option>Romance</option><option>Thriller</option>
                 </select>
               </div>
             </div>
 
-            <div>
+            <div className="cursor-pointer" onClick={() => descriptionTextareaRef.current?.focus()}>
               <label htmlFor="description" className="block text-sm font-bold text-[#3D4F60] mb-2 uppercase tracking-wide">Brief Synopsis</label>
               <textarea
+                ref={descriptionTextareaRef}
                 id="description" name="description" value={formData.description} onChange={handleInputChange}
-                className="w-full p-3 border-2 border-[#B0C4DE] rounded-md bg-white text-[#3D4F60] focus:outline-none focus:ring-2 focus:ring-[#E97451]"
+                className="w-full p-3 border-2 border-[#B0C4DE] rounded-md bg-white text-[#3D4F60] focus:outline-none focus:ring-2 focus:ring-[#E97451] cursor-pointer"
                 placeholder="A young mage discovers a hidden power that could save or shatter the kingdom..." rows={3} required
               />
             </div>

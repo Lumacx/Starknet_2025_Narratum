@@ -1,4 +1,26 @@
 # Mutations
-# mutation CreateUserProfile($username: String!, $email: String!, $displayname: String!, $avatarUrl: String) @auth(level: USER) {
-#  user_insert( data: { username: $username, email: $email, displayname: $displayname, avatarUrl: $avatarUrl } )
-# }
+mutation CreateUserProfile($username: String!, $email: String!, $displayname: String!) @auth(level: USER) {
+ user_insert(
+  data: {
+    id: "auth.uid"
+    username: $username
+    email: $email
+    displayname: $displayname
+    role: "'reader'"
+  }
+ )
+}
+
+mutation CreateStory($title: String!, $genre: String!, $description: String) @auth(level: USER) {
+  story_insert(
+    data: {
+      creatorId: "auth.uid"
+      title: $title
+      genre: $genre
+      description: $description
+      status: "'draft'"
+    }
+  ) {
+    id
+  }
+}

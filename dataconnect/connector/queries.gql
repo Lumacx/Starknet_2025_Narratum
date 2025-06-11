@@ -1,6 +1,6 @@
 # Queries
 query GetUserProfile($userId: String!) @auth(level: USER) {
-  User(id: $userId) {
+  user(id: $userId) {
     id
     username
     email
@@ -25,5 +25,33 @@ query GetStoryWithContent($storyId: String!) {
       textContent
       pageNumber
     }
+  }
+}
+
+query ListStoriesByUser($userId: String!) @auth(level: USER) {
+  stories(where: { creator: { id: { _eq: $userId } } }) {
+    id
+    title
+    genre
+    status
+    updatedAt
+  }
+}
+
+query ListPublishedStories {
+  stories(where: { status: { _eq: "published" } }) {
+    id
+    title
+    genre
+    coverImageUrl
+    creator {
+      displayname
+    }
+  }
+}
+
+query IsUsernameAvailable($username: String!) {
+  users(where: { username: { _eq: $username } }) {
+    id
   }
 }
