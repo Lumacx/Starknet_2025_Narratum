@@ -57,6 +57,7 @@ type Story @table {
   status: String! @default(value: "'draft'") # Status as String
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
+  storyContent: [StoryContent]
 }
 
 type StoryContent @table {

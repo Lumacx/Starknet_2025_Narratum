@@ -2,14 +2,14 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
-import { auth } from '@/lib/firebase'; // Assuming db is not directly needed for auth state management here
+import { auth } from '@/lib/firebase';
+import { getUserProfile, createUserProfile } from '@/lib/userUtils';
 
-// Updated AuthContextType
 interface AuthContextType {
-  user: User | null; // Firebase User object
-  starknetAddress: string | null; // To store the Starknet wallet address
+  user: User | null;
+  starknetAddress: string | null;
   loading: boolean;
-  setStarknetLoginStatus: (address: string | null) => void; // Function to set Starknet address
+  setStarknetLoginStatus: (address: string | null) => void;
   logout: () => Promise<void>;
 }
 
@@ -20,15 +20,32 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [user, setUser] = useState<User | null>(null); // Firebase user
-  const [starknetAddress, setStarknetAddressInternal] = useState<string | null>(null); // Internal state for Starknet address
+  const [user, setUser] = useState<User | null>(null);
+  const [starknetAddress, setStarknetAddressInternal] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          const userProfile = await getUserProfile(firebaseUser.uid);
+          if (!userProfile) {
+            await createUserProfile({
+              userId: firebaseUser.uid,
+              email: firebaseUser.email || 'No email provided',
+              username: firebaseUser.displayName || 'Anonymous',
+              displayname: firebaseUser.displayName || 'Anonymous User',
+            });
+          }
+        } catch (error) {
+          console.error("Failed to check or create user profile in AuthContext:", error);
+          await firebaseSignOut(auth);
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+      }
       setUser(firebaseUser);
-      // If a Firebase user logs in/out, we don't automatically change Starknet status here.
-      // Logout function will handle clearing both.
       setLoading(false);
     });
     return () => unsubscribe();
@@ -36,26 +53,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const setStarknetLoginStatus = (address: string | null) => {
     setStarknetAddressInternal(address);
-    if (address) {
-      console.log(`AuthContext: Starknet login status set for address ${address}`);
-    } else {
-      console.log("AuthContext: Starknet login status cleared.");
-    }
   };
 
   const logout = async () => {
     try {
-      await firebaseSignOut(auth); // Sign out from Firebase
+      await firebaseSignOut(auth);
       setUser(null);
-      console.log("AuthContext: Firebase user signed out.");
     } catch (error) {
-      console.error("AuthContext: Error signing out from Firebase", error);
+      console.error("Error signing out from Firebase", error);
     }
-    setStarknetLoginStatus(null); // Clear Starknet address
+    setStarknetLoginStatus(null);
   };
 
   const value = {
-    user, // Firebase user
+    user,
     starknetAddress,
     loading,
     setStarknetLoginStatus,

@@ -4,9 +4,9 @@ import React, { useState, useEffect, ChangeEvent, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-// Fix 1: Import hook and type from their correct, separate locations.
 import { useCreateStory } from '../../../dataconnect-generated/js/default-connector/react';
 import type { CreateStoryData } from '../../../dataconnect-generated/js/default-connector';
+import { getUserProfile, createUserProfile } from '@/lib/userUtils';
 
 // Feather Icon SVG Component
 const FeatherIcon = ({ className }: { className?: string }) => (
@@ -72,28 +72,43 @@ const CreateStoryPage: React.FC = () => {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!isLoggedIn) return;
+    if (!user) {
+        console.error("Story creation requires a logged-in Firebase user.");
+        return;
+    };
 
-    createStory({
-      title: formData.title,
-      description: formData.description,
-      genre: formData.genre,
-    }, {
-      // Fix 2: Add explicit type for the 'data' parameter
-      onSuccess: (data: CreateStoryData) => {
-        // Fix 3: Access the ID from the correct nested property
-        const newStoryId = data.story_insert?.id;
-        if (newStoryId) {
-          router.push(`/story/edit/${newStoryId}`);
-        } else {
-            console.error("Story creation succeeded but no ID was returned.");
-        }
-      },
-      // Fix 4: Add explicit type for the 'err' parameter
-      onError: (err: Error) => {
-          console.error("Story creation failed:", err);
+    try {
+      let userProfile = await getUserProfile(user.uid);
+      if (!userProfile) {
+        userProfile = await createUserProfile({
+          userId: user.uid,
+          email: user.email || '',
+          username: user.displayName || '',
+          displayname: user.displayName || '',
+        });
       }
-    });
+
+      createStory({
+        creatorId: user.uid,
+        title: formData.title,
+        description: formData.description,
+        genre: formData.genre,
+      }, {
+        onSuccess: (data: CreateStoryData) => {
+          const newStoryId = data.story_insert?.id;
+          if (newStoryId) {
+            router.push(`/story/edit/${newStoryId}`);
+          } else {
+              console.error("Story creation succeeded but no ID was returned.");
+          }
+        },
+        onError: (err: Error) => {
+            console.error("Story creation failed:", err);
+        }
+      });
+    } catch (err) {
+      console.error("Failed to ensure user profile exists:", err);
+    }
   };
 
   if (loading || !isLoggedIn) {
@@ -162,7 +177,7 @@ const CreateStoryPage: React.FC = () => {
                   <div
                     key={template.id}
                     onClick={() => handleTemplateSelect(template.id)}
-                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${formData.templateId === template.id ? 'border-[#E97451] bg-[#F0D1B0]/30 scale-105' : 'border-[#B0C4DE] hover:border-[#3D4F60]'}`}
+                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${formData.templateId === template.id ? 'border-[#E97451] bg-[#F0D1B0]/30 scale-105' : 'border-[#B0C4DE] hover:border-[#D4E1EE]'}`}
                   >
                     <h4 className="font-bold text-[#3D4F60]">{template.title}</h4>
                     <p className="text-sm text-[#3D4F60]/80 mt-1">{template.description}</p>

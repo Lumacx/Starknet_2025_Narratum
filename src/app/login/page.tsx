@@ -3,13 +3,12 @@
 import React, { useState, useCallback, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { auth, db } from '@/lib/firebase';
+import { auth } from '@/lib/firebase';
 import {
     GoogleAuthProvider,
     signInWithPopup,
     signInWithEmailAndPassword,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
 import Link from 'next/link';
 
 import { useAccount, useConnect } from '@starknet-react/core';
@@ -208,27 +207,14 @@ const LoginPage: React.FC = () => {
   }
   
   const handleGoogleLogin = async () => {
-    if (!auth || !db) {
+    if (!auth) {
         setMessage("Firebase is not initialized. Cannot log in.");
         return;
     }
     setMessage('');
     try {
       const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const loggedInUser = result.user;
-      const userId = loggedInUser.uid;
-      const userDocRef = doc(db, 'users', userId);
-      const userDocSnap = await getDoc(userDocRef);
-
-      if (!userDocSnap.exists()) {
-        await setDoc(userDocRef, {
-          uid: loggedInUser.uid, email: loggedInUser.email, displayName: loggedInUser.displayName, photoURL: loggedInUser.photoURL,
-          createdAt: new Date(), lastLoginAt: new Date(), role: 'user', isSetupComplete: false,
-        });
-      } else {
-        await setDoc(userDocRef, { lastLoginAt: new Date() }, { merge: true });
-      }
+      await signInWithPopup(auth, provider);
       setStarknetLoginStatus(null);
     } catch (error: any) {
       console.error("Google Sign-In Error:", error);
@@ -238,7 +224,7 @@ const LoginPage: React.FC = () => {
 
   const handleEmailLogin = async (e: FormEvent) => {
     e.preventDefault();
-    if (!auth || !db) {
+    if (!auth) {
         setMessage("Firebase is not initialized. Cannot log in.");
         return;
     }

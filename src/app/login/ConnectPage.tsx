@@ -1,188 +1,96 @@
-import React, { useEffect, useCallback, useState } from 'react';
-import { useAccount, useConnect } from '@starknet-react/core';
-import { useNavigate } from 'react-router-dom';
-import { NARRATUM_CONTRACT_ADDRESS } from '../constants';
-import { Call } from 'starknet';
-import { connect as connectStarknetkit } from 'starknetkit';
-import '../App.css';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+'use client'
 
-import { faBookOpen, faEnvelope, faLock } from '@fortawesome/free-solid-svg-icons';
-import { faGoogle, faFacebookF } from '@fortawesome/free-brands-svg-icons';
+import React from 'react'
+import { constants } from 'starknet'
+import { useAccount, useConnect, useDisconnect } from '@starknet-react/core'
+import { argent, braavos } from '@starknet-react/core'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faTwitter, faGithub, faDiscord } from '@fortawesome/free-brands-svg-icons'
 
 
 function ConnectPage() {
-  const { account, address, status } = useAccount();
-  const { connect, connectors: starknetReactConnectors } = useConnect();
-  const navigate = useNavigate();
-  const [executeError, setExecuteError] = useState<string | null>(null);
-  const [isExecuting, setIsExecuting] = useState(false);
-  const [hasAttemptedExecute, setHasAttemptedExecute] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(false);
+  const { connect, connectors } = useConnect()
+  const { disconnect } = useDisconnect()
+  const { address, isConnected, chainId } = useAccount()
 
-  console.log('[ConnectPage] Render - Status:', status, 'Address:', address, 'Account:', !!account, 'isExecuting:', isExecuting, 'hasAttemptedExecute:', hasAttemptedExecute, 'isConnecting:', isConnecting);
-  console.log('[ConnectPage] Render - Conectores disponibles desde useConnect:', starknetReactConnectors);
-
-  const handleConnectStarknetKit = async () => {
-    console.log('[ConnectPage] handleConnectStarknetKit - Iniciando conexión StarknetKit');
-    setIsConnecting(true);
-    setExecuteError(null);
-    setHasAttemptedExecute(false);
-    try {
-      const connectionResponse = await connectStarknetkit({});
-      console.log('[ConnectPage] handleConnectStarknetKit - connectStarknetkit respondió:', connectionResponse);
-      if (!connectionResponse) {
-         console.warn('[ConnectPage] handleConnectStarknetKit - La respuesta de connectStarknetkit fue null.');
-      }
-    } catch (error: any) {
-      console.error("[ConnectPage] handleConnectStarknetKit - Error al invocar connectStarknetkit:", error);
-      setExecuteError("Error al iniciar conexión con StarknetKit: " + error.message);
-    } finally {
-      setIsConnecting(false);
-    }
-  };
-
-  const handleConnectBraavosDirectly = async () => {
-    console.log('[ConnectPage] handleConnectBraavosDirectly - Iniciando conexión directa con Braavos via @starknet-react/core');
-    setIsConnecting(true);
-    setExecuteError(null);
-    setHasAttemptedExecute(false);
-
-    const braavosConnector = starknetReactConnectors.find(c => c.id.toLowerCase().includes('braavos'));
-    console.log('[ConnectPage] handleConnectBraavosDirectly - Conector Braavos encontrado:', braavosConnector);
-
-    if (braavosConnector) {
-      try {
-        console.log('[ConnectPage] handleConnectBraavosDirectly - Llamando a connect({ connector: braavosConnector }) de @starknet-react/core');
-        await connect({ connector: braavosConnector });
-        console.log('[ConnectPage] handleConnectBraavosDirectly - Llamada a connect de @starknet-react/core completada. Observar useAccount.');
-      } catch (error: any) {
-        console.error("[ConnectPage] handleConnectBraavosDirectly - Error al invocar connect de @starknet-react/core:", error);
-        setExecuteError("Error al conectar directamente con Braavos: " + error.message);
-      } finally {
-        setIsConnecting(false);
-      }
-    } else {
-      console.warn('[ConnectPage] handleConnectBraavosDirectly - Conector Braavos no encontrado en useConnect. Lista de conectores:', starknetReactConnectors);
-      setExecuteError("Conector Braavos no disponible para conexión directa.");
-      setIsConnecting(false);
-    }
-  };
-
-  const generateNickname = () => {
-    let result = '';
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-    const charactersLength = characters.length;
-    for (let i = 0; i < 5; i++) {
-      result += characters.charAt(Math.floor(Math.random() * charactersLength));
-    }
-    return result;
-  };
-
-  const calls: Call[] = React.useMemo(() => {
-    if (!address) {
-      console.log('[ConnectPage] useMemo calls - No address, retornando [].');
-      return [];
-    }
-    const nickname = generateNickname();
-    console.log(`[ConnectPage] useMemo calls - Dirección a guardar: ${address}, Nickname: ${nickname}`);
-    return [
-      {
-        contractAddress: NARRATUM_CONTRACT_ADDRESS,
-        entrypoint: 'save_wallet_data',
-        calldata: [address, nickname],
-      },
-    ];
-  }, [address]);
-
-  const handleExecuteSaveWalletData = useCallback(async () => {
-    console.log('[ConnectPage] handleExecuteSaveWalletData - Verificando condiciones. Account:', !!account, 'Calls length:', calls.length, 'isExecuting:', isExecuting, 'hasAttemptedExecute:', hasAttemptedExecute);
-    if (!account || calls.length === 0 || isExecuting || hasAttemptedExecute) {
-      if(hasAttemptedExecute) console.log('[ConnectPage] handleExecuteSaveWalletData - Ya se intentó ejecutar, no se reintenta ahora.');
-      return;
-    }
-    
-    console.log("[ConnectPage] handleExecuteSaveWalletData - Condiciones cumplidas, iniciando ejecución.");
-    setIsExecuting(true);
-    setHasAttemptedExecute(true); 
-    setExecuteError(null);
-    
-    try {
-      console.log("[ConnectPage] handleExecuteSaveWalletData - Enviando account.execute con calls:", JSON.stringify(calls));
-      const tx = await account.execute(calls);
-      console.log("[ConnectPage] handleExecuteSaveWalletData - Transacción enviada, esperando confirmación. Hash:", tx.transaction_hash);
-      await account.waitForTransaction(tx.transaction_hash);
-      console.log("[ConnectPage] handleExecuteSaveWalletData - Transacción confirmada:", tx);
-      navigate('/story');
-    } catch (err: any) {
-      console.error("[ConnectPage] handleExecuteSaveWalletData - Error al enviar/confirmar transacción save_wallet_data:", err);
-      setExecuteError(err.message || "Error desconocido al ejecutar la transacción.");
-      setHasAttemptedExecute(false); // Permitir reintento si el usuario soluciona el problema y vuelve a conectar / refresca
-    } finally {
-      setIsExecuting(false);
-      console.log('[ConnectPage] handleExecuteSaveWalletData - Finalizado.');
-    }
-  }, [account, calls, navigate, isExecuting, hasAttemptedExecute]); // Agregado isExecuting y hasAttemptedExecute para asegurar que el callback se recree si cambian
-
-  useEffect(() => {
-    console.log('[ConnectPage] useEffect [status, address, account] - Status:', status, 'Address:', address, 'Account:', !!account, 'isExecuting:', isExecuting, 'hasAttemptedExecute:', hasAttemptedExecute);
-    if (status === 'connected' && address && account && !isExecuting && !hasAttemptedExecute) {
-      console.log('[ConnectPage] useEffect [status, address, account] - Llamando a handleExecuteSaveWalletData');
-      handleExecuteSaveWalletData();
-    }
-  }, [status, address, account, isExecuting, hasAttemptedExecute, handleExecuteSaveWalletData]);
-
-  useEffect(() => {
-    console.log('[ConnectPage] useEffect [navigation] - Status:', status, 'Address:', address, 'isExecuting:', isExecuting, 'executeError:', executeError, 'hasAttemptedExecute:', hasAttemptedExecute);
-    if (status === 'connected' && address && !isExecuting && !executeError && hasAttemptedExecute) {
-      console.log('[ConnectPage] useEffect [navigation] - Condiciones para navegar a /story cumplidas. Navegando...');
-      navigate('/story');
-    } else {
-      console.log('[ConnectPage] useEffect [navigation] - Condiciones para navegar a /story NO cumplidas.');
-    }
-  }, [status, address, isExecuting, executeError, hasAttemptedExecute, navigate]);
-
-  if (status === 'connecting' || isExecuting || isConnecting) {
-    return <p>Conectando y configurando cuenta...</p>;
-  }
+  const socialLinks = [
+    {
+      name: 'Twitter',
+      url: 'https://twitter.com/Starknet',
+      icon: faTwitter,
+      color: '#1DA1F2',
+    },
+    {
+      name: 'GitHub',
+      url: 'https://github.com/starknet-io',
+      icon: faGithub,
+      color: '#333',
+    },
+    {
+      name: 'Discord',
+      url: 'https://discord.gg/starknet',
+      icon: faDiscord,
+      color: '#7289DA',
+    },
+  ]
 
   return (
-   
-    <div className="login-container">
-        <div className="logo">
-        <FontAwesomeIcon icon={faBookOpen} className="book-icon" />
-
-            <h1>NARRATUM</h1>
-        </div>
-
-        <form className="login-form" action="#" method="post" id="email-login-form">
-            <div className="input-fields-wrapper">
-                <div className="input-field">
-                    <i className="fas fa-envelope icon"></i>
-                    <input type="email" name="email" placeholder="Email" required />
-                </div>
-                <hr className="separator" />
-                <div className="input-field">
-                    <i className="fas fa-lock icon"></i>
-                    <input type="password" name="password" placeholder="Password" required />
-                </div>
+    <div className="bg-gray-900 min-h-screen flex flex-col items-center justify-center text-white">
+      <div className="w-full max-w-md mx-auto p-8 rounded-lg shadow-lg bg-gray-800">
+        <h1 className="text-4xl font-bold text-center mb-8 text-starknet-blue">
+          Starknet Connect
+        </h1>
+        <div className="space-y-4">
+          {isConnected && chainId === BigInt(constants.StarknetChainId.SN_SEPOLIA) ? (
+            <div className="text-center">
+              <p className="text-lg mb-4">
+                You are connected with address: {address}
+              </p>
+              <button
+                className="w-full bg-starknet-blue-dark text-white font-bold py-2 px-4 rounded-lg hover:bg-starknet-blue-light transition-colors"
+                onClick={() => disconnect()}
+              >
+                Disconnect
+              </button>
             </div>
-           
-            <button
-        onClick={handleConnectStarknetKit}
-        className="login-button"
-        disabled={isConnecting || status === 'connected'} 
-      >
-        {status === 'connected' ? 'Conectado' : 'Conectar Wallet '}
-      </button>
-        </form>
-
-        
-
-        
+          ) : (
+            <>
+              <p className="text-lg text-center">
+                Connect your Starknet wallet to get started.
+              </p>
+              {connectors.map((connector) => (
+                <button
+                  key={connector.id}
+                  className="w-full bg-starknet-blue text-white font-bold py-2 px-4 rounded-lg hover:bg-starknet-blue-light transition-colors"
+                  onClick={() => connect({ connector })}
+                >
+                  Connect {connector.name}
+                </button>
+              ))}
+            </>
+          )}
+        </div>
+        <div className="mt-8 pt-4 border-t border-gray-700">
+          <h2 className="text-xl font-semibold text-center mb-4">
+            Follow us on social media
+          </h2>
+          <div className="flex justify-center space-x-4">
+            {socialLinks.map((link) => (
+              <a
+                key={link.name}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-white"
+              >
+                <FontAwesomeIcon icon={link.icon} size="2x" />
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
-    
-  );
+  )
 }
 
-export default ConnectPage;
+export default ConnectPage

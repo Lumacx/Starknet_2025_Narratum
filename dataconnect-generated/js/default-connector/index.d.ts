@@ -245,6 +245,11 @@ export interface GetStoryWithContentData {
     coverImageUrl?: string | null;
     status: string;
     createdAt: TimestampString;
+    storyContent: ({
+      id: string;
+      textContent: string;
+      pageNumber: number;
+    } & StoryContent_Key)[];
   } & Story_Key;
 }
 

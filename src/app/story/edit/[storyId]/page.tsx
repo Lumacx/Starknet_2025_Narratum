@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-// Fix 1: Correctly separate the hook and type imports
 import { useGetStoryWithContent, useCreateStoryContent } from '../../../../../dataconnect-generated/js/default-connector/react';
 import type { GetStoryWithContentData } from '../../../../../dataconnect-generated/js/default-connector';
 import { generateWritingPrompts } from '@/ai/flows/generate-writing-prompts';
@@ -15,13 +14,15 @@ const FaPlus = () => <svg stroke="currentColor" fill="currentColor" strokeWidth=
 const FaLightbulb = () => <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 16 16" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M4.603 12.634a.5.5 0 0 1 .491.592l-.5 2a.5.5 0 0 1-.982-.196l.5-2a.5.5 0 0 1 .491-.396Zm-.002-4.591a.5.5 0 0 1 .49.592l-.25 1a.5.5 0 0 1-.982-.196l.25-1a.5.5 0 0 1 .492-.396ZM12.012 8.625a.5.5 0 0 1 .49.592l-.25 1a.5.5 0 0 1-.982-.196l.25-1a.5.5 0 0 1 .492-.396ZM11.397 12.634a.5.5 0 0 1 .49.592l-.5 2a.5.5 0 0 1-.982-.196l.5-2a.5.5 0 0 1 .492-.396ZM8 2a4 4 0 0 0-4 4c0 .64.12 1.244.333 1.815.234.621.574 1.223.973 1.778l.028.038C6.38 11.48 7.38 12 8 12s1.62-.52 2.664-1.37a4.475 4.475 0 0 0 1.002-1.815C11.88 7.244 12 6.64 12 6a4 4 0 0 0-4-4Zm0 1a3 3 0 0 1 3 3c0 .495-.094.965-.262 1.401-.18.483-.43.935-.733 1.345l-.027.037c-.782.975-1.517 1.62-2 1.62-.482 0-1.218-.645-2-1.62l-.027-.037a3.52 3.52 0 0 1-.733-1.345A3.99 3.99 0 0 1 5 6a3 3 0 0 1 3-3Z"></path><path d="M8 15a1 1 0 0 0 1-1H7a1 1 0 0 0 1 1Zm0-12a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-1 0v-1a.5.5 0 0 1 .5-.5Z"></path></svg>;
 const FaImage = () => <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 16 16" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M6.002 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"></path><path d="M2.002 1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2h-12zm12 1a1 1 0 0 1 1 1v6.5l-3.777-1.947a.5.5 0 0 0-.577.093l-3.71 3.71-2.66-1.772a.5.5 0 0 0-.63.062L1.002 12V3a1 1 0 0 1 1-1h12z"></path></svg>;
 
-// Correctly define the types based on the actual data structure
-type Story = NonNullable<GetStoryWithContentData['story']>[number];
-type StoryPage = NonNullable<Story['story_content']>[number];
+type Story = NonNullable<GetStoryWithContentData['story']>;
+type StoryPage = NonNullable<Story['storyContent']>[number];
 
 const StoryEditorPage: React.FC = () => {
   const params = useParams();
   const storyId = params.storyId as string;
+  
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const progressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const { data: storyData, loading: isLoadingStory, error } = useGetStoryWithContent({ storyId });
   const { mutate: updateStoryContent } = useCreateStoryContent();
@@ -37,17 +38,25 @@ const StoryEditorPage: React.FC = () => {
   const [imageGenerationError, setImageGenerationError] = useState<string | null>(null);
   const [generationProgress, setGenerationProgress] = useState(0);
 
-  const story = storyData?.story?.[0];
+  const story = storyData?.story;
   
-  // Fix 2: Add a type guard to ensure we only work with valid page objects.
-  const validPages = (story?.story_content ?? []).filter((p): p is StoryPage => !!p);
+  useEffect(() => {
+    if (story?.storyContent && story.storyContent.length > 0 && !activePage) {
+      setActivePage(story.storyContent[0]);
+      setCurrentPageContent(story.storyContent[0].textContent || '');
+    }
+  }, [story, activePage]);
 
   useEffect(() => {
-    if (validPages.length > 0 && !activePage) {
-      setActivePage(validPages[0]);
-      setCurrentPageContent(validPages[0].text_content || '');
-    }
-  }, [validPages, activePage]);
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+      }
+      if (progressTimeoutRef.current) {
+        clearTimeout(progressTimeoutRef.current);
+      }
+    };
+  }, []);
   
   const debouncedSave = useCallback(() => {
       if (saveStatus !== 'unsaved' || !activePage) return;
@@ -56,7 +65,7 @@ const StoryEditorPage: React.FC = () => {
         id: activePage.id,
         story_id: storyId,
         text_content: currentPageContent,
-        page_number: activePage.page_number
+        page_number: activePage.pageNumber
       }, {
         onSuccess: () => setSaveStatus('saved'),
         onError: (e: Error) => {
@@ -80,7 +89,7 @@ const StoryEditorPage: React.FC = () => {
   
   const selectPage = (page: StoryPage) => {
     setActivePage(page);
-    setCurrentPageContent(page.text_content || '');
+    setCurrentPageContent(page.textContent || '');
     setSaveStatus('saved');
   };
   
@@ -113,12 +122,15 @@ const StoryEditorPage: React.FC = () => {
       return;
     }
     
+    if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+    if (progressTimeoutRef.current) clearTimeout(progressTimeoutRef.current);
+
     setIsGeneratingImage(true);
     setGeneratedImageUrl(null);
     setImageGenerationError(null);
     setGenerationProgress(0);
 
-    const progressInterval = setInterval(() => {
+    progressIntervalRef.current = setInterval(() => {
         setGenerationProgress(prev => (prev < 90 ? prev + 10 : prev));
     }, 500);
 
@@ -129,7 +141,6 @@ const StoryEditorPage: React.FC = () => {
         body: JSON.stringify({ prompt: imagePrompt }),
       });
       
-      clearInterval(progressInterval);
       setGenerationProgress(100);
 
       if (!response.ok) {
@@ -143,8 +154,11 @@ const StoryEditorPage: React.FC = () => {
     } catch (e: any) {
       setImageGenerationError(e.message);
     } finally {
+      if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+      }
       setIsGeneratingImage(false);
-      setTimeout(() => setGenerationProgress(0), 1000);
+      progressTimeoutRef.current = setTimeout(() => setGenerationProgress(0), 1000);
     }
   };
 
@@ -186,13 +200,13 @@ const StoryEditorPage: React.FC = () => {
             <button className="p-2 rounded-full hover:bg-[#F0D1B0]/50" title="Add New Page"><FaPlus /></button>
           </div>
           <ul className="space-y-2">
-            {validPages.map(page => (
+            {story.storyContent?.map((page: StoryPage) => (
               <li key={page.id}>
                 <button
                   onClick={() => selectPage(page)}
                   className={`w-full text-left px-3 py-2 rounded-md transition-colors flex items-center gap-3 ${activePage?.id === page.id ? 'bg-[#E97451] text-white font-bold' : 'hover:bg-[#F0D1B0]/50'}`}
                 >
-                  <FaBook /> {`Page ${page.page_number}`}
+                  <FaBook /> {`Page ${page.pageNumber}`}
                 </button>
               </li>
             ))}

@@ -10,3 +10,20 @@ query GetUserProfile($userId: String!) @auth(level: USER) {
     createdAt
   }
 }
+
+query GetStoryWithContent($storyId: String!) {
+  story(id: $storyId) {
+    id
+    title
+    genre
+    description
+    coverImageUrl
+    status
+    createdAt
+    storyContent {
+      id
+      textContent
+      pageNumber
+    }
+  }
+}

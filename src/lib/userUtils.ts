@@ -1,51 +1,65 @@
-// src/lib/userUtils.ts
-import { User } from 'firebase/auth';
-import { db } from './firebase'; // Your main firebase.ts file
-import { doc, setDoc, getDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import {
+  getUserProfile as dcGetUserProfile,
+  createUserProfile as dcCreateUserProfile,
+} from '../../dataconnect-generated/js/default-connector';
+import type { GetUserProfileData } from '../../dataconnect-generated/js/default-connector';
 
-export interface UserProfile {
-  uid: string;
-  email?: string | null;
-  displayName?: string | null;
-  photoURL?: string | null;
-  createdAt: Timestamp;
-  lastLoginAt: Timestamp;
-  // Add any other custom fields you want for a user profile
-  // e.g., roles?: string[]; bio?: string;
-}
+// Correctly derive the UserProfile type from the generated GetUserProfileData type.
+export type UserProfile = NonNullable<GetUserProfileData['user']>;
 
-export const manageUserInFirestore = async (user: User): Promise<void> => {
-  if (!user) return;
-
-  const userRef = doc(db, 'users', user.uid);
-
+/**
+ * Gets a user's profile using the DataConnect query.
+ */
+export const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
   try {
-    const docSnap = await getDoc(userRef);
-
-    if (docSnap.exists()) {
-      // User exists, update lastLoginAt
-      await setDoc(userRef, { 
-        lastLoginAt: serverTimestamp(),
-        // Optionally update other fields if they might change and you want to sync them
-        // displayName: user.displayName,
-        // photoURL: user.photoURL,
-      }, { merge: true });
-      console.log("User document updated in Firestore for UID:", user.uid);
-    } else {
-      // User does not exist, create new document
-      const newUserProfile: UserProfile = {
-        uid: user.uid,
-        email: user.email,
-        displayName: user.displayName,
-        photoURL: user.photoURL,
-        createdAt: serverTimestamp(),
-        lastLoginAt: serverTimestamp(),
-      };
-      await setDoc(userRef, newUserProfile);
-      console.log("New user document created in Firestore for UID:", user.uid);
+    const { data } = await dcGetUserProfile({ userId });
+    if (data && data.user) {
+      return data.user;
     }
+    return null;
   } catch (error) {
-    console.error("Error managing user document in Firestore:", error);
-    // Optionally, re-throw the error or handle it more gracefully depending on your app's needs
+    console.error("DataConnect error in getUserProfile:", error);
+    return null;
   }
+};
+
+/**
+ * Creates a user profile using the DataConnect mutation.
+ */
+export const createUserProfile = async (
+  profileData: { userId: string, email: string; username: string; displayname: string }
+): Promise<UserProfile> => {
+  try {
+    // DataConnect infers the creator from the auth context, but we pass the data.
+    await dcCreateUserProfile({
+      email: profileData.email,
+      username: profileData.username,
+      displayname: profileData.displayname,
+    });
+    
+    // Fetch the newly created user to ensure it exists before proceeding.
+    const newUser = await getUserProfile(profileData.userId);
+    if (!newUser) {
+      throw new Error("Failed to fetch user profile after creation.");
+    }
+    return newUser;
+  } catch (error) {
+    console.error("DataConnect error in createUserProfile:", error);
+    throw error;
+  }
+};
+
+/**
+ * Placeholder for checking username availability.
+ * This should be refactored to use a DataConnect query for consistency.
+ */
+import { getFirestore, collection, query, where, getDocs } from 'firebase/firestore';
+import { app } from './firebase';
+
+const db = getFirestore(app);
+export const isUsernameAvailable = async (username: string) => {
+  const usersRef = collection(db, 'users');
+  const q = query(usersRef, where('username', '==', username));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.empty;
 };
