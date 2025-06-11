@@ -3,7 +3,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { getUserProfile, createUserProfile } from '@/lib/userUtils';
+// User profile creation is now handled by a Firebase Function, so these are no longer needed here.
+// import { getUserProfile, createUserProfile } from '@/lib/userUtils';
 
 interface AuthContextType {
   user: User | null;
@@ -25,26 +26,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        try {
-          const userProfile = await getUserProfile(firebaseUser.uid);
-          if (!userProfile) {
-            await createUserProfile({
-              userId: firebaseUser.uid,
-              email: firebaseUser.email || 'No email provided',
-              username: firebaseUser.displayName || 'Anonymous',
-              displayname: firebaseUser.displayName || 'Anonymous User',
-            });
-          }
-        } catch (error) {
-          console.error("Failed to check or create user profile in AuthContext:", error);
-          await firebaseSignOut(auth);
-          setUser(null);
-          setLoading(false);
-          return;
-        }
-      }
+    // The onAuthStateChanged listener now only needs to set the user state.
+    // The backend Firebase Function handles profile creation automatically.
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       setLoading(false);
     });

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useCreateStory } from '../../../dataconnect-generated/js/default-connector/react';
 import type { CreateStoryData } from '../../../dataconnect-generated/js/default-connector';
-import { getUserProfile, createUserProfile } from '@/lib/userUtils';
+import { getUserProfile } from '@/lib/userUtils';
 
 // Feather Icon SVG Component
 const FeatherIcon = ({ className }: { className?: string }) => (
@@ -42,8 +42,11 @@ const mockTemplates: Template[] = [
 const CreateStoryPage: React.FC = () => {
   const { user, starknetAddress, loading } = useAuth();
   const router = useRouter();
-  const { mutate: createStory, isPending, error } = useCreateStory();
+  const { mutate: createStory, isPending, error: createStoryError, reset } = useCreateStory();
   const isLoggedIn = !!user || !!starknetAddress;
+
+  const [uiError, setUiError] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   const [formData, setFormData] = useState<NewStoryData>({
     title: '',
@@ -70,53 +73,74 @@ const CreateStoryPage: React.FC = () => {
     setFormData(prev => ({ ...prev, templateId }));
   };
 
+  const pollForUserProfile = async (uid: string) => {
+    const MAX_RETRIES = 5;
+    const RETRY_DELAY_MS = 1000;
+  
+    for (let i = 0; i < MAX_RETRIES; i++) {
+      const userProfile = await getUserProfile(uid);
+      if (userProfile) {
+        return userProfile; // Profile found, return it.
+      }
+      // If profile not found, wait before retrying.
+      await new Promise(res => setTimeout(res, RETRY_DELAY_MS));
+    }
+  
+    // If the loop finishes without finding a profile, throw an error.
+    throw new Error("User profile not available after multiple attempts. Please try again in a moment.");
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!user) {
-        console.error("Story creation requires a logged-in Firebase user.");
+        setUiError("You must be logged in to create a story.");
         return;
     };
 
+    setUiError(null);
+    reset(); // Reset any previous `createStory` errors.
+    setIsVerifying(true);
+
     try {
-      let userProfile = await getUserProfile(user.uid);
+      // This function will now poll for the user profile.
+      const userProfile = await pollForUserProfile(user.uid);
       if (!userProfile) {
-        userProfile = await createUserProfile({
-          userId: user.uid,
-          email: user.email || '',
-          username: user.displayName || '',
-          displayname: user.displayName || '',
-        });
+        // This case should now be handled by the error thrown in pollForUserProfile.
+        return;
       }
 
+      // Once the profile is confirmed, proceed to create the story.
       createStory({
         creatorId: user.uid,
-        title: formData.title,
-        description: formData.description,
-        genre: formData.genre,
+        title: formData.title || 'Untitled Story',
+        description: formData.description || 'No description provided.',
+        genre: formData.genre || 'General',
       }, {
         onSuccess: (data: CreateStoryData) => {
           const newStoryId = data.story_insert?.id;
           if (newStoryId) {
             router.push(`/story/edit/${newStoryId}`);
           } else {
-              console.error("Story creation succeeded but no ID was returned.");
+            setUiError("Story creation succeeded but no ID was returned.");
           }
         },
         onError: (err: Error) => {
-            console.error("Story creation failed:", err);
+          // This will catch errors from the `createStory` mutation itself.
+          setUiError(`Failed to create story: ${err.message}`);
         }
       });
-    } catch (err) {
-      console.error("Failed to ensure user profile exists:", err);
+    } catch (err: any) {
+      // This will catch the error from `pollForUserProfile` if it fails.
+      setUiError(err.message);
+    } finally {
+        setIsVerifying(false);
     }
   };
 
-  if (loading || !isLoggedIn) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F0D1B0]">
-        <p className="text-xl font-semibold text-[#3D4F60]">
-          {loading ? 'Verifying authentication...' : 'Redirecting to login...'}
-        </p>
+        <p className="text-xl font-semibold text-[#3D4F60]">Loading...</p>
       </div>
     );
   }
@@ -185,20 +209,20 @@ const CreateStoryPage: React.FC = () => {
                 ))}
               </div>
             </div>
-
-            {error && (
+            
+            {(uiError || createStoryError) && (
               <div className="mt-4 p-3 rounded-md text-sm text-center bg-red-100 text-red-800">
-                Story creation failed: {error.message}
+                {uiError || `An unexpected error occurred: ${createStoryError?.message}`}
               </div>
             )}
             
             <div className="text-center pt-4">
               <button
                 type="submit"
-                disabled={isPending}
+                disabled={isPending || isVerifying}
                 className="px-12 py-3 bg-[#E97451] text-white font-bold text-lg rounded-full shadow-lg hover:bg-[#d8633f] transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-[#F0D1B0] disabled:opacity-50"
               >
-                {isPending ? 'Creating...' : 'Start Writing'}
+                {isVerifying ? 'Verifying...' : (isPending ? 'Creating...' : 'Start Writing')}
               </button>
             </div>
           </form>
