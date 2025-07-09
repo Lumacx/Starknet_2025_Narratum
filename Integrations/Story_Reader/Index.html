@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Story Title</title> <!-- Updated Title -->
+    <link rel="stylesheet" href="Story.css?v=1.1"> <!-- Update version -->
+    <!-- Optional: Add FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- Main Application Container -->
+    <div id="app-container">
+
+        <!-- Header -->
+        <header id="app-header">
+            <div style="display: flex; align-items: center; gap: 15px;margin-top: 5px;">
+                <div id="welcome-text">Welcome!</div>
+            </div>
+            <div id="header-icons">
+                <button class="header-icon-btn" aria-label="Font Settings" title="Font Settings">
+                <i class="fas fa-font"></i>
+                </button>   
+
+                <button class="header-icon-btn" aria-label="Drawing Tools" title="Drawing Tools">
+                <i class="fas fa-paint-brush"></i>
+                </button>
+
+                <button id="play-music-button" class="header-icon-btn" aria-label="Play Music" title="Play Music">
+                <i class="fas fa-volume-up"></i>
+                </button>
+
+                <button id="options-button-new" class="header-icon-btn" aria-label="Settings" title="Settings">
+                <i class="fas fa-cog"></i>
+                </button>
+            </div>
+        </header>
+
+        <div id="navigation-controls-bar" style="align-items: center; gap: 15px;margin-top: 10px;width: calc(100% - 40px); padding: 5px 0; display: flex; justify-content: space-between; box-sizing: border-box;">
+            <button id="arrow-left" class="arrow nav-arrow hidden" aria-label="Previous Page" title="Previous Page">
+            <i class="fas fa-chevron-left"></i>
+            </button>
+            
+            <button id="narration-pause-play-button" class="arrow nav-arrow" aria-label="Pause Narration" title="Pause Narration">
+            <i class="fas fa-pause"></i>
+            </button>
+
+            <div id="audio-progress-container" style="flex-grow: 1; margin: 0 3px;"> 
+                <div id="audio-progress-bar"></div>
+            </div>
+            
+            <button id="arrow-right" class="arrow nav-arrow" aria-label="Next Page" title="Next Page">
+            <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+
+
+        <!-- Main Content Area -->
+        <main id="app-main" style="margin-top: 2px; ">
+            <div id="avatar-panel">
+                <img id="avatar-image" src="avatars/Default.png" alt="Narrator Avatar" />
+                <button id="start-story-button">Start Story</button>
+            </div>
+            <div id="image-panel">
+                <img id="story-image" src="" alt="Story Image" />
+            </div>
+        </main>
+
+        <!-- Text Area --> 
+        <div id="text-area" style="margin-bottom: 20px;">
+            <div id="text-bubble">Loading text...</div>
+            <button id="read-again-button"><i class="fas fa-redo"></i> Read it again</button>
+         </div>
+
+        <!-- Footer Navigation -->
+         <footer id="app-footer" style="margin-top: 40px; display: flex; justify-content: start; gap: 10px; align-items: center; padding: 0 20px;">
+            <div id="page-info">Page 0 of X</div>
+        </footer>
+
+    </div><!-- End App Container -->
+
+    <!-- Options Pop-up (Similar Structure, Different Trigger) -->
+    </div>
+    <div id="options-popup" class="hidden">
+        <button id="close-popup-button">X</button>
+        <h4>Options</h4>
+        <div class="popup-option">
+            <label for="popup-background-select">Background:</label>
+            <select id="popup-background-select">
+                <option value="">Default Black</option>
+                <option value="space-background.png">Space</option>
+                <option value="blockchain-background.png" selected>Blockchain</option>
+                <option value="dream-background.png">Dream</option>
+            </select>
+        </div>
+        <div class="popup-option">
+            <label for="narrator-select">Narrator:</label>
+            <select id="narrator-select">
+                <option value="Default">Default</option>
+                <option value="Argus">Argus</option>
+            </select>
+        </div>
+        <button id="create-story-button" class="popup-nav-button">Create Story</button>
+        <button id="back-home-button" class="popup-nav-button">Back Home</button>
+    </div>
+
+    <!-- Loading Screen (Keep this outside app-container) -->
+    <div id="loading-screen">Loading Story...</div>
+
+    <!-- Your script -->
+    <script src="Story.js?v=1.1"></script> <!-- Update version -->
+    <elevenlabs-convai agent-id="agent_01jz5wvvenep3awvc2d65kfq0a"></elevenlabs-convai>
+    <script src="https://unpkg.com/@elevenlabs/convai-widget-embed" async type="text/javascript"></script>
+    
+</body>
+</html>
+
+
+    <!-- Libraries (Remove Three.js and GSAP if not needed for background/transitions) -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script> -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script> -->

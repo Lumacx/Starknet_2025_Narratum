@@ -1,0 +1,2 @@
+The ByteBeasts weren’t designed by human developers.
+They were discovered.
