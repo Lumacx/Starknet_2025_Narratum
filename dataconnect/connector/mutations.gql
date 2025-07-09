@@ -24,3 +24,27 @@ mutation CreateStory($title: String!, $genre: String!, $description: String) @au
     id
   }
 }
+
+mutation CreateComment($storyId: String!, $content: String!) @auth(level: USER) {
+  comment_insert(
+    data: {
+      storyId: $storyId
+      authorId: "auth.uid"
+      content: $content
+    }
+  ) {
+    id
+  }
+}
+
+mutation CreateReaction($storyId: String!, $reactionType: String!) @auth(level: USER) {
+    reaction_insert(
+        data: {
+            storyId: $storyId
+            userId: "auth.uid"
+            reactionType: $reactionType
+        }
+    ) {
+        id
+    }
+}

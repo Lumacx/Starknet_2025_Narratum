@@ -58,6 +58,8 @@ type Story @table {
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
   storyContent: [StoryContent]
+  comments: [Comment]
+  reactions: [Reaction]
 }
 
 type StoryContent @table {
@@ -67,7 +69,24 @@ type StoryContent @table {
   pageNumber: Int
   imageUrl: String
   audioUrl: String
+  videoUrl: String
   createdAt: Timestamp! @default(expr: "request.time")
+}
+
+type Comment @table {
+  id: String! @default(expr: "uuidV4()")
+  story: Story!
+  author: User!
+  content: String!
+  createdAt: Timestamp! @default(expr: "request.time")
+}
+
+type Reaction @table {
+    id: String! @default(expr: "uuidV4()")
+    story: Story!
+    user: User!
+    reactionType: String! # e.g., "like", "love", "wow"
+    createdAt: Timestamp! @default(expr: "request.time")
 }
 
 type Template @table {

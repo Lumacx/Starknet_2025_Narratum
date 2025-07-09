@@ -25,6 +25,21 @@ query GetStoryWithContent($storyId: String!) {
       textContent
       pageNumber
     }
+    comments {
+        id
+        content
+        author {
+            displayname
+            avatarUrl
+        }
+    }
+    reactions {
+        id
+        reactionType
+        user {
+            displayname
+        }
+    }
   }
 }
 
