@@ -1,50 +1,46 @@
-# Mutations
-mutation CreateUserProfile($username: String!, $email: String!, $displayname: String!) @auth(level: USER) {
- user_insert(
-  data: {
-    id: "auth.uid"
-    username: $username
-    email: $email
-    displayname: $displayname
-    role: "'reader'"
-  }
- )
-}
+# Thiss is an example of how to use mutations with DataConnect
+# For more information about mutations, please visit
+# https://firebase.google.com/docs/dataconnect/mutations
 
-mutation CreateStory($title: String!, $genre: String!, $description: String) @auth(level: USER) {
-  story_insert(
-    data: {
-      creatorId: "auth.uid"
-      title: $title
-      genre: $genre
-      description: $description
-      status: "'draft'"
-    }
-  ) {
-    id
-  }
-}
-
-mutation CreateComment($storyId: String!, $content: String!) @auth(level: USER) {
-  comment_insert(
-    data: {
-      storyId: $storyId
-      authorId: "auth.uid"
-      content: $content
-    }
-  ) {
-    id
-  }
-}
-
-mutation CreateReaction($storyId: String!, $reactionType: String!) @auth(level: USER) {
-    reaction_insert(
-        data: {
-            storyId: $storyId
-            userId: "auth.uid"
-            reactionType: $reactionType
-        }
+mutation CreateUser($userId: String!, $displayname: String, $avatarUrl: String) {
+  users {
+    create(
+      data: {
+        id: $userId
+        displayname: $displayname
+        avatarUrl: $avatarUrl
+      }
     ) {
-        id
+      id
     }
+  }
+}
+
+mutation CreateStoryWithContent($storyId: String!, $authorId: String!, $title: String!, $description: String, $genre: String, $coverImageUrl: String, $status: String, $storyContent: [StoryContentInput!]) {
+  stories {
+    create(
+      data: {
+        id: $storyId
+        authorId: $authorId
+        title: $title
+        description: $description
+        genre: $genre
+        coverImageUrl: $coverImageUrl
+        status: $status
+        storyContent: {
+          create: $storyContent
+        }
+      }
+    ) {
+      id
+    }
+  }
+}
+
+input StoryContentInput {
+  storyId: String!
+  pageNumber: Int!
+  textContent: String
+  imageUrl: String
+  audioUrl: String
 }

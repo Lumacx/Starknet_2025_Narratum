@@ -45,3 +45,4 @@ next-env.d.ts
 public/_auth/*
 firebase-debug.log
 firestore-debug.log
+/src/generated/prisma

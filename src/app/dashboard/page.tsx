@@ -12,8 +12,7 @@ const DashboardPage: React.FC = () => {
   
   // Fetch stories using the generated hook, only if the user exists.
   const { data: storiesData, isLoading: storiesLoading, error } = useListStoriesByUser(
-    user ? { userId: user.uid } : undefined,
-    { enabled: !!user } // React Query option: only run the query if the user is available
+    user ? { userId: user.uid } : undefined
   );
 
   // Redirect to login if not authenticated.

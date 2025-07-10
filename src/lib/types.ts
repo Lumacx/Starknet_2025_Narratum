@@ -14,14 +14,18 @@ export interface User {
   export interface Comment {
     id: string;
     content: string;
-    author: User;
+    authorId: string;       // Agrega este campo para los resolvers
+    storyId: string;        // Importante para reacciones
     createdAt: string;
   }
 
   export interface Reaction {
       id: string;
-      reactionType: string;
-      user: User;
+      reactionType: string;  // e.g., "like", "love", "wow"
+      userId: string;        // Referencia al usuario que reacciona
+      commentId: string;     // Comentario al que se aplica la reacción
+      storyId: string;
+      createdAt: string;
   }
   
   export interface Story {
@@ -30,14 +34,15 @@ export interface User {
     genre?: string;
     description?: string;
     coverImageUrl?: string;
-    creator: User;
+    authorId: string;           // <- 🔑 necesario para resolver `author`
     status: string;
     createdAt: string;
     updatedAt: string;
-    storyContent: StoryContent[];
-    comments: Comment[];
-    reactions: Reaction[];
-  }
+    // Estos campos NO deben ser requeridos directamente
+     storyContent?: StoryContent[];
+      comments?: Comment[];
+      reactions?: Reaction[];
+    }
   
   export interface StoryContent {
     id: string;
@@ -118,3 +123,11 @@ export interface User {
     createdAt: string;
   }
   
+  import type { Auth } from 'firebase-admin/auth';
+  import type { Firestore } from 'firebase-admin/firestore';
+
+  export interface GraphQLContext {
+  db: Firestore;
+  auth: Auth;
+  user?: User; // <- ya definido en tu types
+  }

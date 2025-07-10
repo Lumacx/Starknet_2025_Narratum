@@ -23,10 +23,9 @@
         "name": "next"
       }
     ],
+    "baseUrl": "src", // ✅ <--- esto es lo que falta
     "paths": {
-      "@/*": [
-        "./src/*"
-      ]
+      "@/*": ["*"]
     },
     "noEmit": true
   },
