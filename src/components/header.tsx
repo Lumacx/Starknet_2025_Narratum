@@ -19,7 +19,7 @@ const Header: FC = () => {
 
   const blueButtonClasses = "px-6 py-3 bg-[#1877F2] text-white font-semibold rounded-full shadow-md hover:bg-[#166FE5] transition duration-300 flex items-center justify-center text-sm";
   // Corrected purple button classes from landing page
-  const purpleButtonClasses = "px-6 py-2 bg-purple-600 text-white font-semibold rounded-full shadow-md hover:bg-purple-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-purple-300 text-sm";
+  const purpleButtonClasses = "px-6 py-3 bg-purple-600 text-white font-semibold rounded-full shadow-md hover:bg-purple-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-purple-300 text-sm";
 
   let loginLogoutContent;
   if (loading) {
@@ -49,12 +49,11 @@ const Header: FC = () => {
 
   return (
     <header className="py-4 px-4 md:px-8 bg-gray-800 text-white shadow-md"> 
-      <div className="container mx-auto flex items-center justify-between">
-        <Link href="/subscription" className={purpleButtonClasses}>
-          Subscriptions
-        </Link>
-        
-        <div className="flex items-center space-x-4">
+      <div className="container mx-auto flex items-center justify-start">
+        <div className="flex items-center" style={{ gap: '10px' }}>
+          <Link href="/subscription" className={purpleButtonClasses}>
+            Subscriptions
+          </Link>
           {loginLogoutContent}
         </div>
       </div>
