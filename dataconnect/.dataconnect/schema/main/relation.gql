@@ -1,172 +1,3 @@
-extend type AIGeneratedGIF {
-  """
-  Implicit metadata field that cannot be written. It provides extra information about query results.
-  """
-  _metadata: _Metadata @fdc_generated(from: "AIGeneratedGIF", purpose: METADATA_FIELD)
-  """
-  ✨ Count the number of rows in the `AIGeneratedGIF` table.
-  """
-  _count: Int! @fdc_generated(from: "AIGeneratedGIF", purpose: QUERY_COUNT)
-  """
-  ✨ Count the number of rows in the `AIGeneratedGIF` table where the `createdAt` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
-  """
-  createdAt_count(
-    """
-    Set to true to count the number of distinct values.
-    """
-    distinct: Boolean = false
-  ): Int! @fdc_generated(from: "AIGeneratedGIF.createdAt", purpose: QUERY_COUNT)
-  """
-  ✨ Count the number of rows in the `AIGeneratedGIF` table where the `gifUrl` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
-  """
-  gifUrl_count(
-    """
-    Set to true to count the number of distinct values.
-    """
-    distinct: Boolean = false
-  ): Int! @fdc_generated(from: "AIGeneratedGIF.gifUrl", purpose: QUERY_COUNT)
-  """
-  ✨ Count the number of rows in the `AIGeneratedGIF` table where the `id` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
-  """
-  id_count(
-    """
-    Set to true to count the number of distinct values.
-    """
-    distinct: Boolean = false
-  ): Int! @fdc_generated(from: "AIGeneratedGIF.id", purpose: QUERY_COUNT)
-  """
-  ✨ Count the number of rows in the `AIGeneratedGIF` table where the `imageId` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
-  """
-  imageId_count(
-    """
-    Set to true to count the number of distinct values.
-    """
-    distinct: Boolean = false
-  ): Int! @fdc_generated(from: "AIGeneratedGIF.imageId", purpose: QUERY_COUNT)
-  """
-  ✨ Minimum of the `createdAt` field in the `AIGeneratedGIF` table.
-  """
-  createdAt_min: Timestamp @fdc_generated(from: "AIGeneratedGIF.createdAt", purpose: QUERY_MIN)
-  """
-  ✨ Maximum of the `createdAt` field in the `AIGeneratedGIF` table.
-  """
-  createdAt_max: Timestamp @fdc_generated(from: "AIGeneratedGIF.createdAt", purpose: QUERY_MAX)
-}
-extend type AIGeneratedImage {
-  """
-  ✨ List `AIGeneratedGIF` objects in a one-to-many relationship (where `AIGeneratedGIF`.`image` is this object).
-  """
-  aIGeneratedGIFS_on_image(
-    """
-    Filter condition to narrow down the query results.
-    """
-    where: AIGeneratedGIF_Filter
-
-    """
-    Order the query results by specific fields.
-    """
-    orderBy: [AIGeneratedGIF_Order!]
-
-    """
-    Number of rows to skip before starting to return the results.
-    """
-    offset: Int
-
-    """
-    Maximum number of rows to return (defaults to 100 rows).
-    """
-    limit: Int = 100
-
-    """
-    Set to true to return distinct results.
-    """
-    distinct: Boolean = false
-
-    """
-    Filter condition to apply to the groups of aggregate queries.
-    """
-    having: AIGeneratedGIF_Having
-  ): [AIGeneratedGIF!]! @fdc_generated(from: "AIGeneratedGIF.image", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
-  """
-  Implicit metadata field that cannot be written. It provides extra information about query results.
-  """
-  _metadata: _Metadata @fdc_generated(from: "AIGeneratedImage", purpose: METADATA_FIELD)
-  """
-  ✨ Count the number of rows in the `AIGeneratedImage` table.
-  """
-  _count: Int! @fdc_generated(from: "AIGeneratedImage", purpose: QUERY_COUNT)
-  """
-  ✨ Count the number of rows in the `AIGeneratedImage` table where the `createdAt` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
-  """
-  createdAt_count(
-    """
-    Set to true to count the number of distinct values.
-    """
-    distinct: Boolean = false
-  ): Int! @fdc_generated(from: "AIGeneratedImage.createdAt", purpose: QUERY_COUNT)
-  """
-  ✨ Count the number of rows in the `AIGeneratedImage` table where the `generatedImageUrl` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
-  """
-  generatedImageUrl_count(
-    """
-    Set to true to count the number of distinct values.
-    """
-    distinct: Boolean = false
-  ): Int! @fdc_generated(from: "AIGeneratedImage.generatedImageUrl", purpose: QUERY_COUNT)
-  """
-  ✨ Count the number of rows in the `AIGeneratedImage` table where the `id` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
-  """
-  id_count(
-    """
-    Set to true to count the number of distinct values.
-    """
-    distinct: Boolean = false
-  ): Int! @fdc_generated(from: "AIGeneratedImage.id", purpose: QUERY_COUNT)
-  """
-  ✨ Count the number of rows in the `AIGeneratedImage` table where the `promptText` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
-  """
-  promptText_count(
-    """
-    Set to true to count the number of distinct values.
-    """
-    distinct: Boolean = false
-  ): Int! @fdc_generated(from: "AIGeneratedImage.promptText", purpose: QUERY_COUNT)
-  """
-  ✨ Count the number of rows in the `AIGeneratedImage` table where the `sketchUrl` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
-  """
-  sketchUrl_count(
-    """
-    Set to true to count the number of distinct values.
-    """
-    distinct: Boolean = false
-  ): Int! @fdc_generated(from: "AIGeneratedImage.sketchUrl", purpose: QUERY_COUNT)
-  """
-  ✨ Count the number of rows in the `AIGeneratedImage` table where the `status` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
-  """
-  status_count(
-    """
-    Set to true to count the number of distinct values.
-    """
-    distinct: Boolean = false
-  ): Int! @fdc_generated(from: "AIGeneratedImage.status", purpose: QUERY_COUNT)
-  """
-  ✨ Count the number of rows in the `AIGeneratedImage` table where the `userId` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
-  """
-  userId_count(
-    """
-    Set to true to count the number of distinct values.
-    """
-    distinct: Boolean = false
-  ): Int! @fdc_generated(from: "AIGeneratedImage.userId", purpose: QUERY_COUNT)
-  """
-  ✨ Minimum of the `createdAt` field in the `AIGeneratedImage` table.
-  """
-  createdAt_min: Timestamp @fdc_generated(from: "AIGeneratedImage.createdAt", purpose: QUERY_MIN)
-  """
-  ✨ Maximum of the `createdAt` field in the `AIGeneratedImage` table.
-  """
-  createdAt_max: Timestamp @fdc_generated(from: "AIGeneratedImage.createdAt", purpose: QUERY_MAX)
-}
 extend type AdminAction {
   """
   Implicit metadata field that cannot be written. It provides extra information about query results.
@@ -238,6 +69,175 @@ extend type AdminAction {
   ✨ Maximum of the `actionDate` field in the `AdminAction` table.
   """
   actionDate_max: Timestamp @fdc_generated(from: "AdminAction.actionDate", purpose: QUERY_MAX)
+}
+extend type AiGeneratedGif {
+  """
+  Implicit metadata field that cannot be written. It provides extra information about query results.
+  """
+  _metadata: _Metadata @fdc_generated(from: "AiGeneratedGif", purpose: METADATA_FIELD)
+  """
+  ✨ Count the number of rows in the `AiGeneratedGif` table.
+  """
+  _count: Int! @fdc_generated(from: "AiGeneratedGif", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `AiGeneratedGif` table where the `createdAt` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  createdAt_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "AiGeneratedGif.createdAt", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `AiGeneratedGif` table where the `gifUrl` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  gifUrl_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "AiGeneratedGif.gifUrl", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `AiGeneratedGif` table where the `id` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  id_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "AiGeneratedGif.id", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `AiGeneratedGif` table where the `imageId` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  imageId_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "AiGeneratedGif.imageId", purpose: QUERY_COUNT)
+  """
+  ✨ Minimum of the `createdAt` field in the `AiGeneratedGif` table.
+  """
+  createdAt_min: Timestamp @fdc_generated(from: "AiGeneratedGif.createdAt", purpose: QUERY_MIN)
+  """
+  ✨ Maximum of the `createdAt` field in the `AiGeneratedGif` table.
+  """
+  createdAt_max: Timestamp @fdc_generated(from: "AiGeneratedGif.createdAt", purpose: QUERY_MAX)
+}
+extend type AiGeneratedImage {
+  """
+  ✨ List `AiGeneratedGif` objects in a one-to-many relationship (where `AiGeneratedGif`.`image` is this object).
+  """
+  aiGeneratedGifs_on_image(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: AiGeneratedGif_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [AiGeneratedGif_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: AiGeneratedGif_Having
+  ): [AiGeneratedGif!]! @fdc_generated(from: "AiGeneratedGif.image", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  Implicit metadata field that cannot be written. It provides extra information about query results.
+  """
+  _metadata: _Metadata @fdc_generated(from: "AiGeneratedImage", purpose: METADATA_FIELD)
+  """
+  ✨ Count the number of rows in the `AiGeneratedImage` table.
+  """
+  _count: Int! @fdc_generated(from: "AiGeneratedImage", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `AiGeneratedImage` table where the `createdAt` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  createdAt_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "AiGeneratedImage.createdAt", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `AiGeneratedImage` table where the `generatedImageUrl` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  generatedImageUrl_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "AiGeneratedImage.generatedImageUrl", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `AiGeneratedImage` table where the `id` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  id_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "AiGeneratedImage.id", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `AiGeneratedImage` table where the `promptText` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  promptText_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "AiGeneratedImage.promptText", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `AiGeneratedImage` table where the `sketchUrl` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  sketchUrl_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "AiGeneratedImage.sketchUrl", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `AiGeneratedImage` table where the `status` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  status_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "AiGeneratedImage.status", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `AiGeneratedImage` table where the `userId` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  userId_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "AiGeneratedImage.userId", purpose: QUERY_COUNT)
+  """
+  ✨ Minimum of the `createdAt` field in the `AiGeneratedImage` table.
+  """
+  createdAt_min: Timestamp @fdc_generated(from: "AiGeneratedImage.createdAt", purpose: QUERY_MIN)
+  """
+  ✨ Maximum of the `createdAt` field in the `AiGeneratedImage` table.
+  """
+  createdAt_max: Timestamp @fdc_generated(from: "AiGeneratedImage.createdAt", purpose: QUERY_MAX)
 }
 extend type Analytics {
   """
@@ -1026,40 +1026,6 @@ extend type Template {
 }
 extend type User {
   """
-  ✨ List `AIGeneratedImage` objects in a one-to-many relationship (where `AIGeneratedImage`.`user` is this object).
-  """
-  aIGeneratedImages_on_user(
-    """
-    Filter condition to narrow down the query results.
-    """
-    where: AIGeneratedImage_Filter
-
-    """
-    Order the query results by specific fields.
-    """
-    orderBy: [AIGeneratedImage_Order!]
-
-    """
-    Number of rows to skip before starting to return the results.
-    """
-    offset: Int
-
-    """
-    Maximum number of rows to return (defaults to 100 rows).
-    """
-    limit: Int = 100
-
-    """
-    Set to true to return distinct results.
-    """
-    distinct: Boolean = false
-
-    """
-    Filter condition to apply to the groups of aggregate queries.
-    """
-    having: AIGeneratedImage_Having
-  ): [AIGeneratedImage!]! @fdc_generated(from: "AIGeneratedImage.user", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
-  """
   ✨ List `AdminAction` objects in a one-to-many relationship (where `AdminAction`.`admin` is this object).
   """
   adminActions_on_admin(
@@ -1093,6 +1059,40 @@ extend type User {
     """
     having: AdminAction_Having
   ): [AdminAction!]! @fdc_generated(from: "AdminAction.admin", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  ✨ List `AiGeneratedImage` objects in a one-to-many relationship (where `AiGeneratedImage`.`user` is this object).
+  """
+  aiGeneratedImages_on_user(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: AiGeneratedImage_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [AiGeneratedImage_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: AiGeneratedImage_Having
+  ): [AiGeneratedImage!]! @fdc_generated(from: "AiGeneratedImage.user", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
   """
   ✨ List `Analytics` objects in a one-to-many relationship (where `Analytics`.`user` is this object).
   """

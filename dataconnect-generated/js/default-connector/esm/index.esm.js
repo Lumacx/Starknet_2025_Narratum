@@ -6,116 +6,6 @@ export const connectorConfig = {
   location: 'northamerica-northeast1'
 };
 
-export const createUserProfileRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'CreateUserProfile', inputVars);
-}
-createUserProfileRef.operationName = 'CreateUserProfile';
-
-export function createUserProfile(dcOrVars, vars) {
-  return executeMutation(createUserProfileRef(dcOrVars, vars));
-}
-
-export const createStoryRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'CreateStory', inputVars);
-}
-createStoryRef.operationName = 'CreateStory';
-
-export function createStory(dcOrVars, vars) {
-  return executeMutation(createStoryRef(dcOrVars, vars));
-}
-
-export const createStoryContentRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'CreateStoryContent', inputVars);
-}
-createStoryContentRef.operationName = 'CreateStoryContent';
-
-export function createStoryContent(dcOrVars, vars) {
-  return executeMutation(createStoryContentRef(dcOrVars, vars));
-}
-
-export const createTemplateRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'CreateTemplate', inputVars);
-}
-createTemplateRef.operationName = 'CreateTemplate';
-
-export function createTemplate(dcOrVars, vars) {
-  return executeMutation(createTemplateRef(dcOrVars, vars));
-}
-
-export const createAiGeneratedImageRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'CreateAIGeneratedImage', inputVars);
-}
-createAiGeneratedImageRef.operationName = 'CreateAIGeneratedImage';
-
-export function createAiGeneratedImage(dcOrVars, vars) {
-  return executeMutation(createAiGeneratedImageRef(dcOrVars, vars));
-}
-
-export const createAiGeneratedGifRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'CreateAIGeneratedGIF', inputVars);
-}
-createAiGeneratedGifRef.operationName = 'CreateAIGeneratedGIF';
-
-export function createAiGeneratedGif(dcOrVars, vars) {
-  return executeMutation(createAiGeneratedGifRef(dcOrVars, vars));
-}
-
-export const createPaymentRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'CreatePayment', inputVars);
-}
-createPaymentRef.operationName = 'CreatePayment';
-
-export function createPayment(dcOrVars, vars) {
-  return executeMutation(createPaymentRef(dcOrVars, vars));
-}
-
-export const createAdminActionRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'CreateAdminAction', inputVars);
-}
-createAdminActionRef.operationName = 'CreateAdminAction';
-
-export function createAdminAction(dcOrVars, vars) {
-  return executeMutation(createAdminActionRef(dcOrVars, vars));
-}
-
-export const createAnalyticsEntryRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'CreateAnalyticsEntry', inputVars);
-}
-createAnalyticsEntryRef.operationName = 'CreateAnalyticsEntry';
-
-export function createAnalyticsEntry(dcOrVars, vars) {
-  return executeMutation(createAnalyticsEntryRef(dcOrVars, vars));
-}
-
-export const logLegalDisclaimerAcceptanceRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'LogLegalDisclaimerAcceptance', inputVars);
-}
-logLegalDisclaimerAcceptanceRef.operationName = 'LogLegalDisclaimerAcceptance';
-
-export function logLegalDisclaimerAcceptance(dcOrVars, vars) {
-  return executeMutation(logLegalDisclaimerAcceptanceRef(dcOrVars, vars));
-}
-
 export const getUserProfileRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
@@ -246,5 +136,115 @@ getLegalDisclaimerRef.operationName = 'GetLegalDisclaimer';
 
 export function getLegalDisclaimer(dcOrVars, vars) {
   return executeQuery(getLegalDisclaimerRef(dcOrVars, vars));
+}
+
+export const createUserProfileRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateUserProfile', inputVars);
+}
+createUserProfileRef.operationName = 'CreateUserProfile';
+
+export function createUserProfile(dcOrVars, vars) {
+  return executeMutation(createUserProfileRef(dcOrVars, vars));
+}
+
+export const createStoryRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateStory', inputVars);
+}
+createStoryRef.operationName = 'CreateStory';
+
+export function createStory(dcOrVars, vars) {
+  return executeMutation(createStoryRef(dcOrVars, vars));
+}
+
+export const createStoryContentRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateStoryContent', inputVars);
+}
+createStoryContentRef.operationName = 'CreateStoryContent';
+
+export function createStoryContent(dcOrVars, vars) {
+  return executeMutation(createStoryContentRef(dcOrVars, vars));
+}
+
+export const createTemplateRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateTemplate', inputVars);
+}
+createTemplateRef.operationName = 'CreateTemplate';
+
+export function createTemplate(dcOrVars, vars) {
+  return executeMutation(createTemplateRef(dcOrVars, vars));
+}
+
+export const createAiGeneratedImageRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateAIGeneratedImage', inputVars);
+}
+createAiGeneratedImageRef.operationName = 'CreateAIGeneratedImage';
+
+export function createAiGeneratedImage(dcOrVars, vars) {
+  return executeMutation(createAiGeneratedImageRef(dcOrVars, vars));
+}
+
+export const createAiGeneratedGifRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateAIGeneratedGIF', inputVars);
+}
+createAiGeneratedGifRef.operationName = 'CreateAIGeneratedGIF';
+
+export function createAiGeneratedGif(dcOrVars, vars) {
+  return executeMutation(createAiGeneratedGifRef(dcOrVars, vars));
+}
+
+export const createPaymentRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreatePayment', inputVars);
+}
+createPaymentRef.operationName = 'CreatePayment';
+
+export function createPayment(dcOrVars, vars) {
+  return executeMutation(createPaymentRef(dcOrVars, vars));
+}
+
+export const createAdminActionRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateAdminAction', inputVars);
+}
+createAdminActionRef.operationName = 'CreateAdminAction';
+
+export function createAdminAction(dcOrVars, vars) {
+  return executeMutation(createAdminActionRef(dcOrVars, vars));
+}
+
+export const createAnalyticsEntryRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateAnalyticsEntry', inputVars);
+}
+createAnalyticsEntryRef.operationName = 'CreateAnalyticsEntry';
+
+export function createAnalyticsEntry(dcOrVars, vars) {
+  return executeMutation(createAnalyticsEntryRef(dcOrVars, vars));
+}
+
+export const logLegalDisclaimerAcceptanceRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'LogLegalDisclaimerAcceptance', inputVars);
+}
+logLegalDisclaimerAcceptanceRef.operationName = 'LogLegalDisclaimerAcceptance';
+
+export function logLegalDisclaimerAcceptance(dcOrVars, vars) {
+  return executeMutation(logLegalDisclaimerAcceptanceRef(dcOrVars, vars));
 }
 

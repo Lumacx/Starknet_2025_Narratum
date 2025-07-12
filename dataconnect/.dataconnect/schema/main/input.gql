@@ -1,0 +1,3219 @@
+"""
+✨ `AdminAction_KeyOutput` returns the primary key fields of table type `AdminAction`.
+
+It has the same format as `AdminAction_Key`, but is only used as mutation return value.
+"""
+scalar AdminAction_KeyOutput
+"""
+✨ `AiGeneratedGif_KeyOutput` returns the primary key fields of table type `AiGeneratedGif`.
+
+It has the same format as `AiGeneratedGif_Key`, but is only used as mutation return value.
+"""
+scalar AiGeneratedGif_KeyOutput
+"""
+✨ `AiGeneratedImage_KeyOutput` returns the primary key fields of table type `AiGeneratedImage`.
+
+It has the same format as `AiGeneratedImage_Key`, but is only used as mutation return value.
+"""
+scalar AiGeneratedImage_KeyOutput
+"""
+✨ `Analytics_KeyOutput` returns the primary key fields of table type `Analytics`.
+
+It has the same format as `Analytics_Key`, but is only used as mutation return value.
+"""
+scalar Analytics_KeyOutput
+"""
+✨ `AppSubscription_KeyOutput` returns the primary key fields of table type `AppSubscription`.
+
+It has the same format as `AppSubscription_Key`, but is only used as mutation return value.
+"""
+scalar AppSubscription_KeyOutput
+"""
+✨ `LegalDisclaimer_KeyOutput` returns the primary key fields of table type `LegalDisclaimer`.
+
+It has the same format as `LegalDisclaimer_Key`, but is only used as mutation return value.
+"""
+scalar LegalDisclaimer_KeyOutput
+"""
+✨ `Payment_KeyOutput` returns the primary key fields of table type `Payment`.
+
+It has the same format as `Payment_Key`, but is only used as mutation return value.
+"""
+scalar Payment_KeyOutput
+"""
+✨ `Story_KeyOutput` returns the primary key fields of table type `Story`.
+
+It has the same format as `Story_Key`, but is only used as mutation return value.
+"""
+scalar Story_KeyOutput
+"""
+✨ `StoryContent_KeyOutput` returns the primary key fields of table type `StoryContent`.
+
+It has the same format as `StoryContent_Key`, but is only used as mutation return value.
+"""
+scalar StoryContent_KeyOutput
+"""
+✨ `Template_KeyOutput` returns the primary key fields of table type `Template`.
+
+It has the same format as `Template_Key`, but is only used as mutation return value.
+"""
+scalar Template_KeyOutput
+"""
+✨ `User_KeyOutput` returns the primary key fields of table type `User`.
+
+It has the same format as `User_Key`, but is only used as mutation return value.
+"""
+scalar User_KeyOutput
+"""
+✨ Generated data input type for table 'AdminAction'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input AdminAction_Data {
+  """
+  ✨ Generated from Field `AdminAction`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `AdminAction`.`id` of type `String!`)
+  """
+  id_expr: String_Expr
+  """
+  ✨ Generated from Field `AdminAction`.`adminId` of type `String!`
+  """
+  adminId: String
+  """
+  ✨ `_expr` server value variant of `adminId` (✨ Generated from Field `AdminAction`.`adminId` of type `String!`)
+  """
+  adminId_expr: String_Expr
+  """
+  ✨ Generated from Field `AdminAction`.`admin` of type `User!`
+  """
+  admin: User_Key
+  """
+  ✨ Generated from Field `AdminAction`.`actionDate` of type `Timestamp!`
+  """
+  actionDate: Timestamp
+  """
+  ✨ `_expr` server value variant of `actionDate` (✨ Generated from Field `AdminAction`.`actionDate` of type `Timestamp!`)
+  """
+  actionDate_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `actionDate` (✨ Generated from Field `AdminAction`.`actionDate` of type `Timestamp!`)
+  """
+  actionDate_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `actionDate` (✨ Generated from Field `AdminAction`.`actionDate` of type `Timestamp!`)
+  """
+  actionDate_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `AdminAction`.`actionType` of type `String!`
+  """
+  actionType: String
+  """
+  ✨ `_expr` server value variant of `actionType` (✨ Generated from Field `AdminAction`.`actionType` of type `String!`)
+  """
+  actionType_expr: String_Expr
+  """
+  ✨ Generated from Field `AdminAction`.`description` of type `String`
+  """
+  description: String
+  """
+  ✨ `_expr` server value variant of `description` (✨ Generated from Field `AdminAction`.`description` of type `String`)
+  """
+  description_expr: String_Expr
+  """
+  ✨ Generated from Field `AdminAction`.`targetId` of type `String`
+  """
+  targetId: String
+  """
+  ✨ `_expr` server value variant of `targetId` (✨ Generated from Field `AdminAction`.`targetId` of type `String`)
+  """
+  targetId_expr: String_Expr
+}
+"""
+✨ Generated filter input type for table 'AdminAction'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input AdminAction_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [AdminAction_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: AdminAction_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [AdminAction_Filter!]
+  """
+  ✨ Generated from Field `AdminAction`.`id` of type `String!`
+  """
+  id: String_Filter
+  """
+  ✨ Generated from Field `AdminAction`.`adminId` of type `String!`
+  """
+  adminId: String_Filter
+  """
+  ✨ Generated from Field `AdminAction`.`admin` of type `User!`
+  """
+  admin: User_Filter
+  """
+  ✨ Generated from Field `AdminAction`.`actionDate` of type `Timestamp!`
+  """
+  actionDate: Timestamp_Filter
+  """
+  ✨ Generated from Field `AdminAction`.`actionType` of type `String!`
+  """
+  actionType: String_Filter
+  """
+  ✨ Generated from Field `AdminAction`.`description` of type `String`
+  """
+  description: String_Filter
+  """
+  ✨ Generated from Field `AdminAction`.`targetId` of type `String`
+  """
+  targetId: String_Filter
+}
+"""
+✨ Generated first-row input type for table 'AdminAction'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input AdminAction_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [AdminAction_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: AdminAction_Filter
+}
+"""
+✨ Generated having input type for table 'AdminAction'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input AdminAction_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [AdminAction_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: AdminAction_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [AdminAction_Having!]
+  """
+  ✨ Generated from Field `AdminAction`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `AdminAction`.`actionDate_count` of type `Int!`
+  """
+  actionDate_count: Int_Filter
+  """
+  ✨ Generated from Field `AdminAction`.`actionType_count` of type `Int!`
+  """
+  actionType_count: Int_Filter
+  """
+  ✨ Generated from Field `AdminAction`.`adminId_count` of type `Int!`
+  """
+  adminId_count: Int_Filter
+  """
+  ✨ Generated from Field `AdminAction`.`description_count` of type `Int!`
+  """
+  description_count: Int_Filter
+  """
+  ✨ Generated from Field `AdminAction`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `AdminAction`.`targetId_count` of type `Int!`
+  """
+  targetId_count: Int_Filter
+  """
+  ✨ Generated from Field `AdminAction`.`actionDate_min` of type `Timestamp`
+  """
+  actionDate_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `AdminAction`.`actionDate_max` of type `Timestamp`
+  """
+  actionDate_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'AdminAction'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input AdminAction_Key {
+  """
+  ✨ Generated from Field `AdminAction`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `AdminAction`.`id` of type `String!`)
+  """
+  id_expr: String_Expr
+}
+"""
+✨ Generated list filter input type for table 'AdminAction'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input AdminAction_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: AdminAction_Filter
+}
+"""
+✨ Generated order input type for table 'AdminAction'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input AdminAction_Order {
+  """
+  ✨ Generated from Field `AdminAction`.`id` of type `String!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `AdminAction`.`adminId` of type `String!`
+  """
+  adminId: OrderDirection
+  """
+  ✨ Generated from Field `AdminAction`.`admin` of type `User!`
+  """
+  admin: User_Order
+  """
+  ✨ Generated from Field `AdminAction`.`actionDate` of type `Timestamp!`
+  """
+  actionDate: OrderDirection
+  """
+  ✨ Generated from Field `AdminAction`.`actionType` of type `String!`
+  """
+  actionType: OrderDirection
+  """
+  ✨ Generated from Field `AdminAction`.`description` of type `String`
+  """
+  description: OrderDirection
+  """
+  ✨ Generated from Field `AdminAction`.`targetId` of type `String`
+  """
+  targetId: OrderDirection
+}
+"""
+✨ Generated data input type for table 'AiGeneratedGif'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input AiGeneratedGif_Data {
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `AiGeneratedGif`.`id` of type `String!`)
+  """
+  id_expr: String_Expr
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`imageId` of type `String!`
+  """
+  imageId: String
+  """
+  ✨ `_expr` server value variant of `imageId` (✨ Generated from Field `AiGeneratedGif`.`imageId` of type `String!`)
+  """
+  imageId_expr: String_Expr
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`image` of type `AiGeneratedImage!`
+  """
+  image: AiGeneratedImage_Key
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `AiGeneratedGif`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `AiGeneratedGif`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `AiGeneratedGif`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`gifUrl` of type `String`
+  """
+  gifUrl: String
+  """
+  ✨ `_expr` server value variant of `gifUrl` (✨ Generated from Field `AiGeneratedGif`.`gifUrl` of type `String`)
+  """
+  gifUrl_expr: String_Expr
+}
+"""
+✨ Generated filter input type for table 'AiGeneratedGif'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input AiGeneratedGif_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [AiGeneratedGif_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: AiGeneratedGif_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [AiGeneratedGif_Filter!]
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`id` of type `String!`
+  """
+  id: String_Filter
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`imageId` of type `String!`
+  """
+  imageId: String_Filter
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`image` of type `AiGeneratedImage!`
+  """
+  image: AiGeneratedImage_Filter
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`gifUrl` of type `String`
+  """
+  gifUrl: String_Filter
+}
+"""
+✨ Generated first-row input type for table 'AiGeneratedGif'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input AiGeneratedGif_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [AiGeneratedGif_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: AiGeneratedGif_Filter
+}
+"""
+✨ Generated having input type for table 'AiGeneratedGif'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input AiGeneratedGif_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [AiGeneratedGif_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: AiGeneratedGif_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [AiGeneratedGif_Having!]
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`gifUrl_count` of type `Int!`
+  """
+  gifUrl_count: Int_Filter
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`imageId_count` of type `Int!`
+  """
+  imageId_count: Int_Filter
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'AiGeneratedGif'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input AiGeneratedGif_Key {
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `AiGeneratedGif`.`id` of type `String!`)
+  """
+  id_expr: String_Expr
+}
+"""
+✨ Generated list filter input type for table 'AiGeneratedGif'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input AiGeneratedGif_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: AiGeneratedGif_Filter
+}
+"""
+✨ Generated order input type for table 'AiGeneratedGif'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input AiGeneratedGif_Order {
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`id` of type `String!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`imageId` of type `String!`
+  """
+  imageId: OrderDirection
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`image` of type `AiGeneratedImage!`
+  """
+  image: AiGeneratedImage_Order
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`gifUrl` of type `String`
+  """
+  gifUrl: OrderDirection
+}
+"""
+✨ Generated data input type for table 'AiGeneratedImage'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input AiGeneratedImage_Data {
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `AiGeneratedImage`.`id` of type `String!`)
+  """
+  id_expr: String_Expr
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`userId` of type `String!`
+  """
+  userId: String
+  """
+  ✨ `_expr` server value variant of `userId` (✨ Generated from Field `AiGeneratedImage`.`userId` of type `String!`)
+  """
+  userId_expr: String_Expr
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`user` of type `User!`
+  """
+  user: User_Key
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `AiGeneratedImage`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `AiGeneratedImage`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `AiGeneratedImage`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`generatedImageUrl` of type `String`
+  """
+  generatedImageUrl: String
+  """
+  ✨ `_expr` server value variant of `generatedImageUrl` (✨ Generated from Field `AiGeneratedImage`.`generatedImageUrl` of type `String`)
+  """
+  generatedImageUrl_expr: String_Expr
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`promptText` of type `String`
+  """
+  promptText: String
+  """
+  ✨ `_expr` server value variant of `promptText` (✨ Generated from Field `AiGeneratedImage`.`promptText` of type `String`)
+  """
+  promptText_expr: String_Expr
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`sketchUrl` of type `String`
+  """
+  sketchUrl: String
+  """
+  ✨ `_expr` server value variant of `sketchUrl` (✨ Generated from Field `AiGeneratedImage`.`sketchUrl` of type `String`)
+  """
+  sketchUrl_expr: String_Expr
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`status` of type `String!`
+  """
+  status: String
+  """
+  ✨ `_expr` server value variant of `status` (✨ Generated from Field `AiGeneratedImage`.`status` of type `String!`)
+  """
+  status_expr: String_Expr
+}
+"""
+✨ Generated filter input type for table 'AiGeneratedImage'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input AiGeneratedImage_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [AiGeneratedImage_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: AiGeneratedImage_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [AiGeneratedImage_Filter!]
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`id` of type `String!`
+  """
+  id: String_Filter
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`userId` of type `String!`
+  """
+  userId: String_Filter
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`user` of type `User!`
+  """
+  user: User_Filter
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`generatedImageUrl` of type `String`
+  """
+  generatedImageUrl: String_Filter
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`promptText` of type `String`
+  """
+  promptText: String_Filter
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`sketchUrl` of type `String`
+  """
+  sketchUrl: String_Filter
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`status` of type `String!`
+  """
+  status: String_Filter
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`aiGeneratedGifs_on_image` of type `[AiGeneratedGif!]!`
+  """
+  aiGeneratedGifs_on_image: AiGeneratedGif_ListFilter
+}
+"""
+✨ Generated first-row input type for table 'AiGeneratedImage'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input AiGeneratedImage_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [AiGeneratedImage_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: AiGeneratedImage_Filter
+}
+"""
+✨ Generated having input type for table 'AiGeneratedImage'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input AiGeneratedImage_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [AiGeneratedImage_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: AiGeneratedImage_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [AiGeneratedImage_Having!]
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`generatedImageUrl_count` of type `Int!`
+  """
+  generatedImageUrl_count: Int_Filter
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`promptText_count` of type `Int!`
+  """
+  promptText_count: Int_Filter
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`sketchUrl_count` of type `Int!`
+  """
+  sketchUrl_count: Int_Filter
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`status_count` of type `Int!`
+  """
+  status_count: Int_Filter
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`userId_count` of type `Int!`
+  """
+  userId_count: Int_Filter
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'AiGeneratedImage'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input AiGeneratedImage_Key {
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `AiGeneratedImage`.`id` of type `String!`)
+  """
+  id_expr: String_Expr
+}
+"""
+✨ Generated list filter input type for table 'AiGeneratedImage'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input AiGeneratedImage_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: AiGeneratedImage_Filter
+}
+"""
+✨ Generated order input type for table 'AiGeneratedImage'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input AiGeneratedImage_Order {
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`id` of type `String!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`userId` of type `String!`
+  """
+  userId: OrderDirection
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`user` of type `User!`
+  """
+  user: User_Order
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`generatedImageUrl` of type `String`
+  """
+  generatedImageUrl: OrderDirection
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`promptText` of type `String`
+  """
+  promptText: OrderDirection
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`sketchUrl` of type `String`
+  """
+  sketchUrl: OrderDirection
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`status` of type `String!`
+  """
+  status: OrderDirection
+}
+"""
+✨ Generated data input type for table 'Analytics'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input Analytics_Data {
+  """
+  ✨ Generated from Field `Analytics`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Analytics`.`id` of type `String!`)
+  """
+  id_expr: String_Expr
+  """
+  ✨ Generated from Field `Analytics`.`storyId` of type `String!`
+  """
+  storyId: String
+  """
+  ✨ `_expr` server value variant of `storyId` (✨ Generated from Field `Analytics`.`storyId` of type `String!`)
+  """
+  storyId_expr: String_Expr
+  """
+  ✨ Generated from Field `Analytics`.`userId` of type `String!`
+  """
+  userId: String
+  """
+  ✨ `_expr` server value variant of `userId` (✨ Generated from Field `Analytics`.`userId` of type `String!`)
+  """
+  userId_expr: String_Expr
+  """
+  ✨ Generated from Field `Analytics`.`story` of type `Story!`
+  """
+  story: Story_Key
+  """
+  ✨ Generated from Field `Analytics`.`user` of type `User!`
+  """
+  user: User_Key
+  """
+  ✨ Generated from Field `Analytics`.`action` of type `String!`
+  """
+  action: String
+  """
+  ✨ `_expr` server value variant of `action` (✨ Generated from Field `Analytics`.`action` of type `String!`)
+  """
+  action_expr: String_Expr
+  """
+  ✨ Generated from Field `Analytics`.`actionTimestamp` of type `Timestamp!`
+  """
+  actionTimestamp: Timestamp
+  """
+  ✨ `_expr` server value variant of `actionTimestamp` (✨ Generated from Field `Analytics`.`actionTimestamp` of type `Timestamp!`)
+  """
+  actionTimestamp_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `actionTimestamp` (✨ Generated from Field `Analytics`.`actionTimestamp` of type `Timestamp!`)
+  """
+  actionTimestamp_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `actionTimestamp` (✨ Generated from Field `Analytics`.`actionTimestamp` of type `Timestamp!`)
+  """
+  actionTimestamp_update: [Timestamp_Update!]
+}
+"""
+✨ Generated filter input type for table 'Analytics'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Analytics_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [Analytics_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: Analytics_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [Analytics_Filter!]
+  """
+  ✨ Generated from Field `Analytics`.`id` of type `String!`
+  """
+  id: String_Filter
+  """
+  ✨ Generated from Field `Analytics`.`storyId` of type `String!`
+  """
+  storyId: String_Filter
+  """
+  ✨ Generated from Field `Analytics`.`userId` of type `String!`
+  """
+  userId: String_Filter
+  """
+  ✨ Generated from Field `Analytics`.`story` of type `Story!`
+  """
+  story: Story_Filter
+  """
+  ✨ Generated from Field `Analytics`.`user` of type `User!`
+  """
+  user: User_Filter
+  """
+  ✨ Generated from Field `Analytics`.`action` of type `String!`
+  """
+  action: String_Filter
+  """
+  ✨ Generated from Field `Analytics`.`actionTimestamp` of type `Timestamp!`
+  """
+  actionTimestamp: Timestamp_Filter
+}
+"""
+✨ Generated first-row input type for table 'Analytics'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input Analytics_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [Analytics_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: Analytics_Filter
+}
+"""
+✨ Generated having input type for table 'Analytics'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Analytics_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [Analytics_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: Analytics_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [Analytics_Having!]
+  """
+  ✨ Generated from Field `Analytics`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `Analytics`.`actionTimestamp_count` of type `Int!`
+  """
+  actionTimestamp_count: Int_Filter
+  """
+  ✨ Generated from Field `Analytics`.`action_count` of type `Int!`
+  """
+  action_count: Int_Filter
+  """
+  ✨ Generated from Field `Analytics`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `Analytics`.`storyId_count` of type `Int!`
+  """
+  storyId_count: Int_Filter
+  """
+  ✨ Generated from Field `Analytics`.`userId_count` of type `Int!`
+  """
+  userId_count: Int_Filter
+  """
+  ✨ Generated from Field `Analytics`.`actionTimestamp_min` of type `Timestamp`
+  """
+  actionTimestamp_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `Analytics`.`actionTimestamp_max` of type `Timestamp`
+  """
+  actionTimestamp_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'Analytics'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input Analytics_Key {
+  """
+  ✨ Generated from Field `Analytics`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Analytics`.`id` of type `String!`)
+  """
+  id_expr: String_Expr
+}
+"""
+✨ Generated list filter input type for table 'Analytics'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input Analytics_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: Analytics_Filter
+}
+"""
+✨ Generated order input type for table 'Analytics'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input Analytics_Order {
+  """
+  ✨ Generated from Field `Analytics`.`id` of type `String!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `Analytics`.`storyId` of type `String!`
+  """
+  storyId: OrderDirection
+  """
+  ✨ Generated from Field `Analytics`.`userId` of type `String!`
+  """
+  userId: OrderDirection
+  """
+  ✨ Generated from Field `Analytics`.`story` of type `Story!`
+  """
+  story: Story_Order
+  """
+  ✨ Generated from Field `Analytics`.`user` of type `User!`
+  """
+  user: User_Order
+  """
+  ✨ Generated from Field `Analytics`.`action` of type `String!`
+  """
+  action: OrderDirection
+  """
+  ✨ Generated from Field `Analytics`.`actionTimestamp` of type `Timestamp!`
+  """
+  actionTimestamp: OrderDirection
+}
+"""
+✨ Generated filter input type for table 'AnalyticsAction'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input AnalyticsAction_Filter {
+  """
+  Match if field is exactly equal to provided value.
+  """
+  eq: AnalyticsAction
+  """
+  Match if field is not equal to provided value.
+  """
+  ne: AnalyticsAction
+  """
+  When true, match if field `IS NULL`. When false, match if field is `NOT NULL`.
+  """
+  isNull: Boolean
+  """
+  Match if field value is among the provided list of values.
+  """
+  in: [AnalyticsAction!]
+  """
+  Match if field value is not among the provided list of values.
+  """
+  nin: [AnalyticsAction!]
+  """
+  Match if field value is greater than the provided value, based on index ordering of supported enum values.
+  """
+  gt: AnalyticsAction
+  """
+  Match if field is greater than or equal to the provided value.
+  """
+  ge: AnalyticsAction
+  """
+  Match if field value is less than the provided value, based on index ordering of supported enum values.
+  """
+  lt: AnalyticsAction
+  """
+  Match if field is less than or equal to the provided value, based on index ordering of supported enum values.
+  """
+  le: AnalyticsAction
+}
+"""
+✨ Generated list filter input type for table 'AnalyticsAction'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input AnalyticsAction_ListFilter {
+  """
+  Match if list field contains the provided value as a member.
+  """
+  includes: AnalyticsAction
+  """
+  Match if list field contains all of the provided values as members.
+  """
+  includesAll: [AnalyticsAction!]
+  """
+  Match if list field does not contain the provided value as a member.
+  """
+  excludes: AnalyticsAction
+  """
+  Match if list field does not contain any of the provided values as members.
+  """
+  excludesAll: [AnalyticsAction!]
+  """
+  The desired number of enum values that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: AnalyticsAction_Filter
+}
+"""
+✨ Generated data input type for table 'AppSubscription'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input AppSubscription_Data {
+  """
+  ✨ Generated from Field `AppSubscription`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `AppSubscription`.`id` of type `String!`)
+  """
+  id_expr: String_Expr
+  """
+  ✨ Generated from Field `AppSubscription`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `AppSubscription`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `AppSubscription`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `AppSubscription`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `AppSubscription`.`featuresJson` of type `String`
+  """
+  featuresJson: String
+  """
+  ✨ `_expr` server value variant of `featuresJson` (✨ Generated from Field `AppSubscription`.`featuresJson` of type `String`)
+  """
+  featuresJson_expr: String_Expr
+  """
+  ✨ Generated from Field `AppSubscription`.`name` of type `String!`
+  """
+  name: String
+  """
+  ✨ `_expr` server value variant of `name` (✨ Generated from Field `AppSubscription`.`name` of type `String!`)
+  """
+  name_expr: String_Expr
+  """
+  ✨ Generated from Field `AppSubscription`.`price` of type `Float`
+  """
+  price: Float
+  """
+  ✨ `_expr` server value variant of `price` (✨ Generated from Field `AppSubscription`.`price` of type `Float`)
+  """
+  price_expr: Float_Expr
+  """
+  ✨ `_update` server value variant of `price` (✨ Generated from Field `AppSubscription`.`price` of type `Float`)
+  """
+  price_update: [Float_Update!]
+}
+"""
+✨ Generated filter input type for table 'AppSubscription'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input AppSubscription_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [AppSubscription_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: AppSubscription_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [AppSubscription_Filter!]
+  """
+  ✨ Generated from Field `AppSubscription`.`id` of type `String!`
+  """
+  id: String_Filter
+  """
+  ✨ Generated from Field `AppSubscription`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `AppSubscription`.`featuresJson` of type `String`
+  """
+  featuresJson: String_Filter
+  """
+  ✨ Generated from Field `AppSubscription`.`name` of type `String!`
+  """
+  name: String_Filter
+  """
+  ✨ Generated from Field `AppSubscription`.`price` of type `Float`
+  """
+  price: Float_Filter
+  """
+  ✨ Generated from Field `AppSubscription`.`payments_on_appSubscription` of type `[Payment!]!`
+  """
+  payments_on_appSubscription: Payment_ListFilter
+  """
+  ✨ Generated from Field `AppSubscription`.`users_on_appSubscription` of type `[User!]!`
+  """
+  users_on_appSubscription: User_ListFilter
+}
+"""
+✨ Generated first-row input type for table 'AppSubscription'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input AppSubscription_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [AppSubscription_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: AppSubscription_Filter
+}
+"""
+✨ Generated having input type for table 'AppSubscription'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input AppSubscription_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [AppSubscription_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: AppSubscription_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [AppSubscription_Having!]
+  """
+  ✨ Generated from Field `AppSubscription`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `AppSubscription`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `AppSubscription`.`featuresJson_count` of type `Int!`
+  """
+  featuresJson_count: Int_Filter
+  """
+  ✨ Generated from Field `AppSubscription`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `AppSubscription`.`name_count` of type `Int!`
+  """
+  name_count: Int_Filter
+  """
+  ✨ Generated from Field `AppSubscription`.`price_count` of type `Int!`
+  """
+  price_count: Int_Filter
+  """
+  ✨ Generated from Field `AppSubscription`.`price_sum` of type `Float`
+  """
+  price_sum: Float_Filter
+  """
+  ✨ Generated from Field `AppSubscription`.`price_avg` of type `Float`
+  """
+  price_avg: Float_Filter
+  """
+  ✨ Generated from Field `AppSubscription`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `AppSubscription`.`price_min` of type `Float`
+  """
+  price_min: Float_Filter
+  """
+  ✨ Generated from Field `AppSubscription`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+  """
+  ✨ Generated from Field `AppSubscription`.`price_max` of type `Float`
+  """
+  price_max: Float_Filter
+}
+"""
+✨ Generated key input type for table 'AppSubscription'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input AppSubscription_Key {
+  """
+  ✨ Generated from Field `AppSubscription`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `AppSubscription`.`id` of type `String!`)
+  """
+  id_expr: String_Expr
+}
+"""
+✨ Generated list filter input type for table 'AppSubscription'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input AppSubscription_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: AppSubscription_Filter
+}
+"""
+✨ Generated order input type for table 'AppSubscription'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input AppSubscription_Order {
+  """
+  ✨ Generated from Field `AppSubscription`.`id` of type `String!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `AppSubscription`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `AppSubscription`.`featuresJson` of type `String`
+  """
+  featuresJson: OrderDirection
+  """
+  ✨ Generated from Field `AppSubscription`.`name` of type `String!`
+  """
+  name: OrderDirection
+  """
+  ✨ Generated from Field `AppSubscription`.`price` of type `Float`
+  """
+  price: OrderDirection
+}
+"""
+✨ Generated filter input type for table 'ImageGenerationStatus'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input ImageGenerationStatus_Filter {
+  """
+  Match if field is exactly equal to provided value.
+  """
+  eq: ImageGenerationStatus
+  """
+  Match if field is not equal to provided value.
+  """
+  ne: ImageGenerationStatus
+  """
+  When true, match if field `IS NULL`. When false, match if field is `NOT NULL`.
+  """
+  isNull: Boolean
+  """
+  Match if field value is among the provided list of values.
+  """
+  in: [ImageGenerationStatus!]
+  """
+  Match if field value is not among the provided list of values.
+  """
+  nin: [ImageGenerationStatus!]
+  """
+  Match if field value is greater than the provided value, based on index ordering of supported enum values.
+  """
+  gt: ImageGenerationStatus
+  """
+  Match if field is greater than or equal to the provided value.
+  """
+  ge: ImageGenerationStatus
+  """
+  Match if field value is less than the provided value, based on index ordering of supported enum values.
+  """
+  lt: ImageGenerationStatus
+  """
+  Match if field is less than or equal to the provided value, based on index ordering of supported enum values.
+  """
+  le: ImageGenerationStatus
+}
+"""
+✨ Generated list filter input type for table 'ImageGenerationStatus'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input ImageGenerationStatus_ListFilter {
+  """
+  Match if list field contains the provided value as a member.
+  """
+  includes: ImageGenerationStatus
+  """
+  Match if list field contains all of the provided values as members.
+  """
+  includesAll: [ImageGenerationStatus!]
+  """
+  Match if list field does not contain the provided value as a member.
+  """
+  excludes: ImageGenerationStatus
+  """
+  Match if list field does not contain any of the provided values as members.
+  """
+  excludesAll: [ImageGenerationStatus!]
+  """
+  The desired number of enum values that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: ImageGenerationStatus_Filter
+}
+"""
+✨ Generated data input type for table 'LegalDisclaimer'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input LegalDisclaimer_Data {
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `LegalDisclaimer`.`id` of type `String!`)
+  """
+  id_expr: String_Expr
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`userId` of type `String!`
+  """
+  userId: String
+  """
+  ✨ `_expr` server value variant of `userId` (✨ Generated from Field `LegalDisclaimer`.`userId` of type `String!`)
+  """
+  userId_expr: String_Expr
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`user` of type `User!`
+  """
+  user: User_Key
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`accepted` of type `Boolean!`
+  """
+  accepted: Boolean
+  """
+  ✨ `_expr` server value variant of `accepted` (✨ Generated from Field `LegalDisclaimer`.`accepted` of type `Boolean!`)
+  """
+  accepted_expr: Boolean_Expr
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`acceptedDate` of type `Timestamp`
+  """
+  acceptedDate: Timestamp
+  """
+  ✨ `_expr` server value variant of `acceptedDate` (✨ Generated from Field `LegalDisclaimer`.`acceptedDate` of type `Timestamp`)
+  """
+  acceptedDate_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `acceptedDate` (✨ Generated from Field `LegalDisclaimer`.`acceptedDate` of type `Timestamp`)
+  """
+  acceptedDate_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `acceptedDate` (✨ Generated from Field `LegalDisclaimer`.`acceptedDate` of type `Timestamp`)
+  """
+  acceptedDate_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `LegalDisclaimer`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `LegalDisclaimer`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `LegalDisclaimer`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!]
+}
+"""
+✨ Generated filter input type for table 'LegalDisclaimer'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input LegalDisclaimer_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [LegalDisclaimer_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: LegalDisclaimer_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [LegalDisclaimer_Filter!]
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`id` of type `String!`
+  """
+  id: String_Filter
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`userId` of type `String!`
+  """
+  userId: String_Filter
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`user` of type `User!`
+  """
+  user: User_Filter
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`accepted` of type `Boolean!`
+  """
+  accepted: Boolean_Filter
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`acceptedDate` of type `Timestamp`
+  """
+  acceptedDate: Timestamp_Filter
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+}
+"""
+✨ Generated first-row input type for table 'LegalDisclaimer'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input LegalDisclaimer_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [LegalDisclaimer_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: LegalDisclaimer_Filter
+}
+"""
+✨ Generated having input type for table 'LegalDisclaimer'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input LegalDisclaimer_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [LegalDisclaimer_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: LegalDisclaimer_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [LegalDisclaimer_Having!]
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`acceptedDate_count` of type `Int!`
+  """
+  acceptedDate_count: Int_Filter
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`accepted_count` of type `Int!`
+  """
+  accepted_count: Int_Filter
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`userId_count` of type `Int!`
+  """
+  userId_count: Int_Filter
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`acceptedDate_min` of type `Timestamp`
+  """
+  acceptedDate_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`acceptedDate_max` of type `Timestamp`
+  """
+  acceptedDate_max: Timestamp_Filter
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'LegalDisclaimer'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input LegalDisclaimer_Key {
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `LegalDisclaimer`.`id` of type `String!`)
+  """
+  id_expr: String_Expr
+}
+"""
+✨ Generated list filter input type for table 'LegalDisclaimer'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input LegalDisclaimer_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: LegalDisclaimer_Filter
+}
+"""
+✨ Generated order input type for table 'LegalDisclaimer'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input LegalDisclaimer_Order {
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`id` of type `String!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`userId` of type `String!`
+  """
+  userId: OrderDirection
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`user` of type `User!`
+  """
+  user: User_Order
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`accepted` of type `Boolean!`
+  """
+  accepted: OrderDirection
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`acceptedDate` of type `Timestamp`
+  """
+  acceptedDate: OrderDirection
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+}
+"""
+✨ Generated data input type for table 'Payment'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input Payment_Data {
+  """
+  ✨ Generated from Field `Payment`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Payment`.`id` of type `String!`)
+  """
+  id_expr: String_Expr
+  """
+  ✨ Generated from Field `Payment`.`appSubscriptionId` of type `String!`
+  """
+  appSubscriptionId: String
+  """
+  ✨ `_expr` server value variant of `appSubscriptionId` (✨ Generated from Field `Payment`.`appSubscriptionId` of type `String!`)
+  """
+  appSubscriptionId_expr: String_Expr
+  """
+  ✨ Generated from Field `Payment`.`userId` of type `String!`
+  """
+  userId: String
+  """
+  ✨ `_expr` server value variant of `userId` (✨ Generated from Field `Payment`.`userId` of type `String!`)
+  """
+  userId_expr: String_Expr
+  """
+  ✨ Generated from Field `Payment`.`appSubscription` of type `AppSubscription!`
+  """
+  appSubscription: AppSubscription_Key
+  """
+  ✨ Generated from Field `Payment`.`user` of type `User!`
+  """
+  user: User_Key
+  """
+  ✨ Generated from Field `Payment`.`amount` of type `Float`
+  """
+  amount: Float
+  """
+  ✨ `_expr` server value variant of `amount` (✨ Generated from Field `Payment`.`amount` of type `Float`)
+  """
+  amount_expr: Float_Expr
+  """
+  ✨ `_update` server value variant of `amount` (✨ Generated from Field `Payment`.`amount` of type `Float`)
+  """
+  amount_update: [Float_Update!]
+  """
+  ✨ Generated from Field `Payment`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `Payment`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `Payment`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `Payment`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `Payment`.`paymentDate` of type `Timestamp!`
+  """
+  paymentDate: Timestamp
+  """
+  ✨ `_expr` server value variant of `paymentDate` (✨ Generated from Field `Payment`.`paymentDate` of type `Timestamp!`)
+  """
+  paymentDate_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `paymentDate` (✨ Generated from Field `Payment`.`paymentDate` of type `Timestamp!`)
+  """
+  paymentDate_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `paymentDate` (✨ Generated from Field `Payment`.`paymentDate` of type `Timestamp!`)
+  """
+  paymentDate_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `Payment`.`status` of type `String!`
+  """
+  status: String
+  """
+  ✨ `_expr` server value variant of `status` (✨ Generated from Field `Payment`.`status` of type `String!`)
+  """
+  status_expr: String_Expr
+}
+"""
+✨ Generated filter input type for table 'Payment'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Payment_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [Payment_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: Payment_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [Payment_Filter!]
+  """
+  ✨ Generated from Field `Payment`.`id` of type `String!`
+  """
+  id: String_Filter
+  """
+  ✨ Generated from Field `Payment`.`appSubscriptionId` of type `String!`
+  """
+  appSubscriptionId: String_Filter
+  """
+  ✨ Generated from Field `Payment`.`userId` of type `String!`
+  """
+  userId: String_Filter
+  """
+  ✨ Generated from Field `Payment`.`appSubscription` of type `AppSubscription!`
+  """
+  appSubscription: AppSubscription_Filter
+  """
+  ✨ Generated from Field `Payment`.`user` of type `User!`
+  """
+  user: User_Filter
+  """
+  ✨ Generated from Field `Payment`.`amount` of type `Float`
+  """
+  amount: Float_Filter
+  """
+  ✨ Generated from Field `Payment`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `Payment`.`paymentDate` of type `Timestamp!`
+  """
+  paymentDate: Timestamp_Filter
+  """
+  ✨ Generated from Field `Payment`.`status` of type `String!`
+  """
+  status: String_Filter
+}
+"""
+✨ Generated first-row input type for table 'Payment'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input Payment_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [Payment_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: Payment_Filter
+}
+"""
+✨ Generated having input type for table 'Payment'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Payment_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [Payment_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: Payment_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [Payment_Having!]
+  """
+  ✨ Generated from Field `Payment`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `Payment`.`amount_count` of type `Int!`
+  """
+  amount_count: Int_Filter
+  """
+  ✨ Generated from Field `Payment`.`appSubscriptionId_count` of type `Int!`
+  """
+  appSubscriptionId_count: Int_Filter
+  """
+  ✨ Generated from Field `Payment`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `Payment`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `Payment`.`paymentDate_count` of type `Int!`
+  """
+  paymentDate_count: Int_Filter
+  """
+  ✨ Generated from Field `Payment`.`status_count` of type `Int!`
+  """
+  status_count: Int_Filter
+  """
+  ✨ Generated from Field `Payment`.`userId_count` of type `Int!`
+  """
+  userId_count: Int_Filter
+  """
+  ✨ Generated from Field `Payment`.`amount_sum` of type `Float`
+  """
+  amount_sum: Float_Filter
+  """
+  ✨ Generated from Field `Payment`.`amount_avg` of type `Float`
+  """
+  amount_avg: Float_Filter
+  """
+  ✨ Generated from Field `Payment`.`amount_min` of type `Float`
+  """
+  amount_min: Float_Filter
+  """
+  ✨ Generated from Field `Payment`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `Payment`.`paymentDate_min` of type `Timestamp`
+  """
+  paymentDate_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `Payment`.`amount_max` of type `Float`
+  """
+  amount_max: Float_Filter
+  """
+  ✨ Generated from Field `Payment`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+  """
+  ✨ Generated from Field `Payment`.`paymentDate_max` of type `Timestamp`
+  """
+  paymentDate_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'Payment'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input Payment_Key {
+  """
+  ✨ Generated from Field `Payment`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Payment`.`id` of type `String!`)
+  """
+  id_expr: String_Expr
+}
+"""
+✨ Generated list filter input type for table 'Payment'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input Payment_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: Payment_Filter
+}
+"""
+✨ Generated order input type for table 'Payment'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input Payment_Order {
+  """
+  ✨ Generated from Field `Payment`.`id` of type `String!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `Payment`.`appSubscriptionId` of type `String!`
+  """
+  appSubscriptionId: OrderDirection
+  """
+  ✨ Generated from Field `Payment`.`userId` of type `String!`
+  """
+  userId: OrderDirection
+  """
+  ✨ Generated from Field `Payment`.`appSubscription` of type `AppSubscription!`
+  """
+  appSubscription: AppSubscription_Order
+  """
+  ✨ Generated from Field `Payment`.`user` of type `User!`
+  """
+  user: User_Order
+  """
+  ✨ Generated from Field `Payment`.`amount` of type `Float`
+  """
+  amount: OrderDirection
+  """
+  ✨ Generated from Field `Payment`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `Payment`.`paymentDate` of type `Timestamp!`
+  """
+  paymentDate: OrderDirection
+  """
+  ✨ Generated from Field `Payment`.`status` of type `String!`
+  """
+  status: OrderDirection
+}
+"""
+✨ Generated filter input type for table 'PaymentStatus'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input PaymentStatus_Filter {
+  """
+  Match if field is exactly equal to provided value.
+  """
+  eq: PaymentStatus
+  """
+  Match if field is not equal to provided value.
+  """
+  ne: PaymentStatus
+  """
+  When true, match if field `IS NULL`. When false, match if field is `NOT NULL`.
+  """
+  isNull: Boolean
+  """
+  Match if field value is among the provided list of values.
+  """
+  in: [PaymentStatus!]
+  """
+  Match if field value is not among the provided list of values.
+  """
+  nin: [PaymentStatus!]
+  """
+  Match if field value is greater than the provided value, based on index ordering of supported enum values.
+  """
+  gt: PaymentStatus
+  """
+  Match if field is greater than or equal to the provided value.
+  """
+  ge: PaymentStatus
+  """
+  Match if field value is less than the provided value, based on index ordering of supported enum values.
+  """
+  lt: PaymentStatus
+  """
+  Match if field is less than or equal to the provided value, based on index ordering of supported enum values.
+  """
+  le: PaymentStatus
+}
+"""
+✨ Generated list filter input type for table 'PaymentStatus'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input PaymentStatus_ListFilter {
+  """
+  Match if list field contains the provided value as a member.
+  """
+  includes: PaymentStatus
+  """
+  Match if list field contains all of the provided values as members.
+  """
+  includesAll: [PaymentStatus!]
+  """
+  Match if list field does not contain the provided value as a member.
+  """
+  excludes: PaymentStatus
+  """
+  Match if list field does not contain any of the provided values as members.
+  """
+  excludesAll: [PaymentStatus!]
+  """
+  The desired number of enum values that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: PaymentStatus_Filter
+}
+"""
+✨ Generated data input type for table 'Story'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input Story_Data {
+  """
+  ✨ Generated from Field `Story`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Story`.`id` of type `String!`)
+  """
+  id_expr: String_Expr
+  """
+  ✨ Generated from Field `Story`.`creatorId` of type `String!`
+  """
+  creatorId: String
+  """
+  ✨ `_expr` server value variant of `creatorId` (✨ Generated from Field `Story`.`creatorId` of type `String!`)
+  """
+  creatorId_expr: String_Expr
+  """
+  ✨ Generated from Field `Story`.`creator` of type `User!`
+  """
+  creator: User_Key
+  """
+  ✨ Generated from Field `Story`.`coverImageUrl` of type `String`
+  """
+  coverImageUrl: String
+  """
+  ✨ `_expr` server value variant of `coverImageUrl` (✨ Generated from Field `Story`.`coverImageUrl` of type `String`)
+  """
+  coverImageUrl_expr: String_Expr
+  """
+  ✨ Generated from Field `Story`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `Story`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `Story`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `Story`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `Story`.`description` of type `String`
+  """
+  description: String
+  """
+  ✨ `_expr` server value variant of `description` (✨ Generated from Field `Story`.`description` of type `String`)
+  """
+  description_expr: String_Expr
+  """
+  ✨ Generated from Field `Story`.`genre` of type `String`
+  """
+  genre: String
+  """
+  ✨ `_expr` server value variant of `genre` (✨ Generated from Field `Story`.`genre` of type `String`)
+  """
+  genre_expr: String_Expr
+  """
+  ✨ Generated from Field `Story`.`status` of type `String!`
+  """
+  status: String
+  """
+  ✨ `_expr` server value variant of `status` (✨ Generated from Field `Story`.`status` of type `String!`)
+  """
+  status_expr: String_Expr
+  """
+  ✨ Generated from Field `Story`.`title` of type `String`
+  """
+  title: String
+  """
+  ✨ `_expr` server value variant of `title` (✨ Generated from Field `Story`.`title` of type `String`)
+  """
+  title_expr: String_Expr
+  """
+  ✨ Generated from Field `Story`.`updatedAt` of type `Timestamp!`
+  """
+  updatedAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `updatedAt` (✨ Generated from Field `Story`.`updatedAt` of type `Timestamp!`)
+  """
+  updatedAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `updatedAt` (✨ Generated from Field `Story`.`updatedAt` of type `Timestamp!`)
+  """
+  updatedAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `updatedAt` (✨ Generated from Field `Story`.`updatedAt` of type `Timestamp!`)
+  """
+  updatedAt_update: [Timestamp_Update!]
+}
+"""
+✨ Generated filter input type for table 'Story'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Story_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [Story_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: Story_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [Story_Filter!]
+  """
+  ✨ Generated from Field `Story`.`id` of type `String!`
+  """
+  id: String_Filter
+  """
+  ✨ Generated from Field `Story`.`creatorId` of type `String!`
+  """
+  creatorId: String_Filter
+  """
+  ✨ Generated from Field `Story`.`creator` of type `User!`
+  """
+  creator: User_Filter
+  """
+  ✨ Generated from Field `Story`.`coverImageUrl` of type `String`
+  """
+  coverImageUrl: String_Filter
+  """
+  ✨ Generated from Field `Story`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `Story`.`description` of type `String`
+  """
+  description: String_Filter
+  """
+  ✨ Generated from Field `Story`.`genre` of type `String`
+  """
+  genre: String_Filter
+  """
+  ✨ Generated from Field `Story`.`status` of type `String!`
+  """
+  status: String_Filter
+  """
+  ✨ Generated from Field `Story`.`title` of type `String`
+  """
+  title: String_Filter
+  """
+  ✨ Generated from Field `Story`.`updatedAt` of type `Timestamp!`
+  """
+  updatedAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `Story`.`analyticss_on_story` of type `[Analytics!]!`
+  """
+  analyticss_on_story: Analytics_ListFilter
+  """
+  ✨ Generated from Field `Story`.`storyContents_on_story` of type `[StoryContent!]!`
+  """
+  storyContents_on_story: StoryContent_ListFilter
+  """
+  ✨ Generated from Field `Story`.`templates_on_exampleStory` of type `[Template!]!`
+  """
+  templates_on_exampleStory: Template_ListFilter
+}
+"""
+✨ Generated first-row input type for table 'Story'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input Story_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [Story_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: Story_Filter
+}
+"""
+✨ Generated having input type for table 'Story'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Story_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [Story_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: Story_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [Story_Having!]
+  """
+  ✨ Generated from Field `Story`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `Story`.`coverImageUrl_count` of type `Int!`
+  """
+  coverImageUrl_count: Int_Filter
+  """
+  ✨ Generated from Field `Story`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `Story`.`creatorId_count` of type `Int!`
+  """
+  creatorId_count: Int_Filter
+  """
+  ✨ Generated from Field `Story`.`description_count` of type `Int!`
+  """
+  description_count: Int_Filter
+  """
+  ✨ Generated from Field `Story`.`genre_count` of type `Int!`
+  """
+  genre_count: Int_Filter
+  """
+  ✨ Generated from Field `Story`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `Story`.`status_count` of type `Int!`
+  """
+  status_count: Int_Filter
+  """
+  ✨ Generated from Field `Story`.`title_count` of type `Int!`
+  """
+  title_count: Int_Filter
+  """
+  ✨ Generated from Field `Story`.`updatedAt_count` of type `Int!`
+  """
+  updatedAt_count: Int_Filter
+  """
+  ✨ Generated from Field `Story`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `Story`.`updatedAt_min` of type `Timestamp`
+  """
+  updatedAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `Story`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+  """
+  ✨ Generated from Field `Story`.`updatedAt_max` of type `Timestamp`
+  """
+  updatedAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'Story'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input Story_Key {
+  """
+  ✨ Generated from Field `Story`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Story`.`id` of type `String!`)
+  """
+  id_expr: String_Expr
+}
+"""
+✨ Generated list filter input type for table 'Story'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input Story_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: Story_Filter
+}
+"""
+✨ Generated order input type for table 'Story'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input Story_Order {
+  """
+  ✨ Generated from Field `Story`.`id` of type `String!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `Story`.`creatorId` of type `String!`
+  """
+  creatorId: OrderDirection
+  """
+  ✨ Generated from Field `Story`.`creator` of type `User!`
+  """
+  creator: User_Order
+  """
+  ✨ Generated from Field `Story`.`coverImageUrl` of type `String`
+  """
+  coverImageUrl: OrderDirection
+  """
+  ✨ Generated from Field `Story`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `Story`.`description` of type `String`
+  """
+  description: OrderDirection
+  """
+  ✨ Generated from Field `Story`.`genre` of type `String`
+  """
+  genre: OrderDirection
+  """
+  ✨ Generated from Field `Story`.`status` of type `String!`
+  """
+  status: OrderDirection
+  """
+  ✨ Generated from Field `Story`.`title` of type `String`
+  """
+  title: OrderDirection
+  """
+  ✨ Generated from Field `Story`.`updatedAt` of type `Timestamp!`
+  """
+  updatedAt: OrderDirection
+}
+"""
+✨ Generated data input type for table 'StoryContent'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input StoryContent_Data {
+  """
+  ✨ Generated from Field `StoryContent`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `StoryContent`.`id` of type `String!`)
+  """
+  id_expr: String_Expr
+  """
+  ✨ Generated from Field `StoryContent`.`storyId` of type `String!`
+  """
+  storyId: String
+  """
+  ✨ `_expr` server value variant of `storyId` (✨ Generated from Field `StoryContent`.`storyId` of type `String!`)
+  """
+  storyId_expr: String_Expr
+  """
+  ✨ Generated from Field `StoryContent`.`story` of type `Story!`
+  """
+  story: Story_Key
+  """
+  ✨ Generated from Field `StoryContent`.`audioUrl` of type `String`
+  """
+  audioUrl: String
+  """
+  ✨ `_expr` server value variant of `audioUrl` (✨ Generated from Field `StoryContent`.`audioUrl` of type `String`)
+  """
+  audioUrl_expr: String_Expr
+  """
+  ✨ Generated from Field `StoryContent`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `StoryContent`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `StoryContent`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `StoryContent`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `StoryContent`.`imageUrl` of type `String`
+  """
+  imageUrl: String
+  """
+  ✨ `_expr` server value variant of `imageUrl` (✨ Generated from Field `StoryContent`.`imageUrl` of type `String`)
+  """
+  imageUrl_expr: String_Expr
+  """
+  ✨ Generated from Field `StoryContent`.`pageNumber` of type `Int`
+  """
+  pageNumber: Int
+  """
+  ✨ `_expr` server value variant of `pageNumber` (✨ Generated from Field `StoryContent`.`pageNumber` of type `Int`)
+  """
+  pageNumber_expr: Int_Expr
+  """
+  ✨ `_update` server value variant of `pageNumber` (✨ Generated from Field `StoryContent`.`pageNumber` of type `Int`)
+  """
+  pageNumber_update: [Int_Update!]
+  """
+  ✨ Generated from Field `StoryContent`.`textContent` of type `String`
+  """
+  textContent: String
+  """
+  ✨ `_expr` server value variant of `textContent` (✨ Generated from Field `StoryContent`.`textContent` of type `String`)
+  """
+  textContent_expr: String_Expr
+}
+"""
+✨ Generated filter input type for table 'StoryContent'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input StoryContent_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [StoryContent_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: StoryContent_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [StoryContent_Filter!]
+  """
+  ✨ Generated from Field `StoryContent`.`id` of type `String!`
+  """
+  id: String_Filter
+  """
+  ✨ Generated from Field `StoryContent`.`storyId` of type `String!`
+  """
+  storyId: String_Filter
+  """
+  ✨ Generated from Field `StoryContent`.`story` of type `Story!`
+  """
+  story: Story_Filter
+  """
+  ✨ Generated from Field `StoryContent`.`audioUrl` of type `String`
+  """
+  audioUrl: String_Filter
+  """
+  ✨ Generated from Field `StoryContent`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `StoryContent`.`imageUrl` of type `String`
+  """
+  imageUrl: String_Filter
+  """
+  ✨ Generated from Field `StoryContent`.`pageNumber` of type `Int`
+  """
+  pageNumber: Int_Filter
+  """
+  ✨ Generated from Field `StoryContent`.`textContent` of type `String`
+  """
+  textContent: String_Filter
+}
+"""
+✨ Generated first-row input type for table 'StoryContent'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input StoryContent_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [StoryContent_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: StoryContent_Filter
+}
+"""
+✨ Generated having input type for table 'StoryContent'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input StoryContent_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [StoryContent_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: StoryContent_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [StoryContent_Having!]
+  """
+  ✨ Generated from Field `StoryContent`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `StoryContent`.`audioUrl_count` of type `Int!`
+  """
+  audioUrl_count: Int_Filter
+  """
+  ✨ Generated from Field `StoryContent`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `StoryContent`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `StoryContent`.`imageUrl_count` of type `Int!`
+  """
+  imageUrl_count: Int_Filter
+  """
+  ✨ Generated from Field `StoryContent`.`pageNumber_count` of type `Int!`
+  """
+  pageNumber_count: Int_Filter
+  """
+  ✨ Generated from Field `StoryContent`.`storyId_count` of type `Int!`
+  """
+  storyId_count: Int_Filter
+  """
+  ✨ Generated from Field `StoryContent`.`textContent_count` of type `Int!`
+  """
+  textContent_count: Int_Filter
+  """
+  ✨ Generated from Field `StoryContent`.`pageNumber_sum` of type `Int`
+  """
+  pageNumber_sum: Int_Filter
+  """
+  ✨ Generated from Field `StoryContent`.`pageNumber_avg` of type `Float`
+  """
+  pageNumber_avg: Float_Filter
+  """
+  ✨ Generated from Field `StoryContent`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `StoryContent`.`pageNumber_min` of type `Int`
+  """
+  pageNumber_min: Int_Filter
+  """
+  ✨ Generated from Field `StoryContent`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+  """
+  ✨ Generated from Field `StoryContent`.`pageNumber_max` of type `Int`
+  """
+  pageNumber_max: Int_Filter
+}
+"""
+✨ Generated key input type for table 'StoryContent'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input StoryContent_Key {
+  """
+  ✨ Generated from Field `StoryContent`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `StoryContent`.`id` of type `String!`)
+  """
+  id_expr: String_Expr
+}
+"""
+✨ Generated list filter input type for table 'StoryContent'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input StoryContent_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: StoryContent_Filter
+}
+"""
+✨ Generated order input type for table 'StoryContent'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input StoryContent_Order {
+  """
+  ✨ Generated from Field `StoryContent`.`id` of type `String!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `StoryContent`.`storyId` of type `String!`
+  """
+  storyId: OrderDirection
+  """
+  ✨ Generated from Field `StoryContent`.`story` of type `Story!`
+  """
+  story: Story_Order
+  """
+  ✨ Generated from Field `StoryContent`.`audioUrl` of type `String`
+  """
+  audioUrl: OrderDirection
+  """
+  ✨ Generated from Field `StoryContent`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `StoryContent`.`imageUrl` of type `String`
+  """
+  imageUrl: OrderDirection
+  """
+  ✨ Generated from Field `StoryContent`.`pageNumber` of type `Int`
+  """
+  pageNumber: OrderDirection
+  """
+  ✨ Generated from Field `StoryContent`.`textContent` of type `String`
+  """
+  textContent: OrderDirection
+}
+"""
+✨ Generated filter input type for table 'StoryStatus'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input StoryStatus_Filter {
+  """
+  Match if field is exactly equal to provided value.
+  """
+  eq: StoryStatus
+  """
+  Match if field is not equal to provided value.
+  """
+  ne: StoryStatus
+  """
+  When true, match if field `IS NULL`. When false, match if field is `NOT NULL`.
+  """
+  isNull: Boolean
+  """
+  Match if field value is among the provided list of values.
+  """
+  in: [StoryStatus!]
+  """
+  Match if field value is not among the provided list of values.
+  """
+  nin: [StoryStatus!]
+  """
+  Match if field value is greater than the provided value, based on index ordering of supported enum values.
+  """
+  gt: StoryStatus
+  """
+  Match if field is greater than or equal to the provided value.
+  """
+  ge: StoryStatus
+  """
+  Match if field value is less than the provided value, based on index ordering of supported enum values.
+  """
+  lt: StoryStatus
+  """
+  Match if field is less than or equal to the provided value, based on index ordering of supported enum values.
+  """
+  le: StoryStatus
+}
+"""
+✨ Generated list filter input type for table 'StoryStatus'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input StoryStatus_ListFilter {
+  """
+  Match if list field contains the provided value as a member.
+  """
+  includes: StoryStatus
+  """
+  Match if list field contains all of the provided values as members.
+  """
+  includesAll: [StoryStatus!]
+  """
+  Match if list field does not contain the provided value as a member.
+  """
+  excludes: StoryStatus
+  """
+  Match if list field does not contain any of the provided values as members.
+  """
+  excludesAll: [StoryStatus!]
+  """
+  The desired number of enum values that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: StoryStatus_Filter
+}
+"""
+✨ Generated data input type for table 'Template'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input Template_Data {
+  """
+  ✨ Generated from Field `Template`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Template`.`id` of type `String!`)
+  """
+  id_expr: String_Expr
+  """
+  ✨ Generated from Field `Template`.`exampleStoryId` of type `String`
+  """
+  exampleStoryId: String
+  """
+  ✨ `_expr` server value variant of `exampleStoryId` (✨ Generated from Field `Template`.`exampleStoryId` of type `String`)
+  """
+  exampleStoryId_expr: String_Expr
+  """
+  ✨ Generated from Field `Template`.`exampleStory` of type `Story`
+  """
+  exampleStory: Story_Key
+  """
+  ✨ Generated from Field `Template`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `Template`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `Template`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `Template`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `Template`.`structureJson` of type `String`
+  """
+  structureJson: String
+  """
+  ✨ `_expr` server value variant of `structureJson` (✨ Generated from Field `Template`.`structureJson` of type `String`)
+  """
+  structureJson_expr: String_Expr
+  """
+  ✨ Generated from Field `Template`.`title` of type `String`
+  """
+  title: String
+  """
+  ✨ `_expr` server value variant of `title` (✨ Generated from Field `Template`.`title` of type `String`)
+  """
+  title_expr: String_Expr
+}
+"""
+✨ Generated filter input type for table 'Template'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Template_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [Template_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: Template_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [Template_Filter!]
+  """
+  ✨ Generated from Field `Template`.`id` of type `String!`
+  """
+  id: String_Filter
+  """
+  ✨ Generated from Field `Template`.`exampleStoryId` of type `String`
+  """
+  exampleStoryId: String_Filter
+  """
+  ✨ Generated from Field `Template`.`exampleStory` of type `Story`
+  """
+  exampleStory: Story_Filter
+  """
+  ✨ Generated from Field `Template`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `Template`.`structureJson` of type `String`
+  """
+  structureJson: String_Filter
+  """
+  ✨ Generated from Field `Template`.`title` of type `String`
+  """
+  title: String_Filter
+}
+"""
+✨ Generated first-row input type for table 'Template'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input Template_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [Template_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: Template_Filter
+}
+"""
+✨ Generated having input type for table 'Template'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Template_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [Template_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: Template_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [Template_Having!]
+  """
+  ✨ Generated from Field `Template`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `Template`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `Template`.`exampleStoryId_count` of type `Int!`
+  """
+  exampleStoryId_count: Int_Filter
+  """
+  ✨ Generated from Field `Template`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `Template`.`structureJson_count` of type `Int!`
+  """
+  structureJson_count: Int_Filter
+  """
+  ✨ Generated from Field `Template`.`title_count` of type `Int!`
+  """
+  title_count: Int_Filter
+  """
+  ✨ Generated from Field `Template`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `Template`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'Template'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input Template_Key {
+  """
+  ✨ Generated from Field `Template`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Template`.`id` of type `String!`)
+  """
+  id_expr: String_Expr
+}
+"""
+✨ Generated list filter input type for table 'Template'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input Template_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: Template_Filter
+}
+"""
+✨ Generated order input type for table 'Template'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input Template_Order {
+  """
+  ✨ Generated from Field `Template`.`id` of type `String!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `Template`.`exampleStoryId` of type `String`
+  """
+  exampleStoryId: OrderDirection
+  """
+  ✨ Generated from Field `Template`.`exampleStory` of type `Story`
+  """
+  exampleStory: Story_Order
+  """
+  ✨ Generated from Field `Template`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `Template`.`structureJson` of type `String`
+  """
+  structureJson: OrderDirection
+  """
+  ✨ Generated from Field `Template`.`title` of type `String`
+  """
+  title: OrderDirection
+}
+"""
+✨ Generated data input type for table 'User'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input User_Data {
+  """
+  ✨ Generated from Field `User`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `User`.`id` of type `String!`)
+  """
+  id_expr: String_Expr
+  """
+  ✨ Generated from Field `User`.`appSubscriptionId` of type `String`
+  """
+  appSubscriptionId: String
+  """
+  ✨ `_expr` server value variant of `appSubscriptionId` (✨ Generated from Field `User`.`appSubscriptionId` of type `String`)
+  """
+  appSubscriptionId_expr: String_Expr
+  """
+  ✨ Generated from Field `User`.`appSubscription` of type `AppSubscription`
+  """
+  appSubscription: AppSubscription_Key
+  """
+  ✨ Generated from Field `User`.`avatarUrl` of type `String`
+  """
+  avatarUrl: String
+  """
+  ✨ `_expr` server value variant of `avatarUrl` (✨ Generated from Field `User`.`avatarUrl` of type `String`)
+  """
+  avatarUrl_expr: String_Expr
+  """
+  ✨ Generated from Field `User`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `User`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `User`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `User`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `User`.`displayname` of type `String!`
+  """
+  displayname: String
+  """
+  ✨ `_expr` server value variant of `displayname` (✨ Generated from Field `User`.`displayname` of type `String!`)
+  """
+  displayname_expr: String_Expr
+  """
+  ✨ Generated from Field `User`.`email` of type `String!`
+  """
+  email: String
+  """
+  ✨ `_expr` server value variant of `email` (✨ Generated from Field `User`.`email` of type `String!`)
+  """
+  email_expr: String_Expr
+  """
+  ✨ Generated from Field `User`.`role` of type `String!`
+  """
+  role: String
+  """
+  ✨ `_expr` server value variant of `role` (✨ Generated from Field `User`.`role` of type `String!`)
+  """
+  role_expr: String_Expr
+  """
+  ✨ Generated from Field `User`.`updatedAt` of type `Timestamp!`
+  """
+  updatedAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `updatedAt` (✨ Generated from Field `User`.`updatedAt` of type `Timestamp!`)
+  """
+  updatedAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `updatedAt` (✨ Generated from Field `User`.`updatedAt` of type `Timestamp!`)
+  """
+  updatedAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `updatedAt` (✨ Generated from Field `User`.`updatedAt` of type `Timestamp!`)
+  """
+  updatedAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `User`.`username` of type `String!`
+  """
+  username: String
+  """
+  ✨ `_expr` server value variant of `username` (✨ Generated from Field `User`.`username` of type `String!`)
+  """
+  username_expr: String_Expr
+}
+"""
+✨ Generated filter input type for table 'User'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input User_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [User_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: User_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [User_Filter!]
+  """
+  ✨ Generated from Field `User`.`id` of type `String!`
+  """
+  id: String_Filter
+  """
+  ✨ Generated from Field `User`.`appSubscriptionId` of type `String`
+  """
+  appSubscriptionId: String_Filter
+  """
+  ✨ Generated from Field `User`.`appSubscription` of type `AppSubscription`
+  """
+  appSubscription: AppSubscription_Filter
+  """
+  ✨ Generated from Field `User`.`avatarUrl` of type `String`
+  """
+  avatarUrl: String_Filter
+  """
+  ✨ Generated from Field `User`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `User`.`displayname` of type `String!`
+  """
+  displayname: String_Filter
+  """
+  ✨ Generated from Field `User`.`email` of type `String!`
+  """
+  email: String_Filter
+  """
+  ✨ Generated from Field `User`.`role` of type `String!`
+  """
+  role: String_Filter
+  """
+  ✨ Generated from Field `User`.`updatedAt` of type `Timestamp!`
+  """
+  updatedAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `User`.`username` of type `String!`
+  """
+  username: String_Filter
+  """
+  ✨ Generated from Field `User`.`adminActions_on_admin` of type `[AdminAction!]!`
+  """
+  adminActions_on_admin: AdminAction_ListFilter
+  """
+  ✨ Generated from Field `User`.`aiGeneratedImages_on_user` of type `[AiGeneratedImage!]!`
+  """
+  aiGeneratedImages_on_user: AiGeneratedImage_ListFilter
+  """
+  ✨ Generated from Field `User`.`analyticss_on_user` of type `[Analytics!]!`
+  """
+  analyticss_on_user: Analytics_ListFilter
+  """
+  ✨ Generated from Field `User`.`legalDisclaimers_on_user` of type `[LegalDisclaimer!]!`
+  """
+  legalDisclaimers_on_user: LegalDisclaimer_ListFilter
+  """
+  ✨ Generated from Field `User`.`payments_on_user` of type `[Payment!]!`
+  """
+  payments_on_user: Payment_ListFilter
+  """
+  ✨ Generated from Field `User`.`stories_on_creator` of type `[Story!]!`
+  """
+  stories_on_creator: Story_ListFilter
+}
+"""
+✨ Generated first-row input type for table 'User'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input User_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [User_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: User_Filter
+}
+"""
+✨ Generated having input type for table 'User'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input User_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [User_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: User_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [User_Having!]
+  """
+  ✨ Generated from Field `User`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`appSubscriptionId_count` of type `Int!`
+  """
+  appSubscriptionId_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`avatarUrl_count` of type `Int!`
+  """
+  avatarUrl_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`displayname_count` of type `Int!`
+  """
+  displayname_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`email_count` of type `Int!`
+  """
+  email_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`role_count` of type `Int!`
+  """
+  role_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`updatedAt_count` of type `Int!`
+  """
+  updatedAt_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`username_count` of type `Int!`
+  """
+  username_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `User`.`updatedAt_min` of type `Timestamp`
+  """
+  updatedAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `User`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+  """
+  ✨ Generated from Field `User`.`updatedAt_max` of type `Timestamp`
+  """
+  updatedAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'User'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input User_Key {
+  """
+  ✨ Generated from Field `User`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `User`.`id` of type `String!`)
+  """
+  id_expr: String_Expr
+}
+"""
+✨ Generated list filter input type for table 'User'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input User_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: User_Filter
+}
+"""
+✨ Generated order input type for table 'User'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input User_Order {
+  """
+  ✨ Generated from Field `User`.`id` of type `String!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `User`.`appSubscriptionId` of type `String`
+  """
+  appSubscriptionId: OrderDirection
+  """
+  ✨ Generated from Field `User`.`appSubscription` of type `AppSubscription`
+  """
+  appSubscription: AppSubscription_Order
+  """
+  ✨ Generated from Field `User`.`avatarUrl` of type `String`
+  """
+  avatarUrl: OrderDirection
+  """
+  ✨ Generated from Field `User`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `User`.`displayname` of type `String!`
+  """
+  displayname: OrderDirection
+  """
+  ✨ Generated from Field `User`.`email` of type `String!`
+  """
+  email: OrderDirection
+  """
+  ✨ Generated from Field `User`.`role` of type `String!`
+  """
+  role: OrderDirection
+  """
+  ✨ Generated from Field `User`.`updatedAt` of type `Timestamp!`
+  """
+  updatedAt: OrderDirection
+  """
+  ✨ Generated from Field `User`.`username` of type `String!`
+  """
+  username: OrderDirection
+}

@@ -1,20 +1,20 @@
-extend type AIGeneratedGIF {
-  """
-  ✨ Implicit foreign key field based on `AIGeneratedGIF`.`image`. It must match the value of `AIGeneratedImage`.`id`. See `@ref` for how to customize it.
-  """
-  imageId: String! @fdc_generated(from: "AIGeneratedGIF.image", purpose: IMPLICIT_REF_FIELD)
-}
-extend type AIGeneratedImage {
-  """
-  ✨ Implicit foreign key field based on `AIGeneratedImage`.`user`. It must match the value of `User`.`id`. See `@ref` for how to customize it.
-  """
-  userId: String! @fdc_generated(from: "AIGeneratedImage.user", purpose: IMPLICIT_REF_FIELD)
-}
 extend type AdminAction {
   """
   ✨ Implicit foreign key field based on `AdminAction`.`admin`. It must match the value of `User`.`id`. See `@ref` for how to customize it.
   """
   adminId: String! @fdc_generated(from: "AdminAction.admin", purpose: IMPLICIT_REF_FIELD)
+}
+extend type AiGeneratedGif {
+  """
+  ✨ Implicit foreign key field based on `AiGeneratedGif`.`image`. It must match the value of `AiGeneratedImage`.`id`. See `@ref` for how to customize it.
+  """
+  imageId: String! @fdc_generated(from: "AiGeneratedGif.image", purpose: IMPLICIT_REF_FIELD)
+}
+extend type AiGeneratedImage {
+  """
+  ✨ Implicit foreign key field based on `AiGeneratedImage`.`user`. It must match the value of `User`.`id`. See `@ref` for how to customize it.
+  """
+  userId: String! @fdc_generated(from: "AiGeneratedImage.user", purpose: IMPLICIT_REF_FIELD)
 }
 extend type Analytics {
   """

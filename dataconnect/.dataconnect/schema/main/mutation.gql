@@ -1,23 +1,5 @@
 extend type Mutation {
   """
-  ✨ Insert a single `AIGeneratedGIF` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
-  """
-  aIGeneratedGIF_insert(
-    """
-    Data object to insert into the table.
-    """
-    data: AIGeneratedGIF_Data!
-  ): AIGeneratedGIF_KeyOutput! @fdc_generated(from: "AIGeneratedGIF", purpose: INSERT_SINGLE)
-  """
-  ✨ Insert a single `AIGeneratedImage` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
-  """
-  aIGeneratedImage_insert(
-    """
-    Data object to insert into the table.
-    """
-    data: AIGeneratedImage_Data!
-  ): AIGeneratedImage_KeyOutput! @fdc_generated(from: "AIGeneratedImage", purpose: INSERT_SINGLE)
-  """
   ✨ Insert a single `AdminAction` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
   """
   adminAction_insert(
@@ -26,6 +8,24 @@ extend type Mutation {
     """
     data: AdminAction_Data!
   ): AdminAction_KeyOutput! @fdc_generated(from: "AdminAction", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `AiGeneratedGif` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  aiGeneratedGif_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: AiGeneratedGif_Data!
+  ): AiGeneratedGif_KeyOutput! @fdc_generated(from: "AiGeneratedGif", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `AiGeneratedImage` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  aiGeneratedImage_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: AiGeneratedImage_Data!
+  ): AiGeneratedImage_KeyOutput! @fdc_generated(from: "AiGeneratedImage", purpose: INSERT_SINGLE)
   """
   ✨ Insert a single `Analytics` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
   """
@@ -99,24 +99,6 @@ extend type Mutation {
     data: User_Data!
   ): User_KeyOutput! @fdc_generated(from: "User", purpose: INSERT_SINGLE)
   """
-  ✨ Insert `AIGeneratedGIF` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
-  """
-  aIGeneratedGIF_insertMany(
-    """
-    List of data objects to insert into the table.
-    """
-    data: [AIGeneratedGIF_Data!]!
-  ): [AIGeneratedGIF_KeyOutput!]! @fdc_generated(from: "AIGeneratedGIF", purpose: INSERT_MULTIPLE)
-  """
-  ✨ Insert `AIGeneratedImage` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
-  """
-  aIGeneratedImage_insertMany(
-    """
-    List of data objects to insert into the table.
-    """
-    data: [AIGeneratedImage_Data!]!
-  ): [AIGeneratedImage_KeyOutput!]! @fdc_generated(from: "AIGeneratedImage", purpose: INSERT_MULTIPLE)
-  """
   ✨ Insert `AdminAction` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
   """
   adminAction_insertMany(
@@ -125,6 +107,24 @@ extend type Mutation {
     """
     data: [AdminAction_Data!]!
   ): [AdminAction_KeyOutput!]! @fdc_generated(from: "AdminAction", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `AiGeneratedGif` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  aiGeneratedGif_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [AiGeneratedGif_Data!]!
+  ): [AiGeneratedGif_KeyOutput!]! @fdc_generated(from: "AiGeneratedGif", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `AiGeneratedImage` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  aiGeneratedImage_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [AiGeneratedImage_Data!]!
+  ): [AiGeneratedImage_KeyOutput!]! @fdc_generated(from: "AiGeneratedImage", purpose: INSERT_MULTIPLE)
   """
   ✨ Insert `Analytics` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
   """
@@ -198,24 +198,6 @@ extend type Mutation {
     data: [User_Data!]!
   ): [User_KeyOutput!]! @fdc_generated(from: "User", purpose: INSERT_MULTIPLE)
   """
-  ✨ Insert or update a single `AIGeneratedGIF` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `AIGeneratedGIF`.
-  """
-  aIGeneratedGIF_upsert(
-    """
-    Data object to insert or update if it already exists.
-    """
-    data: AIGeneratedGIF_Data!
-  ): AIGeneratedGIF_KeyOutput! @fdc_generated(from: "AIGeneratedGIF", purpose: UPSERT_SINGLE)
-  """
-  ✨ Insert or update a single `AIGeneratedImage` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `AIGeneratedImage`.
-  """
-  aIGeneratedImage_upsert(
-    """
-    Data object to insert or update if it already exists.
-    """
-    data: AIGeneratedImage_Data!
-  ): AIGeneratedImage_KeyOutput! @fdc_generated(from: "AIGeneratedImage", purpose: UPSERT_SINGLE)
-  """
   ✨ Insert or update a single `AdminAction` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `AdminAction`.
   """
   adminAction_upsert(
@@ -224,6 +206,24 @@ extend type Mutation {
     """
     data: AdminAction_Data!
   ): AdminAction_KeyOutput! @fdc_generated(from: "AdminAction", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `AiGeneratedGif` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `AiGeneratedGif`.
+  """
+  aiGeneratedGif_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: AiGeneratedGif_Data!
+  ): AiGeneratedGif_KeyOutput! @fdc_generated(from: "AiGeneratedGif", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `AiGeneratedImage` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `AiGeneratedImage`.
+  """
+  aiGeneratedImage_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: AiGeneratedImage_Data!
+  ): AiGeneratedImage_KeyOutput! @fdc_generated(from: "AiGeneratedImage", purpose: UPSERT_SINGLE)
   """
   ✨ Insert or update a single `Analytics` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Analytics`.
   """
@@ -297,24 +297,6 @@ extend type Mutation {
     data: User_Data!
   ): User_KeyOutput! @fdc_generated(from: "User", purpose: UPSERT_SINGLE)
   """
-  ✨ Insert or update `AIGeneratedGIF` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `AIGeneratedGIF`.
-  """
-  aIGeneratedGIF_upsertMany(
-    """
-    List of data objects to insert or update if it already exists.
-    """
-    data: [AIGeneratedGIF_Data!]!
-  ): [AIGeneratedGIF_KeyOutput!]! @fdc_generated(from: "AIGeneratedGIF", purpose: UPSERT_MULTIPLE)
-  """
-  ✨ Insert or update `AIGeneratedImage` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `AIGeneratedImage`.
-  """
-  aIGeneratedImage_upsertMany(
-    """
-    List of data objects to insert or update if it already exists.
-    """
-    data: [AIGeneratedImage_Data!]!
-  ): [AIGeneratedImage_KeyOutput!]! @fdc_generated(from: "AIGeneratedImage", purpose: UPSERT_MULTIPLE)
-  """
   ✨ Insert or update `AdminAction` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `AdminAction`.
   """
   adminAction_upsertMany(
@@ -323,6 +305,24 @@ extend type Mutation {
     """
     data: [AdminAction_Data!]!
   ): [AdminAction_KeyOutput!]! @fdc_generated(from: "AdminAction", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `AiGeneratedGif` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `AiGeneratedGif`.
+  """
+  aiGeneratedGif_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [AiGeneratedGif_Data!]!
+  ): [AiGeneratedGif_KeyOutput!]! @fdc_generated(from: "AiGeneratedGif", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `AiGeneratedImage` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `AiGeneratedImage`.
+  """
+  aiGeneratedImage_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [AiGeneratedImage_Data!]!
+  ): [AiGeneratedImage_KeyOutput!]! @fdc_generated(from: "AiGeneratedImage", purpose: UPSERT_MULTIPLE)
   """
   ✨ Insert or update `Analytics` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Analytics`.
   """
@@ -396,64 +396,6 @@ extend type Mutation {
     data: [User_Data!]!
   ): [User_KeyOutput!]! @fdc_generated(from: "User", purpose: UPSERT_MULTIPLE)
   """
-  ✨ Update a single `AIGeneratedGIF` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `AIGeneratedGIF` or `null` if not found.
-  """
-  aIGeneratedGIF_update(
-    """
-    The unique ID of the object.
-    """
-    id: String
-
-    """
-    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
-    """
-    id_expr: String_Expr
-
-    """
-    The key used to identify the object.
-    """
-    key: AIGeneratedGIF_Key
-
-    """
-    Fetch the first row based on the filters and ordering.
-    """
-    first: AIGeneratedGIF_FirstRow
-
-    """
-    Data object containing fields to be updated.
-    """
-    data: AIGeneratedGIF_Data!
-  ): AIGeneratedGIF_KeyOutput @fdc_generated(from: "AIGeneratedGIF", purpose: UPDATE_SINGLE)
-  """
-  ✨ Update a single `AIGeneratedImage` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `AIGeneratedImage` or `null` if not found.
-  """
-  aIGeneratedImage_update(
-    """
-    The unique ID of the object.
-    """
-    id: String
-
-    """
-    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
-    """
-    id_expr: String_Expr
-
-    """
-    The key used to identify the object.
-    """
-    key: AIGeneratedImage_Key
-
-    """
-    Fetch the first row based on the filters and ordering.
-    """
-    first: AIGeneratedImage_FirstRow
-
-    """
-    Data object containing fields to be updated.
-    """
-    data: AIGeneratedImage_Data!
-  ): AIGeneratedImage_KeyOutput @fdc_generated(from: "AIGeneratedImage", purpose: UPDATE_SINGLE)
-  """
   ✨ Update a single `AdminAction` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `AdminAction` or `null` if not found.
   """
   adminAction_update(
@@ -482,6 +424,64 @@ extend type Mutation {
     """
     data: AdminAction_Data!
   ): AdminAction_KeyOutput @fdc_generated(from: "AdminAction", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `AiGeneratedGif` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `AiGeneratedGif` or `null` if not found.
+  """
+  aiGeneratedGif_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: AiGeneratedGif_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: AiGeneratedGif_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: AiGeneratedGif_Data!
+  ): AiGeneratedGif_KeyOutput @fdc_generated(from: "AiGeneratedGif", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `AiGeneratedImage` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `AiGeneratedImage` or `null` if not found.
+  """
+  aiGeneratedImage_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: AiGeneratedImage_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: AiGeneratedImage_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: AiGeneratedImage_Data!
+  ): AiGeneratedImage_KeyOutput @fdc_generated(from: "AiGeneratedImage", purpose: UPDATE_SINGLE)
   """
   ✨ Update a single `Analytics` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `Analytics` or `null` if not found.
   """
@@ -715,44 +715,6 @@ extend type Mutation {
     data: User_Data!
   ): User_KeyOutput @fdc_generated(from: "User", purpose: UPDATE_SINGLE)
   """
-  ✨ Update `AIGeneratedGIF` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
-  """
-  aIGeneratedGIF_updateMany(
-    """
-    Filter condition to specify which rows to update.
-    """
-    where: AIGeneratedGIF_Filter
-
-    """
-    Set to true to update all rows.
-    """
-    all: Boolean = false
-
-    """
-    Data object containing fields to update.
-    """
-    data: AIGeneratedGIF_Data!
-  ): Int! @fdc_generated(from: "AIGeneratedGIF", purpose: UPDATE_MULTIPLE)
-  """
-  ✨ Update `AIGeneratedImage` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
-  """
-  aIGeneratedImage_updateMany(
-    """
-    Filter condition to specify which rows to update.
-    """
-    where: AIGeneratedImage_Filter
-
-    """
-    Set to true to update all rows.
-    """
-    all: Boolean = false
-
-    """
-    Data object containing fields to update.
-    """
-    data: AIGeneratedImage_Data!
-  ): Int! @fdc_generated(from: "AIGeneratedImage", purpose: UPDATE_MULTIPLE)
-  """
   ✨ Update `AdminAction` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
   """
   adminAction_updateMany(
@@ -771,6 +733,44 @@ extend type Mutation {
     """
     data: AdminAction_Data!
   ): Int! @fdc_generated(from: "AdminAction", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `AiGeneratedGif` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  aiGeneratedGif_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: AiGeneratedGif_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: AiGeneratedGif_Data!
+  ): Int! @fdc_generated(from: "AiGeneratedGif", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `AiGeneratedImage` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  aiGeneratedImage_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: AiGeneratedImage_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: AiGeneratedImage_Data!
+  ): Int! @fdc_generated(from: "AiGeneratedImage", purpose: UPDATE_MULTIPLE)
   """
   ✨ Update `Analytics` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
   """
@@ -924,54 +924,6 @@ extend type Mutation {
     data: User_Data!
   ): Int! @fdc_generated(from: "User", purpose: UPDATE_MULTIPLE)
   """
-  ✨ Delete a single `AIGeneratedGIF` based on `id`, `key` or `first` and return its key (or `null` if not found).
-  """
-  aIGeneratedGIF_delete(
-    """
-    The unique ID of the object.
-    """
-    id: String
-
-    """
-    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
-    """
-    id_expr: String_Expr
-
-    """
-    The key used to identify the object.
-    """
-    key: AIGeneratedGIF_Key
-
-    """
-    Fetch the first row based on the filters and ordering.
-    """
-    first: AIGeneratedGIF_FirstRow
-  ): AIGeneratedGIF_KeyOutput @fdc_generated(from: "AIGeneratedGIF", purpose: DELETE_SINGLE)
-  """
-  ✨ Delete a single `AIGeneratedImage` based on `id`, `key` or `first` and return its key (or `null` if not found).
-  """
-  aIGeneratedImage_delete(
-    """
-    The unique ID of the object.
-    """
-    id: String
-
-    """
-    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
-    """
-    id_expr: String_Expr
-
-    """
-    The key used to identify the object.
-    """
-    key: AIGeneratedImage_Key
-
-    """
-    Fetch the first row based on the filters and ordering.
-    """
-    first: AIGeneratedImage_FirstRow
-  ): AIGeneratedImage_KeyOutput @fdc_generated(from: "AIGeneratedImage", purpose: DELETE_SINGLE)
-  """
   ✨ Delete a single `AdminAction` based on `id`, `key` or `first` and return its key (or `null` if not found).
   """
   adminAction_delete(
@@ -995,6 +947,54 @@ extend type Mutation {
     """
     first: AdminAction_FirstRow
   ): AdminAction_KeyOutput @fdc_generated(from: "AdminAction", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `AiGeneratedGif` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  aiGeneratedGif_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: AiGeneratedGif_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: AiGeneratedGif_FirstRow
+  ): AiGeneratedGif_KeyOutput @fdc_generated(from: "AiGeneratedGif", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `AiGeneratedImage` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  aiGeneratedImage_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: AiGeneratedImage_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: AiGeneratedImage_FirstRow
+  ): AiGeneratedImage_KeyOutput @fdc_generated(from: "AiGeneratedImage", purpose: DELETE_SINGLE)
   """
   ✨ Delete a single `Analytics` based on `id`, `key` or `first` and return its key (or `null` if not found).
   """
@@ -1188,34 +1188,6 @@ extend type Mutation {
     first: User_FirstRow
   ): User_KeyOutput @fdc_generated(from: "User", purpose: DELETE_SINGLE)
   """
-  ✨ Delete `AIGeneratedGIF` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
-  """
-  aIGeneratedGIF_deleteMany(
-    """
-    Filter condition to specify which rows to delete.
-    """
-    where: AIGeneratedGIF_Filter
-
-    """
-    Set to true to delete all rows.
-    """
-    all: Boolean = false
-  ): Int! @fdc_generated(from: "AIGeneratedGIF", purpose: DELETE_MULTIPLE)
-  """
-  ✨ Delete `AIGeneratedImage` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
-  """
-  aIGeneratedImage_deleteMany(
-    """
-    Filter condition to specify which rows to delete.
-    """
-    where: AIGeneratedImage_Filter
-
-    """
-    Set to true to delete all rows.
-    """
-    all: Boolean = false
-  ): Int! @fdc_generated(from: "AIGeneratedImage", purpose: DELETE_MULTIPLE)
-  """
   ✨ Delete `AdminAction` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
   """
   adminAction_deleteMany(
@@ -1229,6 +1201,34 @@ extend type Mutation {
     """
     all: Boolean = false
   ): Int! @fdc_generated(from: "AdminAction", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `AiGeneratedGif` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  aiGeneratedGif_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: AiGeneratedGif_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "AiGeneratedGif", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `AiGeneratedImage` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  aiGeneratedImage_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: AiGeneratedImage_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "AiGeneratedImage", purpose: DELETE_MULTIPLE)
   """
   ✨ Delete `Analytics` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
   """

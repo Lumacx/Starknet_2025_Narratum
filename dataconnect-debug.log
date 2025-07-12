@@ -1,3 +1,12 @@
-I0520 20:42:56.712589   62410 load.go:37] Reloading schema and connectors...
-I0520 20:42:56.999896   62410 control.go:73] [/emulator/ 1300] UpdateResources(): done
+I0712 18:49:14.073284     549 load.go:37] Reloading schema and connectors...
+I0712 18:49:14.390435     549 control.go:84] [/emulator/studio-v0 41ca] UpdateResources(): done
 Schema: sources: schema/schema.gql [3507B] 
+Connector "default": sources: connector/mutations.gql [2572B] connector/queries.gql [2254B] 
+I0712 18:49:14.850567     549 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "/home/user/studio/dataconnect-generated/js/default-connector"
+E0712 18:49:14.850649     549 load.go:101] Errors generating SDK: [connector "default" javascriptSdk]: failed to generate sources:
+user-defined enum PaymentStatus is not supported (to prevent this error, remove user-defined enums from your Schema and Operations, and/or stop using the user_enum preview flag)
+I0712 18:49:14.856369     549 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [98192B] prelude.gql [71203B] 
+I0712 18:49:14.859897     549 load.go:115] Finished reloading
+I0712 18:49:14.886406     549 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50001
+I0712 18:49:15.194971     549 engine.go:170] [/emulator/studio-v0 41ca] ExecuteGraphqlRead IntrospectionQuery: succeeded. 

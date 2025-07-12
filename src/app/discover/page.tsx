@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { listPublishedStories } from '@/utils/story-queries';
+//import { listPublishedStories } from '@/utils/story-queries';
+import { useListPublishedStories } from '@/hooks/useListPublishedStories';
+
 import { Story } from '@/lib/types'; // ✅ limpio y con alias funcionando
 
 const CatalogPage: React.FC = () => {
@@ -10,25 +12,35 @@ const CatalogPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [displayedStories, setDisplayedStories] = useState<Story[]>([]);
   const [allStories, setAllStories] = useState<Story[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  //const [isLoading, setIsLoading] = useState(true);
   const [searchMessage, setSearchMessage] = useState('');
 
+  const { data: publishedStories, isLoading, error } = useListPublishedStories();
+  
   useEffect(() => {
-    const fetchStories = async () => {
-      setIsLoading(true);
-      try {
-        const stories = await listPublishedStories();
-        setAllStories(stories);
-        setDisplayedStories(stories);
-      } catch (error) {
-        console.error("Error fetching stories:", error);
-        setSearchMessage("Failed to load stories.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchStories();
-  }, []);
+    if (publishedStories) {
+      setAllStories(publishedStories);
+      setDisplayedStories(publishedStories);
+    }
+  }, [publishedStories]);
+  
+
+  //useEffect(() => {
+   // const fetchStories = async () => {
+   //   setIsLoading(true);
+    //  try {
+    //    const stories = await listPublishedStories();
+     //   setAllStories(stories);
+     //   setDisplayedStories(stories);
+     // } catch (error) {
+     //   console.error("Error fetching stories:", error);
+     //   setSearchMessage("Failed to load stories.");
+     // } finally {
+     //   setIsLoading(false);
+     // }
+    //};
+    //fetchStories();
+  //}, []);
 
   useEffect(() => {
     if (activeFilter === 'all') {
@@ -52,7 +64,7 @@ const CatalogPage: React.FC = () => {
       return;
     }
 
-    setIsLoading(true);
+    //setIsLoading(true);
     setSearchMessage('Searching for stories...');
     setDisplayedStories([]);
 
@@ -85,13 +97,21 @@ const CatalogPage: React.FC = () => {
       setSearchMessage(`Error during search: ${error.message}. Please try again.`);
       setDisplayedStories(allStories);
     } finally {
-      setIsLoading(false);
+      //setIsLoading(false);
     }
   };
 
+  if (error) {
+    return (
+      <div className="text-red-500 text-center mt-10">
+        Error loading published stories. Please try again later.
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen relative flex flex-col items-center p-5 md:p-10 bg-[#1A2533] text-[#E0C9A0] font-sans box-border">
-      <div className="fixed top-4 right-4 z-50">
+      <div className="fixed top-5 right-4 z-50">
         <Link
           href="/"
           className="px-6 py-3 bg-gray-600 text-white font-semibold rounded-full shadow-md hover:bg-gray-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300"

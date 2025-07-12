@@ -1,4 +1,6 @@
 # Queries
+
+# ✅ Get a specific user profile by ID
 query GetUserProfile($userId: String!) @auth(level: USER) {
   user(id: $userId) {
     id
@@ -11,7 +13,8 @@ query GetUserProfile($userId: String!) @auth(level: USER) {
   }
 }
 
-query GetStoryWithContent($storyId: String!) {
+# ✅ Get a specific story by ID
+query GetStoryWithContent($storyId: String!) @auth(level: USER) {
   story(id: $storyId) {
     id
     title
@@ -20,53 +23,104 @@ query GetStoryWithContent($storyId: String!) {
     coverImageUrl
     status
     createdAt
-    storyContent {
-      id
-      textContent
-      pageNumber
-    }
-    comments {
-        id
-        content
-        author {
-            displayname
-            avatarUrl
-        }
-    }
-    reactions {
-        id
-        reactionType
-        user {
-            displayname
-        }
-    }
   }
 }
 
-query ListStoriesByUser($userId: String!) @auth(level: USER) {
-  stories(where: { creator: { id: { _eq: $userId } } }) {
+# ✅ Get all stories (public access) - now with pagination
+query GetAllStories @auth(level: PUBLIC) {
+  stories(limit: 20) {
     id
     title
     genre
     status
-    updatedAt
-  }
-}
-
-query ListPublishedStories {
-  stories(where: { status: { _eq: "published" } }) {
-    id
-    title
-    genre
-    coverImageUrl
     creator {
-      displayname
+      id
     }
   }
 }
 
-query IsUsernameAvailable($username: String!) {
-  users(where: { username: { _eq: $username } }) {
+# ✅ Get a specific app subscription
+query GetAppSubscription($subscriptionId: String!) @auth(level: USER) {
+  appSubscription(id: $subscriptionId) {
     id
+    name
+    price
+    featuresJson
+  }
+}
+
+# ✅ Get a specific template
+query GetTemplate($templateId: String!) @auth(level: USER) {
+  template(id: $templateId) {
+    id
+    title
+    structureJson
+  }
+}
+
+# ✅ Get list of all templates
+query GetAllTemplates @auth(level: USER) {
+  templates(limit: 10) {
+    id
+    title
+  }
+}
+
+# ✅ Get a specific generated image
+query GetAiGeneratedImage($imageId: String!) @auth(level: USER) {
+  aiGeneratedImage(id: $imageId) {
+    id
+    promptText
+    sketchUrl
+    generatedImageUrl
+    status
+  }
+}
+
+# ✅ Get a specific generated gif
+query GetAiGeneratedGif($gifId: String!) @auth(level: USER) {
+  aiGeneratedGif(id: $gifId) {
+    id
+    gifUrl
+  }
+}
+
+# ✅ Get a specific payment
+query GetPayment($paymentId: String!) @auth(level: USER) {
+  payment(id: $paymentId) {
+    id
+    amount
+    status
+    paymentDate
+  }
+}
+
+# ✅ Get a specific admin action
+query GetAdminAction($actionId: String!) @auth(level: USER) {
+  adminAction(id: $actionId) {
+    id
+    actionType
+    targetId
+    description
+    actionDate
+  }
+}
+
+# ✅ Get a specific analytics entry
+query GetAnalyticsEntry($analyticsId: String!) @auth(level: USER) {
+  analytics(id: $analyticsId) {
+    id
+    action
+    actionTimestamp
+  }
+}
+
+# ✅ Get a specific legal disclaimer by ID
+query GetLegalDisclaimer($disclaimerId: String!) @auth(level: USER) {
+  legalDisclaimer(id: $disclaimerId) {
+    id
+    accepted
+    acceptedDate
+    createdAt
   }
 }

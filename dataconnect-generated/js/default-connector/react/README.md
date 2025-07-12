@@ -1,3 +1,14 @@
+# Generated React README
+This README will guide you through the process of using the generated React SDK package for the connector `default`. It will also provide examples on how to use your generated SDK to call your Data Connect queries and mutations.
+
+**If you're looking for the `JavaScript README`, you can find it at [`default-connector/README.md`](../README.md)**
+
+***NOTE:** This README is generated alongside the generated SDK. If you make changes to this file, they will be overwritten when the SDK is regenerated.*
+
+You can use this generated SDK by importing from the package `@firebasegen/default-connector/react` as shown below. Both CommonJS and ESM imports are supported.
+
+You can also follow the instructions from the [Data Connect documentation](https://firebase.google.com/docs/data-connect/web-sdk#react).
+
 # Table of Contents
 - [**Overview**](#generated-react-readme)
 - [**TanStack Query Firebase & TanStack React Query**](#tanstack-query-firebase-tanstack-react-query)
@@ -29,15 +40,6 @@
   - [*CreateAdminAction*](#createadminaction)
   - [*CreateAnalyticsEntry*](#createanalyticsentry)
   - [*LogLegalDisclaimerAcceptance*](#loglegaldisclaimeracceptance)
-
-# Generated React README
-This README will guide you through the process of using the generated React SDK package for the connector `default`. It will also provide examples on how to use your generated SDK to call your Data Connect queries and mutations.
-
-***NOTE:** This README is generated alongside the generated SDK. If you make changes to this file, they will be overwritten when the SDK is regenerated.*
-
-You can use this generated SDK by importing from the package `@firebasegen/default-connector/react` as shown below. Both CommonJS and ESM imports are supported.
-
-You can also follow the instructions from the [Data Connect documentation](https://firebase.google.com/docs/data-connect/web-sdk#react).
 
 # TanStack Query Firebase & TanStack React Query
 This SDK provides [React](https://react.dev/) hooks generated specific to your application, for the operations found in the connector `default`. These hooks are generated using [TanStack Query Firebase](https://react-query-firebase.invertase.dev/) by our partners at Invertase, a library built on top of [TanStack React Query v5](https://tanstack.com/query/v5/docs/framework/react/overview).
@@ -330,12 +332,15 @@ To check the status of a Query, use the `UseQueryResult.status` field. You can a
 To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetAllStories` Query is of type `GetAllStoriesData`, which is defined in [default-connector/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
 export interface GetAllStoriesData {
-  stories: ({
+  story?: {
     id: string;
     title?: string | null;
     genre?: string | null;
     status: string;
-  } & Story_Key)[];
+    creator: {
+      id: string;
+    } & User_Key;
+  } & Story_Key;
 }
 ```
 
@@ -377,7 +382,7 @@ export default function GetAllStoriesComponent() {
 
   // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
   if (query.isSuccess) {
-    console.log(query.data.stories);
+    console.log(query.data.story);
   }
   return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
 }

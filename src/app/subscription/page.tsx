@@ -12,7 +12,7 @@ const SubscriptionPage: React.FC = () => {
 
   return (
     <div className="min-h-screen relative flex flex-col items-center justify-center p-5 md:p-10 bg-gradient-to-br from-[#D4E1EE] via-[#F3E4D7] to-[#F0D1B0] text-[#4A3B31] font-sans">
-      <div className="fixed top-4 right-4 z-50">
+      <div className="fixed top-5 right-4 z-50">
         <Link
           href="/"
           className="px-6 py-3 bg-gray-600 text-white font-semibold rounded-full shadow-md hover:bg-gray-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300"

@@ -1,53 +1,5 @@
 extend type Query {
   """
-  ✨ Look up a single `AIGeneratedGIF` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
-  """
-  aIGeneratedGIF(
-    """
-    The unique ID of the object.
-    """
-    id: String
-
-    """
-    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
-    """
-    id_expr: String_Expr
-
-    """
-    The key used to identify the object.
-    """
-    key: AIGeneratedGIF_Key
-
-    """
-    Fetch the first row based on the filters and ordering.
-    """
-    first: AIGeneratedGIF_FirstRow
-  ): AIGeneratedGIF @fdc_generated(from: "AIGeneratedGIF", purpose: QUERY_SINGLE)
-  """
-  ✨ Look up a single `AIGeneratedImage` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
-  """
-  aIGeneratedImage(
-    """
-    The unique ID of the object.
-    """
-    id: String
-
-    """
-    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
-    """
-    id_expr: String_Expr
-
-    """
-    The key used to identify the object.
-    """
-    key: AIGeneratedImage_Key
-
-    """
-    Fetch the first row based on the filters and ordering.
-    """
-    first: AIGeneratedImage_FirstRow
-  ): AIGeneratedImage @fdc_generated(from: "AIGeneratedImage", purpose: QUERY_SINGLE)
-  """
   ✨ Look up a single `AdminAction` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
   """
   adminAction(
@@ -71,6 +23,54 @@ extend type Query {
     """
     first: AdminAction_FirstRow
   ): AdminAction @fdc_generated(from: "AdminAction", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `AiGeneratedGif` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  aiGeneratedGif(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: AiGeneratedGif_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: AiGeneratedGif_FirstRow
+  ): AiGeneratedGif @fdc_generated(from: "AiGeneratedGif", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `AiGeneratedImage` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  aiGeneratedImage(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: AiGeneratedImage_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: AiGeneratedImage_FirstRow
+  ): AiGeneratedImage @fdc_generated(from: "AiGeneratedImage", purpose: QUERY_SINGLE)
   """
   ✨ Look up a single `Analytics` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
   """
@@ -264,74 +264,6 @@ extend type Query {
     first: User_FirstRow
   ): User @fdc_generated(from: "User", purpose: QUERY_SINGLE)
   """
-  ✨ List `AIGeneratedGIF` objects in the table and return selected fields, optionally filtered by `where` conditions
-  """
-  aIGeneratedGIFS(
-    """
-    Filter condition to narrow down the query results.
-    """
-    where: AIGeneratedGIF_Filter
-
-    """
-    Order the query results by specific fields.
-    """
-    orderBy: [AIGeneratedGIF_Order!]
-
-    """
-    Number of rows to skip before starting to return the results.
-    """
-    offset: Int
-
-    """
-    Maximum number of rows to return (defaults to 100 rows).
-    """
-    limit: Int = 100
-
-    """
-    Set to true to return distinct results.
-    """
-    distinct: Boolean = false
-
-    """
-    Filter condition to apply to the groups of aggregate queries.
-    """
-    having: AIGeneratedGIF_Having
-  ): [AIGeneratedGIF!]! @fdc_generated(from: "AIGeneratedGIF", purpose: QUERY_MULTIPLE)
-  """
-  ✨ List `AIGeneratedImage` objects in the table and return selected fields, optionally filtered by `where` conditions
-  """
-  aIGeneratedImages(
-    """
-    Filter condition to narrow down the query results.
-    """
-    where: AIGeneratedImage_Filter
-
-    """
-    Order the query results by specific fields.
-    """
-    orderBy: [AIGeneratedImage_Order!]
-
-    """
-    Number of rows to skip before starting to return the results.
-    """
-    offset: Int
-
-    """
-    Maximum number of rows to return (defaults to 100 rows).
-    """
-    limit: Int = 100
-
-    """
-    Set to true to return distinct results.
-    """
-    distinct: Boolean = false
-
-    """
-    Filter condition to apply to the groups of aggregate queries.
-    """
-    having: AIGeneratedImage_Having
-  ): [AIGeneratedImage!]! @fdc_generated(from: "AIGeneratedImage", purpose: QUERY_MULTIPLE)
-  """
   ✨ List `AdminAction` objects in the table and return selected fields, optionally filtered by `where` conditions
   """
   adminActions(
@@ -365,6 +297,74 @@ extend type Query {
     """
     having: AdminAction_Having
   ): [AdminAction!]! @fdc_generated(from: "AdminAction", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `AiGeneratedGif` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  aiGeneratedGifs(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: AiGeneratedGif_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [AiGeneratedGif_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: AiGeneratedGif_Having
+  ): [AiGeneratedGif!]! @fdc_generated(from: "AiGeneratedGif", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `AiGeneratedImage` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  aiGeneratedImages(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: AiGeneratedImage_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [AiGeneratedImage_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: AiGeneratedImage_Having
+  ): [AiGeneratedImage!]! @fdc_generated(from: "AiGeneratedImage", purpose: QUERY_MULTIPLE)
   """
   ✨ List `Analytics` objects in the table and return selected fields, optionally filtered by `where` conditions
   """

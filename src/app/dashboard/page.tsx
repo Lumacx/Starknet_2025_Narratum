@@ -4,16 +4,26 @@ import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { useListStoriesByUser } from '../../../dataconnect-generated/js/default-connector/react';
+import { useGetAllStories } from '../../../dataconnect-generated/js/default-connector/react/index.cjs.js';
+//import { useGetAllStories } from 'dataconnect-generated/js/default-connector/react';
+
+import { Story } from '@/lib/types';
 
 const DashboardPage: React.FC = () => {
   const { user, loading } = useAuth();
   const router = useRouter();
-  
-  // Fetch stories using the generated hook, only if the user exists.
-  const { data: storiesData, isLoading: storiesLoading, error } = useListStoriesByUser(
-    user ? { userId: user.uid } : undefined
-  );
+
+  // Fetch all stories.
+  const { data: storiesData, isLoading: storiesLoading, error } = useGetAllStories();
+
+  // Filter stories by the current user's ID on the client-side.
+  const userStories = React.useMemo(() => {
+    if (!user || !storiesData?.story) {
+      return [];
+    }
+    return storiesData.story.filter((s: Story) => s.creator?.id === user.uid);
+
+  }, [user, storiesData]);
 
   // Redirect to login if not authenticated.
   React.useEffect(() => {
@@ -38,8 +48,6 @@ const DashboardPage: React.FC = () => {
     );
   }
 
-  const stories = storiesData?.stories || [];
-
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 font-sans">
       {/* Header */}
@@ -57,9 +65,9 @@ const DashboardPage: React.FC = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          {stories.length > 0 ? (
+          {userStories.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {stories.map(story => (
+              {userStories.map((story: Story) => (
                 <div key={story.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
                   <div className="p-6">
                     <h2 className="text-2xl font-bold text-gray-900 mb-2">{story.title}</h2>

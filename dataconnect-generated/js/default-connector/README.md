@@ -1,3 +1,10 @@
+# Generated TypeScript README
+This README will guide you through the process of using the generated JavaScript SDK package for the connector `default`. It will also provide examples on how to use your generated SDK to call your Data Connect queries and mutations.
+
+**If you're looking for the `React README`, you can find it at [`default-connector/react/README.md`](./react/README.md)**
+
+***NOTE:** This README is generated alongside the generated SDK. If you make changes to this file, they will be overwritten when the SDK is regenerated.*
+
 # Table of Contents
 - [**Overview**](#generated-javascript-readme)
 - [**Accessing the connector**](#accessing-the-connector)
@@ -27,19 +34,12 @@
   - [*CreateAnalyticsEntry*](#createanalyticsentry)
   - [*LogLegalDisclaimerAcceptance*](#loglegaldisclaimeracceptance)
 
-# Generated TypeScript README
-This README will guide you through the process of using the generated JavaScript SDK package for the connector `default`. It will also provide examples on how to use your generated SDK to call your Data Connect queries and mutations.
-
-***NOTE:** This README is generated alongside the generated SDK. If you make changes to this file, they will be overwritten when the SDK is regenerated.*
+# Accessing the connector
+A connector is a collection of Queries and Mutations. One SDK is generated for each connector - this SDK is generated for the connector `default`. You can find more information about connectors in the [Data Connect documentation](https://firebase.google.com/docs/data-connect#how-does).
 
 You can use this generated SDK by importing from the package `@firebasegen/default-connector` as shown below. Both CommonJS and ESM imports are supported.
 
 You can also follow the instructions from the [Data Connect documentation](https://firebase.google.com/docs/data-connect/web-sdk#set-client).
-
-# Accessing the connector
-A connector is a collection of Queries and Mutations. One SDK is generated for each connector - this SDK is generated for the connector `default`.
-
-You can find more information about connectors in the [Data Connect documentation](https://firebase.google.com/docs/data-connect#how-does).
 
 ```typescript
 import { getDataConnect } from 'firebase/data-connect';
@@ -350,12 +350,15 @@ Recall that executing the `GetAllStories` query returns a `QueryPromise` that re
 The `data` property is an object of type `GetAllStoriesData`, which is defined in [default-connector/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
 export interface GetAllStoriesData {
-  stories: ({
+  story?: {
     id: string;
     title?: string | null;
     genre?: string | null;
     status: string;
-  } & Story_Key)[];
+    creator: {
+      id: string;
+    } & User_Key;
+  } & Story_Key;
 }
 ```
 ### Using `GetAllStories`'s action shortcut function
@@ -373,12 +376,12 @@ const { data } = await getAllStories();
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await getAllStories(dataConnect);
 
-console.log(data.stories);
+console.log(data.story);
 
 // Or, you can use the `Promise` API.
 getAllStories().then((response) => {
   const data = response.data;
-  console.log(data.stories);
+  console.log(data.story);
 });
 ```
 
@@ -400,12 +403,12 @@ const ref = getAllStoriesRef(dataConnect);
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeQuery(ref);
 
-console.log(data.stories);
+console.log(data.story);
 
 // Or, you can use the `Promise` API.
 executeQuery(ref).then((response) => {
   const data = response.data;
-  console.log(data.stories);
+  console.log(data.story);
 });
 ```
 

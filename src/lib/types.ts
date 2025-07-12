@@ -38,7 +38,11 @@ export interface User {
     status: string;
     createdAt: string;
     updatedAt: string;
-    // Estos campos NO deben ser requeridos directamente
+    creator?: {
+      id?: string;
+      displayname?: string;
+    };
+      // Estos campos NO deben ser requeridos directamente
      storyContent?: StoryContent[];
       comments?: Comment[];
       reactions?: Reaction[];
@@ -71,7 +75,7 @@ export interface User {
     createdAt: string;
   }
   
-  export interface AIGeneratedImage {
+  export interface AiGeneratedImage {
     id: string;
     user: User;
     promptText?: string;
@@ -81,9 +85,9 @@ export interface User {
     createdAt: string;
   }
   
-  export interface AIGeneratedGIF {
+  export interface AiGeneratedGif {
     id: string;
-    image: AIGeneratedImage;
+    image: AiGeneratedImage;
     gifUrl?: string;
     createdAt: string;
   }

@@ -23,17 +23,10 @@
       "import": "./react/esm/index.esm.js",
       "default": "./react/esm/index.esm.js"
     },
-    "./angular": {
-      "types": "./angular/index.d.ts",
-      "require": "./angular/index.cjs.js",
-      "import": "./angular/esm/index.esm.js",
-      "default": "./angular/esm/index.esm.js"
-    },
     "./package.json": "./package.json"
   },
   "peerDependencies": {
     "firebase": "^11.3.0",
-    "@tanstack-query-firebase/react": "^2.0.0",
-    "@tanstack-query-firebase/angular": "^1.0.0"
+    "@tanstack-query-firebase/react": "^2.0.0"
   }
 }
