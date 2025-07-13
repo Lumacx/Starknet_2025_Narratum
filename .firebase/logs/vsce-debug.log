@@ -1296,3 +1296,620 @@ I0712 18:49:14.886406     549 dev.go:95] Listening on address (HTTP + gRPC): 127
  {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 18:49:14.850567     549 codegen.go:82] [connector \"default\" javascriptSdk] Generating sources into \"/home/user/studio/dataconnect-generated/js/default-connector\"\nE0712 18:49:14.850649     549 load.go:101] Errors generating SDK: [connector \"default\" javascriptSdk]: failed to generate sources:\nuser-defined enum PaymentStatus is not supported (to prevent this error, remove user-defined enums from your Schema and Operations, and/or stop using the user_enum preview flag)\nI0712 18:49:14.856369     549 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [98192B] prelude.gql [71203B] \nI0712 18:49:14.859897     549 load.go:115] Finished reloading\nI0712 18:49:14.886406     549 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50001\n"}}
 [debug] [2025-07-12T18:49:15.229Z] I0712 18:49:15.194971     549 engine.go:170] [/emulator/studio-v0 41ca] ExecuteGraphqlRead IntrospectionQuery: succeeded. 
  {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 18:49:15.194971     549 engine.go:170] [/emulator/studio-v0 41ca] ExecuteGraphqlRead IntrospectionQuery: succeeded. \n"}}
+[debug] [2025-07-12T18:52:15.567Z] I0712 18:52:15.563567     549 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 18:52:15.563567     549 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-07-12T18:52:15.631Z] E0712 18:52:15.631045     549 load.go:79] Could not load sources: 
+Errors: schema/schema.gql:50: Directive auth is not applicable on OBJECT.
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0712 18:52:15.631045     549 load.go:79] Could not load sources: \nErrors: schema/schema.gql:50: Directive auth is not applicable on OBJECT.\n"}}
+[debug] [2025-07-12T18:52:15.664Z] I0712 18:52:15.662353     549 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [71203B] main/implicit.gql [3267B] 
+I0712 18:52:15.662443     549 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 18:52:15.662353     549 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [71203B] main/implicit.gql [3267B] \nI0712 18:52:15.662443     549 load.go:80] Finished reloading\n"}}
+[debug] [2025-07-12T18:53:31.793Z] I0712 18:53:31.792796     549 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 18:53:31.792796     549 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-07-12T18:53:31.992Z] W0712 18:53:31.992182     549 control.go:58] [/emulator/studio-v0 41ca] connector "default" has errors: connector/mutations.gql:15: Cannot query field "aiGeneratedImage_insert" on type "Mutation". Did you mean "aIGeneratedImage_insert", "aIGeneratedImage_upsert", "aIGeneratedImage_insertMany", "aIGeneratedGIF_insert", or "aIGeneratedImage_delete"?
+connector/mutations.gql:27: Cannot query field "aiGeneratedGif_insert" on type "Mutation". Did you mean "aIGeneratedGIF_insert", "aIGeneratedGIF_upsert", "aIGeneratedGIF_insertMany", "aIGeneratedGIF_delete", or "aIGeneratedImage_insert"?
+connector/queries.gql:71: Cannot query field "aiGeneratedImage" on type "Query". Did you mean "aIGeneratedImage", "aIGeneratedImages", "aIGeneratedGIF", or "aIGeneratedGIFS"?
+connector/queries.gql:82: Cannot query field "aiGeneratedGif" on type "Query". Did you mean "aIGeneratedGIF", "aIGeneratedGIFS", "aIGeneratedImage", or "aIGeneratedImages"?
+
+sources: connector/mutations.gql [2572B] connector/queries.gql [2254B] 
+I0712 18:53:31.992309     549 control.go:84] [/emulator/studio-v0 41ca] UpdateResources(): done
+Schema: sources: schema/schema.gql [3548B] 
+Connector "default": sources: connector/mutations.gql [2572B] connector/queries.gql [2254B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0712 18:53:31.992182     549 control.go:58] [/emulator/studio-v0 41ca] connector \"default\" has errors: connector/mutations.gql:15: Cannot query field \"aiGeneratedImage_insert\" on type \"Mutation\". Did you mean \"aIGeneratedImage_insert\", \"aIGeneratedImage_upsert\", \"aIGeneratedImage_insertMany\", \"aIGeneratedGIF_insert\", or \"aIGeneratedImage_delete\"?\nconnector/mutations.gql:27: Cannot query field \"aiGeneratedGif_insert\" on type \"Mutation\". Did you mean \"aIGeneratedGIF_insert\", \"aIGeneratedGIF_upsert\", \"aIGeneratedGIF_insertMany\", \"aIGeneratedGIF_delete\", or \"aIGeneratedImage_insert\"?\nconnector/queries.gql:71: Cannot query field \"aiGeneratedImage\" on type \"Query\". Did you mean \"aIGeneratedImage\", \"aIGeneratedImages\", \"aIGeneratedGIF\", or \"aIGeneratedGIFS\"?\nconnector/queries.gql:82: Cannot query field \"aiGeneratedGif\" on type \"Query\". Did you mean \"aIGeneratedGIF\", \"aIGeneratedGIFS\", \"aIGeneratedImage\", or \"aIGeneratedImages\"?\n\nsources: connector/mutations.gql [2572B] connector/queries.gql [2254B] \nI0712 18:53:31.992309     549 control.go:84] [/emulator/studio-v0 41ca] UpdateResources(): done\nSchema: sources: schema/schema.gql [3548B] \nConnector \"default\": sources: connector/mutations.gql [2572B] connector/queries.gql [2254B] \n"}}
+[debug] [2025-07-12T18:53:32.018Z] E0712 18:53:32.016727     549 load.go:79] Could not load sources: 
+Errors: connector/mutations.gql:15: Cannot query field "aiGeneratedImage_insert" on type "Mutation". Did you mean "aIGeneratedImage_insert", "aIGeneratedImage_upsert", "aIGeneratedImage_insertMany", "aIGeneratedGIF_insert", or "aIGeneratedImage_delete"?
+connector/mutations.gql:27: Cannot query field "aiGeneratedGif_insert" on type "Mutation". Did you mean "aIGeneratedGIF_insert", "aIGeneratedGIF_upsert", "aIGeneratedGIF_insertMany", "aIGeneratedGIF_delete", or "aIGeneratedImage_insert"?
+connector/queries.gql:71: Cannot query field "aiGeneratedImage" on type "Query". Did you mean "aIGeneratedImage", "aIGeneratedImages", "aIGeneratedGIF", or "aIGeneratedGIFS"?
+connector/queries.gql:82: Cannot query field "aiGeneratedGif" on type "Query". Did you mean "aIGeneratedGIF", "aIGeneratedGIFS", "aIGeneratedImage", or "aIGeneratedImages"?
+
+Warnings: schema/schema.gql:90: NAMING_LINTER: On AIGeneratedGIF: Type name should be in PascalCase
+schema/schema.gql:80: NAMING_LINTER: On AIGeneratedImage: Type name should be in PascalCase
+I0712 18:53:32.018313     549 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: prelude.gql [71203B] main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] 
+I0712 18:53:32.018376     549 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0712 18:53:32.016727     549 load.go:79] Could not load sources: \nErrors: connector/mutations.gql:15: Cannot query field \"aiGeneratedImage_insert\" on type \"Mutation\". Did you mean \"aIGeneratedImage_insert\", \"aIGeneratedImage_upsert\", \"aIGeneratedImage_insertMany\", \"aIGeneratedGIF_insert\", or \"aIGeneratedImage_delete\"?\nconnector/mutations.gql:27: Cannot query field \"aiGeneratedGif_insert\" on type \"Mutation\". Did you mean \"aIGeneratedGIF_insert\", \"aIGeneratedGIF_upsert\", \"aIGeneratedGIF_insertMany\", \"aIGeneratedGIF_delete\", or \"aIGeneratedImage_insert\"?\nconnector/queries.gql:71: Cannot query field \"aiGeneratedImage\" on type \"Query\". Did you mean \"aIGeneratedImage\", \"aIGeneratedImages\", \"aIGeneratedGIF\", or \"aIGeneratedGIFS\"?\nconnector/queries.gql:82: Cannot query field \"aiGeneratedGif\" on type \"Query\". Did you mean \"aIGeneratedGIF\", \"aIGeneratedGIFS\", \"aIGeneratedImage\", or \"aIGeneratedImages\"?\n\nWarnings: schema/schema.gql:90: NAMING_LINTER: On AIGeneratedGIF: Type name should be in PascalCase\nschema/schema.gql:80: NAMING_LINTER: On AIGeneratedImage: Type name should be in PascalCase\nI0712 18:53:32.018313     549 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: prelude.gql [71203B] main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] \nI0712 18:53:32.018376     549 load.go:80] Finished reloading\n"}}
+[debug] [2025-07-12T19:04:02.114Z] I0712 19:04:02.113952     549 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 19:04:02.113952     549 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-07-12T19:04:02.123Z] E0712 19:04:02.122036     549 load.go:79] Could not load sources: 
+Errors: schema/schema.gql:92: Undefined type AIGeneratedImage.
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0712 19:04:02.122036     549 load.go:79] Could not load sources: \nErrors: schema/schema.gql:92: Undefined type AIGeneratedImage.\n"}}
+[debug] [2025-07-12T19:04:02.124Z] I0712 19:04:02.124007     549 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 19:04:02.124007     549 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] \n"}}
+[debug] [2025-07-12T19:04:02.125Z] I0712 19:04:02.124072     549 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 19:04:02.124072     549 load.go:80] Finished reloading\n"}}
+[debug] [2025-07-12T19:04:08.210Z] I0712 19:04:08.208533     549 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 19:04:08.208533     549 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-07-12T19:04:08.263Z] E0712 19:04:08.263396     549 load.go:79] Could not load sources: 
+Errors: schema/schema.gql:92: Undefined type AIGeneratedImage.
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0712 19:04:08.263396     549 load.go:79] Could not load sources: \nErrors: schema/schema.gql:92: Undefined type AIGeneratedImage.\n"}}
+[debug] [2025-07-12T19:04:08.270Z] I0712 19:04:08.266924     549 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [71203B] 
+I0712 19:04:08.266986     549 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 19:04:08.266924     549 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [71203B] \nI0712 19:04:08.266986     549 load.go:80] Finished reloading\n"}}
+[debug] [2025-07-12T19:04:12.284Z] I0712 19:04:12.282614     549 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 19:04:12.282614     549 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-07-12T19:04:12.303Z] E0712 19:04:12.302463     549 load.go:79] Could not load sources: 
+Errors: schema/schema.gql:92: Undefined type AIGeneratedImage.
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0712 19:04:12.302463     549 load.go:79] Could not load sources: \nErrors: schema/schema.gql:92: Undefined type AIGeneratedImage.\n"}}
+[debug] [2025-07-12T19:04:12.312Z] I0712 19:04:12.304233     549 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] 
+I0712 19:04:12.304333     549 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 19:04:12.304233     549 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] \nI0712 19:04:12.304333     549 load.go:80] Finished reloading\n"}}
+[debug] [2025-07-12T19:06:30.896Z] I0712 19:06:30.896009     549 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 19:06:30.896009     549 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-07-12T19:06:31.001Z] E0712 19:06:31.000139     549 load.go:79] Could not load sources: 
+Errors: schema/schema.gql:92: Undefined type AIGeneratedImage.
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0712 19:06:31.000139     549 load.go:79] Could not load sources: \nErrors: schema/schema.gql:92: Undefined type AIGeneratedImage.\n"}}
+[debug] [2025-07-12T19:06:31.007Z] I0712 19:06:31.003568     549 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/input.gql [98192B] prelude.gql [71203B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] 
+I0712 19:06:31.003621     549 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 19:06:31.003568     549 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/input.gql [98192B] prelude.gql [71203B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] \nI0712 19:06:31.003621     549 load.go:80] Finished reloading\n"}}
+[debug] [2025-07-12T19:07:18.766Z] I0712 19:07:18.766320     549 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 19:07:18.766320     549 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-07-12T19:07:18.880Z] E0712 19:07:18.878747     549 load.go:79] Could not load sources: 
+Errors: schema/schema.gql:92: Undefined type AIGeneratedImage.
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0712 19:07:18.878747     549 load.go:79] Could not load sources: \nErrors: schema/schema.gql:92: Undefined type AIGeneratedImage.\n"}}
+[debug] [2025-07-12T19:07:18.887Z] I0712 19:07:18.885829     549 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 19:07:18.885829     549 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] \n"}}
+[debug] [2025-07-12T19:07:18.891Z] I0712 19:07:18.890323     549 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 19:07:18.890323     549 load.go:80] Finished reloading\n"}}
+[debug] [2025-07-12T19:29:45.734Z] I0712 19:29:45.733754     549 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 19:29:45.733754     549 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-07-12T19:29:45.816Z] E0712 19:29:45.816518     549 load.go:79] Could not load sources: 
+Errors: schema/schema.gql:91: Undefined type AIGeneratedImage.
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0712 19:29:45.816518     549 load.go:79] Could not load sources: \nErrors: schema/schema.gql:91: Undefined type AIGeneratedImage.\n"}}
+[debug] [2025-07-12T19:29:45.820Z] I0712 19:29:45.819782     549 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] prelude.gql [71203B] 
+I0712 19:29:45.819847     549 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 19:29:45.819782     549 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] prelude.gql [71203B] \nI0712 19:29:45.819847     549 load.go:80] Finished reloading\n"}}
+[debug] [2025-07-12T19:29:48.254Z] I0712 19:29:48.254372     549 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 19:29:48.254372     549 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-07-12T19:29:48.301Z] E0712 19:29:48.301110     549 load.go:79] Could not load sources: 
+Errors: schema/schema.gql:92: Undefined type AIGeneratedImage.
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0712 19:29:48.301110     549 load.go:79] Could not load sources: \nErrors: schema/schema.gql:92: Undefined type AIGeneratedImage.\n"}}
+[debug] [2025-07-12T19:29:48.305Z] I0712 19:29:48.304489     549 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: prelude.gql [71203B] main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] 
+I0712 19:29:48.304565     549 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 19:29:48.304489     549 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: prelude.gql [71203B] main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] \nI0712 19:29:48.304565     549 load.go:80] Finished reloading\n"}}
+[debug] [2025-07-12T20:26:40.103Z] [Firebase Plugin] Activating Firebase extension.
+[debug] [2025-07-12T20:27:13.880Z] [Firebase Plugin] requireAuthWrapper
+[debug] [2025-07-12T20:27:13.882Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-07-12T20:27:13.883Z] > authorizing via signed-in user (lumacx@gmail.com)
+[debug] [2025-07-12T20:27:13.893Z] Checked if tokens are valid: false, expires at: 1752349751031
+[debug] [2025-07-12T20:27:13.894Z] Checked if tokens are valid: false, expires at: 1752349751031
+[debug] [2025-07-12T20:27:13.896Z] > refreshing access token with scopes: []
+[debug] [2025-07-12T20:27:13.904Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-07-12T20:27:13.906Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-07-12T20:27:14.041Z] [Firebase Plugin] VSCode notification server listening on port 40002
+[debug] [2025-07-12T20:27:14.227Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-07-12T20:27:14.233Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-07-12T20:27:14.273Z] [Firebase Plugin] User found:  lumacx@gmail.com
+[info] [Firebase Plugin] (Core:Project) New user detected, fetching projects
+[debug] [2025-07-12T20:27:14.278Z] Checked if tokens are valid: true, expires at: 1752355633235
+[debug] [2025-07-12T20:27:14.279Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=1000
+[debug] [2025-07-12T20:27:14.682Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
+[debug] [2025-07-12T20:27:14.683Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
+[info] [Firebase Plugin] Starting Data Connect toolkit (version 2.8.0) on port 50002
+[info] i  dataconnect: downloading dataconnect-emulator-2.8.0... {"metadata":{"emulator":{"name":"dataconnect"},"message":"downloading dataconnect-emulator-2.8.0..."}}
+[debug] [2025-07-12T20:27:22.168Z] >>> [apiv2][query] GET https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v2.8.0 
+[debug] [2025-07-12T20:27:22.691Z] <<< [apiv2][status] GET https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v2.8.0 200
+[debug] [2025-07-12T20:27:22.692Z] <<< [apiv2][body] GET https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v2.8.0 [stream]
+[info] i  dataconnect: Removing outdated emulator files: dataconnect-emulator-2.9.1 {"metadata":{"emulator":{"name":"dataconnect"},"message":"Removing outdated emulator files: dataconnect-emulator-2.9.1"}}
+[debug] [2025-07-12T20:27:26.728Z] W0712 20:27:26.721785   16678 build.go:63] Failed to construct deployment metadata: rpc error: code = NotFound desc = no schema found for service "studio-v0". No service has a schema.
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0712 20:27:26.721785   16678 build.go:63] Failed to construct deployment metadata: rpc error: code = NotFound desc = no schema found for service \"studio-v0\". No service has a schema.\n"}}
+[debug] [2025-07-12T20:27:26.735Z] Ignoring unsupported arg: auto_download {"metadata":{"emulator":{"name":"dataconnect"},"message":"Ignoring unsupported arg: auto_download"}}
+[debug] [2025-07-12T20:27:26.736Z] Ignoring unsupported arg: port {"metadata":{"emulator":{"name":"dataconnect"},"message":"Ignoring unsupported arg: port"}}
+[debug] [2025-07-12T20:27:26.740Z] Starting Data Connect Emulator with command {"binary":"/home/user/.cache/firebase/emulators/dataconnect-emulator-2.8.0","args":["--logtostderr","-v=2","dev","--listen=localhost:50002","--config_dir=/home/user/studio/dataconnect","--enable_output_schema_extensions=true","--enable_output_generated_sdk=true"],"optionalArgs":["listen","config_dir","enable_output_schema_extensions","enable_output_generated_sdk"],"joinArgs":true,"shell":false,"port":9399} {"metadata":{"emulator":{"name":"dataconnect"},"message":"Starting Data Connect Emulator with command {\"binary\":\"/home/user/.cache/firebase/emulators/dataconnect-emulator-2.8.0\",\"args\":[\"--logtostderr\",\"-v=2\",\"dev\",\"--listen=localhost:50002\",\"--config_dir=/home/user/studio/dataconnect\",\"--enable_output_schema_extensions=true\",\"--enable_output_generated_sdk=true\"],\"optionalArgs\":[\"listen\",\"config_dir\",\"enable_output_schema_extensions\",\"enable_output_generated_sdk\"],\"joinArgs\":true,\"shell\":false,\"port\":9399}"}}
+[info] i  dataconnect: Data Connect Emulator logging to dataconnect-debug.log {"metadata":{"emulator":{"name":"dataconnect"},"message":"Data Connect Emulator logging to dataconnect-debug.log"}}
+[debug] [2025-07-12T20:27:26.939Z] I0712 20:27:26.913101   16683 load.go:37] Reloading schema and connectors...
+E0712 20:27:26.924160   16683 load.go:69] Could not generate extensions: rpc error: code = NotFound desc = no schema found for service "studio-v0". No service has a schema.
+E0712 20:27:26.924295   16683 load.go:79] Could not load sources: 
+Errors: schema/schema.gql:92: Undefined type AIGeneratedImage.
+I0712 20:27:26.936480   16683 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: prelude.gql [71203B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 20:27:26.913101   16683 load.go:37] Reloading schema and connectors...\nE0712 20:27:26.924160   16683 load.go:69] Could not generate extensions: rpc error: code = NotFound desc = no schema found for service \"studio-v0\". No service has a schema.\nE0712 20:27:26.924295   16683 load.go:79] Could not load sources: \nErrors: schema/schema.gql:92: Undefined type AIGeneratedImage.\nI0712 20:27:26.936480   16683 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: prelude.gql [71203B] \n"}}
+[debug] [2025-07-12T20:27:26.973Z] I0712 20:27:26.939381   16683 collector.go:114] schema extensions deleted obsolete file "/home/user/studio/dataconnect/.dataconnect/schema/main/implicit.gql"
+I0712 20:27:26.939517   16683 collector.go:114] schema extensions deleted obsolete file "/home/user/studio/dataconnect/.dataconnect/schema/main/input.gql"
+I0712 20:27:26.939575   16683 collector.go:114] schema extensions deleted obsolete file "/home/user/studio/dataconnect/.dataconnect/schema/main/mutation.gql"
+I0712 20:27:26.939622   16683 collector.go:114] schema extensions deleted obsolete file "/home/user/studio/dataconnect/.dataconnect/schema/main/query.gql"
+I0712 20:27:26.939664   16683 collector.go:114] schema extensions deleted obsolete file "/home/user/studio/dataconnect/.dataconnect/schema/main/relation.gql"
+I0712 20:27:26.941786   16683 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 20:27:26.939381   16683 collector.go:114] schema extensions deleted obsolete file \"/home/user/studio/dataconnect/.dataconnect/schema/main/implicit.gql\"\nI0712 20:27:26.939517   16683 collector.go:114] schema extensions deleted obsolete file \"/home/user/studio/dataconnect/.dataconnect/schema/main/input.gql\"\nI0712 20:27:26.939575   16683 collector.go:114] schema extensions deleted obsolete file \"/home/user/studio/dataconnect/.dataconnect/schema/main/mutation.gql\"\nI0712 20:27:26.939622   16683 collector.go:114] schema extensions deleted obsolete file \"/home/user/studio/dataconnect/.dataconnect/schema/main/query.gql\"\nI0712 20:27:26.939664   16683 collector.go:114] schema extensions deleted obsolete file \"/home/user/studio/dataconnect/.dataconnect/schema/main/relation.gql\"\nI0712 20:27:26.941786   16683 load.go:80] Finished reloading\n"}}
+[debug] [2025-07-12T20:27:27.093Z] I0712 20:27:27.092563   16683 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50002
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 20:27:27.092563   16683 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50002\n"}}
+[error] [Firebase Plugin] error:  {}
+[info] [Firebase Plugin] Stopping Data Connect toolkit
+[warn] ⚠  Data Connect Emulator has exited upon receiving signal: SIGINT 
+[debug] [2025-07-12T20:48:05.130Z] I0712 20:48:05.010860   16683 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 20:48:05.010860   16683 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-07-12T20:48:06.643Z] I0712 20:48:06.635517   16683 control.go:84] [/emulator/studio-v0 107c] UpdateResources(): done
+Schema: sources: schema/schema.gql [3459B] 
+Connector "default": sources: connector/mutations.gql [2572B] connector/queries.gql [2291B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 20:48:06.635517   16683 control.go:84] [/emulator/studio-v0 107c] UpdateResources(): done\nSchema: sources: schema/schema.gql [3459B] \nConnector \"default\": sources: connector/mutations.gql [2572B] connector/queries.gql [2291B] \n"}}
+[debug] [2025-07-12T20:48:07.792Z] I0712 20:48:07.787989   16683 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "/home/user/studio/dataconnect-generated/js/default-connector"
+E0712 20:48:07.788088   16683 load.go:101] Errors generating SDK: [connector "default" javascriptSdk]: failed to generate sources:
+user-defined enum AnalyticsAction is not supported (to prevent this error, remove user-defined enums from your Schema and Operations, and/or stop using the user_enum preview flag)
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 20:48:07.787989   16683 codegen.go:82] [connector \"default\" javascriptSdk] Generating sources into \"/home/user/studio/dataconnect-generated/js/default-connector\"\nE0712 20:48:07.788088   16683 load.go:101] Errors generating SDK: [connector \"default\" javascriptSdk]: failed to generate sources:\nuser-defined enum AnalyticsAction is not supported (to prevent this error, remove user-defined enums from your Schema and Operations, and/or stop using the user_enum preview flag)\n"}}
+[debug] [2025-07-12T20:48:07.804Z] I0712 20:48:07.802311   16683 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: prelude.gql [71203B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [98192B] 
+E0712 20:48:07.802398   16683 load.go:48] Errors flushing generated files: schema extensions
+failed to write file main/input.gql: write /home/user/studio/dataconnect/.dataconnect/schema/main/input.gql: no space left on device
+failed to write file main/relation.gql: write /home/user/studio/dataconnect/.dataconnect/schema/main/relation.gql: no space left on device
+failed to write file main/query.gql: write /home/user/studio/dataconnect/.dataconnect/schema/main/query.gql: no space left on device
+failed to write file main/mutation.gql: write /home/user/studio/dataconnect/.dataconnect/schema/main/mutation.gql: no space left on device
+failed to write file main/implicit.gql: write /home/user/studio/dataconnect/.dataconnect/schema/main/implicit.gql: no space left on device
+I0712 20:48:07.802440   16683 load.go:115] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 20:48:07.[debug] [2025-07-12T20:53:12.560Z] [Firebase Plugin] Activating Firebase extension.
+[debug] [2025-07-12T20:53:32.239Z] [Firebase Plugin] requireAuthWrapper
+[debug] [2025-07-12T20:53:32.242Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-07-12T20:53:32.243Z] > authorizing via signed-in user (lumacx@gmail.com)
+[debug] [2025-07-12T20:53:32.248Z] Checked if tokens are valid: true, expires at: 1752355633235
+[debug] [2025-07-12T20:53:32.249Z] Checked if tokens are valid: true, expires at: 1752355633235
+[debug] [2025-07-12T20:53:32.249Z] [Firebase Plugin] User found:  lumacx@gmail.com
+[info] [Firebase Plugin] (Core:Project) New user detected, fetching projects
+[debug] [2025-07-12T20:53:32.252Z] Checked if tokens are valid: true, expires at: 1752355633235
+[debug] [2025-07-12T20:53:32.256Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=1000
+[debug] [2025-07-12T20:53:32.313Z] [Firebase Plugin] VSCode notification server listening on port 40001
+[debug] [2025-07-12T20:53:32.599Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
+[debug] [2025-07-12T20:53:32.600Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
+[info] [Firebase Plugin] Starting Data Connect toolkit (version 2.8.0) on port 50001
+[debug] [2025-07-12T20:53:35.002Z] I0712 20:53:34.927721   23183 control.go:84] [/emulator/studio-v0 ee6b] UpdateResources(): done
+Schema: sources: schema/schema.gql [3459B] 
+Connector "default": sources: connector/mutations.gql [2572B] connector/queries.gql [2291B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 20:53:34.927721   23183 control.go:84] [/emulator/studio-v0 ee6b] UpdateResources(): done\nSchema: sources: schema/schema.gql [3459B] \nConnector \"default\": sources: connector/mutations.gql [2572B] connector/queries.gql [2291B] \n"}}
+[debug] [2025-07-12T20:53:35.005Z] Ignoring unsupported arg: auto_download {"metadata":{"emulator":{"name":"dataconnect"},"message":"Ignoring unsupported arg: auto_download"}}
+[debug] [2025-07-12T20:53:35.005Z] Ignoring unsupported arg: port {"metadata":{"emulator":{"name":"dataconnect"},"message":"Ignoring unsupported arg: port"}}
+[debug] [2025-07-12T20:53:35.006Z] Starting Data Connect Emulator with command {"binary":"/home/user/.cache/firebase/emulators/dataconnect-emulator-2.8.0","args":["--logtostderr","-v=2","dev","--listen=localhost:50001","--config_dir=/home/user/studio/dataconnect","--enable_output_schema_extensions=true","--enable_output_generated_sdk=true"],"optionalArgs":["listen","config_dir","enable_output_schema_extensions","enable_output_generated_sdk"],"joinArgs":true,"shell":false,"port":9399} {"metadata":{"emulator":{"name":"dataconnect"},"message":"Starting Data Connect Emulator with command {\"binary\":\"/home/user/.cache/firebase/emulators/dataconnect-emulator-2.8.0\",\"args\":[\"--logtostderr\",\"-v=2\",\"dev\",\"--listen=localhost:50001\",\"--config_dir=/home/user/studio/dataconnect\",\"--enable_output_schema_extensions=true\",\"--enable_output_generated_sdk=true\"],\"optionalArgs\":[\"listen\",\"config_dir\",\"enable_output_schema_extensions\",\"enable_output_generated_sdk\"],\"joinArgs\":true,\"shell\":false,\"port\":9399}"}}
+[info] i  dataconnect: Data Connect Emulator logging to dataconnect-debug.log {"metadata":{"emulator":{"name":"dataconnect"},"message":"Data Connect Emulator logging to dataconnect-debug.log"}}
+[debug] [2025-07-12T20:53:35.112Z] I0712 20:53:35.074570   23192 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 20:53:35.074570   23192 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-07-12T20:53:35.458Z] I0712 20:53:35.457853   23192 control.go:84] [/emulator/studio-v0 9257] UpdateResources(): done
+Schema: sources: schema/schema.gql [3459B] 
+Connector "default": sources: connector/mutations.gql [2572B] connector/queries.gql [2291B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 20:53:35.457853   23192 control.go:84] [/emulator/studio-v0 9257] UpdateResources(): done\nSchema: sources: schema/schema.gql [3459B] \nConnector \"default\": sources: connector/mutations.gql [2572B] connector/queries.gql [2291B] \n"}}
+[debug] [2025-07-12T20:53:35.826Z] I0712 20:53:35.825040   23192 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "/home/user/studio/dataconnect-generated/js/default-connector"
+E0712 20:53:35.825138   23192 load.go:101] Errors generating SDK: [connector "default" javascriptSdk]: failed to generate sources:
+user-defined enum StoryStatus is not supported (to prevent this error, remove user-defined enums from your Schema and Operations, and/or stop using the user_enum preview flag)
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 20:53:35.825040   23192 codegen.go:82] [connector \"default\" javascriptSdk] Generating sources into \"/home/user/studio/dataconnect-generated/js/default-connector\"\nE0712 20:53:35.825138   23192 load.go:101] Errors generating SDK: [connector \"default\" javascriptSdk]: failed to generate sources:\nuser-defined enum StoryStatus is not supported (to prevent this error, remove user-defined enums from your Schema and Operations, and/or stop using the user_enum preview flag)\n"}}
+[debug] [2025-07-12T20:53:35.832Z] I0712 20:53:35.828769   23192 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [98192B] prelude.gql [71203B] main/relation.gql [48131B] main/query.gql [15655B] 
+I0712 20:53:35.828863   23192 load.go:115] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 20:53:35.828769   23192 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [98192B] prelude.gql [71203B] main/relation.gql [48131B] main/query.gql [15655B] \nI0712 20:53:35.828863   23192 load.go:115] Finished reloading\n"}}
+[debug] [2025-07-12T20:53:35.983Z] I0712 20:53:35.980203   23192 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50001
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 20:53:35.980203   23192 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50001\n"}}
+[debug] [2025-07-12T20:53:36.138Z] I0712 20:53:36.138457   23192 engine.go:170] [/emulator/studio-v0 9257] ExecuteGraphqlRead IntrospectionQuery: succeeded. 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 20:53:36.138457   23192 engine.go:170] [/emulator/studio-v0 9257] ExecuteGraphqlRead IntrospectionQuery: succeeded. \n"}}
+[debug] [2025-07-12T21:26:42.838Z] I0712 21:26:42.837730   23192 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 21:26:42.837730   23192 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-07-12T21:26:42.997Z] I0712 21:26:42.997474   23192 control.go:84] [/emulator/studio-v0 9257] UpdateResources(): done
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 21:26:42.997474   23192 control.go:84] [/emulator/studio-v0 9257] UpdateResources(): done\nConnector \"default\": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \n"}}
+[debug] [2025-07-12T21:26:43.328Z] I0712 21:26:43.326889   23192 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "/home/user/studio/dataconnect-generated/js/default-connector"
+E0712 21:26:43.327002   23192 load.go:101] Errors generating SDK: [connector "default" javascriptSdk]: failed to generate sources:
+user-defined enum StoryStatus is not supported (to prevent this error, remove user-defined enums from your Schema and Operations, and/or stop using the user_enum preview flag)
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 21:26:43.326889   23192 codegen.go:82] [connector \"default\" javascriptSdk] Generating sources into \"/home/user/studio/dataconnect-generated/js/default-connector\"\nE0712 21:26:43.327002   23192 load.go:101] Errors generating SDK: [connector \"default\" javascriptSdk]: failed to generate sources:\nuser-defined enum StoryStatus is not supported (to prevent this error, remove user-defined enums from your Schema and Operations, and/or stop using the user_enum preview flag)\n"}}
+[debug] [2025-07-12T21:26:43.356Z] I0712 21:26:43.354860   23192 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/mutation.gql [41655B] prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] 
+I0712 21:26:43.354929   23192 load.go:115] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 21:26:43.354860   23192 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/mutation.gql [41655B] prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] \nI0712 21:26:43.354929   23192 load.go:115] Finished reloading\n"}}
+[debug] [2025-07-12T22:25:10.603Z] [Firebase Plugin] Activating Firebase extension.
+[debug] [2025-07-12T22:42:17.119Z] [Firebase Plugin] requireAuthWrapper
+[debug] [2025-07-12T22:42:17.122Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-07-12T22:42:17.123Z] > authorizing via signed-in user (lumacx@gmail.com)
+[debug] [2025-07-12T22:42:17.130Z] Checked if tokens are valid: false, expires at: 1752355633235
+[debug] [2025-07-12T22:42:17.131Z] Checked if tokens are valid: false, expires at: 1752355633235
+[debug] [2025-07-12T22:42:17.132Z] > refreshing access token with scopes: []
+[debug] [2025-07-12T22:42:17.136Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-07-12T22:42:17.137Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-07-12T22:42:17.214Z] [Firebase Plugin] VSCode notification server listening on port 40002
+[debug] [2025-07-12T22:42:19.634Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-07-12T22:42:19.635Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-07-12T22:42:19.719Z] [Firebase Plugin] User found:  lumacx@gmail.com
+[info] [Firebase Plugin] (Core:Project) New user detected, fetching projects
+[debug] [2025-07-12T22:42:19.723Z] Checked if tokens are valid: true, expires at: 1752363738636
+[debug] [2025-07-12T22:42:19.725Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=1000
+[debug] [2025-07-12T22:42:20.053Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
+[debug] [2025-07-12T22:42:20.054Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
+[info] [Firebase Plugin] Stopping Data Connect toolkit
+[warn] ⚠  Data Connect Emulator has exited upon receiving signal: SIGINT 
+[debug] [2025-07-12T22:50:48.657Z] [Firebase Plugin] Activating Firebase extension.
+[debug] [2025-07-12T22:51:16.779Z] [Firebase Plugin] requireAuthWrapper
+[debug] [2025-07-12T22:51:16.787Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-07-12T22:51:16.791Z] > authorizing via signed-in user (lumacx@gmail.com)
+[debug] [2025-07-12T22:51:16.802Z] Checked if tokens are valid: true, expires at: 1752363738636
+[debug] [2025-07-12T22:51:16.806Z] Checked if tokens are valid: true, expires at: 1752363738636
+[debug] [2025-07-12T22:51:16.806Z] [Firebase Plugin] User found:  lumacx@gmail.com
+[info] [Firebase Plugin] (Core:Project) New user detected, fetching projects
+[debug] [2025-07-12T22:51:16.812Z] Checked if tokens are valid: true, expires at: 1752363738636
+[debug] [2025-07-12T22:51:16.821Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=1000
+[debug] [2025-07-12T22:51:17.120Z] [Firebase Plugin] VSCode notification server listening on port 40001
+[debug] [2025-07-12T22:51:17.595Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
+[debug] [2025-07-12T22:51:17.598Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
+[info] [Firebase Plugin] Starting Data Connect toolkit (version 2.8.0) on port 50001
+[debug] [2025-07-12T22:51:23.241Z] I0712 22:51:22.906854   40506 control.go:84] [/emulator/studio-v0 6c93] UpdateResources(): done
+Schema: sources: schema/schema.gql [3459B] 
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 22:51:22.906854   40506 control.go:84] [/emulator/studio-v0 6c93] UpdateResources(): done\nSchema: sources: schema/schema.gql [3459B] \nConnector \"default\": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \n"}}
+[debug] [2025-07-12T22:51:23.256Z] Ignoring unsupported arg: auto_download {"metadata":{"emulator":{"name":"dataconnect"},"message":"Ignoring unsupported arg: auto_download"}}
+[debug] [2025-07-12T22:51:23.257Z] Ignoring unsupported arg: port {"metadata":{"emulator":{"name":"dataconnect"},"message":"Ignoring unsupported arg: port"}}
+[debug] [2025-07-12T22:51:23.262Z] Starting Data Connect Emulator with command {"binary":"/home/user/.cache/firebase/emulators/dataconnect-emulator-2.8.0","args":["--logtostderr","-v=2","dev","--listen=localhost:50001","--config_dir=/home/user/studio/dataconnect","--enable_output_schema_extensions=true","--enable_output_generated_sdk=true"],"optionalArgs":["listen","config_dir","enable_output_schema_extensions","enable_output_generated_sdk"],"joinArgs":true,"shell":false,"port":9399} {"metadata":{"emulator":{"name":"dataconnect"},"message":"Starting Data Connect Emulator with command {\"binary\":\"/home/user/.cache/firebase/emulators/dataconnect-emulator-2.8.0\",\"args\":[\"--logtostderr\",\"-v=2\",\"dev\",\"--listen=localhost:50001\",\"--config_dir=/home/user/studio/dataconnect\",\"--enable_output_schema_extensions=true\",\"--enable_output_generated_sdk=true\"],\"optionalArgs\":[\"listen\",\"config_dir\",\"enable_output_schema_extensions\",\"enable_output_generated_sdk\"],\"joinArgs\":true,\"shell\":false,\"port\":9399}"}}
+[info] i  dataconnect: Data Connect Emulator logging to dataconnect-debug.log {"metadata":{"emulator":{"name":"dataconnect"},"message":"Data Connect Emulator logging to dataconnect-debug.log"}}
+[debug] [2025-07-12T22:51:23.656Z] I0712 22:51:23.559144   40536 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 22:51:23.559144   40536 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-07-12T22:51:24.633Z] I0712 22:51:24.622302   40536 control.go:84] [/emulator/studio-v0 957a] UpdateResources(): done
+Schema: sources: schema/schema.gql [3459B] 
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 22:51:24.622302   40536 control.go:84] [/emulator/studio-v0 957a] UpdateResources(): done\nSchema: sources: schema/schema.gql [3459B] \nConnector \"default\": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \n"}}
+[debug] [2025-07-12T22:51:25.516Z] I0712 22:51:25.436439   40536 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "/home/user/studio/dataconnect-generated/js/default-connector"
+E0712 22:51:25.436543   40536 load.go:101] Errors generating SDK: [connector "default" javascriptSdk]: failed to generate sources:
+user-defined enum PaymentStatus is not supported (to prevent this error, remove user-defined enums from your Schema and Operations, and/or stop using the user_enum preview flag)
+I0712 22:51:25.455092   40536 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/mutation.gql [41655B] prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] 
+I0712 22:51:25.455195   40536 load.go:115] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 22:51:25.436439   40536 codegen.go:82] [connector \"default\" javascriptSdk] Generating sources into \"/home/user/studio/dataconnect-generated/js/default-connector\"\nE0712 22:51:25.436543   40536 load.go:101] Errors generating SDK: [connector \"default\" javascriptSdk]: failed to generate sources:\nuser-defined enum PaymentStatus is not supported (to prevent this error, remove user-defined enums from your Schema and Operations, and/or stop using the user_enum preview flag)\nI0712 22:51:25.455092   40536 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/mutation.gql [41655B] prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] \nI0712 22:51:25.455195   40536 load.go:115] Finished reloading\n"}}
+[debug] [2025-07-12T22:51:25.558Z] I0712 22:51:25.529697   40536 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50001
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 22:51:25.529697   40536 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50001\n"}}
+[debug] [2025-07-12T22:51:26.043Z] I0712 22:51:26.042110   40536 engine.go:170] [/emulator/studio-v0 957a] ExecuteGraphqlRead IntrospectionQuery: succeeded. 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 22:51:26.042110   40536 engine.go:170] [/emulator/studio-v0 957a] ExecuteGraphqlRead IntrospectionQuery: succeeded. \n"}}
+[info] [Firebase Plugin] Stopping Data Connect toolkit
+[debug] [2025-07-12T23:37:47.233Z] I0712 23:37:47.071892   40536 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 23:37:47.071892   40536 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-07-12T23:37:47.532Z] E0712 23:37:47.531746   40536 load.go:79] Could not load sources: 
+Errors: schema/schema.gql:92: Undefined type aiGeneratedImage.
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0712 23:37:47.531746   40536 load.go:79] Could not load sources: \nErrors: schema/schema.gql:92: Undefined type aiGeneratedImage.\n"}}
+[debug] [2025-07-12T23:37:47.603Z] I0712 23:37:47.566101   40536 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/input.gql [98192B] prelude.gql [71203B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 23:37:47.566101   40536 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/input.gql [98192B] prelude.gql [71203B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] \n"}}
+[debug] [2025-07-12T23:37:47.614Z] I0712 23:37:47.603159   40536 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 23:37:47.603159   40536 load.go:80] Finished reloading\n"}}
+[debug] [2025-07-12T23:37:52.596Z] I0712 23:37:52.592670   40536 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 23:37:52.592670   40536 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-07-12T23:37:52.619Z] E0712 23:37:52.616300   40536 load.go:79] Could not load sources: 
+Errors: schema/schema.gql:92: Undefined type aiGeneratedImage.
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0712 23:37:52.616300   40536 load.go:79] Could not load sources: \nErrors: schema/schema.gql:92: Undefined type aiGeneratedImage.\n"}}
+[debug] [2025-07-12T23:37:52.623Z] I0712 23:37:52.623571   40536 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] 
+I0712 23:37:52.623634   40536 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 23:37:52.623571   40536 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] \nI0712 23:37:52.623634   40536 load.go:80] Finished reloading\n"}}
+[debug] [2025-07-12T23:37:56.429Z] I0712 23:37:56.428758   40536 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 23:37:56.428758   40536 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-07-12T23:37:57.073Z] I0712 23:37:57.073212   40536 control.go:84] [/emulator/studio-v0 957a] UpdateResources(): done
+Schema: sources: schema/schema.gql [3459B] 
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 23:37:57.073212   40536 control.go:84] [/emulator/studio-v0 957a] UpdateResources(): done\nSchema: sources: schema/schema.gql [3459B] \nConnector \"default\": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \n"}}
+[debug] [2025-07-12T23:37:57.457Z] I0712 23:37:57.457350   40536 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "/home/user/studio/dataconnect-generated/js/default-connector"
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 23:37:57.457350   40536 codegen.go:82] [connector \"default\" javascriptSdk] Generating sources into \"/home/user/studio/dataconnect-generated/js/default-connector\"\n"}}
+[debug] [2025-07-12T23:37:57.477Z] E0712 23:37:57.474743   40536 load.go:101] Errors generating SDK: [connector "default" javascriptSdk]: failed to generate sources:
+user-defined enum ImageGenerationStatus is not supported (to prevent this error, remove user-defined enums from your Schema and Operations, and/or stop using the user_enum preview flag)
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0712 23:37:57.474743   40536 load.go:101] Errors generating SDK: [connector \"default\" javascriptSdk]: failed to generate sources:\nuser-defined enum ImageGenerationStatus is not supported (to prevent this error, remove user-defined enums from your Schema and Operations, and/or stop using the user_enum preview flag)\n"}}
+[debug] [2025-07-12T23:37:57.491Z] I0712 23:37:57.491567   40536 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: prelude.gql [71203B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [98192B] 
+I0712 23:37:57.491647   40536 load.go:115] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 23:37:57.491567   40536 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: prelude.gql [71203B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [98192B] \nI0712 23:37:57.491647   40536 load.go:115] Finished reloading\n"}}
+[debug] [2025-07-12T23:38:47.951Z] I0712 23:38:47.949057   40536 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 23:38:47.949057   40536 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-07-12T23:38:48.155Z] W0712 23:38:48.155160   40536 control.go:58] [/emulator/studio-v0 957a] connector "default" has errors: connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+
+sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0712 23:38:48.155160   40536 control.go:58] [/emulator/studio-v0 957a] connector \"default\" has errors: connector/queries.gql:84: Cannot query field \"AiGeneratedGif\" on type \"Query\". Did you mean \"aiGeneratedGif\", \"aiGeneratedGifs\", \"aiGeneratedImage\", or \"aiGeneratedImages\"?\n\nsources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \n"}}
+[debug] [2025-07-12T23:38:48.162Z] I0712 23:38:48.155762   40536 control.go:84] [/emulator/studio-v0 957a] UpdateResources(): done
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 23:38:48.155762   40536 control.go:84] [/emulator/studio-v0 957a] UpdateResources(): done\nConnector \"default\": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \n"}}
+[debug] [2025-07-12T23:38:48.211Z] E0712 23:38:48.208170   40536 load.go:79] Could not load sources: 
+Errors: connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0712 23:38:48.208170   40536 load.go:79] Could not load sources: \nErrors: connector/queries.gql:84: Cannot query field \"AiGeneratedGif\" on type \"Query\". Did you mean \"aiGeneratedGif\", \"aiGeneratedGifs\", \"aiGeneratedImage\", or \"aiGeneratedImages\"?\n"}}
+[debug] [2025-07-12T23:38:48.228Z] I0712 23:38:48.216984   40536 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] 
+I0712 23:38:48.217027   40536 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 23:38:48.216984   40536 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] \nI0712 23:38:48.217027   40536 load.go:80] Finished reloading\n"}}
+[debug] [2025-07-12T23:38:52.811Z] I0712 23:38:52.810652   40536 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 23:38:52.810652   40536 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-07-12T23:38:52.984Z] W0712 23:38:52.979304   40536 control.go:58] [/emulator/studio-v0 957a] connector "default" has errors: connector/queries.gql:73: Cannot query field "AiGeneratedImage" on type "Query". Did you mean "aiGeneratedImage", "aiGeneratedImages", "aiGeneratedGif", or "aiGeneratedGifs"?
+connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+
+sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+I0712 23:38:52.979377   40536 control.go:84] [/emulator/studio-v0 957a] UpdateResources(): done
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0712 23:38:52.979304   40536 control.go:58] [/emulator/studio-v0 957a] connector \"default\" has errors: connector/queries.gql:73: Cannot query field \"AiGeneratedImage\" on type \"Query\". Did you mean \"aiGeneratedImage\", \"aiGeneratedImages\", \"aiGeneratedGif\", or \"aiGeneratedGifs\"?\nconnector/queries.gql:84: Cannot query field \"AiGeneratedGif\" on type \"Query\". Did you mean \"aiGeneratedGif\", \"aiGeneratedGifs\", \"aiGeneratedImage\", or \"aiGeneratedImages\"?\n\nsources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \nI0712 23:38:52.979377   40536 control.go:84] [/emulator/studio-v0 957a] UpdateResources(): done\nConnector \"default\": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \n"}}
+[debug] [2025-07-12T23:38:53.014Z] E0712 23:38:53.013833   40536 load.go:79] Could not load sources: 
+Errors: connector/queries.gql:73: Cannot query field "AiGeneratedImage" on type "Query". Did you mean "aiGeneratedImage", "aiGeneratedImages", "aiGeneratedGif", or "aiGeneratedGifs"?
+connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0712 23:38:53.013833   40536 load.go:79] Could not load sources: \nErrors: connector/queries.gql:73: Cannot query field \"AiGeneratedImage\" on type \"Query\". Did you mean \"aiGeneratedImage\", \"aiGeneratedImages\", \"aiGeneratedGif\", or \"aiGeneratedGifs\"?\nconnector/queries.gql:84: Cannot query field \"AiGeneratedGif\" on type \"Query\". Did you mean \"aiGeneratedGif\", \"aiGeneratedGifs\", \"aiGeneratedImage\", or \"aiGeneratedImages\"?\n"}}
+[debug] [2025-07-12T23:38:53.031Z] I0712 23:38:53.029433   40536 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] 
+I0712 23:38:53.029603   40536 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 23:38:53.029433   40536 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] \nI0712 23:38:53.029603   40536 load.go:80] Finished reloading\n"}}
+[debug] [2025-07-12T23:39:17.867Z] I0712 23:39:17.865182   40536 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 23:39:17.865182   40536 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-07-12T23:39:18.053Z] W0712 23:39:18.052894   40536 control.go:58] [/emulator/studio-v0 957a] connector "default" has errors: connector/mutations.gql:15: Cannot query field "AiGeneratedImage_insert" on type "Mutation". Did you mean "aiGeneratedImage_insert", "aiGeneratedImage_upsert", "aiGeneratedImage_insertMany", "aiGeneratedGif_insert", or "aiGeneratedImage_delete"?
+connector/queries.gql:73: Cannot query field "AiGeneratedImage" on type "Query". Did you mean "aiGeneratedImage", "aiGeneratedImages", "aiGeneratedGif", or "aiGeneratedGifs"?
+connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+
+sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0712 23:39:18.052894   40536 control.go:58] [/emulator/studio-v0 957a] connector \"default\" has errors: connector/mutations.gql:15: Cannot query field \"AiGeneratedImage_insert\" on type \"Mutation\". Did you mean \"aiGeneratedImage_insert\", \"aiGeneratedImage_upsert\", \"aiGeneratedImage_insertMany\", \"aiGeneratedGif_insert\", or \"aiGeneratedImage_delete\"?\nconnector/queries.gql:73: Cannot query field \"AiGeneratedImage\" on type \"Query\". Did you mean \"aiGeneratedImage\", \"aiGeneratedImages\", \"aiGeneratedGif\", or \"aiGeneratedGifs\"?\nconnector/queries.gql:84: Cannot query field \"AiGeneratedGif\" on type \"Query\". Did you mean \"aiGeneratedGif\", \"aiGeneratedGifs\", \"aiGeneratedImage\", or \"aiGeneratedImages\"?\n\nsources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \n"}}
+[debug] [2025-07-12T23:39:18.064Z] I0712 23:39:18.052975   40536 control.go:84] [/emulator/studio-v0 957a] UpdateResources(): done
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 23:39:18.052975   40536 control.go:84] [/emulator/studio-v0 957a] UpdateResources(): done\nConnector \"default\": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \n"}}
+[debug] [2025-07-12T23:39:18.093Z] E0712 23:39:18.089633   40536 load.go:79] Could not load sources: 
+Errors: connector/mutations.gql:15: Cannot query field "AiGeneratedImage_insert" on type "Mutation". Did you mean "aiGeneratedImage_insert", "aiGeneratedImage_upsert", "aiGeneratedImage_insertMany", "aiGeneratedGif_insert", or "aiGeneratedImage_delete"?
+connector/queries.gql:73: Cannot query field "AiGeneratedImage" on type "Query". Did you mean "aiGeneratedImage", "aiGeneratedImages", "aiGeneratedGif", or "aiGeneratedGifs"?
+connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0712 23:39:18.089633   40536 load.go:79] Could not load sources: \nErrors: connector/mutations.gql:15: Cannot query field \"AiGeneratedImage_insert\" on type \"Mutation\". Did you mean \"aiGeneratedImage_insert\", \"aiGeneratedImage_upsert\", \"aiGeneratedImage_insertMany\", \"aiGeneratedGif_insert\", or \"aiGeneratedImage_delete\"?\nconnector/queries.gql:73: Cannot query field \"AiGeneratedImage\" on type \"Query\". Did you mean \"aiGeneratedImage\", \"aiGeneratedImages\", \"aiGeneratedGif\", or \"aiGeneratedGifs\"?\nconnector/queries.gql:84: Cannot query field \"AiGeneratedGif\" on type \"Query\". Did you mean \"aiGeneratedGif\", \"aiGeneratedGifs\", \"aiGeneratedImage\", or \"aiGeneratedImages\"?\n"}}
+[debug] [2025-07-12T23:39:18.100Z] I0712 23:39:18.100144   40536 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] 
+I0712 23:39:18.100201   40536 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 23:39:18.100144   40536 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] \nI0712 23:39:18.100201   40536 load.go:80] Finished reloading\n"}}
+[debug] [2025-07-12T23:39:37.836Z] I0712 23:39:37.835508   40536 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0712 23:39:37.835508   40536 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-07-12T23:39:38.189Z] W0712 23:39:38.163487   40536 control.go:58] [/emulator/studio-v0 957a] connector "default" has errors: connector/mutations.gql:15: Cannot query field "AiGeneratedImage_insert" on type "Mutation". Did you mean "aiGeneratedImage_insert", "aiGeneratedImage_upsert", "aiGeneratedImage_insertMany", "aiGeneratedGif_insert", or "aiGeneratedImage_delete"?
+connector/mutations.gql:27: Cannot query field "AiGeneratedGif_insert" on type "Mutation". Did you mean "aiGeneratedGif_insert", "aiGeneratedGif_upsert", "aiGeneratedGif_insertMany", "aiGeneratedGif_delete", or "aiGeneratedImage_insert"?
+connector/queries.gql:73: Cannot query field "AiGeneratedImage" on type "Query". Did you mean "aiGeneratedImage", "aiGeneratedImages", "aiGeneratedGif", or "aiGeneratedGifs"?
+connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+
+sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+I0712 23:39:38.163575   40536 control.go:84] [/emulator/studio-v0 957a] UpdateResources(): done
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+E0712 23:39:38.177759   40536 load.go:79] Could not load sources: 
+Errors: connector/mutations.gql:15: Cannot query field "AiGeneratedImage_insert" on type "Mutation". Did you mean "aiGeneratedImage_insert", "aiGeneratedImage_upsert", "aiGeneratedImage_insertMany", "aiGeneratedGif_insert", or "aiGeneratedImage_delete"?
+connector/mutations.gql:27: Cannot query field "AiGeneratedGif_insert" on type "Mutation". Did you mean "aiGeneratedGif_insert", "aiGeneratedGif_upsert", "aiGeneratedGif_insertMany", "aiGeneratedGif_delete", or "aiGeneratedImage_insert"?
+connector/queries.gql:73: Cannot query field "AiGeneratedImage" on type "Query". Did you mean "aiGeneratedImage", "aiGeneratedImages", "aiGeneratedGif", or "aiGeneratedGifs"?
+connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+I0712 23:39:38.182465   40536 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/mutation.gql [41655B] prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] 
+I0712 23:39:38.182509   40536 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0712 23:39:38.163487   40536 control.go:58] [/emulator/studio-v0 957a] connector \"default\" has errors: connector/mutations.gql:15: Cannot query field \"AiGeneratedImage_insert\" on type \"Mutation\". Did you mean \"aiGeneratedImage_insert\", \"aiGeneratedImage_upsert\", \"aiGeneratedImage_insertMany\", \"aiGeneratedGif_insert\", or \"aiGeneratedImage_delete\"?\nconnector/mutations.gql:27: Cannot query field \"AiGeneratedGif_insert\" on type \"Mutation\". Did you mean \"aiGeneratedGif_insert\", \"aiGeneratedGif_upsert\", \"aiGeneratedGif_insertMany\", \"aiGeneratedGif_delete\", or \"aiGeneratedImage_insert\"?\nconnector/queries.gql:73: Cannot query field \"AiGeneratedImage\" on type \"Query\". Did you mean \"aiGeneratedImage\", \"aiGeneratedImages\", \"aiGeneratedGif\", or \"aiGeneratedGifs\"?\nconnector/queries.gql:84: Cannot query field \"AiGeneratedGif\" on type \"Query\". Did you mean \"aiGeneratedGif\", \"aiGeneratedGifs\", \"aiGeneratedImage\", or \"aiGeneratedImages\"?\n\nsources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \nI0712 23:39:38.163575   40536 control.go:84] [/emulator/studio-v0 957a] UpdateResources(): done\nConnector \"default\": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \nE0712 23:39:38.177759   40536 load.go:79] Could not load sources: \nErrors: connector/mutations.gql:15: Cannot query field \"AiGeneratedImage_insert\" on type \"Mutation\". Did you mean \"aiGeneratedImage_insert\", \"aiGeneratedImage_upsert\", \"aiGeneratedImage_insertMany\", \"aiGeneratedGif_insert\", or \"aiGeneratedImage_delete\"?\nconnector/mutations.gql:27: Cannot query field \"AiGeneratedGif_insert\" on type \"Mutation\". Did you mean \"aiGeneratedGif_insert\", \"aiGeneratedGif_upsert\", \"aiGeneratedGif_insertMany\", \"aiGeneratedGif_delete\", or \"aiGeneratedImage_insert\"?\nconnector/queries.gql:73: Cannot query field \"AiGeneratedImage\" on type \"Query\". Did you mean \"aiGeneratedImage\", \"aiGeneratedImages\", \"aiGeneratedGif\", or \"aiGeneratedGifs\"?\nconnector/queries.gql:84: Cannot query field \"AiGeneratedGif\" on type \"Query\". Did you mean \"aiGeneratedGif\", \"aiGeneratedGifs\", \"aiGeneratedImage\", or \"aiGeneratedImages\"?\nI0712 23:39:38.182465   40536 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/mutation.gql [41655B] prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] \nI0712 23:39:38.182509   40536 load.go:80] Finished reloading\n"}}
+[debug] [2025-07-13T02:36:56.841Z] [Firebase Plugin] Activating Firebase extension.
+[debug] [2025-07-13T02:37:12.458Z] [Firebase Plugin] requireAuthWrapper
+[debug] [2025-07-13T02:37:12.460Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-07-13T02:37:12.461Z] > authorizing via signed-in user (lumacx@gmail.com)
+[debug] [2025-07-13T02:37:12.465Z] Checked if tokens are valid: false, expires at: 1752363738636
+[debug] [2025-07-13T02:37:12.466Z] Checked if tokens are valid: false, expires at: 1752363738636
+[debug] [2025-07-13T02:37:12.467Z] > refreshing access token with scopes: []
+[debug] [2025-07-13T02:37:12.471Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-07-13T02:37:12.472Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-07-13T02:37:12.543Z] [Firebase Plugin] VSCode notification server listening on port 40001
+[info] [Firebase Plugin] Starting Data Connect toolkit (version 2.8.0) on port 50001
+[debug] [2025-07-13T02:37:16.060Z] W0713 02:37:16.057543     402 control.go:58] [/emulator/studio-v0 d716] connector "default" has errors: connector/mutations.gql:15: Cannot query field "AiGeneratedImage_insert" on type "Mutation". Did you mean "aiGeneratedImage_insert", "aiGeneratedImage_upsert", "aiGeneratedImage_insertMany", "aiGeneratedGif_insert", or "aiGeneratedImage_delete"?
+connector/mutations.gql:27: Cannot query field "AiGeneratedGif_insert" on type "Mutation". Did you mean "aiGeneratedGif_insert", "aiGeneratedGif_upsert", "aiGeneratedGif_insertMany", "aiGeneratedGif_delete", or "aiGeneratedImage_insert"?
+connector/queries.gql:73: Cannot query field "AiGeneratedImage" on type "Query". Did you mean "aiGeneratedImage", "aiGeneratedImages", "aiGeneratedGif", or "aiGeneratedGifs"?
+connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+
+sources: connector/queries.gql [2291B] connector/mutations.gql [2615B] 
+I0713 02:37:16.057767     402 control.go:84] [/emulator/studio-v0 d716] UpdateResources(): done
+Schema: sources: schema/schema.gql [3459B] 
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0713 02:37:16.057543     402 control.go:58] [/emulator/studio-v0 d716] connector \"default\" has errors: connector/mutations.gql:15: Cannot query field \"AiGeneratedImage_insert\" on type \"Mutation\". Did you mean \"aiGeneratedImage_insert\", \"aiGeneratedImage_upsert\", \"aiGeneratedImage_insertMany\", \"aiGeneratedGif_insert\", or \"aiGeneratedImage_delete\"?\nconnector/mutations.gql:27: Cannot query field \"AiGeneratedGif_insert\" on type \"Mutation\". Did you mean \"aiGeneratedGif_insert\", \"aiGeneratedGif_upsert\", \"aiGeneratedGif_insertMany\", \"aiGeneratedGif_delete\", or \"aiGeneratedImage_insert\"?\nconnector/queries.gql:73: Cannot query field \"AiGeneratedImage\" on type \"Query\". Did you mean \"aiGeneratedImage\", \"aiGeneratedImages\", \"aiGeneratedGif\", or \"aiGeneratedGifs\"?\nconnector/queries.gql:84: Cannot query field \"AiGeneratedGif\" on type \"Query\". Did you mean \"aiGeneratedGif\", \"aiGeneratedGifs\", \"aiGeneratedImage\", or \"aiGeneratedImages\"?\n\nsources: connector/queries.gql [2291B] connector/mutations.gql [2615B] \nI0713 02:37:16.057767     402 control.go:84] [/emulator/studio-v0 d716] UpdateResources(): done\nSchema: sources: schema/schema.gql [3459B] \nConnector \"default\": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \n"}}
+[debug] [2025-07-13T02:37:16.062Z] Ignoring unsupported arg: auto_download {"metadata":{"emulator":{"name":"dataconnect"},"message":"Ignoring unsupported arg: auto_download"}}
+[debug] [2025-07-13T02:37:16.063Z] Ignoring unsupported arg: port {"metadata":{"emulator":{"name":"dataconnect"},"message":"Ignoring unsupported arg: port"}}
+[debug] [2025-07-13T02:37:16.063Z] Starting Data Connect Emulator with command {"binary":"/home/user/.cache/firebase/emulators/dataconnect-emulator-2.8.0","args":["--logtostderr","-v=2","dev","--listen=localhost:50001","--config_dir=/home/user/studio/dataconnect","--enable_output_schema_extensions=true","--enable_output_generated_sdk=true"],"optionalArgs":["listen","config_dir","enable_output_schema_extensions","enable_output_generated_sdk"],"joinArgs":true,"shell":false,"port":9399} {"metadata":{"emulator":{"name":"dataconnect"},"message":"Starting Data Connect Emulator with command {\"binary\":\"/home/user/.cache/firebase/emulators/dataconnect-emulator-2.8.0\",\"args\":[\"--logtostderr\",\"-v=2\",\"dev\",\"--listen=localhost:50001\",\"--config_dir=/home/user/studio/dataconnect\",\"--enable_output_schema_extensions=true\",\"--enable_output_generated_sdk=true\"],\"optionalArgs\":[\"listen\",\"config_dir\",\"enable_output_schema_extensions\",\"enable_output_generated_sdk\"],\"joinArgs\":true,\"shell\":false,\"port\":9399}"}}
+[info] i  dataconnect: Data Connect Emulator logging to dataconnect-debug.log {"metadata":{"emulator":{"name":"dataconnect"},"message":"Data Connect Emulator logging to dataconnect-debug.log"}}
+[debug] [2025-07-13T02:37:16.233Z] I0713 02:37:16.122545     407 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0713 02:37:16.122545     407 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-07-13T02:37:16.299Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-07-13T02:37:16.306Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-07-13T02:37:16.337Z] [Firebase Plugin] User found:  lumacx@gmail.com
+[info] [Firebase Plugin] (Core:Project) New user detected, fetching projects
+[debug] [2025-07-13T02:37:16.341Z] Checked if tokens are valid: true, expires at: 1752377835306
+[debug] [2025-07-13T02:37:16.342Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=1000
+[debug] [2025-07-13T02:37:16.516Z] W0713 02:37:16.496727     407 control.go:58] [/emulator/studio-v0 5d52] connector "default" has errors: connector/mutations.gql:15: Cannot query field "AiGeneratedImage_insert" on type "Mutation". Did you mean "aiGeneratedImage_insert", "aiGeneratedImage_upsert", "aiGeneratedImage_insertMany", "aiGeneratedGif_insert", or "aiGeneratedImage_delete"?
+connector/mutations.gql:27: Cannot query field "AiGeneratedGif_insert" on type "Mutation". Did you mean "aiGeneratedGif_insert", "aiGeneratedGif_upsert", "aiGeneratedGif_insertMany", "aiGeneratedGif_delete", or "aiGeneratedImage_insert"?
+connector/queries.gql:73: Cannot query field "AiGeneratedImage" on type "Query". Did you mean "aiGeneratedImage", "aiGeneratedImages", "aiGeneratedGif", or "aiGeneratedGifs"?
+connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+
+sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+I0713 02:37:16.496828     407 control.go:84] [/emulator/studio-v0 5d52] UpdateResources(): done
+Schema: sources: schema/schema.gql [3459B] 
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+E0713 02:37:16.508648     407 load.go:79] Could not load sources: 
+Errors: connector/mutations.gql:15: Cannot query field "AiGeneratedImage_insert" on type "Mutation". Did you mean "aiGeneratedImage_insert", "aiGeneratedImage_upsert", "aiGeneratedImage_insertMany", "aiGeneratedGif_insert", or "aiGeneratedImage_delete"?
+connector/mutations.gql:27: Cannot query field "AiGeneratedGif_insert" on type "Mutation". Did you mean "aiGeneratedGif_insert", "aiGeneratedGif_upsert", "aiGeneratedGif_insertMany", "aiGeneratedGif_delete", or "aiGeneratedImage_insert"?
+connector/queries.gql:73: Cannot query field "AiGeneratedImage" on type "Query". Did you mean "aiGeneratedImage", "aiGeneratedImages", "aiGeneratedGif", or "aiGeneratedGifs"?
+connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0713 02:37:16.496727     407 control.go:58] [/emulator/studio-v0 5d52] connector \"default\" has errors: connector/mutations.gql:15: Cannot query field \"AiGeneratedImage_insert\" on type \"Mutation\". Did you mean \"aiGeneratedImage_insert\", \"aiGeneratedImage_upsert\", \"aiGeneratedImage_insertMany\", \"aiGeneratedGif_insert\", or \"aiGeneratedImage_delete\"?\nconnector/mutations.gql:27: Cannot query field \"AiGeneratedGif_insert\" on type \"Mutation\". Did you mean \"aiGeneratedGif_insert\", \"aiGeneratedGif_upsert\", \"aiGeneratedGif_insertMany\", \"aiGeneratedGif_delete\", or \"aiGeneratedImage_insert\"?\nconnector/queries.gql:73: Cannot query field \"AiGeneratedImage\" on type \"Query\". Did you mean \"aiGeneratedImage\", \"aiGeneratedImages\", \"aiGeneratedGif\", or \"aiGeneratedGifs\"?\nconnector/queries.gql:84: Cannot query field \"AiGeneratedGif\" on type \"Query\". Did you mean \"aiGeneratedGif\", \"aiGeneratedGifs\", \"aiGeneratedImage\", or \"aiGeneratedImages\"?\n\nsources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \nI0713 02:37:16.496828     407 control.go:84] [/emulator/studio-v0 5d52] UpdateResources(): done\nSchema: sources: schema/schema.gql [3459B] \nConnector \"default\": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \nE0713 02:37:16.508648     407 load.go:79] Could not load sources: \nErrors: connector/mutations.gql:15: Cannot query field \"AiGeneratedImage_insert\" on type \"Mutation\". Did you mean \"aiGeneratedImage_insert\", \"aiGeneratedImage_upsert\", \"aiGeneratedImage_insertMany\", \"aiGeneratedGif_insert\", or \"aiGeneratedImage_delete\"?\nconnector/mutations.gql:27: Cannot query field \"AiGeneratedGif_insert\" on type \"Mutation\". Did you mean \"aiGeneratedGif_insert\", \"aiGeneratedGif_upsert\", \"aiGeneratedGif_insertMany\", \"aiGeneratedGif_delete\", or \"aiGeneratedImage_insert\"?\nconnector/queries.gql:73: Cannot query field \"AiGeneratedImage\" on type \"Query\". Did you mean \"aiGeneratedImage\", \"aiGeneratedImages\", \"aiGeneratedGif\", or \"aiGeneratedGifs\"?\nconnector/queries.gql:84: Cannot query field \"AiGeneratedGif\" on type \"Query\". Did you mean \"aiGeneratedGif\", \"aiGeneratedGifs\", \"aiGeneratedImage\", or \"aiGeneratedImages\"?\n"}}
+[debug] [2025-07-13T02:37:16.618Z] I0713 02:37:16.515294     407 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: prelude.gql [71203B] main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] 
+I0713 02:37:16.519108     407 load.go:80] Finished reloading
+I0713 02:37:16.532120     407 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50001
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0713 02:37:16.515294     407 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: prelude.gql [71203B] main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] \nI0713 02:37:16.519108     407 load.go:80] Finished reloading\nI0713 02:37:16.532120     407 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50001\n"}}
+[debug] [2025-07-13T02:37:16.918Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
+[debug] [2025-07-13T02:37:16.920Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
+[debug] [2025-07-13T02:37:16.930Z] I0713 02:37:16.929939     407 engine.go:170] [/emulator/studio-v0 5d52] ExecuteGraphqlRead IntrospectionQuery: succeeded. 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0713 02:37:16.929939     407 engine.go:170] [/emulator/studio-v0 5d52] ExecuteGraphqlRead IntrospectionQuery: succeeded. \n"}}
+[debug] [2025-07-13T02:56:56.866Z] [Firebase Plugin] Activating Firebase extension.
+[debug] [2025-07-13T02:57:16.030Z] [Firebase Plugin] requireAuthWrapper
+[debug] [2025-07-13T02:57:16.038Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-07-13T02:57:16.041Z] > authorizing via signed-in user (lumacx@gmail.com)
+[debug] [2025-07-13T02:57:16.057Z] Checked if tokens are valid: true, expires at: 1752377835306
+[debug] [2025-07-13T02:57:16.060Z] Checked if tokens are valid: true, expires at: 1752377835306
+[debug] [2025-07-13T02:57:16.060Z] [Firebase Plugin] User found:  lumacx@gmail.com
+[info] [Firebase Plugin] (Core:Project) New user detected, fetching projects
+[debug] [2025-07-13T02:57:16.065Z] Checked if tokens are valid: true, expires at: 1752377835306
+[debug] [2025-07-13T02:57:16.068Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=1000
+[debug] [2025-07-13T02:57:16.212Z] [Firebase Plugin] VSCode notification server listening on port 40002
+[debug] [2025-07-13T02:57:16.760Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
+[debug] [2025-07-13T02:57:16.768Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
+[info] [Firebase Plugin] Starting Data Connect toolkit (version 2.8.0) on port 50002
+[debug] [2025-07-13T02:57:19.330Z] W0713 02:57:19.326680    4554 control.go:58] [/emulator/studio-v0 d793] connector "default" has errors: connector/mutations.gql:15: Cannot query field "AiGeneratedImage_insert" on type "Mutation". Did you mean "aiGeneratedImage_insert", "aiGeneratedImage_upsert", "aiGeneratedImage_insertMany", "aiGeneratedGif_insert", or "aiGeneratedImage_delete"?
+connector/mutations.gql:27: Cannot query field "AiGeneratedGif_insert" on type "Mutation". Did you mean "aiGeneratedGif_insert", "aiGeneratedGif_upsert", "aiGeneratedGif_insertMany", "aiGeneratedGif_delete", or "aiGeneratedImage_insert"?
+connector/queries.gql:73: Cannot query field "AiGeneratedImage" on type "Query". Did you mean "aiGeneratedImage", "aiGeneratedImages", "aiGeneratedGif", or "aiGeneratedGifs"?
+connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+
+sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+I0713 02:57:19.326790    4554 control.go:84] [/emulator/studio-v0 d793] UpdateResources(): done
+Schema: sources: schema/schema.gql [3459B] 
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0713 02:57:19.326680    4554 control.go:58] [/emulator/studio-v0 d793] connector \"default\" has errors: connector/mutations.gql:15: Cannot query field \"AiGeneratedImage_insert\" on type \"Mutation\". Did you mean \"aiGeneratedImage_insert\", \"aiGeneratedImage_upsert\", \"aiGeneratedImage_insertMany\", \"aiGeneratedGif_insert\", or \"aiGeneratedImage_delete\"?\nconnector/mutations.gql:27: Cannot query field \"AiGeneratedGif_insert\" on type \"Mutation\". Did you mean \"aiGeneratedGif_insert\", \"aiGeneratedGif_upsert\", \"aiGeneratedGif_insertMany\", \"aiGeneratedGif_delete\", or \"aiGeneratedImage_insert\"?\nconnector/queries.gql:73: Cannot query field \"AiGeneratedImage\" on type \"Query\". Did you mean \"aiGeneratedImage\", \"aiGeneratedImages\", \"aiGeneratedGif\", or \"aiGeneratedGifs\"?\nconnector/queries.gql:84: Cannot query field \"AiGeneratedGif\" on type \"Query\". Did you mean \"aiGeneratedGif\", \"aiGeneratedGifs\", \"aiGeneratedImage\", or \"aiGeneratedImages\"?\n\nsources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \nI0713 02:57:19.326790    4554 control.go:84] [/emulator/studio-v0 d793] UpdateResources(): done\nSchema: sources: schema/schema.gql [3459B] \nConnector \"default\": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \n"}}
+[debug] [2025-07-13T02:57:19.332Z] Ignoring unsupported arg: auto_download {"metadata":{"emulator":{"name":"dataconnect"},"message":"Ignoring unsupported arg: auto_download"}}
+[debug] [2025-07-13T02:57:19.332Z] Ignoring unsupported arg: port {"metadata":{"emulator":{"name":"dataconnect"},"message":"Ignoring unsupported arg: port"}}
+[debug] [2025-07-13T02:57:19.333Z] Starting Data Connect Emulator with command {"binary":"/home/user/.cache/firebase/emulators/dataconnect-emulator-2.8.0","args":["--logtostderr","-v=2","dev","--listen=localhost:50002","--config_dir=/home/user/studio/dataconnect","--enable_output_schema_extensions=true","--enable_output_generated_sdk=true"],"optionalArgs":["listen","config_dir","enable_output_schema_extensions","enable_output_generated_sdk"],"joinArgs":true,"shell":false,"port":9399} {"metadata":{"emulator":{"name":"dataconnect"},"message":"Starting Data Connect Emulator with command {\"binary\":\"/home/user/.cache/firebase/emulators/dataconnect-emulator-2.8.0\",\"args\":[\"--logtostderr\",\"-v=2\",\"dev\",\"--listen=localhost:50002\",\"--config_dir=/home/user/studio/dataconnect\",\"--enable_output_schema_extensions=true\",\"--enable_output_generated_sdk=true\"],\"optionalArgs\":[\"listen\",\"config_dir\",\"enable_output_schema_extensions\",\"enable_output_generated_sdk\"],\"joinArgs\":true,\"shell\":false,\"port\":9399}"}}
+[info] i  dataconnect: Data Connect Emulator logging to dataconnect-debug.log {"metadata":{"emulator":{"name":"dataconnect"},"message":"Data Connect Emulator logging to dataconnect-debug.log"}}
+[debug] [2025-07-13T02:57:19.478Z] I0713 02:57:19.399674    4563 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0713 02:57:19.399674    4563 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-07-13T02:57:19.828Z] W0713 02:57:19.827897    4563 control.go:58] [/emulator/studio-v0 95a0] connector "default" has errors: connector/mutations.gql:15: Cannot query field "AiGeneratedImage_insert" on type "Mutation". Did you mean "aiGeneratedImage_insert", "aiGeneratedImage_upsert", "aiGeneratedImage_insertMany", "aiGeneratedGif_insert", or "aiGeneratedImage_delete"?
+connector/mutations.gql:27: Cannot query field "AiGeneratedGif_insert" on type "Mutation". Did you mean "aiGeneratedGif_insert", "aiGeneratedGif_upsert", "aiGeneratedGif_insertMany", "aiGeneratedGif_delete", or "aiGeneratedImage_insert"?
+connector/queries.gql:73: Cannot query field "AiGeneratedImage" on type "Query". Did you mean "aiGeneratedImage", "aiGeneratedImages", "aiGeneratedGif", or "aiGeneratedGifs"?
+connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+
+sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0713 02:57:19.827897    4563 control.go:58] [/emulator/studio-v0 95a0] connector \"default\" has errors: connector/mutations.gql:15: Cannot query field \"AiGeneratedImage_insert\" on type \"Mutation\". Did you mean \"aiGeneratedImage_insert\", \"aiGeneratedImage_upsert\", \"aiGeneratedImage_insertMany\", \"aiGeneratedGif_insert\", or \"aiGeneratedImage_delete\"?\nconnector/mutations.gql:27: Cannot query field \"AiGeneratedGif_insert\" on type \"Mutation\". Did you mean \"aiGeneratedGif_insert\", \"aiGeneratedGif_upsert\", \"aiGeneratedGif_insertMany\", \"aiGeneratedGif_delete\", or \"aiGeneratedImage_insert\"?\nconnector/queries.gql:73: Cannot query field \"AiGeneratedImage\" on type \"Query\". Did you mean \"aiGeneratedImage\", \"aiGeneratedImages\", \"aiGeneratedGif\", or \"aiGeneratedGifs\"?\nconnector/queries.gql:84: Cannot query field \"AiGeneratedGif\" on type \"Query\". Did you mean \"aiGeneratedGif\", \"aiGeneratedGifs\", \"aiGeneratedImage\", or \"aiGeneratedImages\"?\n\nsources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \n"}}
+[debug] [2025-07-13T02:57:19.835Z] I0713 02:57:19.828751    4563 control.go:84] [/emulator/studio-v0 95a0] UpdateResources(): done
+Schema: sources: schema/schema.gql [3459B] 
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0713 02:57:19.828751    4563 control.go:84] [/emulator/studio-v0 95a0] UpdateResources(): done\nSchema: sources: schema/schema.gql [3459B] \nConnector \"default\": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \n"}}
+[debug] [2025-07-13T02:57:19.886Z] E0713 02:57:19.884690    4563 load.go:79] Could not load sources: 
+Errors: connector/mutations.gql:15: Cannot query field "AiGeneratedImage_insert" on type "Mutation". Did you mean "aiGeneratedImage_insert", "aiGeneratedImage_upsert", "aiGeneratedImage_insertMany", "aiGeneratedGif_insert", or "aiGeneratedImage_delete"?
+connector/mutations.gql:27: Cannot query field "AiGeneratedGif_insert" on type "Mutation". Did you mean "aiGeneratedGif_insert", "aiGeneratedGif_upsert", "aiGeneratedGif_insertMany", "aiGeneratedGif_delete", or "aiGeneratedImage_insert"?
+connector/queries.gql:73: Cannot query field "AiGeneratedImage" on type "Query". Did you mean "aiGeneratedImage", "aiGeneratedImages", "aiGeneratedGif", or "aiGeneratedGifs"?
+connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0713 02:57:19.884690    4563 load.go:79] Could not load sources: \nErrors: connector/mutations.gql:15: Cannot query field \"AiGeneratedImage_insert\" on type \"Mutation\". Did you mean \"aiGeneratedImage_insert\", \"aiGeneratedImage_upsert\", \"aiGeneratedImage_insertMany\", \"aiGeneratedGif_insert\", or \"aiGeneratedImage_delete\"?\nconnector/mutations.gql:27: Cannot query field \"AiGeneratedGif_insert\" on type \"Mutation\". Did you mean \"aiGeneratedGif_insert\", \"aiGeneratedGif_upsert\", \"aiGeneratedGif_insertMany\", \"aiGeneratedGif_delete\", or \"aiGeneratedImage_insert\"?\nconnector/queries.gql:73: Cannot query field \"AiGeneratedImage\" on type \"Query\". Did you mean \"aiGeneratedImage\", \"aiGeneratedImages\", \"aiGeneratedGif\", or \"aiGeneratedGifs\"?\nconnector/queries.gql:84: Cannot query field \"AiGeneratedGif\" on type \"Query\". Did you mean \"aiGeneratedGif\", \"aiGeneratedGifs\", \"aiGeneratedImage\", or \"aiGeneratedImages\"?\n"}}
+[debug] [2025-07-13T02:57:19.898Z] I0713 02:57:19.896909    4563 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [71203B] main/implicit.gql [3267B] 
+I0713 02:57:19.896976    4563 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0713 02:57:19.896909    4563 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [71203B] main/implicit.gql [3267B] \nI0713 02:57:19.896976    4563 load.go:80] Finished reloading\n"}}
+[debug] [2025-07-13T02:57:19.952Z] I0713 02:57:19.952329    4563 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50002
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0713 02:57:19.952329    4563 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50002\n"}}
+[debug] [2025-07-13T02:57:20.178Z] I0713 02:57:20.177710    4563 engine.go:170] [/emulator/studio-v0 95a0] ExecuteGraphqlRead IntrospectionQuery: succeeded. 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0713 02:57:20.177710    4563 engine.go:170] [/emulator/studio-v0 95a0] ExecuteGraphqlRead IntrospectionQuery: succeeded. \n"}}
+[info] [Firebase Plugin] Stopping Data Connect toolkit
+[warn] ⚠  Data Connect Emulator has exited upon receiving signal: SIGINT 
+[debug] [2025-07-13T04:41:34.779Z] [Firebase Plugin] Activating Firebase extension.
+[debug] [2025-07-13T04:42:11.607Z] [Firebase Plugin] requireAuthWrapper
+[debug] [2025-07-13T04:42:11.616Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-07-13T04:42:11.620Z] > authorizing via signed-in user (lumacx@gmail.com)
+[debug] [2025-07-13T04:42:11.653Z] Checked if tokens are valid: false, expires at: 1752377835306
+[debug] [2025-07-13T04:42:11.656Z] Checked if tokens are valid: false, expires at: 1752377835306
+[debug] [2025-07-13T04:42:11.662Z] > refreshing access token with scopes: []
+[debug] [2025-07-13T04:42:11.683Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-07-13T04:42:11.690Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-07-13T04:42:12.114Z] [Firebase Plugin] VSCode notification server listening on port 40001
+[debug] [2025-07-13T04:42:14.780Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-07-13T04:42:14.783Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-07-13T04:42:14.821Z] [Firebase Plugin] User found:  lumacx@gmail.com
+[info] [Firebase Plugin] (Core:Project) New user detected, fetching projects
+[debug] [2025-07-13T04:42:14.827Z] Checked if tokens are valid: true, expires at: 1752385333783
+[debug] [2025-07-13T04:42:14.834Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=1000
+[info] [Firebase Plugin] Starting Data Connect toolkit (version 2.8.0) on port 50001
+[debug] [2025-07-13T04:42:20.874Z] W0713 04:42:20.856062     504 control.go:58] [/emulator/studio-v0 9897] connector "default" has errors: connector/mutations.gql:15: Cannot query field "AiGeneratedImage_insert" on type "Mutation". Did you mean "aiGeneratedImage_insert", "aiGeneratedImage_upsert", "aiGeneratedImage_insertMany", "aiGeneratedGif_insert", or "aiGeneratedImage_delete"?
+connector/mutations.gql:27: Cannot query field "AiGeneratedGif_insert" on type "Mutation". Did you mean "aiGeneratedGif_insert", "aiGeneratedGif_upsert", "aiGeneratedGif_insertMany", "aiGeneratedGif_delete", or "aiGeneratedImage_insert"?
+connector/queries.gql:73: Cannot query field "AiGeneratedImage" on type "Query". Did you mean "aiGeneratedImage", "aiGeneratedImages", "aiGeneratedGif", or "aiGeneratedGifs"?
+connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+
+sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+I0713 04:42:20.856535     504 control.go:84] [/emulator/studio-v0 9897] UpdateResources(): done
+Schema: sources: schema/schema.gql [3459B] 
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0713 04:42:20.856062     504 control.go:58] [/emulator/studio-v0 9897] connector \"default\" has errors: connector/mutations.gql:15: Cannot query field \"AiGeneratedImage_insert\" on type \"Mutation\". Did you mean \"aiGeneratedImage_insert\", \"aiGeneratedImage_upsert\", \"aiGeneratedImage_insertMany\", \"aiGeneratedGif_insert\", or \"aiGeneratedImage_delete\"?\nconnector/mutations.gql:27: Cannot query field \"AiGeneratedGif_insert\" on type \"Mutation\". Did you mean \"aiGeneratedGif_insert\", \"aiGeneratedGif_upsert\", \"aiGeneratedGif_insertMany\", \"aiGeneratedGif_delete\", or \"aiGeneratedImage_insert\"?\nconnector/queries.gql:73: Cannot query field \"AiGeneratedImage\" on type \"Query\". Did you mean \"aiGeneratedImage\", \"aiGeneratedImages\", \"aiGeneratedGif\", or \"aiGeneratedGifs\"?\nconnector/queries.gql:84: Cannot query field \"AiGeneratedGif\" on type \"Query\". Did you mean \"aiGeneratedGif\", \"aiGeneratedGifs\", \"aiGeneratedImage\", or \"aiGeneratedImages\"?\n\nsources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \nI0713 04:42:20.856535     504 control.go:84] [/emulator/studio-v0 9897] UpdateResources(): done\nSchema: sources: schema/schema.gql [3459B] \nConnector \"default\": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \n"}}
+[debug] [2025-07-13T04:42:20.885Z] Ignoring unsupported arg: auto_download {"metadata":{"emulator":{"name":"dataconnect"},"message":"Ignoring unsupported arg: auto_download"}}
+[debug] [2025-07-13T04:42:20.893Z] Ignoring unsupported arg: port {"metadata":{"emulator":{"name":"dataconnect"},"message":"Ignoring unsupported arg: port"}}
+[debug] [2025-07-13T04:42:20.894Z] Starting Data Connect Emulator with command {"binary":"/home/user/.cache/firebase/emulators/dataconnect-emulator-2.8.0","args":["--logtostderr","-v=2","dev","--listen=localhost:50001","--config_dir=/home/user/studio/dataconnect","--enable_output_schema_extensions=true","--enable_output_generated_sdk=true"],"optionalArgs":["listen","config_dir","enable_output_schema_extensions","enable_output_generated_sdk"],"joinArgs":true,"shell":false,"port":9399} {"metadata":{"emulator":{"name":"dataconnect"},"message":"Starting Data Connect Emulator with command {\"binary\":\"/home/user/.cache/firebase/emulators/dataconnect-emulator-2.8.0\",\"args\":[\"--logtostderr\",\"-v=2\",\"dev\",\"--listen=localhost:50001\",\"--config_dir=/home/user/studio/dataconnect\",\"--enable_output_schema_extensions=true\",\"--enable_output_generated_sdk=true\"],\"optionalArgs\":[\"listen\",\"config_dir\",\"enable_output_schema_extensions\",\"enable_output_generated_sdk\"],\"joinArgs\":true,\"shell\":false,\"port\":9399}"}}
+[info] i  dataconnect: Data Connect Emulator logging to dataconnect-debug.log {"metadata":{"emulator":{"name":"dataconnect"},"message":"Data Connect Emulator logging to dataconnect-debug.log"}}
+[debug] [2025-07-13T04:42:21.198Z] I0713 04:42:21.052611     516 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0713 04:42:21.052611     516 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-07-13T04:42:22.386Z] W0713 04:42:22.119596     516 control.go:58] [/emulator/studio-v0 33c0] connector "default" has errors: connector/mutations.gql:15: Cannot query field "AiGeneratedImage_insert" on type "Mutation". Did you mean "aiGeneratedImage_insert", "aiGeneratedImage_upsert", "aiGeneratedImage_insertMany", "aiGeneratedGif_insert", or "aiGeneratedImage_delete"?
+connector/mutations.gql:27: Cannot query field "AiGeneratedGif_insert" on type "Mutation". Did you mean "aiGeneratedGif_insert", "aiGeneratedGif_upsert", "aiGeneratedGif_insertMany", "aiGeneratedGif_delete", or "aiGeneratedImage_insert"?
+connector/queries.gql:73: Cannot query field "AiGeneratedImage" on type "Query". Did you mean "aiGeneratedImage", "aiGeneratedImages", "aiGeneratedGif", or "aiGeneratedGifs"?
+connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+
+sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+I0713 04:42:22.119662     516 control.go:84] [/emulator/studio-v0 33c0] UpdateResources(): done
+Schema: sources: schema/schema.gql [3459B] 
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+E0713 04:42:22.158315     516 load.go:79] Could not load sources: 
+Errors: connector/mutations.gql:15: Cannot query field "AiGeneratedImage_insert" on type "Mutation". Did you mean "aiGeneratedImage_insert", "aiGeneratedImage_upsert", "aiGeneratedImage_insertMany", "aiGeneratedGif_insert", or "aiGeneratedImage_delete"?
+connector/mutations.gql:27: Cannot query field "AiGeneratedGif_insert" on type "Mutation". Did you mean "aiGeneratedGif_insert", "aiGeneratedGif_upsert", "aiGeneratedGif_insertMany", "aiGeneratedGif_delete", or "aiGeneratedImage_insert"?
+connector/queries.gql:73: Cannot query field "AiGeneratedImage" on type "Query". Did you mean "aiGeneratedImage", "aiGeneratedImages", "aiGeneratedGif", or "aiGeneratedGifs"?
+connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+I0713 04:42:22.175477     516 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [71203B] 
+I0713 04:42:22.175587     516 load.go:80] Finished reloading
+I0713 04:42:22.217484     516 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50001
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0713 04:42:22.119596     516 control.go:58] [/emulator/studio-v0 33c0] connector \"default\" has errors: connector/mutations.gql:15: Cannot query field \"AiGeneratedImage_insert\" on type \"Mutation\". Did you mean \"aiGeneratedImage_insert\", \"aiGeneratedImage_upsert\", \"aiGeneratedImage_insertMany\", \"aiGeneratedGif_insert\", or \"aiGeneratedImage_delete\"?\nconnector/mutations.gql:27: Cannot query field \"AiGeneratedGif_insert\" on type \"Mutation\". Did you mean \"aiGeneratedGif_insert\", \"aiGeneratedGif_upsert\", \"aiGeneratedGif_insertMany\", \"aiGeneratedGif_delete\", or \"aiGeneratedImage_insert\"?\nconnector/queries.gql:73: Cannot query field \"AiGeneratedImage\" on type \"Query\". Did you mean \"aiGeneratedImage\", \"aiGeneratedImages\", \"aiGeneratedGif\", or \"aiGeneratedGifs\"?\nconnector/queries.gql:84: Cannot query field \"AiGeneratedGif\" on type \"Query\". Did you mean \"aiGeneratedGif\", \"aiGeneratedGifs\", \"aiGeneratedImage\", or \"aiGeneratedImages\"?\n\nsources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \nI0713 04:42:22.119662     516 control.go:84] [/emulator/studio-v0 33c0] UpdateResources(): done\nSchema: sources: schema/schema.gql [3459B] \nConnector \"default\": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \nE0713 04:42:22.158315     516 load.go:79] Could not load sources: \nErrors: connector/mutations.gql:15: Cannot query field \"AiGeneratedImage_insert\" on type \"Mutation\". Did you mean \"aiGeneratedImage_insert\", \"aiGeneratedImage_upsert\", \"aiGeneratedImage_insertMany\", \"aiGeneratedGif_insert\", or \"aiGeneratedImage_delete\"?\nconnector/mutations.gql:27: Cannot query field \"AiGeneratedGif_insert\" on type \"Mutation\". Did you mean \"aiGeneratedGif_insert\", \"aiGeneratedGif_upsert\", \"aiGeneratedGif_insertMany\", \"aiGeneratedGif_delete\", or \"aiGeneratedImage_insert\"?\nconnector/queries.gql:73: Cannot query field \"AiGeneratedImage\" on type \"Query\". Did you mean \"aiGeneratedImage\", \"aiGeneratedImages\", \"aiGeneratedGif\", or \"aiGeneratedGifs\"?\nconnector/queries.gql:84: Cannot query field \"AiGeneratedGif\" on type \"Query\". Did you mean \"aiGeneratedGif\", \"aiGeneratedGifs\", \"aiGeneratedImage\", or \"aiGeneratedImages\"?\nI0713 04:42:22.175477     516 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [71203B] \nI0713 04:42:22.175587     516 load.go:80] Finished reloading\nI0713 04:42:22.217484     516 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50001\n"}}
+[debug] [2025-07-13T04:42:23.125Z] I0713 04:42:22.970826     516 engine.go:170] [/emulator/studio-v0 33c0] ExecuteGraphqlRead IntrospectionQuery: succeeded. 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0713 04:42:22.970826     516 engine.go:170] [/emulator/studio-v0 33c0] ExecuteGraphqlRead IntrospectionQuery: succeeded. \n"}}
+[debug] [2025-07-13T04:42:23.327Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
+[debug] [2025-07-13T04:42:23.332Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
+[debug] [2025-07-13T04:51:23.020Z] I0713 04:51:23.020245     516 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0713 04:51:23.020245     516 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-07-13T04:51:23.243Z] W0713 04:51:23.242955     516 control.go:58] [/emulator/studio-v0 33c0] connector "default" has errors: connector/mutations.gql:27: Cannot query field "AiGeneratedGif_insert" on type "Mutation". Did you mean "aiGeneratedGif_insert", "aiGeneratedGif_upsert", "aiGeneratedGif_insertMany", "aiGeneratedGif_delete", or "aiGeneratedImage_insert"?
+connector/queries.gql:73: Cannot query field "AiGeneratedImage" on type "Query". Did you mean "aiGeneratedImage", "aiGeneratedImages", "aiGeneratedGif", or "aiGeneratedGifs"?
+connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+
+sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0713 04:51:23.242955     516 control.go:58] [/emulator/studio-v0 33c0] connector \"default\" has errors: connector/mutations.gql:27: Cannot query field \"AiGeneratedGif_insert\" on type \"Mutation\". Did you mean \"aiGeneratedGif_insert\", \"aiGeneratedGif_upsert\", \"aiGeneratedGif_insertMany\", \"aiGeneratedGif_delete\", or \"aiGeneratedImage_insert\"?\nconnector/queries.gql:73: Cannot query field \"AiGeneratedImage\" on type \"Query\". Did you mean \"aiGeneratedImage\", \"aiGeneratedImages\", \"aiGeneratedGif\", or \"aiGeneratedGifs\"?\nconnector/queries.gql:84: Cannot query field \"AiGeneratedGif\" on type \"Query\". Did you mean \"aiGeneratedGif\", \"aiGeneratedGifs\", \"aiGeneratedImage\", or \"aiGeneratedImages\"?\n\nsources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \n"}}
+[debug] [2025-07-13T04:51:23.247Z] I0713 04:51:23.243279     516 control.go:84] [/emulator/studio-v0 33c0] UpdateResources(): done
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0713 04:51:23.243279     516 control.go:84] [/emulator/studio-v0 33c0] UpdateResources(): done\nConnector \"default\": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \n"}}
+[debug] [2025-07-13T04:51:23.274Z] E0713 04:51:23.270309     516 load.go:79] Could not load sources: 
+Errors: connector/mutations.gql:27: Cannot query field "AiGeneratedGif_insert" on type "Mutation". Did you mean "aiGeneratedGif_insert", "aiGeneratedGif_upsert", "aiGeneratedGif_insertMany", "aiGeneratedGif_delete", or "aiGeneratedImage_insert"?
+connector/queries.gql:73: Cannot query field "AiGeneratedImage" on type "Query". Did you mean "aiGeneratedImage", "aiGeneratedImages", "aiGeneratedGif", or "aiGeneratedGifs"?
+connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0713 04:51:23.270309     516 load.go:79] Could not load sources: \nErrors: connector/mutations.gql:27: Cannot query field \"AiGeneratedGif_insert\" on type \"Mutation\". Did you mean \"aiGeneratedGif_insert\", \"aiGeneratedGif_upsert\", \"aiGeneratedGif_insertMany\", \"aiGeneratedGif_delete\", or \"aiGeneratedImage_insert\"?\nconnector/queries.gql:73: Cannot query field \"AiGeneratedImage\" on type \"Query\". Did you mean \"aiGeneratedImage\", \"aiGeneratedImages\", \"aiGeneratedGif\", or \"aiGeneratedGifs\"?\nconnector/queries.gql:84: Cannot query field \"AiGeneratedGif\" on type \"Query\". Did you mean \"aiGeneratedGif\", \"aiGeneratedGifs\", \"aiGeneratedImage\", or \"aiGeneratedImages\"?\n"}}
+[debug] [2025-07-13T04:51:23.294Z] I0713 04:51:23.271819     516 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] 
+I0713 04:51:23.294125     516 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0713 04:51:23.271819     516 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] \nI0713 04:51:23.294125     516 load.go:80] Finished reloading\n"}}
+[debug] [2025-07-13T04:51:29.979Z] I0713 04:51:29.979346     516 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0713 04:51:29.979346     516 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-07-13T04:51:30.080Z] W0713 04:51:30.078344     516 control.go:58] [/emulator/studio-v0 33c0] connector "default" has errors: connector/queries.gql:73: Cannot query field "AiGeneratedImage" on type "Query". Did you mean "aiGeneratedImage", "aiGeneratedImages", "aiGeneratedGif", or "aiGeneratedGifs"?
+connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+
+sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+I0713 04:51:30.078401     516 control.go:84] [/emulator/studio-v0 33c0] UpdateResources(): done
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0713 04:51:30.078344     516 control.go:58] [/emulator/studio-v0 33c0] connector \"default\" has errors: connector/queries.gql:73: Cannot query field \"AiGeneratedImage\" on type \"Query\". Did you mean \"aiGeneratedImage\", \"aiGeneratedImages\", \"aiGeneratedGif\", or \"aiGeneratedGifs\"?\nconnector/queries.gql:84: Cannot query field \"AiGeneratedGif\" on type \"Query\". Did you mean \"aiGeneratedGif\", \"aiGeneratedGifs\", \"aiGeneratedImage\", or \"aiGeneratedImages\"?\n\nsources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \nI0713 04:51:30.078401     516 control.go:84] [/emulator/studio-v0 33c0] UpdateResources(): done\nConnector \"default\": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \n"}}
+[debug] [2025-07-13T04:51:30.125Z] E0713 04:51:30.123533     516 load.go:79] Could not load sources: 
+Errors: connector/queries.gql:73: Cannot query field "AiGeneratedImage" on type "Query". Did you mean "aiGeneratedImage", "aiGeneratedImages", "aiGeneratedGif", or "aiGeneratedGifs"?
+connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+I0713 04:51:30.124885     516 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] prelude.gql [71203B] main/mutation.gql [41655B] 
+I0713 04:51:30.124918     516 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0713 04:51:30.123533     516 load.go:79] Could not load sources: \nErrors: connector/queries.gql:73: Cannot query field \"AiGeneratedImage\" on type \"Query\". Did you mean \"aiGeneratedImage\", \"aiGeneratedImages\", \"aiGeneratedGif\", or \"aiGeneratedGifs\"?\nconnector/queries.gql:84: Cannot query field \"AiGeneratedGif\" on type \"Query\". Did you mean \"aiGeneratedGif\", \"aiGeneratedGifs\", \"aiGeneratedImage\", or \"aiGeneratedImages\"?\nI0713 04:51:30.124885     516 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] prelude.gql [71203B] main/mutation.gql [41655B] \nI0713 04:51:30.124918     516 load.go:80] Finished reloading\n"}}
+[debug] [2025-07-13T04:51:35.920Z] I0713 04:51:35.920343     516 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0713 04:51:35.920343     516 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-07-13T04:51:36.040Z] W0713 04:51:36.012817     516 control.go:58] [/emulator/studio-v0 33c0] connector "default" has errors: connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+
+sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+I0713 04:51:36.012883     516 control.go:84] [/emulator/studio-v0 33c0] UpdateResources(): done
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+E0713 04:51:36.026695     516 load.go:79] Could not load sources: 
+Errors: connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+I0713 04:51:36.029795     516 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] prelude.gql [71203B] main/input.gql [98192B] 
+I0713 04:51:36.029871     516 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0713 04:51:36.012817     516 control.go:58] [/emulator/studio-v0 33c0] connector \"default\" has errors: connector/queries.gql:84: Cannot query field \"AiGeneratedGif\" on type \"Query\". Did you mean \"aiGeneratedGif\", \"aiGeneratedGifs\", \"aiGeneratedImage\", or \"aiGeneratedImages\"?\n\nsources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \nI0713 04:51:36.012883     516 control.go:84] [/emulator/studio-v0 33c0] UpdateResources(): done\nConnector \"default\": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \nE0713 04:51:36.026695     516 load.go:79] Could not load sources: \nErrors: connector/queries.gql:84: Cannot query field \"AiGeneratedGif\" on type \"Query\". Did you mean \"aiGeneratedGif\", \"aiGeneratedGifs\", \"aiGeneratedImage\", or \"aiGeneratedImages\"?\nI0713 04:51:36.029795     516 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] prelude.gql [71203B] main/input.gql [98192B] \nI0713 04:51:36.029871     516 load.go:80] Finished reloading\n"}}
+[debug] [2025-07-13T04:51:39.255Z] I0713 04:51:39.254159     516 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0713 04:51:39.254159     516 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-07-13T04:51:39.460Z] I0713 04:51:39.459653     516 control.go:84] [/emulator/studio-v0 33c0] UpdateResources(): done
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0713 04:51:39.459653     516 control.go:84] [/emulator/studio-v0 33c0] UpdateResources(): done\nConnector \"default\": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \n"}}
+[debug] [2025-07-13T04:51:39.829Z] I0713 04:51:39.828815     516 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "/home/user/studio/dataconnect-generated/js/default-connector"
+E0713 04:51:39.828909     516 load.go:101] Errors generating SDK: [connector "default" javascriptSdk]: failed to generate sources:
+user-defined enum ImageGenerationStatus is not supported (to prevent this error, remove user-defined enums from your Schema and Operations, and/or stop using the user_enum preview flag)
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0713 04:51:39.828815     516 codegen.go:82] [connector \"default\" javascriptSdk] Generating sources into \"/home/user/studio/dataconnect-generated/js/default-connector\"\nE0713 04:51:39.828909     516 load.go:101] Errors generating SDK: [connector \"default\" javascriptSdk]: failed to generate sources:\nuser-defined enum ImageGenerationStatus is not supported (to prevent this error, remove user-defined enums from your Schema and Operations, and/or stop using the user_enum preview flag)\n"}}
+[debug] [2025-07-13T04:51:39.853Z] I0713 04:51:39.837807     516 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] 
+I0713 04:51:39.838287     516 load.go:115] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0713 04:51:39.837807     516 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] \nI0713 04:51:39.838287     516 load.go:115] Finished reloading\n"}}

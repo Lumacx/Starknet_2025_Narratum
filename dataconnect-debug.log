@@ -1,12 +1,68 @@
-I0712 18:49:14.073284     549 load.go:37] Reloading schema and connectors...
-I0712 18:49:14.390435     549 control.go:84] [/emulator/studio-v0 41ca] UpdateResources(): done
-Schema: sources: schema/schema.gql [3507B] 
-Connector "default": sources: connector/mutations.gql [2572B] connector/queries.gql [2254B] 
-I0712 18:49:14.850567     549 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "/home/user/studio/dataconnect-generated/js/default-connector"
-E0712 18:49:14.850649     549 load.go:101] Errors generating SDK: [connector "default" javascriptSdk]: failed to generate sources:
-user-defined enum PaymentStatus is not supported (to prevent this error, remove user-defined enums from your Schema and Operations, and/or stop using the user_enum preview flag)
-I0712 18:49:14.856369     549 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
-Generated sources: main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [98192B] prelude.gql [71203B] 
-I0712 18:49:14.859897     549 load.go:115] Finished reloading
-I0712 18:49:14.886406     549 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50001
-I0712 18:49:15.194971     549 engine.go:170] [/emulator/studio-v0 41ca] ExecuteGraphqlRead IntrospectionQuery: succeeded. 
+I0713 04:42:21.052611     516 load.go:37] Reloading schema and connectors...
+W0713 04:42:22.119596     516 control.go:58] [/emulator/studio-v0 33c0] connector "default" has errors: connector/mutations.gql:15: Cannot query field "AiGeneratedImage_insert" on type "Mutation". Did you mean "aiGeneratedImage_insert", "aiGeneratedImage_upsert", "aiGeneratedImage_insertMany", "aiGeneratedGif_insert", or "aiGeneratedImage_delete"?
+connector/mutations.gql:27: Cannot query field "AiGeneratedGif_insert" on type "Mutation". Did you mean "aiGeneratedGif_insert", "aiGeneratedGif_upsert", "aiGeneratedGif_insertMany", "aiGeneratedGif_delete", or "aiGeneratedImage_insert"?
+connector/queries.gql:73: Cannot query field "AiGeneratedImage" on type "Query". Did you mean "aiGeneratedImage", "aiGeneratedImages", "aiGeneratedGif", or "aiGeneratedGifs"?
+connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+
+sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+I0713 04:42:22.119662     516 control.go:84] [/emulator/studio-v0 33c0] UpdateResources(): done
+Schema: sources: schema/schema.gql [3459B] 
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+E0713 04:42:22.158315     516 load.go:79] Could not load sources: 
+Errors: connector/mutations.gql:15: Cannot query field "AiGeneratedImage_insert" on type "Mutation". Did you mean "aiGeneratedImage_insert", "aiGeneratedImage_upsert", "aiGeneratedImage_insertMany", "aiGeneratedGif_insert", or "aiGeneratedImage_delete"?
+connector/mutations.gql:27: Cannot query field "AiGeneratedGif_insert" on type "Mutation". Did you mean "aiGeneratedGif_insert", "aiGeneratedGif_upsert", "aiGeneratedGif_insertMany", "aiGeneratedGif_delete", or "aiGeneratedImage_insert"?
+connector/queries.gql:73: Cannot query field "AiGeneratedImage" on type "Query". Did you mean "aiGeneratedImage", "aiGeneratedImages", "aiGeneratedGif", or "aiGeneratedGifs"?
+connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+I0713 04:42:22.175477     516 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [71203B] 
+I0713 04:42:22.175587     516 load.go:80] Finished reloading
+I0713 04:42:22.217484     516 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50001
+I0713 04:42:22.970826     516 engine.go:170] [/emulator/studio-v0 33c0] ExecuteGraphqlRead IntrospectionQuery: succeeded. 
+I0713 04:51:23.020245     516 load.go:37] Reloading schema and connectors...
+W0713 04:51:23.242955     516 control.go:58] [/emulator/studio-v0 33c0] connector "default" has errors: connector/mutations.gql:27: Cannot query field "AiGeneratedGif_insert" on type "Mutation". Did you mean "aiGeneratedGif_insert", "aiGeneratedGif_upsert", "aiGeneratedGif_insertMany", "aiGeneratedGif_delete", or "aiGeneratedImage_insert"?
+connector/queries.gql:73: Cannot query field "AiGeneratedImage" on type "Query". Did you mean "aiGeneratedImage", "aiGeneratedImages", "aiGeneratedGif", or "aiGeneratedGifs"?
+connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+
+sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+I0713 04:51:23.243279     516 control.go:84] [/emulator/studio-v0 33c0] UpdateResources(): done
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+E0713 04:51:23.270309     516 load.go:79] Could not load sources: 
+Errors: connector/mutations.gql:27: Cannot query field "AiGeneratedGif_insert" on type "Mutation". Did you mean "aiGeneratedGif_insert", "aiGeneratedGif_upsert", "aiGeneratedGif_insertMany", "aiGeneratedGif_delete", or "aiGeneratedImage_insert"?
+connector/queries.gql:73: Cannot query field "AiGeneratedImage" on type "Query". Did you mean "aiGeneratedImage", "aiGeneratedImages", "aiGeneratedGif", or "aiGeneratedGifs"?
+connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+I0713 04:51:23.271819     516 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] 
+I0713 04:51:23.294125     516 load.go:80] Finished reloading
+I0713 04:51:29.979346     516 load.go:37] Reloading schema and connectors...
+W0713 04:51:30.078344     516 control.go:58] [/emulator/studio-v0 33c0] connector "default" has errors: connector/queries.gql:73: Cannot query field "AiGeneratedImage" on type "Query". Did you mean "aiGeneratedImage", "aiGeneratedImages", "aiGeneratedGif", or "aiGeneratedGifs"?
+connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+
+sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+I0713 04:51:30.078401     516 control.go:84] [/emulator/studio-v0 33c0] UpdateResources(): done
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+E0713 04:51:30.123533     516 load.go:79] Could not load sources: 
+Errors: connector/queries.gql:73: Cannot query field "AiGeneratedImage" on type "Query". Did you mean "aiGeneratedImage", "aiGeneratedImages", "aiGeneratedGif", or "aiGeneratedGifs"?
+connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+I0713 04:51:30.124885     516 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] prelude.gql [71203B] main/mutation.gql [41655B] 
+I0713 04:51:30.124918     516 load.go:80] Finished reloading
+I0713 04:51:35.920343     516 load.go:37] Reloading schema and connectors...
+W0713 04:51:36.012817     516 control.go:58] [/emulator/studio-v0 33c0] connector "default" has errors: connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+
+sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+I0713 04:51:36.012883     516 control.go:84] [/emulator/studio-v0 33c0] UpdateResources(): done
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+E0713 04:51:36.026695     516 load.go:79] Could not load sources: 
+Errors: connector/queries.gql:84: Cannot query field "AiGeneratedGif" on type "Query". Did you mean "aiGeneratedGif", "aiGeneratedGifs", "aiGeneratedImage", or "aiGeneratedImages"?
+I0713 04:51:36.029795     516 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] prelude.gql [71203B] main/input.gql [98192B] 
+I0713 04:51:36.029871     516 load.go:80] Finished reloading
+I0713 04:51:39.254159     516 load.go:37] Reloading schema and connectors...
+I0713 04:51:39.459653     516 control.go:84] [/emulator/studio-v0 33c0] UpdateResources(): done
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+I0713 04:51:39.828815     516 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "/home/user/studio/dataconnect-generated/js/default-connector"
+E0713 04:51:39.828909     516 load.go:101] Errors generating SDK: [connector "default" javascriptSdk]: failed to generate sources:
+user-defined enum ImageGenerationStatus is not supported (to prevent this error, remove user-defined enums from your Schema and Operations, and/or stop using the user_enum preview flag)
+I0713 04:51:39.837807     516 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] 
+I0713 04:51:39.838287     516 load.go:115] Finished reloading

@@ -14,7 +14,7 @@ mutation CreateTemplate($title: String!, $structureJson: String, $exampleStoryId
 mutation CreateAiGeneratedImage($imageId: String!, $userId: String!, $promptText: String, $sketchUrl: String, $generatedImageUrl: String) @auth(level: USER) { # Added $imageId parameter
   aiGeneratedImage_insert(
     data: {
-      id: $imageId, # ID is now provided
+      id: $imageId, # ID is now provided@tanstack-query-firebase/react/data-connect
       userId: $userId,
       promptText: $promptText,
       sketchUrl: $sketchUrl,

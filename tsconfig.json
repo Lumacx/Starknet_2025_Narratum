@@ -1,42 +1,39 @@
 {
   "compilerOptions": {
-    "target": "ES2017",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "target": "ES2022",
+    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
     "esModuleInterop": true,
-    "module": "commonjs",
-    "moduleResolution": "node",
+    "module": "nodenext",                        // ✅ moderno y compatible
+    "moduleResolution": "nodenext",              // ✅ corrige el error
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
     "outDir": "./lib",
     "sourceMap": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-    "baseUrl": "src", // ✅ <--- esto es lo que falta
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./src/*"],
+      "@firebasegen/default-connector": ["./dataconnect-generated/js/default-connector"],
+      "@firebasegen/default-connector/*": ["./dataconnect-generated/js/default-connector/*"]
     },
-    "noEmit": true
+    "noEmit": true,
+    "plugins": [{ "name": "next" }]
   },
   "include": [
     "next-env.d.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    "dataconnect-generated/js/default-connector/**/*.ts"
   ],
   "exclude": [
     "node_modules",
-    "lib"
+    "lib",
+    "**/*.test.ts",
+    "**/*.test.tsx"
   ]
 }

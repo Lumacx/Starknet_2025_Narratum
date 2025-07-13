@@ -53,8 +53,8 @@ type Story @table {
   genre: String
   description: String
   coverImageUrl: String
-  creator: User! # Foreign key to Users table
-  status: String! @default(value: "'draft'") # Status as String
+  creator: User!
+  status: String! @default(value: "'draft'")
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
 }

@@ -33,8 +33,10 @@ query GetAllStories @auth(level: PUBLIC) {
     title
     genre
     status
+     coverImageUrl
     creator {
       id
+      displayname
     }
   }
 }

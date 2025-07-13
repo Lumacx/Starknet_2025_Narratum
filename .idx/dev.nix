@@ -3,6 +3,7 @@
 
   packages = [
     pkgs.nodejs_20
+    pkgs.corepack
     pkgs.openjdk17-bootstrap
     (import ./requirements.nix { inherit pkgs; })
   ]; 

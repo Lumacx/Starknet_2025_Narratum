@@ -4,9 +4,8 @@ import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { useGetAllStories } from '../../../dataconnect-generated/js/default-connector/react/index.cjs.js';
-//import { useGetAllStories } from 'dataconnect-generated/js/default-connector/react';
-
+import { useGetAllStories } from '../../../dataconnect-generated/js/default-connector/react/index.cjs.js'; // o tu alias
+//import { useGetAllStories } from '@firebasegen/default-connector/react';
 import { Story } from '@/lib/types';
 
 const DashboardPage: React.FC = () => {
@@ -22,7 +21,6 @@ const DashboardPage: React.FC = () => {
       return [];
     }
     return storiesData.story.filter((s: Story) => s.creator?.id === user.uid);
-
   }, [user, storiesData]);
 
   // Redirect to login if not authenticated.

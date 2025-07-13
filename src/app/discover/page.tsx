@@ -2,59 +2,63 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-//import { listPublishedStories } from '@/utils/story-queries';
+import { Story } from '@/lib/types';
 import { useListPublishedStories } from '@/hooks/useListPublishedStories';
-
-import { Story } from '@/lib/types'; // ✅ limpio y con alias funcionando
 
 const CatalogPage: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [displayedStories, setDisplayedStories] = useState<Story[]>([]);
   const [allStories, setAllStories] = useState<Story[]>([]);
-  //const [isLoading, setIsLoading] = useState(true);
   const [searchMessage, setSearchMessage] = useState('');
 
-  const { data: publishedStories, isLoading, error } = useListPublishedStories();
-  
+  const { data, isLoading, error } = useListPublishedStories();
+
   useEffect(() => {
-    if (publishedStories) {
-      setAllStories(publishedStories);
-      setDisplayedStories(publishedStories);
+    if (data) {
+      console.log('🚀 Published stories data:', data);
+      setAllStories(data);
+      setDisplayedStories(data);
     }
-  }, [publishedStories]);
-  
+  }, [data]);
 
-  //useEffect(() => {
-   // const fetchStories = async () => {
-   //   setIsLoading(true);
-    //  try {
-    //    const stories = await listPublishedStories();
-     //   setAllStories(stories);
-     //   setDisplayedStories(stories);
-     // } catch (error) {
-     //   console.error("Error fetching stories:", error);
-     //   setSearchMessage("Failed to load stories.");
-     // } finally {
-     //   setIsLoading(false);
-     // }
-    //};
-    //fetchStories();
-  //}, []);
+  const applyFilter = (filter: string, stories: Story[]) => {
+    switch (filter) {
+      case 'popular':
+        return [...stories].sort((a, b) => (b.views ?? 0) - (a.views ?? 0));
+      case 'recent':
+        return [...stories].sort(
+          (a, b) =>
+            new Date(b.createdAt ?? '').getTime() -
+            new Date(a.createdAt ?? '').getTime()
+        );
+      case 'theme':
+        return stories.filter(story =>
+          story.genre?.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      default:
+        return stories;
+    }
+  };
 
+  // 🔄 Actualiza displayedStories cuando cambia filtro, data o query
   useEffect(() => {
-    if (activeFilter === 'all') {
-      setDisplayedStories(allStories);
+    const filtered = applyFilter(activeFilter, allStories);
+    setDisplayedStories(filtered);
+  }, [activeFilter, allStories, searchQuery]);
+
+  // 🧠 Muestra mensaje cuando cambia el filtro o la búsqueda
+  useEffect(() => {
+    if (activeFilter !== 'all') {
+      setSearchMessage(`Filter applied: ${activeFilter}`);
+    } else if (!searchQuery.trim()) {
       setSearchMessage('');
-    } else {
-      setDisplayedStories(allStories); 
-      setSearchMessage(`Filter set to: ${activeFilter}. (Actual filtering logic not implemented)`);
     }
-  }, [activeFilter, allStories]);
+  }, [activeFilter, searchQuery]);
 
   const handleFilterClick = (filter: string) => {
     setActiveFilter(filter);
-    setSearchQuery(''); 
+    setSearchQuery('');
   };
 
   const handleSemanticSearch = async () => {
@@ -64,7 +68,6 @@ const CatalogPage: React.FC = () => {
       return;
     }
 
-    //setIsLoading(true);
     setSearchMessage('Searching for stories...');
     setDisplayedStories([]);
 
@@ -81,11 +84,13 @@ const CatalogPage: React.FC = () => {
       if (!response.ok) {
         throw new Error(result.error || `HTTP error! status: ${response.status}`);
       }
-      
+
       const { matchedTitles } = result;
 
       if (Array.isArray(matchedTitles) && matchedTitles.length > 0) {
-        const filtered = allStories.filter(story => matchedTitles.includes(story.title));
+        const filtered = allStories.filter(story =>
+          matchedTitles.includes(story.title)
+        );
         setDisplayedStories(filtered);
         setSearchMessage(`Found ${filtered.length} matching stories.`);
       } else {
@@ -93,11 +98,9 @@ const CatalogPage: React.FC = () => {
         setSearchMessage('No semantically related stories found from your titles.');
       }
     } catch (error: any) {
-      console.error("Semantic search error:", error);
+      console.error('Semantic search error:', error);
       setSearchMessage(`Error during search: ${error.message}. Please try again.`);
       setDisplayedStories(allStories);
-    } finally {
-      //setIsLoading(false);
     }
   };
 
@@ -121,15 +124,23 @@ const CatalogPage: React.FC = () => {
       </div>
       <div className="catalog-container w-full max-w-6xl text-center pt-16">
         <header className="page-header mb-8">
-          <h1 className="font-['Cinzel_Decorative'] text-5xl md:text-6xl font-bold text-[#E0C9A0] m-0 tracking-wide">NARRATUM</h1>
-          <h2 className="font-['Lato'] text-xl md:text-2xl font-bold uppercase tracking-wider text-[#BFA071] m-0">CATALOG OF STORIES</h2>
+          <h1 className="font-['Cinzel_Decorative'] text-5xl md:text-6xl font-bold text-[#E0C9A0] m-0 tracking-wide">
+            NARRATUM
+          </h1>
+          <h2 className="font-['Lato'] text-xl md:text-2xl font-bold uppercase tracking-wider text-[#BFA071] m-0">
+            CATALOG OF STORIES
+          </h2>
         </header>
         <nav className="filter-nav flex justify-center gap-6 md:gap-8 mb-6 flex-wrap">
           {['all', 'popular', 'recent', 'theme'].map(filter => (
             <button
               key={filter}
               onClick={() => handleFilterClick(filter)}
-              className={`font-['Lato'] text-lg font-bold px-3 py-1.5 border-b-2 transition-colors duration-300 focus:outline-none ${activeFilter === filter ? 'text-[#E0C9A0] border-[#E0C9A0]' : 'text-[#BFA071] border-transparent hover:text-[#E0C9A0] hover:border-[#E0C9A0]'}`}
+              className={`font-['Lato'] text-lg font-bold px-3 py-1.5 border-b-2 transition-colors duration-300 focus:outline-none ${
+                activeFilter === filter
+                  ? 'text-[#E0C9A0] border-[#E0C9A0]'
+                  : 'text-[#BFA071] border-transparent hover:text-[#E0C9A0] hover:border-[#E0C9A0]'
+              }`}
             >
               {filter.charAt(0).toUpperCase() + filter.slice(1)}
             </button>
@@ -140,7 +151,7 @@ const CatalogPage: React.FC = () => {
             type="text"
             placeholder="Search stories semantically..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={e => setSearchQuery(e.target.value)}
             className="flex-grow p-3 rounded-lg border-2 border-[#4A5C6E] bg-[#233446] text-[#E0C9A0] placeholder-[#8FA0AF] focus:outline-none focus:border-[#BFA071]"
           />
           <button
@@ -158,7 +169,7 @@ const CatalogPage: React.FC = () => {
         )}
         <main className="story-grid flex flex-wrap justify-center gap-8">
           {displayedStories.length > 0 ? (
-            displayedStories.map((story) => (
+            displayedStories.map(story => (
               <Link
                 key={story.id}
                 href={`/story/${story.id}`}
@@ -167,7 +178,10 @@ const CatalogPage: React.FC = () => {
                 <div className="absolute inset-1 border border-[#BFA071] rounded-md pointer-events-none z-10"></div>
                 <div className="card-art-container w-full h-40 mb-4 rounded-sm overflow-hidden relative z-20">
                   <img
-                    src={story.coverImageUrl || 'https://placehold.co/300x200/BFA071/1A2533?text=Image+Not+Found'}
+                    src={
+                      story.coverImageUrl ||
+                      'https://placehold.co/300x200/BFA071/1A2533?text=Image+Not+Found'
+                    }
                     alt={story.title || 'Untitled Story'}
                     className="w-full h-full object-cover block"
                   />

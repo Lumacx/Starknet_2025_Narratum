@@ -42,6 +42,10 @@ export interface User {
       id?: string;
       displayname?: string;
     };
+    views?: number; // opcional, si agregas lógica de popularidad
+    likes?: number; // opcional, si agregas lógica de popularidad
+    commentsCount?: number; // opcional, si agregas lógica de popularidad
+    ratinglevel?: number; // opcional, si agregas lógica de popularidad
       // Estos campos NO deben ser requeridos directamente
      storyContent?: StoryContent[];
       comments?: Comment[];
