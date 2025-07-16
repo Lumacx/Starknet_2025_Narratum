@@ -1,10 +1,16 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  type ReactNode,
+} from 'react';
+
+import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
+import type { User } from 'firebase/auth'; // ✅ Importa como tipo
 import { auth } from '@/lib/firebase';
-// User profile creation is now handled by a Firebase Function, so these are no longer needed here.
-// import { getUserProfile, createUserProfile } from '@/lib/userUtils';
 
 interface AuthContextType {
   user: User | null;
@@ -23,15 +29,14 @@ interface AuthProviderProps {
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [starknetAddress, setStarknetAddressInternal] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // The onAuthStateChanged listener now only needs to set the user state.
-    // The backend Firebase Function handles profile creation automatically.
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: User | null) => {
       setUser(firebaseUser);
       setLoading(false);
     });
+
     return () => unsubscribe();
   }, []);
 
@@ -43,13 +48,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       await firebaseSignOut(auth);
       setUser(null);
-    } catch (error) {
-      console.error("Error signing out from Firebase", error);
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error('Error signing out from Firebase:', err.message);
     }
     setStarknetLoginStatus(null);
   };
 
-  const value = {
+  const value: AuthContextType = {
     user,
     starknetAddress,
     loading,

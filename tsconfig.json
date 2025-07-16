@@ -6,8 +6,8 @@
     "skipLibCheck": true,
     "strict": true,
     "esModuleInterop": true,
-    "module": "nodenext",                        // ✅ moderno y compatible
-    "moduleResolution": "nodenext",              // ✅ corrige el error
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
@@ -16,19 +16,27 @@
     "sourceMap": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
+      "@/*": ["src/*"],
+      "@/context/*": ["./src/context/*"],
+      "@/lib/*": ["./src/lib/*"],
+      "@firebasegen/*": ["./dataconnect-generated/js/*"],
       "@firebasegen/default-connector": ["./dataconnect-generated/js/default-connector"],
       "@firebasegen/default-connector/*": ["./dataconnect-generated/js/default-connector/*"]
     },
     "noEmit": true,
-    "plugins": [{ "name": "next" }]
+    "plugins": [{ "name": "next" }],
+    "types": ["node","react"],
+    "allowSyntheticDefaultImports": true
   },
   "include": [
     "next-env.d.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
     ".next/types/**/*.ts",
-    "dataconnect-generated/js/default-connector/**/*.ts"
+    "dataconnect-generated/js/**/*.ts",
+    "src/types",
+    "src/types/firebase-fix.d.ts",
+    "src/types/firebasegen.d.ts"
   ],
   "exclude": [
     "node_modules",

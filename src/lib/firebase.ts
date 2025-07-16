@@ -1,19 +1,25 @@
-// src/lib/firebase.ts
-import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
-import { getAuth, connectAuthEmulator, Auth } from "firebase/auth"; 
-import { getFunctions, connectFunctionsEmulator, Functions } from "firebase/functions";
-import { getFirestore, connectFirestoreEmulator, Firestore } from "firebase/firestore";
+import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
+import { getAuth, connectAuthEmulator } from 'firebase/auth';
+import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { Auth as FirebaseAuth } from 'firebase/auth';
+import type { Functions } from 'firebase/functions';
+import type { Firestore } from 'firebase/firestore';
+
+// Firebase config from environment variables
 const firebaseConfig = {
-    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-    measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
+// Initialize Firebase App
 let app: FirebaseApp;
 if (!getApps().length) {
   if (!firebaseConfig.apiKey) {
@@ -24,71 +30,76 @@ if (!getApps().length) {
   app = getApp();
 }
 
-const auth: Auth = getAuth(app);
-const functions: Functions = getFunctions(app);
-const db: Firestore = getFirestore(app);
+// Firebase services
+const auth = getAuth(app);
+const functions = getFunctions(app);
+const db = getFirestore(app);
 
-export const firestoreAppId = firebaseConfig.appId || 'default-app-id';
+export const firestoreAppId = firebaseConfig.appId || "default-app-id";
 
-// Decide if we are in an environment where emulators *should* be reliably reachable by the client SDK
-// For IDX, direct client-to-127.0.0.1 emulator operational requests seem to be failing.
-// You can create a new env variable like NEXT_PUBLIC_USE_FIREBASE_EMULATORS=false in your IDX .env.local
-const useEmulators = process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS !== 'false';
+// Emulator logic (only for development)
+const useEmulators =
+  process.env.NODE_ENV === "development" &&
+  process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS !== "false";
 
-if (useEmulators && typeof window !== 'undefined') {
+if (useEmulators && typeof window !== "undefined") {
   console.log("Development mode: Attempting to connect to Firebase emulators.");
 
   const authHost = "127.0.0.1";
   const authPort = parseInt(process.env.NEXT_PUBLIC_AUTH_EMULATOR_PORT || "9099", 10);
-  
   const firestoreHost = "127.0.0.1";
   const firestorePort = parseInt(process.env.NEXT_PUBLIC_FIRESTORE_EMULATOR_PORT || "8080", 10);
-
   const functionsHost = "127.0.0.1";
   const functionsPort = parseInt(process.env.NEXT_PUBLIC_FUNCTIONS_EMULATOR_PORT || "5001", 10);
 
   const emulatorOptions = { disableWarnings: true };
-
   const authEmulatorUrl = `http://${authHost}:${authPort}`;
-  console.log(`Auth Emulator: Checking config. Target URL: ${authEmulatorUrl}`);
-  if (!(auth as any).emulatorConfig) { 
-      try {
-        // For Auth, only connect if we are certain client can reach 127.0.0.1 for operations
-        // Given current IDX issues, this might often be skipped if NEXT_PUBLIC_USE_FIREBASE_EMULATORS is 'false'
-        connectAuthEmulator(auth, authEmulatorUrl, emulatorOptions);
-        console.log(`SUCCESS: connectAuthEmulator called for ${authEmulatorUrl}`);
-      } catch (e: any) {
-        console.error(`ERROR calling connectAuthEmulator with URL ${authEmulatorUrl}:`, e);
-      }
-  } else {
-    console.log("Auth emulator already configured. Current config:", (auth as any).emulatorConfig);
-  }
 
-  console.log(`Firestore Emulator: Attempting to connect to host: ${firestoreHost}, port: ${firestorePort}`);
-  try {
-      connectFirestoreEmulator(db, firestoreHost, firestorePort);
-      console.log(`SUCCESS: connectFirestoreEmulator called for host: ${firestoreHost}, port: ${firestorePort}`);
-  } catch (error: any) {
-      if (error.code !== 'failed-precondition' && (!error.message || !error.message.includes('already connected'))) {
-          console.warn("ERROR connecting to Firestore emulator:", error.message, error.code);
-      } else {
-          console.log("Firestore emulator already connected or successfully reconnected.");
-      }
-  }
+  // ✅ Tipado extendido corregido
+  type ExtendedAuth = FirebaseAuth & { emulatorConfig?: unknown };
+  const extendedAuth = auth as ExtendedAuth;
 
-  console.log(`Functions Emulator: Attempting to connect to host: ${functionsHost}, port: ${functionsPort}`);
-  try {
-    connectFunctionsEmulator(functions, functionsHost, functionsPort);
-    console.log(`SUCCESS: connectFunctionsEmulator called for host: ${functionsHost}, port: ${functionsPort}`);
-  } catch (error: any) {
-    if (error.code !== 'functions/already-initialized' && (!error.message || !error.message.includes('already connected'))) {
-        console.warn("ERROR connecting to Functions emulator:", error.message, error.code);
-    } else {
-        console.log("Functions emulator already connected or successfully reconnected.");
+  if (!extendedAuth.emulatorConfig) {
+    try {
+      connectAuthEmulator(auth, authEmulatorUrl, emulatorOptions);
+      console.log(`✅ connectAuthEmulator called: ${authEmulatorUrl}`);
+    } catch (e: unknown) {
+      const error = e as Error;
+      console.error(`❌ Error connecting Auth Emulator: ${error.message}`);
     }
   }
-} else if (process.env.NODE_ENV === 'development') {
-    console.log("Development mode: Firebase emulators are NOT being used by the client SDK based on NEXT_PUBLIC_USE_FIREBASE_EMULATORS setting.");
+
+  try {
+    connectFirestoreEmulator(db, firestoreHost, firestorePort);
+    console.log(`✅ Firestore emulator connected at ${firestoreHost}:${firestorePort}`);
+  } catch (e: unknown) {
+    const error = e as { message?: string; code?: string };
+    if (
+      error.code !== "failed-precondition" &&
+      (!error.message || !error.message.includes("already connected"))
+    ) {
+      console.warn("⚠️ Error connecting Firestore emulator:", error.message, error.code);
+    } else {
+      console.log("ℹ️ Firestore emulator already connected.");
+    }
+  }
+
+  try {
+    connectFunctionsEmulator(functions, functionsHost, functionsPort);
+    console.log(`✅ Functions emulator connected at ${functionsHost}:${functionsPort}`);
+  } catch (e: unknown) {
+    const error = e as { message?: string; code?: string };
+    if (
+      error.code !== "functions/already-initialized" &&
+      (!error.message || !error.message.includes("already connected"))
+    ) {
+      console.warn("⚠️ Error connecting Functions emulator:", error.message, error.code);
+    } else {
+      console.log("ℹ️ Functions emulator already connected.");
+    }
+  }
+} else if (process.env.NODE_ENV === "development") {
+  console.log("Development mode: Firebase emulators are NOT being used (based on config).");
 }
 
 export { app, auth, db, functions };

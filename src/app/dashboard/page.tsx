@@ -4,8 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { useGetAllStories } from '../../../dataconnect-generated/js/default-connector/react/index.cjs.js'; // o tu alias
-//import { useGetAllStories } from '@firebasegen/default-connector/react';
+import { useGetAllStories } from '@firebasegen/default-connector/react/esm/index.esm.js';
 import { Story } from '@/lib/types';
 
 const DashboardPage: React.FC = () => {
@@ -17,10 +16,8 @@ const DashboardPage: React.FC = () => {
 
   // Filter stories by the current user's ID on the client-side.
   const userStories = React.useMemo(() => {
-    if (!user || !storiesData?.story) {
-      return [];
-    }
-    return storiesData.story.filter((s: Story) => s.creator?.id === user.uid);
+    if (!user || !storiesData?.items) return [];
+    return storiesData.items.filter((s: Story) => s.creator?.id === user.uid);
   }, [user, storiesData]);
 
   // Redirect to login if not authenticated.
@@ -40,9 +37,11 @@ const DashboardPage: React.FC = () => {
 
   if (error) {
     return (
-        <div className="min-h-screen flex items-center justify-center bg-red-50">
-            <p className="text-xl font-semibold text-red-700">Error loading stories: {error.message}</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-red-50">
+        <p className="text-xl font-semibold text-red-700">
+          Error loading stories: {error.message}
+        </p>
+      </div>
     );
   }
 
@@ -70,7 +69,16 @@ const DashboardPage: React.FC = () => {
                   <div className="p-6">
                     <h2 className="text-2xl font-bold text-gray-900 mb-2">{story.title}</h2>
                     <p className="text-gray-600 mb-1"><strong>Genre:</strong> {story.genre}</p>
-                    <p className="text-gray-600 mb-4"><strong>Status:</strong> <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${story.status === 'published' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{story.status}</span></p>
+                    <p className="text-gray-600 mb-4">
+                      <strong>Status:</strong>{' '}
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        story.status === 'published'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {story.status}
+                      </span>
+                    </p>
                     <Link href={`/story/edit/${story.id}`} className="font-medium text-indigo-600 hover:text-indigo-500">
                       Edit Story &rarr;
                     </Link>
