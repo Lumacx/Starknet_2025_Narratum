@@ -1,12 +1,12 @@
-I0716 05:33:06.676852   69245 load.go:37] Reloading schema and connectors...
-I0716 05:33:06.940335   69245 control.go:84] [/emulator/studio-v0 1daa] UpdateResources(): done
+I0719 21:11:35.260683     514 load.go:37] Reloading schema and connectors...
+I0719 21:11:35.705430     514 control.go:84] [/emulator/studio-v0 b4d9] UpdateResources(): done
 Schema: sources: schema/schema.gql [3459B] 
 Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
-I0716 05:33:07.257962   69245 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "/home/user/studio/dataconnect-generated/js/default-connector"
-E0716 05:33:07.258675   69245 load.go:101] Errors generating SDK: [connector "default" javascriptSdk]: failed to generate sources:
+I0719 21:11:36.017805     514 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "/home/user/studio/dataconnect-generated/js/default-connector"
+E0719 21:11:36.017920     514 load.go:101] Errors generating SDK: [connector "default" javascriptSdk]: failed to generate sources:
 user-defined enum ImageGenerationStatus is not supported (to prevent this error, remove user-defined enums from your Schema and Operations, and/or stop using the user_enum preview flag)
-I0716 05:33:07.264354   69245 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
-Generated sources: main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] prelude.gql [71203B] main/input.gql [98192B] 
-I0716 05:33:07.267239   69245 load.go:115] Finished reloading
-I0716 05:33:07.345587   69245 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50002
-I0716 05:33:07.464652   69245 engine.go:170] [/emulator/studio-v0 1daa] ExecuteGraphqlRead IntrospectionQuery: succeeded. 
+I0719 21:11:36.022990     514 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] 
+I0719 21:11:36.029184     514 load.go:115] Finished reloading
+I0719 21:11:36.055091     514 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50001
+I0719 21:11:36.188971     514 engine.go:170] [/emulator/studio-v0 b4d9] ExecuteGraphqlRead IntrospectionQuery: succeeded. 

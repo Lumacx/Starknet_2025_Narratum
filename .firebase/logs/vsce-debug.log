@@ -2231,3 +2231,48 @@ Generated sources: main/relation.gql [48131B] main/query.gql [15655B] main/mutat
  {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0716 05:33:07.464652   69245 engine.go:170] [/emulator/studio-v0 1daa] ExecuteGraphqlRead IntrospectionQuery: succeeded. \n"}}
 [info] [Firebase Plugin] Stopping Data Connect toolkit
 [warn] ⚠  Data Connect Emulator has exited upon receiving signal: SIGINT 
+[debug] [2025-07-19T21:10:58.229Z] [Firebase Plugin] Activating Firebase extension.
+[debug] [2025-07-19T21:11:31.151Z] [Firebase Plugin] requireAuthWrapper
+[debug] [2025-07-19T21:11:31.154Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-07-19T21:11:31.155Z] > authorizing via signed-in user (lumacx@gmail.com)
+[debug] [2025-07-19T21:11:31.163Z] Checked if tokens are valid: false, expires at: 1752647583269
+[debug] [2025-07-19T21:11:31.164Z] Checked if tokens are valid: false, expires at: 1752647583269
+[debug] [2025-07-19T21:11:31.165Z] > refreshing access token with scopes: []
+[debug] [2025-07-19T21:11:31.170Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-07-19T21:11:31.171Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-07-19T21:11:31.268Z] [Firebase Plugin] VSCode notification server listening on port 40001
+[debug] [2025-07-19T21:11:31.845Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-07-19T21:11:31.847Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-07-19T21:11:31.870Z] [Firebase Plugin] User found:  lumacx@gmail.com
+[info] [Firebase Plugin] (Core:Project) New user detected, fetching projects
+[debug] [2025-07-19T21:11:31.874Z] Checked if tokens are valid: true, expires at: 1752963090847
+[debug] [2025-07-19T21:11:31.878Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=1000
+[info] [Firebase Plugin] Starting Data Connect toolkit (version 2.8.0) on port 50001
+[debug] [2025-07-19T21:11:35.193Z] I0719 21:11:35.086798     508 control.go:84] [/emulator/studio-v0 2dec] UpdateResources(): done
+Schema: sources: schema/schema.gql [3459B] 
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0719 21:11:35.086798     508 control.go:84] [/emulator/studio-v0 2dec] UpdateResources(): done\nSchema: sources: schema/schema.gql [3459B] \nConnector \"default\": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \n"}}
+[debug] [2025-07-19T21:11:35.195Z] Ignoring unsupported arg: auto_download {"metadata":{"emulator":{"name":"dataconnect"},"message":"Ignoring unsupported arg: auto_download"}}
+[debug] [2025-07-19T21:11:35.196Z] Ignoring unsupported arg: port {"metadata":{"emulator":{"name":"dataconnect"},"message":"Ignoring unsupported arg: port"}}
+[debug] [2025-07-19T21:11:35.196Z] Starting Data Connect Emulator with command {"binary":"/home/user/.cache/firebase/emulators/dataconnect-emulator-2.8.0","args":["--logtostderr","-v=2","dev","--listen=localhost:50001","--config_dir=/home/user/studio/dataconnect","--enable_output_schema_extensions=true","--enable_output_generated_sdk=true"],"optionalArgs":["listen","config_dir","enable_output_schema_extensions","enable_output_generated_sdk"],"joinArgs":true,"shell":false,"port":9399} {"metadata":{"emulator":{"name":"dataconnect"},"message":"Starting Data Connect Emulator with command {\"binary\":\"/home/user/.cache/firebase/emulators/dataconnect-emulator-2.8.0\",\"args\":[\"--logtostderr\",\"-v=2\",\"dev\",\"--listen=localhost:50001\",\"--config_dir=/home/user/studio/dataconnect\",\"--enable_output_schema_extensions=true\",\"--enable_output_generated_sdk=true\"],\"optionalArgs\":[\"listen\",\"config_dir\",\"enable_output_schema_extensions\",\"enable_output_generated_sdk\"],\"joinArgs\":true,\"shell\":false,\"port\":9399}"}}
+[info] i  dataconnect: Data Connect Emulator logging to dataconnect-debug.log {"metadata":{"emulator":{"name":"dataconnect"},"message":"Data Connect Emulator logging to dataconnect-debug.log"}}
+[debug] [2025-07-19T21:11:35.301Z] I0719 21:11:35.260683     514 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0719 21:11:35.260683     514 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-07-19T21:11:35.681Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
+[debug] [2025-07-19T21:11:35.682Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
+[debug] [2025-07-19T21:11:35.705Z] I0719 21:11:35.705430     514 control.go:84] [/emulator/studio-v0 b4d9] UpdateResources(): done
+Schema: sources: schema/schema.gql [3459B] 
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0719 21:11:35.705430     514 control.go:84] [/emulator/studio-v0 b4d9] UpdateResources(): done\nSchema: sources: schema/schema.gql [3459B] \nConnector \"default\": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \n"}}
+[debug] [2025-07-19T21:11:36.018Z] I0719 21:11:36.017805     514 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "/home/user/studio/dataconnect-generated/js/default-connector"
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0719 21:11:36.017805     514 codegen.go:82] [connector \"default\" javascriptSdk] Generating sources into \"/home/user/studio/dataconnect-generated/js/default-connector\"\n"}}
+[debug] [2025-07-19T21:11:36.029Z] E0719 21:11:36.017920     514 load.go:101] Errors generating SDK: [connector "default" javascriptSdk]: failed to generate sources:
+user-defined enum ImageGenerationStatus is not supported (to prevent this error, remove user-defined enums from your Schema and Operations, and/or stop using the user_enum preview flag)
+I0719 21:11:36.022990     514 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] 
+I0719 21:11:36.029184     514 load.go:115] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0719 21:11:36.017920     514 load.go:101] Errors generating SDK: [connector \"default\" javascriptSdk]: failed to generate sources:\nuser-defined enum ImageGenerationStatus is not supported (to prevent this error, remove user-defined enums from your Schema and Operations, and/or stop using the user_enum preview flag)\nI0719 21:11:36.022990     514 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: prelude.gql [71203B] main/implicit.gql [3267B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] \nI0719 21:11:36.029184     514 load.go:115] Finished reloading\n"}}
+[debug] [2025-07-19T21:11:36.056Z] I0719 21:11:36.055091     514 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50001
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0719 21:11:36.055091     514 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50001\n"}}
+[debug] [2025-07-19T21:11:36.191Z] I0719 21:11:36.188971     514 engine.go:170] [/emulator/studio-v0 b4d9] ExecuteGraphqlRead IntrospectionQuery: succeeded. 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0719 21:11:36.188971     514 engine.go:170] [/emulator/studio-v0 b4d9] ExecuteGraphqlRead IntrospectionQuery: succeeded. \n"}}

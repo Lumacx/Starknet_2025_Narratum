@@ -3,8 +3,9 @@ import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 
+// Explicitly import types using 'type' keyword to avoid namespace conflicts
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { Auth as FirebaseAuth } from 'firebase/auth';
+import { Auth as FirebaseAuthType } from 'firebase/auth'; // Correct: Imports 'Auth' as a type
 import type { Functions } from 'firebase/functions';
 import type { Firestore } from 'firebase/firestore';
 
@@ -55,8 +56,8 @@ if (useEmulators && typeof window !== "undefined") {
   const emulatorOptions = { disableWarnings: true };
   const authEmulatorUrl = `http://${authHost}:${authPort}`;
 
-  // ✅ Tipado extendido corregido
-  type ExtendedAuth = FirebaseAuth & { emulatorConfig?: unknown };
+  // ✅ Tipado extendido corregido - This line correctly uses FirebaseAuthType as a type
+  type ExtendedAuth = FirebaseAuthType & { emulatorConfig?: unknown };
   const extendedAuth = auth as ExtendedAuth;
 
   if (!extendedAuth.emulatorConfig) {
