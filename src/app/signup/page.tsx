@@ -77,11 +77,13 @@ const SignUpPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#D4E1EE] to-[#F0D1B0] p-4 text-center font-sans">
+    <div className="min-h-screen flex flex-col items-center justify-center 
+    bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26] p-4 text-center font-sans">
+      
       <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12 max-w-md w-full">
         <div className="mb-8">
           <i className="fas fa-user-plus text-6xl text-[#C1905F] mb-4 inline-block animate-glow"></i>
-          <h1 className="font-['Georgia'] text-4xl text-[#475B6D] font-normal tracking-wide">NARRATUM</h1>
+          <h1 className="font-['Georgia'] text-4xl text-[#3A4B5C] dark:text-[#E0C9A0] font-normal tracking-wide">NARRATUM</h1>
         </div>
         <p className="text-lg text-gray-700 mb-8">Create your account to start your story.</p>
         {message && (

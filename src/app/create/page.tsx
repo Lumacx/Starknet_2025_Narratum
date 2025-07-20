@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useCreateStory } from '../../../dataconnect-generated/js/default-connector/react';
 import type { CreateStoryData } from '../../../dataconnect-generated/js/default-connector';
 import { getUserProfile } from '@/lib/userUtils';
+import ThemeToggle from '../../components/ThemeToggle'; // <--- CORRECTED PATH
 
 // Feather Icon SVG Component
 const FeatherIcon = ({ className }: { className?: string }) => (
@@ -150,8 +151,11 @@ const CreateStoryPage: React.FC = () => {
   }
   
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] font-sans">
-      <div className="fixed top-5 right-4 z-50">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 
+      bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26] 
+      text-[#3A4B5C] dark:text-[#E0C9A0] font-sans">
+
+      <div className="fixed top-7 right-4 z-50">
         <Link href="/" className="px-6 py-3 bg-[#3D4F60] text-white font-semibold rounded-full shadow-lg hover:bg-[#2c3a47] transition-transform transform hover:scale-105">
           Back to Landing
         </Link>

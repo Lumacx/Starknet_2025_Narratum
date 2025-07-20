@@ -1,45 +1,83 @@
-'use client'
+// src/app/login/ConnectPage.tsx
+'use client';
 
-import React from 'react'
-import { constants } from 'starknet'
-import { useAccount, useConnect, useDisconnect } from '@starknet-react/core'
-import { argent, braavos } from '@starknet-react/core'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faTwitter, faGithub, faDiscord } from '@fortawesome/free-brands-svg-icons'
-
+import React, { useEffect, useState } from 'react';
+import { useAccount, useConnect, useDisconnect } from '@starknet-react/core';
+import { constants } from 'starknet';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faTwitter, faGithub, faDiscord } from '@fortawesome/free-brands-svg-icons';
+import { useRouter } from 'next/navigation';
+import GSIButton from '@/components/GSIButton';
+import { signInWithCredential, GoogleAuthProvider, onAuthStateChanged, User } from 'firebase/auth';
+import { auth, db } from '@/lib/firebase';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 function ConnectPage() {
-  const { connect, connectors } = useConnect()
-  const { disconnect } = useDisconnect()
-  const { address, isConnected, chainId } = useAccount()
+  const { connect, connectors } = useConnect();
+  const { disconnect } = useDisconnect();
+  const { address, isConnected, chainId } = useAccount();
+  const router = useRouter();
+
+  const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setFirebaseUser(user);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleCredentialResponse = async (response: google.accounts.id.CredentialResponse) => {
+    try {
+      const credential = GoogleAuthProvider.credential(response.credential);
+      const result = await signInWithCredential(auth, credential);
+      const user = result.user;
+
+      await setDoc(doc(db, 'users', user.uid), {
+        uid: user.uid,
+        name: user.displayName,
+        email: user.email,
+        photoURL: user.photoURL,
+        provider: 'google',
+        lastLogin: serverTimestamp(),
+      }, { merge: true });
+
+      console.log('[✅ Firebase Login + Firestore Save]:', user);
+    } catch (error) {
+      console.error('[❌ Firebase Login Error]:', error);
+    }
+  };
 
   const socialLinks = [
-    {
-      name: 'Twitter',
-      url: 'https://twitter.com/Starknet',
-      icon: faTwitter,
-      color: '#1DA1F2',
-    },
-    {
-      name: 'GitHub',
-      url: 'https://github.com/starknet-io',
-      icon: faGithub,
-      color: '#333',
-    },
-    {
-      name: 'Discord',
-      url: 'https://discord.gg/starknet',
-      icon: faDiscord,
-      color: '#7289DA',
-    },
-  ]
+    { name: 'Twitter', url: 'https://twitter.com/Starknet', icon: faTwitter },
+    { name: 'GitHub', url: 'https://github.com/starknet-io', icon: faGithub },
+    { name: 'Discord', url: 'https://discord.gg/starknet', icon: faDiscord },
+  ];
 
   return (
     <div className="bg-gray-900 min-h-screen flex flex-col items-center justify-center text-white">
       <div className="w-full max-w-md mx-auto p-8 rounded-lg shadow-lg bg-gray-800">
         <h1 className="text-4xl font-bold text-center mb-8 text-starknet-blue">
-          Starknet Connect
+          NARRATUM
         </h1>
+
+        {/* Google Sign-In Button (GSI) */}
+        <div className="mb-6 flex justify-center">
+          <GSIButton onCredentialResponse={handleCredentialResponse} />
+        </div>
+
+        {/* Firebase User Info */}
+        {firebaseUser && (
+          <div className="flex items-center space-x-4 justify-center mb-4">
+            <img
+              src={firebaseUser.photoURL ?? '/default-avatar.png'}
+              alt="User Avatar"
+              className="w-12 h-12 rounded-full border border-gray-500"
+            />
+            <p className="text-lg">{firebaseUser.displayName}</p>
+          </div>
+        )}
+
         <div className="space-y-4">
           {isConnected && chainId === BigInt(constants.StarknetChainId.SN_SEPOLIA) ? (
             <div className="text-center">
@@ -70,6 +108,7 @@ function ConnectPage() {
             </>
           )}
         </div>
+
         <div className="mt-8 pt-4 border-t border-gray-700">
           <h2 className="text-xl font-semibold text-center mb-4">
             Follow us on social media
@@ -90,7 +129,7 @@ function ConnectPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-export default ConnectPage
+export default ConnectPage;

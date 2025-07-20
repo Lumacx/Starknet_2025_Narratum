@@ -4,6 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import ThemeToggle from '../components/ThemeToggle'; // <--- CORRECTED PATH
 
 const LandingPage: React.FC = () => {
   const router = useRouter();
@@ -28,8 +29,11 @@ const LandingPage: React.FC = () => {
   // };
 
   return (
-    <div className="min-h-screen relative flex flex-col items-center justify-center p-5 md:p-10 bg-gradient-to-br from-[#D4E1EE] via-[#F3E4D7] to-[#F0D1B0] text-[#3A4B5C] font-sans">
-      {/* Container for top-corner buttons REMOVED */}
+    <div className="min-h-screen relative flex flex-col items-center justify-center p-5 md:p-10 
+    bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26] 
+    text-[#3A4B5C] dark:text-[#E0C9A0] font-sans">
+
+     {/* Container for top-corner buttons REMOVED */}
       {/* 
       <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-10">
         <div className="flex items-center space-x-4">
@@ -105,7 +109,7 @@ const LandingPage: React.FC = () => {
             </div>
           )}
         </nav>
-        <footer className="font-['Georgia'] italic text-xl md:text-2xl text-[#3A4B5C] text-shadow-sm mt-8">
+        <footer className="font-['Georgia'] italic text-xl md:text-2xl text-[#3A4B5C] dark:text-[#E0C9A0] text-shadow-sm mt-8">
           <p>Where your words come to life</p>
         </footer>
       </div>

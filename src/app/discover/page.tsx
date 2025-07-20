@@ -113,8 +113,10 @@ const CatalogPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen relative flex flex-col items-center p-5 md:p-10 bg-[#1A2533] text-[#E0C9A0] font-sans box-border">
-      <div className="fixed top-5 right-4 z-50">
+    <div className="min-h-screen relative flex flex-col items-center p-5 md:p-10 
+    bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26] 
+    text-[#3A4B5C] dark:text-[#E0C9A0] font-sans box-border">
+      <div className="fixed top-7 right-4 z-50">
         <Link
           href="/"
           className="px-6 py-3 bg-gray-600 text-white font-semibold rounded-full shadow-md hover:bg-gray-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300"
@@ -124,10 +126,10 @@ const CatalogPage: React.FC = () => {
       </div>
       <div className="catalog-container w-full max-w-6xl text-center pt-16">
         <header className="page-header mb-8">
-          <h1 className="font-['Cinzel_Decorative'] text-5xl md:text-6xl font-bold text-[#E0C9A0] m-0 tracking-wide">
+          <h1 className="font-['Cinzel_Decorative'] text-5xl md:text-6xl font-bold text-[#3A4B5C] dark:text-[#E0C9A0] m-0 tracking-wide">
             NARRATUM
           </h1>
-          <h2 className="font-['Lato'] text-xl md:text-2xl font-bold uppercase tracking-wider text-[#BFA071] m-0">
+          <h2 className="font-['Lato'] text-xl md:text-2xl font-bold uppercase tracking-wider text-[#3A4B5C] dark:text-[#E0C9A0] m-0">
             CATALOG OF STORIES
           </h2>
         </header>
@@ -138,9 +140,9 @@ const CatalogPage: React.FC = () => {
               onClick={() => handleFilterClick(filter)}
               className={`font-['Lato'] text-lg font-bold px-3 py-1.5 border-b-2 transition-colors duration-300 focus:outline-none ${
                 activeFilter === filter
-                  ? 'text-[#E0C9A0] border-[#E0C9A0]'
-                  : 'text-[#BFA071] border-transparent hover:text-[#E0C9A0] hover:border-[#E0C9A0]'
-              }`}
+                ? 'text-[#3A4B5C] dark:text-[#E0C9A0] border-[#3A4B5C] dark:border-[#E0C9A0]'
+                : 'text-[#3A4B5C] dark:text-[#E0C9A0] border-transparent hover:border-[#3A4B5C] dark:hover:border-[#E0C9A0]'
+            }`}
             >
               {filter.charAt(0).toUpperCase() + filter.slice(1)}
             </button>
@@ -152,7 +154,7 @@ const CatalogPage: React.FC = () => {
             placeholder="Search stories semantically..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="flex-grow p-3 rounded-lg border-2 border-[#4A5C6E] bg-[#233446] text-[#E0C9A0] placeholder-[#8FA0AF] focus:outline-none focus:border-[#BFA071]"
+            className="flex-grow p-3 rounded-lg border-2 border-[#4A5C6E] bg-[#233446] text-[#3A4B5C] dark:text-[#E0C9A0] placeholder-[#8FA0AF] focus:outline-none focus:border-[#BFA071]"
           />
           <button
             onClick={handleSemanticSearch}
@@ -173,7 +175,7 @@ const CatalogPage: React.FC = () => {
               <Link
                 key={story.id}
                 href={`/story/${story.id}`}
-                className="story-card bg-[#233446] border-2 border-[#4A5C6E] p-2.5 rounded-lg w-64 text-[#E0C9A0] shadow-xl relative transition-all duration-300 ease-in-out hover:translate-y-[-5px] hover:shadow-2xl"
+                className="story-card bg-[#233446] border-2 border-[#4A5C6E] p-2.5 rounded-lg w-64 text-[#3A4B5C] dark:text-[#E0C9A0] shadow-xl relative transition-all duration-300 ease-in-out hover:translate-y-[-5px] hover:shadow-2xl"
               >
                 <div className="absolute inset-1 border border-[#BFA071] rounded-md pointer-events-none z-10"></div>
                 <div className="card-art-container w-full h-40 mb-4 rounded-sm overflow-hidden relative z-20">

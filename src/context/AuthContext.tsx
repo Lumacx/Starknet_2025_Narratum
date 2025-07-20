@@ -32,8 +32,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: User | null) => {
-      setUser(firebaseUser);
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        setUser(firebaseUser); // ✅ Guarda todo el objeto con photoURL, displayName, etc.
+      } else {
+        setUser(null);
+      }
       setLoading(false);
     });
 

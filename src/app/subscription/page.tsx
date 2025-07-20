@@ -11,8 +11,11 @@ const SubscriptionPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen relative flex flex-col items-center justify-center p-5 md:p-10 bg-gradient-to-br from-[#D4E1EE] via-[#F3E4D7] to-[#F0D1B0] text-[#4A3B31] font-sans">
-      <div className="fixed top-5 right-4 z-50">
+    <div className="min-h-screen relative flex flex-col items-center justify-center p-5 md:p-10 
+    bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26] 
+    text-[#3A4B5C] dark:text-[#E0C9A0]
+    font-sans">
+      <div className="fixed top-7 right-4 z-50">
         <Link
           href="/"
           className="px-6 py-3 bg-gray-600 text-white font-semibold rounded-full shadow-md hover:bg-gray-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300"
@@ -23,9 +26,9 @@ const SubscriptionPage: React.FC = () => {
       {/* Added pt-16 to subscription-container to avoid overlap */}
       <div className="subscription-container w-full max-w-5xl text-center pt-16">
         <header className="page-header mb-12 md:mb-16">
-          <h1 className="font-['Georgia'] text-5xl md:text-6xl font-bold text-[#2C3E50] mb-6 filter drop-shadow-md">NARRATUM</h1>
-          <h1 className="font-['Merriweather'] text-3xl md:text-4xl font-bold uppercase tracking-wide text-[#2C3E50] mb-1">CHOOSE YOUR PATH</h1>
-          <h2 className="font-['Merriweather'] text-2xl md:text-3xl font-normal uppercase tracking-wide text-[#2C3E50]">IN NARRATUM</h2>
+          <h1 className="font-['Georgia'] text-5xl md:text-6xl font-bold text-[#3A4B5C] dark:text-[#E0C9A0] mb-6 filter drop-shadow-md">NARRATUM</h1>
+          <h1 className="font-['Merriweather'] text-3xl md:text-4xl font-bold uppercase tracking-wide text-[#3A4B5C] dark:text-[#E0C9A0] mb-1">CHOOSE YOUR PATH</h1>
+          <h2 className="font-['Merriweather'] text-2xl md:text-3xl font-normal uppercase tracking-wide text-[#3A4B5C] dark:text-[#E0C9A0]">IN NARRATUM</h2>
         </header>
 
         {message && (

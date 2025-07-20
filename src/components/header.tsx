@@ -3,6 +3,7 @@
 import type { FC } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import ThemeToggle from '@/components/ThemeToggle'; // <--- CORRECTED PATH
 
 const Header: FC = () => {
   const { user, starknetAddress, logout, loading } = useAuth();
@@ -50,7 +51,9 @@ const Header: FC = () => {
   return (
     <header className="py-4 px-4 md:px-8 bg-gray-800 text-white shadow-md"> 
       <div className="container mx-auto flex items-center justify-start">
-        <div className="flex items-center" style={{ gap: '10px' }}>
+        <div className="flex items-center space-x-4" >
+          {/* 🌙 Theme Toggle to the left */}
+          <ThemeToggle />
           <Link href="/subscription" className={purpleButtonClasses}>
             Subscriptions
           </Link>
