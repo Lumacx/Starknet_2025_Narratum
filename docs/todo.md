@@ -15,8 +15,9 @@ This document outlines the planned features and development tasks for the Narrat
 ## AI Features
 
 - [x] AI Writing Prompts (based on template and user input)
-- [ ] AI Image Generation for story illustrations
-- [ ] Semantic search for stories based on themes and concepts
+- [x] Built functions for AI Image Generation for story illustrations
+- [ ] Create UI to use the functions for AI Image Generation for story illustrations
+- [x] Semantic search for stories based on themes and concepts
 - [ ] AI-powered story narration (text-to-speech)
 
 ## Backend and Infrastructure

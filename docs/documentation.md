@@ -31,10 +31,23 @@ Narratum offers a range of features designed to enhance the storytelling experie
 
 - **Interactive Story Display**: Stories are presented in an interactive format, allowing users to navigate through pages and chapters with ease.
 - **Template-Driven Story Creation**: Creators can use predefined templates to structure their stories. The `create/page.tsx` file shows how users can select from a list of mock templates such as "Three-Act Structure", "The Hero's Journey", and "Freytag's Pyramid".
+- **Story Content Editing**: Users can create and edit the textual content of individual story pages within a dedicated editor. This includes functionality for navigating between pages and an auto-save feature to ensure content is regularly preserved.
 - **AI Writing Prompts**: The application integrates with an AI tool to provide writing prompts. The `src/ai/flows/generate-writing-prompts.ts` file defines a Genkit flow that takes a story template and user input to generate a list of compelling writing prompts.
-- **User Authentication**: Narratum supports both traditional email/password authentication via Firebase and modern wallet-based authentication with Starknet. The `AuthContext.tsx` file manages the authentication state.
+- **User Authentication**: Narratum supports multiple authentication methods to provide flexibility for users:
+    *   **Google Sign-In (GSI) Button**: Users can seamlessly sign in using their Google accounts. This method integrates with Firebase Authentication for secure and convenient access.
+    *   **Starknet Wallet Connection**: For users in the decentralized ecosystem, Narratum allows login and profile management through Starknet-compatible wallets.
+    *   **Email/Password**: Traditional email and password authentication is also supported via Firebase, allowing for straightforward account creation and login.
+
+    The `AuthContext.tsx` file centrally manages the authentication state across all these methods.
 - **Story Discovery**: A dedicated discovery page where users can browse and search for stories created by others.
-- **Profile Management**: Users can create and manage their profiles, view their created stories, and track their reading progress.
+- **Profile Management**: Users can create and manage their profiles, view their created stories, and track their reading progress. Key features include:
+    *   **Avatar Management**: Users can personalize their profiles by uploading custom avatars using the `AvatarUploader` component.
+    *   **Profile Data**: Update and view personal information associated with their account.
+- **AI Image Generation**: The application now supports AI-powered image generation, allowing creators to generate custom illustrations for their stories based on textual descriptions and even initial sketch inputs. The editor provides a UI for entering prompts, initiating generation, displaying a progress bar, and showing the generated image. These images are stored in Firebase Storage, and their metadata is recorded in the DataConnect database. This feature is exposed via the `generateNarratumImage` Firebase Cloud Function.
+- **Semantic Search**: Narratum now includes a semantic search capability, allowing users to discover stories based on themes and concepts rather than just keywords. This feature leverages the Gemini API to analyze story titles and provide semantically relevant results, enhancing story discovery on the platform.
+- **Community Features**: Narratum incorporates social interaction features directly within the story viewing experience, allowing readers to engage with content and creators. These include:
+    *   **Reactions**: Users can express their appreciation or emotion towards a story by adding reactions such as 'like' (👍), 'love' (❤️), and 'wow' (😮).
+    *   **Comments**: Readers can leave comments on stories, fostering discussion and feedback. Comments display the author's avatar and display name, providing context to the conversation.
 
 ## 4. Technical Stack
 
