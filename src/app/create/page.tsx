@@ -7,7 +7,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useCreateStory } from '../../../dataconnect-generated/js/default-connector/react';
 import type { CreateStoryData } from '../../../dataconnect-generated/js/default-connector';
 import { getUserProfile } from '@/lib/userUtils';
-import ThemeToggle from '../../components/ThemeToggle'; // <--- CORRECTED PATH
+import ThemeToggle from '../../components/ThemeToggle';
+import GenreMultiSelect from '@/components/GenreMultiSelect'; // Import the new component
 
 // Feather Icon SVG Component
 const FeatherIcon = ({ className }: { className?: string }) => (
@@ -30,7 +31,7 @@ interface Template {
 interface NewStoryData {
   title: string;
   description: string;
-  genre: string;
+  genres: string[]; // Updated to array of strings
   templateId: string;
 }
 
@@ -39,6 +40,20 @@ const mockTemplates: Template[] = [
     { id: 'heros-journey', title: "The Hero's Journey", description: 'A common narrative archetype involving a hero who goes on an adventure.' },
     { id: 'frettags-pyramid', title: "Freytag's Pyramid", description: 'A five-part structure focusing on Exposition, Rising Action, Climax, Falling Action, and Dénouement.' },
   ];
+
+const GENRE_OPTIONS = [
+  'Fantasy',
+  'Sci-Fi',
+  'Mystery',
+  'Horror',
+  'Romance',
+  'Adventure',
+  'Children',
+  'Comedy',
+  'Drama',
+  'Action',
+  'Other',
+];
 
 const CreateStoryPage: React.FC = () => {
   const { user, starknetAddress, loading } = useAuth();
@@ -52,12 +67,11 @@ const CreateStoryPage: React.FC = () => {
   const [formData, setFormData] = useState<NewStoryData>({
     title: '',
     description: '',
-    genre: 'Fantasy',
+    genres: [], // Initialize as an empty array
     templateId: mockTemplates[0].id,
   });
   
   const titleInputRef = useRef<HTMLInputElement>(null);
-  const genreSelectRef = useRef<HTMLSelectElement>(null);
   const descriptionTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -66,7 +80,7 @@ const CreateStoryPage: React.FC = () => {
     }
   }, [isLoggedIn, loading, router]);
 
-  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prevData) => ({
       ...prevData,
@@ -119,7 +133,7 @@ const CreateStoryPage: React.FC = () => {
         creatorId: user.uid,
         title: formData.title || 'Untitled Story',
         description: formData.description || 'No description provided.',
-        genre: formData.genre || 'General',
+        genres: formData.genres.length > 0 ? formData.genres : ['Other'], // Pass the array of genres
       }, {
         onSuccess: (data: CreateStoryData) => {
           const newStoryId = data.story_insert?.id;
@@ -183,15 +197,13 @@ const CreateStoryPage: React.FC = () => {
                   placeholder="The Rise of the Shadow Dragon" required
                 />
               </div>
-              <div className="cursor-pointer" onClick={() => genreSelectRef.current?.focus()}>
-                <label htmlFor="genre" className="block text-sm font-bold text-[#3D4F60] mb-2 uppercase tracking-wide">Genre</label>
-                <select
-                  ref={genreSelectRef}
-                  id="genre" name="genre" value={formData.genre} onChange={handleInputChange}
-                  className="w-full p-3 border-2 border-[#B0C4DE] rounded-md bg-white text-[#3D4F60] focus:outline-none focus:ring-2 focus:ring-[#E97451] cursor-pointer"
-                >
-                  <option>Fantasy</option><option>Science Fiction</option><option>Mystery</option><option>Romance</option><option>Thriller</option>
-                </select>
+              <div>
+                <label className="block text-sm font-bold text-[#3D4F60] mb-2 uppercase tracking-wide">Genres</label>
+                <GenreMultiSelect
+                  genresList={GENRE_OPTIONS}
+                  selectedGenres={formData.genres}
+                  onSelectedGenresChange={(selected) => setFormData(prev => ({ ...prev, genres: selected }))}
+                />
               </div>
             </div>
 

@@ -4,10 +4,26 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Story } from '@/lib/types';
 import { useListPublishedStories } from '@/hooks/useListPublishedStories';
+import GenreMultiSelect from '@/components/GenreMultiSelect';
+
+const GENRE_OPTIONS = [
+  'Fantasy',
+  'Sci-Fi',
+  'Mystery',
+  'Horror',
+  'Romance',
+  'Adventure',
+  'Children',
+  'Comedy',
+  'Drama',
+  'Action',
+  'Other',
+];
 
 const CatalogPage: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [displayedStories, setDisplayedStories] = useState<Story[]>([]);
   const [allStories, setAllStories] = useState<Story[]>([]);
   const [searchMessage, setSearchMessage] = useState('');
@@ -15,61 +31,72 @@ const CatalogPage: React.FC = () => {
   const { data, isLoading, error } = useListPublishedStories();
 
   useEffect(() => {
-    if (data) {
-      console.log('🚀 Published stories data:', data);
-      setAllStories(data);
-      setDisplayedStories(data);
-    }
+    const stories = data ?? [];
+    setAllStories(stories);
+    setDisplayedStories(stories);
   }, [data]);
 
-  const applyFilter = (filter: string, stories: Story[]) => {
-    switch (filter) {
+  const applyFiltersAndSearch = (stories: Story[]) => {
+    let filtered = [...stories];
+
+    // Apply sorting filters (popular, recent)
+    switch (activeFilter) {
       case 'popular':
-        return [...stories].sort((a, b) => (b.views ?? 0) - (a.views ?? 0));
+        filtered = [...filtered].sort((a, b) => (b.views ?? 0) - (a.views ?? 0));
+        break;
       case 'recent':
-        return [...stories].sort(
+        filtered = [...filtered].sort(
           (a, b) =>
             new Date(b.createdAt ?? '').getTime() -
             new Date(a.createdAt ?? '').getTime()
         );
-      case 'theme':
-        return stories.filter(story =>
-          story.genre?.toLowerCase().includes(searchQuery.toLowerCase())
-        );
+        break;
       default:
-        return stories;
+        break;
     }
+
+    // Apply genre filter
+    if (selectedGenres.length > 0) {
+      filtered = filtered.filter(story =>
+        story.genres?.some(genre => selectedGenres.includes(genre))
+      );
+    }
+
+    // Semantic search is applied separately via handleSemanticSearch
+    // This function only handles local filtering based on current state
+
+    return filtered;
   };
 
-  // 🔄 Actualiza displayedStories cuando cambia filtro, data o query
   useEffect(() => {
-    const filtered = applyFilter(activeFilter, allStories);
-    setDisplayedStories(filtered);
-  }, [activeFilter, allStories, searchQuery]);
+    setDisplayedStories(applyFiltersAndSearch(allStories));
+  }, [activeFilter, selectedGenres, allStories]);
 
-  // 🧠 Muestra mensaje cuando cambia el filtro o la búsqueda
   useEffect(() => {
-    if (activeFilter !== 'all') {
-      setSearchMessage(`Filter applied: ${activeFilter}`);
+    if (activeFilter !== 'all' || selectedGenres.length > 0) {
+      let message = '';
+      if (activeFilter !== 'all') message += `Filter: ${activeFilter}. `;
+      if (selectedGenres.length > 0) message += `Genres: ${selectedGenres.join(', ')}.`;
+      setSearchMessage(message.trim());
     } else if (!searchQuery.trim()) {
       setSearchMessage('');
     }
-  }, [activeFilter, searchQuery]);
+  }, [activeFilter, selectedGenres, searchQuery]);
 
   const handleFilterClick = (filter: string) => {
     setActiveFilter(filter);
-    setSearchQuery('');
+    setSearchQuery(''); // Clear search when a sorting filter is applied
   };
 
   const handleSemanticSearch = async () => {
     if (!searchQuery.trim()) {
       setSearchMessage('Please enter a search query.');
-      setDisplayedStories(allStories);
+      setDisplayedStories(applyFiltersAndSearch(allStories)); // Reapply current filters
       return;
     }
 
     setSearchMessage('Searching for stories...');
-    setDisplayedStories([]);
+    setDisplayedStories([]); // Clear current display during search
 
     try {
       const storyTitles = allStories.map(story => story.title || '');
@@ -88,11 +115,14 @@ const CatalogPage: React.FC = () => {
       const { matchedTitles } = result;
 
       if (Array.isArray(matchedTitles) && matchedTitles.length > 0) {
-        const filtered = allStories.filter(story =>
+        let filteredBySearch = allStories.filter(story =>
           matchedTitles.includes(story.title)
         );
-        setDisplayedStories(filtered);
-        setSearchMessage(`Found ${filtered.length} matching stories.`);
+        // Apply existing sorting and genre filters to the search results
+        filteredBySearch = applyFiltersAndSearch(filteredBySearch);
+
+        setDisplayedStories(filteredBySearch);
+        setSearchMessage(`Found ${filteredBySearch.length} matching stories.`);
       } else {
         setDisplayedStories([]);
         setSearchMessage('No semantically related stories found from your titles.');
@@ -100,7 +130,7 @@ const CatalogPage: React.FC = () => {
     } catch (error: any) {
       console.error('Semantic search error:', error);
       setSearchMessage(`Error during search: ${error.message}. Please try again.`);
-      setDisplayedStories(allStories);
+      setDisplayedStories(applyFiltersAndSearch(allStories)); // Revert to filtered all stories on error
     }
   };
 
@@ -134,7 +164,7 @@ const CatalogPage: React.FC = () => {
           </h2>
         </header>
         <nav className="filter-nav flex justify-center gap-6 md:gap-8 mb-6 flex-wrap">
-          {['all', 'popular', 'recent', 'theme'].map(filter => (
+          {['all', 'popular', 'recent'].map(filter => (
             <button
               key={filter}
               onClick={() => handleFilterClick(filter)}
@@ -147,6 +177,11 @@ const CatalogPage: React.FC = () => {
               {filter.charAt(0).toUpperCase() + filter.slice(1)}
             </button>
           ))}
+          <GenreMultiSelect
+            genresList={GENRE_OPTIONS}
+            selectedGenres={selectedGenres}
+            onSelectedGenresChange={setSelectedGenres}
+          />
         </nav>
         <div className="flex justify-center items-center gap-3 mb-8 w-full max-w-md mx-auto">
           <input
@@ -191,6 +226,12 @@ const CatalogPage: React.FC = () => {
                 <h3 className="font-['Merriweather'] text-xl font-bold mb-4 leading-tight min-h-[3.25rem] z-20 relative">
                   {story.title || 'Untitled Story'}
                 </h3>
+                {/* Displaying genres */}
+                {story.genres && story.genres.length > 0 && (
+                  <p className="text-xs text-gray-400 mb-1">
+                    {story.genres.join(', ')}
+                  </p>
+                )}
                 <div className="font-['Lato'] bg-[#BFA071] text-[#1A2533] py-2.5 px-6 rounded-md text-base font-bold uppercase tracking-wide inline-block mb-1.5 transition-colors duration-300 hover:bg-[#E0C9A0] z-20 relative">
                   READ
                 </div>

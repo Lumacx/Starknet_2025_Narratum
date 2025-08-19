@@ -31,7 +31,7 @@ export interface User {
   export interface Story {
     id: string;
     title?: string;
-    genre?: string;
+    genres?: string[] | null;
     description?: string;
     coverImageUrl?: string;
     authorId: string;           // <- 🔑 necesario para resolver `author`
