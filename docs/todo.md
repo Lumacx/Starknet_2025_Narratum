@@ -7,7 +7,9 @@ This document outlines the planned features and development tasks for the Narrat
 - [x] User Authentication (Firebase/Starknet)
 - [x] Story Creation (Title, Description, Genre)
 - [ ] Implement actual story content creation/editing
-- [ ] Story Discovery Page with search and filtering
+- [x] Story Discovery Page with Search and Filtering: Design and implement the UI (search bar, genre/tag filters, story previews).
+- [ ] Story Discovery Page with Search and Filtering: Integrate existing src/app/api/semantic-search/route.ts for the search functionality.
+- [ ] Story Discovery Page with Search and Filtering: Implement queries to fetch stories based on filters (e.g., by genre, popularity).
 - [ ] User Profile Page with user's stories and stats
 - [ ] Subscription model and payment integration
 - [ ] Interactive story display with multimedia support

@@ -39,7 +39,13 @@ Narratum offers a range of features designed to enhance the storytelling experie
     *   **Email/Password**: Traditional email and password authentication is also supported via Firebase, allowing for straightforward account creation and login.
 
     The `AuthContext.tsx` file centrally manages the authentication state across all these methods.
-- **Story Discovery**: A dedicated discovery page where users can browse and search for stories created by others.
+- **Story Discovery Page with Search and Filtering**: This page provides a comprehensive interface for users to find stories within the Narratum platform.
+    *   **UI Implementation (Completed)**: The user interface for the "Discover" page (`src/app/discover/page.tsx`) has been designed and implemented. It includes a prominent search bar for semantic searches, flexible genre/tag filters via a reusable `GenreMultiSelect` component, and an appealing grid display of story previews (cards).
+    *   **Semantic Search Integration**: The page is integrated with the `src/app/api/semantic-search/route.ts` API endpoint, allowing users to perform AI-powered semantic searches for stories based on themes and concepts.
+    *   **Filtering Capabilities**: Users can effectively filter stories based on various criteria, including:
+        *   **Popularity**: Stories can be sorted to show the most viewed ones.
+        *   **Recency**: Stories can be sorted to display the most recently created or published content.
+        *   **Genres/Tags**: Users can select one or more genres from a predefined list (e.g., Fantasy, Sci-Fi, Mystery) to narrow down their search, leveraging the updated `genres` array field in the `Story` schema.
 - **Profile Management**: Users can create and manage their profiles, view their created stories, and track their reading progress. Key features include:
     *   **Avatar Management**: Users can personalize their profiles by uploading custom avatars using the `AvatarUploader` component.
     *   **Profile Data**: Update and view personal information associated with their account.
