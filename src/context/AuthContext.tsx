@@ -1,15 +1,7 @@
 'use client';
 
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  type ReactNode,
-} from 'react';
-
-import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
-import { User } from 'firebase/auth'; // ✅ Importa como tipo
+import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { onAuthStateChanged, signOut as firebaseSignOut, type User } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
 interface AuthContextType {
@@ -32,9 +24,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setLoading(true);
       if (firebaseUser) {
-        setUser(firebaseUser); // ✅ Guarda todo el objeto con photoURL, displayName, etc.
+        // 🔄 Garantiza que traiga photoURL/displayName actualizados (p.ej. tras updateProfile)
+        try { await firebaseUser.reload(); } catch {}
+        setUser(auth.currentUser ?? firebaseUser);
       } else {
         setUser(null);
       }

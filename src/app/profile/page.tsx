@@ -8,16 +8,40 @@ import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
 const ProfilePage: React.FC = () => {
-  const { user, starknetAddress, loading, logout } = useAuth(); // Added logout
+  const { user, starknetAddress, loading, logout } = useAuth();
   const router = useRouter();
   const [message, setMessage] = useState('');
   const isLoggedIn = !!user || !!starknetAddress;
 
   useEffect(() => {
-    if (!loading && !isLoggedIn) {
-      router.push('/login');
-    }
+    if (!loading && !isLoggedIn) router.push('/login');
   }, [isLoggedIn, loading, router]);
+
+  const getGoogleAvatar = () => {
+    const candidate =
+      user?.photoURL ||
+      user?.providerData?.find(p => !!p.photoURL)?.photoURL ||
+      null;
+
+    if (!candidate) return null;
+
+    try {
+      const url = new URL(candidate);
+      const isGUserPic = url.hostname.endsWith('googleusercontent.com');
+      if (isGUserPic) {
+        if (url.searchParams.has('sz')) {
+          url.searchParams.set('sz', '256');
+          return url.toString();
+        }
+        return candidate.replace(/=s\d+-c/g, '=s256-c').replace(/\/s\d+-c\//g, '/s256-c/');
+      }
+      return candidate;
+    } catch {
+      return candidate;
+    }
+  };
+
+  const avatarSrc = getGoogleAvatar() || 'https://placehold.co/160x160/A88F72/FFFFFF?text=User';
 
   const contentImages = [
     'https://placehold.co/160x160/A88F72/FFFFFF?text=Story+1',
@@ -31,21 +55,15 @@ const ProfilePage: React.FC = () => {
   if (loading || !isLoggedIn) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
-        <p className="text-xl font-semibold">
-          {loading ? 'Loading profile...' : 'Redirecting to login...'}
-        </p>
+        <p className="text-xl font-semibold">{loading ? 'Loading profile...' : 'Redirecting to login...'}</p>
       </div>
     );
   }
 
   let displayName = 'Narratum User';
-  if (user?.displayName) {
-    displayName = user.displayName;
-  } else if (user?.email) {
-    displayName = user.email;
-  } else if (starknetAddress) {
-    displayName = `${starknetAddress.substring(0, 6)}...${starknetAddress.substring(starknetAddress.length - 4)}`;
-  }
+  if (user?.displayName) displayName = user.displayName;
+  else if (user?.email) displayName = user.email;
+  else if (starknetAddress) displayName = `${starknetAddress.substring(0, 6)}...${starknetAddress.substring(starknetAddress.length - 4)}`;
 
   const loginMethod = user ? 'Logged in with Google' : 'Connected via Starknet';
 
@@ -54,20 +72,12 @@ const ProfilePage: React.FC = () => {
     bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26] 
     text-[#3A4B5C] dark:text-[#E0C9A0] font-['Georgia'] p-5 md:p-10 box-border">
 
-      {/* Top Right Buttons */}
       <div className="fixed top-7 right-4 z-50 flex gap-4">
-        <Link
-          href="/"
-          className="px-6 py-3 bg-gray-600 text-white font-semibold rounded-full shadow-md hover:bg-gray-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300"
-        >
+        <Link href="/" className="px-6 py-3 bg-gray-600 text-white font-semibold rounded-full shadow-md hover:bg-gray-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300">
           Back to Landing
         </Link>
         <button
-          onClick={async () => {
-            await signOut(auth);
-            if (logout) logout(); // from context
-            router.push('/login');
-          }}
+          onClick={async () => { await signOut(auth); if (logout) logout(); router.push('/login'); }}
           className="px-6 py-3 bg-red-600 text-white font-semibold rounded-full shadow-md hover:bg-red-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-red-300"
         >
           Logout
@@ -79,15 +89,15 @@ const ProfilePage: React.FC = () => {
           <div className="avatar-section relative inline-block mb-4">
             <div className="avatar-frame w-40 h-40 md:w-48 md:h-48 rounded-full border-4 border-[#8B6F4E] p-1.5 bg-[#F5EFE3] flex justify-center items-center shadow-md">
               <img
-                src={user?.photoURL || 'https://placehold.co/160x160/A88F72/FFFFFF?text=User'}
+                src={avatarSrc}
                 alt={displayName}
                 className="avatar-image w-full h-full rounded-full border-3 border-[#A88F72] object-cover"
+                referrerPolicy="no-referrer"
+                loading="lazy"
               />
             </div>
           </div>
-          <h1 className="user-name text-4xl md:text-5xl font-bold text-[#3A4B5C] dark:text-[#E0C9A0] m-0">
-            {displayName}
-          </h1>
+          <h1 className="user-name text-4xl md:text-5xl font-bold text-[#3A4B5C] dark:text-[#E0C9A0] m-0">{displayName}</h1>
           <p className="text-sm text-[#6B7280] dark:text-[#C2B6A3] mt-2">{loginMethod}</p>
         </header>
 
@@ -99,11 +109,7 @@ const ProfilePage: React.FC = () => {
           <button onClick={() => setMessage('Favorites clicked!')} className="nav-link text-lg font-bold uppercase tracking-wide px-3 py-1.5 text-[#3A4B5C] dark:text-[#E0C9A0] hover:text-[#8B6F4E] dark:hover:text-[#3A4B5C] focus:outline-none">FAVORITES</button>
         </nav>
 
-        {message && (
-          <div className="mb-6 p-3 rounded-lg text-sm bg-blue-100 text-blue-700">
-            {message}
-          </div>
-        )}
+        {message && <div className="mb-6 p-3 rounded-lg text-sm bg-blue-100 text-blue-700">{message}</div>}
 
         <main className="content-grid flex justify-center gap-5 flex-wrap">
           {contentImages.map((src, index) => (

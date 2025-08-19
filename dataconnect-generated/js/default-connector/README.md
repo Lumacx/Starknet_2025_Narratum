@@ -16,8 +16,8 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetAppSubscription*](#getappsubscription)
   - [*GetTemplate*](#gettemplate)
   - [*GetAllTemplates*](#getalltemplates)
-  - [*GetAIGeneratedImage*](#getaigeneratedimage)
-  - [*GetAIGeneratedGIF*](#getaigeneratedgif)
+  - [*GetAiGeneratedImage*](#getaigeneratedimage)
+  - [*GetAiGeneratedGif*](#getaigeneratedgif)
   - [*GetPayment*](#getpayment)
   - [*GetAdminAction*](#getadminaction)
   - [*GetAnalyticsEntry*](#getanalyticsentry)
@@ -27,8 +27,8 @@ This README will guide you through the process of using the generated JavaScript
   - [*CreateStory*](#createstory)
   - [*CreateStoryContent*](#createstorycontent)
   - [*CreateTemplate*](#createtemplate)
-  - [*CreateAIGeneratedImage*](#createaigeneratedimage)
-  - [*CreateAIGeneratedGIF*](#createaigeneratedgif)
+  - [*CreateAiGeneratedImage*](#createaigeneratedimage)
+  - [*CreateAiGeneratedGif*](#createaigeneratedgif)
   - [*CreatePayment*](#createpayment)
   - [*CreateAdminAction*](#createadminaction)
   - [*CreateAnalyticsEntry*](#createanalyticsentry)
@@ -350,15 +350,17 @@ Recall that executing the `GetAllStories` query returns a `QueryPromise` that re
 The `data` property is an object of type `GetAllStoriesData`, which is defined in [default-connector/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
 export interface GetAllStoriesData {
-  story?: {
+  stories: ({
     id: string;
     title?: string | null;
     genre?: string | null;
     status: string;
+    coverImageUrl?: string | null;
     creator: {
       id: string;
+      displayname: string;
     } & User_Key;
-  } & Story_Key;
+  } & Story_Key)[];
 }
 ```
 ### Using `GetAllStories`'s action shortcut function
@@ -376,12 +378,12 @@ const { data } = await getAllStories();
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await getAllStories(dataConnect);
 
-console.log(data.story);
+console.log(data.stories);
 
 // Or, you can use the `Promise` API.
 getAllStories().then((response) => {
   const data = response.data;
-  console.log(data.story);
+  console.log(data.stories);
 });
 ```
 
@@ -403,12 +405,12 @@ const ref = getAllStoriesRef(dataConnect);
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeQuery(ref);
 
-console.log(data.story);
+console.log(data.stories);
 
 // Or, you can use the `Promise` API.
 executeQuery(ref).then((response) => {
   const data = response.data;
-  console.log(data.story);
+  console.log(data.stories);
 });
 ```
 
@@ -733,8 +735,8 @@ executeQuery(ref).then((response) => {
 });
 ```
 
-## GetAIGeneratedImage
-You can execute the `GetAIGeneratedImage` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [default-connector/index.d.ts](./index.d.ts):
+## GetAiGeneratedImage
+You can execute the `GetAiGeneratedImage` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [default-connector/index.d.ts](./index.d.ts):
 ```typescript
 getAiGeneratedImage(vars: GetAiGeneratedImageVariables): QueryPromise<GetAiGeneratedImageData, GetAiGeneratedImageVariables>;
 
@@ -763,7 +765,7 @@ console.log(name);
 ```
 
 ### Variables
-The `GetAIGeneratedImage` query requires an argument of type `GetAiGeneratedImageVariables`, which is defined in [default-connector/index.d.ts](./index.d.ts). It has the following fields:
+The `GetAiGeneratedImage` query requires an argument of type `GetAiGeneratedImageVariables`, which is defined in [default-connector/index.d.ts](./index.d.ts). It has the following fields:
 
 ```typescript
 export interface GetAiGeneratedImageVariables {
@@ -771,27 +773,27 @@ export interface GetAiGeneratedImageVariables {
 }
 ```
 ### Return Type
-Recall that executing the `GetAIGeneratedImage` query returns a `QueryPromise` that resolves to an object with a `data` property.
+Recall that executing the `GetAiGeneratedImage` query returns a `QueryPromise` that resolves to an object with a `data` property.
 
 The `data` property is an object of type `GetAiGeneratedImageData`, which is defined in [default-connector/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
 export interface GetAiGeneratedImageData {
-  aIGeneratedImage?: {
+  aiGeneratedImage?: {
     id: string;
     promptText?: string | null;
     sketchUrl?: string | null;
     generatedImageUrl?: string | null;
     status: string;
-  } & AIGeneratedImage_Key;
+  } & AiGeneratedImage_Key;
 }
 ```
-### Using `GetAIGeneratedImage`'s action shortcut function
+### Using `GetAiGeneratedImage`'s action shortcut function
 
 ```typescript
 import { getDataConnect } from 'firebase/data-connect';
 import { connectorConfig, getAiGeneratedImage, GetAiGeneratedImageVariables } from '@firebasegen/default-connector';
 
-// The `GetAIGeneratedImage` query requires an argument of type `GetAiGeneratedImageVariables`:
+// The `GetAiGeneratedImage` query requires an argument of type `GetAiGeneratedImageVariables`:
 const getAiGeneratedImageVars: GetAiGeneratedImageVariables = {
   imageId: ..., 
 };
@@ -806,22 +808,22 @@ const { data } = await getAiGeneratedImage({ imageId: ..., });
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await getAiGeneratedImage(dataConnect, getAiGeneratedImageVars);
 
-console.log(data.aIGeneratedImage);
+console.log(data.aiGeneratedImage);
 
 // Or, you can use the `Promise` API.
 getAiGeneratedImage(getAiGeneratedImageVars).then((response) => {
   const data = response.data;
-  console.log(data.aIGeneratedImage);
+  console.log(data.aiGeneratedImage);
 });
 ```
 
-### Using `GetAIGeneratedImage`'s `QueryRef` function
+### Using `GetAiGeneratedImage`'s `QueryRef` function
 
 ```typescript
 import { getDataConnect, executeQuery } from 'firebase/data-connect';
 import { connectorConfig, getAiGeneratedImageRef, GetAiGeneratedImageVariables } from '@firebasegen/default-connector';
 
-// The `GetAIGeneratedImage` query requires an argument of type `GetAiGeneratedImageVariables`:
+// The `GetAiGeneratedImage` query requires an argument of type `GetAiGeneratedImageVariables`:
 const getAiGeneratedImageVars: GetAiGeneratedImageVariables = {
   imageId: ..., 
 };
@@ -839,17 +841,17 @@ const ref = getAiGeneratedImageRef(dataConnect, getAiGeneratedImageVars);
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeQuery(ref);
 
-console.log(data.aIGeneratedImage);
+console.log(data.aiGeneratedImage);
 
 // Or, you can use the `Promise` API.
 executeQuery(ref).then((response) => {
   const data = response.data;
-  console.log(data.aIGeneratedImage);
+  console.log(data.aiGeneratedImage);
 });
 ```
 
-## GetAIGeneratedGIF
-You can execute the `GetAIGeneratedGIF` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [default-connector/index.d.ts](./index.d.ts):
+## GetAiGeneratedGif
+You can execute the `GetAiGeneratedGif` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [default-connector/index.d.ts](./index.d.ts):
 ```typescript
 getAiGeneratedGif(vars: GetAiGeneratedGifVariables): QueryPromise<GetAiGeneratedGifData, GetAiGeneratedGifVariables>;
 
@@ -878,7 +880,7 @@ console.log(name);
 ```
 
 ### Variables
-The `GetAIGeneratedGIF` query requires an argument of type `GetAiGeneratedGifVariables`, which is defined in [default-connector/index.d.ts](./index.d.ts). It has the following fields:
+The `GetAiGeneratedGif` query requires an argument of type `GetAiGeneratedGifVariables`, which is defined in [default-connector/index.d.ts](./index.d.ts). It has the following fields:
 
 ```typescript
 export interface GetAiGeneratedGifVariables {
@@ -886,24 +888,24 @@ export interface GetAiGeneratedGifVariables {
 }
 ```
 ### Return Type
-Recall that executing the `GetAIGeneratedGIF` query returns a `QueryPromise` that resolves to an object with a `data` property.
+Recall that executing the `GetAiGeneratedGif` query returns a `QueryPromise` that resolves to an object with a `data` property.
 
 The `data` property is an object of type `GetAiGeneratedGifData`, which is defined in [default-connector/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
 export interface GetAiGeneratedGifData {
-  aIGeneratedGIF?: {
+  aiGeneratedGif?: {
     id: string;
     gifUrl?: string | null;
-  } & AIGeneratedGIF_Key;
+  } & AiGeneratedGif_Key;
 }
 ```
-### Using `GetAIGeneratedGIF`'s action shortcut function
+### Using `GetAiGeneratedGif`'s action shortcut function
 
 ```typescript
 import { getDataConnect } from 'firebase/data-connect';
 import { connectorConfig, getAiGeneratedGif, GetAiGeneratedGifVariables } from '@firebasegen/default-connector';
 
-// The `GetAIGeneratedGIF` query requires an argument of type `GetAiGeneratedGifVariables`:
+// The `GetAiGeneratedGif` query requires an argument of type `GetAiGeneratedGifVariables`:
 const getAiGeneratedGifVars: GetAiGeneratedGifVariables = {
   gifId: ..., 
 };
@@ -918,22 +920,22 @@ const { data } = await getAiGeneratedGif({ gifId: ..., });
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await getAiGeneratedGif(dataConnect, getAiGeneratedGifVars);
 
-console.log(data.aIGeneratedGIF);
+console.log(data.aiGeneratedGif);
 
 // Or, you can use the `Promise` API.
 getAiGeneratedGif(getAiGeneratedGifVars).then((response) => {
   const data = response.data;
-  console.log(data.aIGeneratedGIF);
+  console.log(data.aiGeneratedGif);
 });
 ```
 
-### Using `GetAIGeneratedGIF`'s `QueryRef` function
+### Using `GetAiGeneratedGif`'s `QueryRef` function
 
 ```typescript
 import { getDataConnect, executeQuery } from 'firebase/data-connect';
 import { connectorConfig, getAiGeneratedGifRef, GetAiGeneratedGifVariables } from '@firebasegen/default-connector';
 
-// The `GetAIGeneratedGIF` query requires an argument of type `GetAiGeneratedGifVariables`:
+// The `GetAiGeneratedGif` query requires an argument of type `GetAiGeneratedGifVariables`:
 const getAiGeneratedGifVars: GetAiGeneratedGifVariables = {
   gifId: ..., 
 };
@@ -951,12 +953,12 @@ const ref = getAiGeneratedGifRef(dataConnect, getAiGeneratedGifVars);
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeQuery(ref);
 
-console.log(data.aIGeneratedGIF);
+console.log(data.aiGeneratedGif);
 
 // Or, you can use the `Promise` API.
 executeQuery(ref).then((response) => {
   const data = response.data;
-  console.log(data.aIGeneratedGIF);
+  console.log(data.aiGeneratedGif);
 });
 ```
 
@@ -1906,8 +1908,8 @@ executeMutation(ref).then((response) => {
 });
 ```
 
-## CreateAIGeneratedImage
-You can execute the `CreateAIGeneratedImage` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [default-connector/index.d.ts](./index.d.ts):
+## CreateAiGeneratedImage
+You can execute the `CreateAiGeneratedImage` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [default-connector/index.d.ts](./index.d.ts):
 ```typescript
 createAiGeneratedImage(vars: CreateAiGeneratedImageVariables): MutationPromise<CreateAiGeneratedImageData, CreateAiGeneratedImageVariables>;
 
@@ -1936,7 +1938,7 @@ console.log(name);
 ```
 
 ### Variables
-The `CreateAIGeneratedImage` mutation requires an argument of type `CreateAiGeneratedImageVariables`, which is defined in [default-connector/index.d.ts](./index.d.ts). It has the following fields:
+The `CreateAiGeneratedImage` mutation requires an argument of type `CreateAiGeneratedImageVariables`, which is defined in [default-connector/index.d.ts](./index.d.ts). It has the following fields:
 
 ```typescript
 export interface CreateAiGeneratedImageVariables {
@@ -1948,21 +1950,21 @@ export interface CreateAiGeneratedImageVariables {
 }
 ```
 ### Return Type
-Recall that executing the `CreateAIGeneratedImage` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+Recall that executing the `CreateAiGeneratedImage` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
 
 The `data` property is an object of type `CreateAiGeneratedImageData`, which is defined in [default-connector/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
 export interface CreateAiGeneratedImageData {
-  aIGeneratedImage_insert: AIGeneratedImage_Key;
+  aiGeneratedImage_insert: AiGeneratedImage_Key;
 }
 ```
-### Using `CreateAIGeneratedImage`'s action shortcut function
+### Using `CreateAiGeneratedImage`'s action shortcut function
 
 ```typescript
 import { getDataConnect } from 'firebase/data-connect';
 import { connectorConfig, createAiGeneratedImage, CreateAiGeneratedImageVariables } from '@firebasegen/default-connector';
 
-// The `CreateAIGeneratedImage` mutation requires an argument of type `CreateAiGeneratedImageVariables`:
+// The `CreateAiGeneratedImage` mutation requires an argument of type `CreateAiGeneratedImageVariables`:
 const createAiGeneratedImageVars: CreateAiGeneratedImageVariables = {
   imageId: ..., 
   userId: ..., 
@@ -1981,22 +1983,22 @@ const { data } = await createAiGeneratedImage({ imageId: ..., userId: ..., promp
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await createAiGeneratedImage(dataConnect, createAiGeneratedImageVars);
 
-console.log(data.aIGeneratedImage_insert);
+console.log(data.aiGeneratedImage_insert);
 
 // Or, you can use the `Promise` API.
 createAiGeneratedImage(createAiGeneratedImageVars).then((response) => {
   const data = response.data;
-  console.log(data.aIGeneratedImage_insert);
+  console.log(data.aiGeneratedImage_insert);
 });
 ```
 
-### Using `CreateAIGeneratedImage`'s `MutationRef` function
+### Using `CreateAiGeneratedImage`'s `MutationRef` function
 
 ```typescript
 import { getDataConnect, executeMutation } from 'firebase/data-connect';
 import { connectorConfig, createAiGeneratedImageRef, CreateAiGeneratedImageVariables } from '@firebasegen/default-connector';
 
-// The `CreateAIGeneratedImage` mutation requires an argument of type `CreateAiGeneratedImageVariables`:
+// The `CreateAiGeneratedImage` mutation requires an argument of type `CreateAiGeneratedImageVariables`:
 const createAiGeneratedImageVars: CreateAiGeneratedImageVariables = {
   imageId: ..., 
   userId: ..., 
@@ -2018,17 +2020,17 @@ const ref = createAiGeneratedImageRef(dataConnect, createAiGeneratedImageVars);
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeMutation(ref);
 
-console.log(data.aIGeneratedImage_insert);
+console.log(data.aiGeneratedImage_insert);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
-  console.log(data.aIGeneratedImage_insert);
+  console.log(data.aiGeneratedImage_insert);
 });
 ```
 
-## CreateAIGeneratedGIF
-You can execute the `CreateAIGeneratedGIF` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [default-connector/index.d.ts](./index.d.ts):
+## CreateAiGeneratedGif
+You can execute the `CreateAiGeneratedGif` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [default-connector/index.d.ts](./index.d.ts):
 ```typescript
 createAiGeneratedGif(vars: CreateAiGeneratedGifVariables): MutationPromise<CreateAiGeneratedGifData, CreateAiGeneratedGifVariables>;
 
@@ -2057,7 +2059,7 @@ console.log(name);
 ```
 
 ### Variables
-The `CreateAIGeneratedGIF` mutation requires an argument of type `CreateAiGeneratedGifVariables`, which is defined in [default-connector/index.d.ts](./index.d.ts). It has the following fields:
+The `CreateAiGeneratedGif` mutation requires an argument of type `CreateAiGeneratedGifVariables`, which is defined in [default-connector/index.d.ts](./index.d.ts). It has the following fields:
 
 ```typescript
 export interface CreateAiGeneratedGifVariables {
@@ -2066,21 +2068,21 @@ export interface CreateAiGeneratedGifVariables {
 }
 ```
 ### Return Type
-Recall that executing the `CreateAIGeneratedGIF` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+Recall that executing the `CreateAiGeneratedGif` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
 
 The `data` property is an object of type `CreateAiGeneratedGifData`, which is defined in [default-connector/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
 export interface CreateAiGeneratedGifData {
-  aIGeneratedGIF_insert: AIGeneratedGIF_Key;
+  aiGeneratedGif_insert: AiGeneratedGif_Key;
 }
 ```
-### Using `CreateAIGeneratedGIF`'s action shortcut function
+### Using `CreateAiGeneratedGif`'s action shortcut function
 
 ```typescript
 import { getDataConnect } from 'firebase/data-connect';
 import { connectorConfig, createAiGeneratedGif, CreateAiGeneratedGifVariables } from '@firebasegen/default-connector';
 
-// The `CreateAIGeneratedGIF` mutation requires an argument of type `CreateAiGeneratedGifVariables`:
+// The `CreateAiGeneratedGif` mutation requires an argument of type `CreateAiGeneratedGifVariables`:
 const createAiGeneratedGifVars: CreateAiGeneratedGifVariables = {
   imageId: ..., 
   gifUrl: ..., 
@@ -2096,22 +2098,22 @@ const { data } = await createAiGeneratedGif({ imageId: ..., gifUrl: ..., });
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await createAiGeneratedGif(dataConnect, createAiGeneratedGifVars);
 
-console.log(data.aIGeneratedGIF_insert);
+console.log(data.aiGeneratedGif_insert);
 
 // Or, you can use the `Promise` API.
 createAiGeneratedGif(createAiGeneratedGifVars).then((response) => {
   const data = response.data;
-  console.log(data.aIGeneratedGIF_insert);
+  console.log(data.aiGeneratedGif_insert);
 });
 ```
 
-### Using `CreateAIGeneratedGIF`'s `MutationRef` function
+### Using `CreateAiGeneratedGif`'s `MutationRef` function
 
 ```typescript
 import { getDataConnect, executeMutation } from 'firebase/data-connect';
 import { connectorConfig, createAiGeneratedGifRef, CreateAiGeneratedGifVariables } from '@firebasegen/default-connector';
 
-// The `CreateAIGeneratedGIF` mutation requires an argument of type `CreateAiGeneratedGifVariables`:
+// The `CreateAiGeneratedGif` mutation requires an argument of type `CreateAiGeneratedGifVariables`:
 const createAiGeneratedGifVars: CreateAiGeneratedGifVariables = {
   imageId: ..., 
   gifUrl: ..., 
@@ -2130,12 +2132,12 @@ const ref = createAiGeneratedGifRef(dataConnect, createAiGeneratedGifVars);
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeMutation(ref);
 
-console.log(data.aIGeneratedGIF_insert);
+console.log(data.aiGeneratedGif_insert);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
-  console.log(data.aIGeneratedGIF_insert);
+  console.log(data.aiGeneratedGif_insert);
 });
 ```
 

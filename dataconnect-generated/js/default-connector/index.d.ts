@@ -10,19 +10,19 @@ export type DateString = string;
 
 
 
-export interface AIGeneratedGIF_Key {
-  id: string;
-  __typename?: 'AIGeneratedGIF_Key';
-}
-
-export interface AIGeneratedImage_Key {
-  id: string;
-  __typename?: 'AIGeneratedImage_Key';
-}
-
 export interface AdminAction_Key {
   id: string;
   __typename?: 'AdminAction_Key';
+}
+
+export interface AiGeneratedGif_Key {
+  id: string;
+  __typename?: 'AiGeneratedGif_Key';
+}
+
+export interface AiGeneratedImage_Key {
+  id: string;
+  __typename?: 'AiGeneratedImage_Key';
 }
 
 export interface Analytics_Key {
@@ -47,7 +47,7 @@ export interface CreateAdminActionVariables {
 }
 
 export interface CreateAiGeneratedGifData {
-  aIGeneratedGIF_insert: AIGeneratedGIF_Key;
+  aiGeneratedGif_insert: AiGeneratedGif_Key;
 }
 
 export interface CreateAiGeneratedGifVariables {
@@ -56,7 +56,7 @@ export interface CreateAiGeneratedGifVariables {
 }
 
 export interface CreateAiGeneratedImageData {
-  aIGeneratedImage_insert: AIGeneratedImage_Key;
+  aiGeneratedImage_insert: AiGeneratedImage_Key;
 }
 
 export interface CreateAiGeneratedImageVariables {
@@ -147,10 +147,10 @@ export interface GetAdminActionVariables {
 }
 
 export interface GetAiGeneratedGifData {
-  aIGeneratedGIF?: {
+  aiGeneratedGif?: {
     id: string;
     gifUrl?: string | null;
-  } & AIGeneratedGIF_Key;
+  } & AiGeneratedGif_Key;
 }
 
 export interface GetAiGeneratedGifVariables {
@@ -158,13 +158,13 @@ export interface GetAiGeneratedGifVariables {
 }
 
 export interface GetAiGeneratedImageData {
-  aIGeneratedImage?: {
+  aiGeneratedImage?: {
     id: string;
     promptText?: string | null;
     sketchUrl?: string | null;
     generatedImageUrl?: string | null;
     status: string;
-  } & AIGeneratedImage_Key;
+  } & AiGeneratedImage_Key;
 }
 
 export interface GetAiGeneratedImageVariables {
@@ -172,15 +172,17 @@ export interface GetAiGeneratedImageVariables {
 }
 
 export interface GetAllStoriesData {
-  story?: {
+  stories: ({
     id: string;
     title?: string | null;
     genre?: string | null;
     status: string;
+    coverImageUrl?: string | null;
     creator: {
       id: string;
+      displayname: string;
     } & User_Key;
-  } & Story_Key;
+  } & Story_Key)[];
 }
 
 export interface GetAllTemplatesData {
@@ -322,6 +324,126 @@ export interface User_Key {
   id: string;
   __typename?: 'User_Key';
 }
+
+interface CreateUserProfileRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateUserProfileVariables): MutationRef<CreateUserProfileData, CreateUserProfileVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CreateUserProfileVariables): MutationRef<CreateUserProfileData, CreateUserProfileVariables>;
+  operationName: string;
+}
+export const createUserProfileRef: CreateUserProfileRef;
+
+export function createUserProfile(vars: CreateUserProfileVariables): MutationPromise<CreateUserProfileData, CreateUserProfileVariables>;
+export function createUserProfile(dc: DataConnect, vars: CreateUserProfileVariables): MutationPromise<CreateUserProfileData, CreateUserProfileVariables>;
+
+interface CreateStoryRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateStoryVariables): MutationRef<CreateStoryData, CreateStoryVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CreateStoryVariables): MutationRef<CreateStoryData, CreateStoryVariables>;
+  operationName: string;
+}
+export const createStoryRef: CreateStoryRef;
+
+export function createStory(vars: CreateStoryVariables): MutationPromise<CreateStoryData, CreateStoryVariables>;
+export function createStory(dc: DataConnect, vars: CreateStoryVariables): MutationPromise<CreateStoryData, CreateStoryVariables>;
+
+interface CreateStoryContentRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateStoryContentVariables): MutationRef<CreateStoryContentData, CreateStoryContentVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CreateStoryContentVariables): MutationRef<CreateStoryContentData, CreateStoryContentVariables>;
+  operationName: string;
+}
+export const createStoryContentRef: CreateStoryContentRef;
+
+export function createStoryContent(vars: CreateStoryContentVariables): MutationPromise<CreateStoryContentData, CreateStoryContentVariables>;
+export function createStoryContent(dc: DataConnect, vars: CreateStoryContentVariables): MutationPromise<CreateStoryContentData, CreateStoryContentVariables>;
+
+interface CreateTemplateRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateTemplateVariables): MutationRef<CreateTemplateData, CreateTemplateVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CreateTemplateVariables): MutationRef<CreateTemplateData, CreateTemplateVariables>;
+  operationName: string;
+}
+export const createTemplateRef: CreateTemplateRef;
+
+export function createTemplate(vars: CreateTemplateVariables): MutationPromise<CreateTemplateData, CreateTemplateVariables>;
+export function createTemplate(dc: DataConnect, vars: CreateTemplateVariables): MutationPromise<CreateTemplateData, CreateTemplateVariables>;
+
+interface CreateAiGeneratedImageRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateAiGeneratedImageVariables): MutationRef<CreateAiGeneratedImageData, CreateAiGeneratedImageVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CreateAiGeneratedImageVariables): MutationRef<CreateAiGeneratedImageData, CreateAiGeneratedImageVariables>;
+  operationName: string;
+}
+export const createAiGeneratedImageRef: CreateAiGeneratedImageRef;
+
+export function createAiGeneratedImage(vars: CreateAiGeneratedImageVariables): MutationPromise<CreateAiGeneratedImageData, CreateAiGeneratedImageVariables>;
+export function createAiGeneratedImage(dc: DataConnect, vars: CreateAiGeneratedImageVariables): MutationPromise<CreateAiGeneratedImageData, CreateAiGeneratedImageVariables>;
+
+interface CreateAiGeneratedGifRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateAiGeneratedGifVariables): MutationRef<CreateAiGeneratedGifData, CreateAiGeneratedGifVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CreateAiGeneratedGifVariables): MutationRef<CreateAiGeneratedGifData, CreateAiGeneratedGifVariables>;
+  operationName: string;
+}
+export const createAiGeneratedGifRef: CreateAiGeneratedGifRef;
+
+export function createAiGeneratedGif(vars: CreateAiGeneratedGifVariables): MutationPromise<CreateAiGeneratedGifData, CreateAiGeneratedGifVariables>;
+export function createAiGeneratedGif(dc: DataConnect, vars: CreateAiGeneratedGifVariables): MutationPromise<CreateAiGeneratedGifData, CreateAiGeneratedGifVariables>;
+
+interface CreatePaymentRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreatePaymentVariables): MutationRef<CreatePaymentData, CreatePaymentVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CreatePaymentVariables): MutationRef<CreatePaymentData, CreatePaymentVariables>;
+  operationName: string;
+}
+export const createPaymentRef: CreatePaymentRef;
+
+export function createPayment(vars: CreatePaymentVariables): MutationPromise<CreatePaymentData, CreatePaymentVariables>;
+export function createPayment(dc: DataConnect, vars: CreatePaymentVariables): MutationPromise<CreatePaymentData, CreatePaymentVariables>;
+
+interface CreateAdminActionRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateAdminActionVariables): MutationRef<CreateAdminActionData, CreateAdminActionVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CreateAdminActionVariables): MutationRef<CreateAdminActionData, CreateAdminActionVariables>;
+  operationName: string;
+}
+export const createAdminActionRef: CreateAdminActionRef;
+
+export function createAdminAction(vars: CreateAdminActionVariables): MutationPromise<CreateAdminActionData, CreateAdminActionVariables>;
+export function createAdminAction(dc: DataConnect, vars: CreateAdminActionVariables): MutationPromise<CreateAdminActionData, CreateAdminActionVariables>;
+
+interface CreateAnalyticsEntryRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateAnalyticsEntryVariables): MutationRef<CreateAnalyticsEntryData, CreateAnalyticsEntryVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CreateAnalyticsEntryVariables): MutationRef<CreateAnalyticsEntryData, CreateAnalyticsEntryVariables>;
+  operationName: string;
+}
+export const createAnalyticsEntryRef: CreateAnalyticsEntryRef;
+
+export function createAnalyticsEntry(vars: CreateAnalyticsEntryVariables): MutationPromise<CreateAnalyticsEntryData, CreateAnalyticsEntryVariables>;
+export function createAnalyticsEntry(dc: DataConnect, vars: CreateAnalyticsEntryVariables): MutationPromise<CreateAnalyticsEntryData, CreateAnalyticsEntryVariables>;
+
+interface LogLegalDisclaimerAcceptanceRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: LogLegalDisclaimerAcceptanceVariables): MutationRef<LogLegalDisclaimerAcceptanceData, LogLegalDisclaimerAcceptanceVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: LogLegalDisclaimerAcceptanceVariables): MutationRef<LogLegalDisclaimerAcceptanceData, LogLegalDisclaimerAcceptanceVariables>;
+  operationName: string;
+}
+export const logLegalDisclaimerAcceptanceRef: LogLegalDisclaimerAcceptanceRef;
+
+export function logLegalDisclaimerAcceptance(vars: LogLegalDisclaimerAcceptanceVariables): MutationPromise<LogLegalDisclaimerAcceptanceData, LogLegalDisclaimerAcceptanceVariables>;
+export function logLegalDisclaimerAcceptance(dc: DataConnect, vars: LogLegalDisclaimerAcceptanceVariables): MutationPromise<LogLegalDisclaimerAcceptanceData, LogLegalDisclaimerAcceptanceVariables>;
 
 interface GetUserProfileRef {
   /* Allow users to create refs without passing in DataConnect */
@@ -466,124 +588,4 @@ export const getLegalDisclaimerRef: GetLegalDisclaimerRef;
 
 export function getLegalDisclaimer(vars: GetLegalDisclaimerVariables): QueryPromise<GetLegalDisclaimerData, GetLegalDisclaimerVariables>;
 export function getLegalDisclaimer(dc: DataConnect, vars: GetLegalDisclaimerVariables): QueryPromise<GetLegalDisclaimerData, GetLegalDisclaimerVariables>;
-
-interface CreateUserProfileRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: CreateUserProfileVariables): MutationRef<CreateUserProfileData, CreateUserProfileVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: CreateUserProfileVariables): MutationRef<CreateUserProfileData, CreateUserProfileVariables>;
-  operationName: string;
-}
-export const createUserProfileRef: CreateUserProfileRef;
-
-export function createUserProfile(vars: CreateUserProfileVariables): MutationPromise<CreateUserProfileData, CreateUserProfileVariables>;
-export function createUserProfile(dc: DataConnect, vars: CreateUserProfileVariables): MutationPromise<CreateUserProfileData, CreateUserProfileVariables>;
-
-interface CreateStoryRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: CreateStoryVariables): MutationRef<CreateStoryData, CreateStoryVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: CreateStoryVariables): MutationRef<CreateStoryData, CreateStoryVariables>;
-  operationName: string;
-}
-export const createStoryRef: CreateStoryRef;
-
-export function createStory(vars: CreateStoryVariables): MutationPromise<CreateStoryData, CreateStoryVariables>;
-export function createStory(dc: DataConnect, vars: CreateStoryVariables): MutationPromise<CreateStoryData, CreateStoryVariables>;
-
-interface CreateStoryContentRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: CreateStoryContentVariables): MutationRef<CreateStoryContentData, CreateStoryContentVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: CreateStoryContentVariables): MutationRef<CreateStoryContentData, CreateStoryContentVariables>;
-  operationName: string;
-}
-export const createStoryContentRef: CreateStoryContentRef;
-
-export function createStoryContent(vars: CreateStoryContentVariables): MutationPromise<CreateStoryContentData, CreateStoryContentVariables>;
-export function createStoryContent(dc: DataConnect, vars: CreateStoryContentVariables): MutationPromise<CreateStoryContentData, CreateStoryContentVariables>;
-
-interface CreateTemplateRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: CreateTemplateVariables): MutationRef<CreateTemplateData, CreateTemplateVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: CreateTemplateVariables): MutationRef<CreateTemplateData, CreateTemplateVariables>;
-  operationName: string;
-}
-export const createTemplateRef: CreateTemplateRef;
-
-export function createTemplate(vars: CreateTemplateVariables): MutationPromise<CreateTemplateData, CreateTemplateVariables>;
-export function createTemplate(dc: DataConnect, vars: CreateTemplateVariables): MutationPromise<CreateTemplateData, CreateTemplateVariables>;
-
-interface CreateAiGeneratedImageRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: CreateAiGeneratedImageVariables): MutationRef<CreateAiGeneratedImageData, CreateAiGeneratedImageVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: CreateAiGeneratedImageVariables): MutationRef<CreateAiGeneratedImageData, CreateAiGeneratedImageVariables>;
-  operationName: string;
-}
-export const createAiGeneratedImageRef: CreateAiGeneratedImageRef;
-
-export function createAiGeneratedImage(vars: CreateAiGeneratedImageVariables): MutationPromise<CreateAiGeneratedImageData, CreateAiGeneratedImageVariables>;
-export function createAiGeneratedImage(dc: DataConnect, vars: CreateAiGeneratedImageVariables): MutationPromise<CreateAiGeneratedImageData, CreateAiGeneratedImageVariables>;
-
-interface CreateAiGeneratedGifRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: CreateAiGeneratedGifVariables): MutationRef<CreateAiGeneratedGifData, CreateAiGeneratedGifVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: CreateAiGeneratedGifVariables): MutationRef<CreateAiGeneratedGifData, CreateAiGeneratedGifVariables>;
-  operationName: string;
-}
-export const createAiGeneratedGifRef: CreateAiGeneratedGifRef;
-
-export function createAiGeneratedGif(vars: CreateAiGeneratedGifVariables): MutationPromise<CreateAiGeneratedGifData, CreateAiGeneratedGifVariables>;
-export function createAiGeneratedGif(dc: DataConnect, vars: CreateAiGeneratedGifVariables): MutationPromise<CreateAiGeneratedGifData, CreateAiGeneratedGifVariables>;
-
-interface CreatePaymentRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: CreatePaymentVariables): MutationRef<CreatePaymentData, CreatePaymentVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: CreatePaymentVariables): MutationRef<CreatePaymentData, CreatePaymentVariables>;
-  operationName: string;
-}
-export const createPaymentRef: CreatePaymentRef;
-
-export function createPayment(vars: CreatePaymentVariables): MutationPromise<CreatePaymentData, CreatePaymentVariables>;
-export function createPayment(dc: DataConnect, vars: CreatePaymentVariables): MutationPromise<CreatePaymentData, CreatePaymentVariables>;
-
-interface CreateAdminActionRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: CreateAdminActionVariables): MutationRef<CreateAdminActionData, CreateAdminActionVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: CreateAdminActionVariables): MutationRef<CreateAdminActionData, CreateAdminActionVariables>;
-  operationName: string;
-}
-export const createAdminActionRef: CreateAdminActionRef;
-
-export function createAdminAction(vars: CreateAdminActionVariables): MutationPromise<CreateAdminActionData, CreateAdminActionVariables>;
-export function createAdminAction(dc: DataConnect, vars: CreateAdminActionVariables): MutationPromise<CreateAdminActionData, CreateAdminActionVariables>;
-
-interface CreateAnalyticsEntryRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: CreateAnalyticsEntryVariables): MutationRef<CreateAnalyticsEntryData, CreateAnalyticsEntryVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: CreateAnalyticsEntryVariables): MutationRef<CreateAnalyticsEntryData, CreateAnalyticsEntryVariables>;
-  operationName: string;
-}
-export const createAnalyticsEntryRef: CreateAnalyticsEntryRef;
-
-export function createAnalyticsEntry(vars: CreateAnalyticsEntryVariables): MutationPromise<CreateAnalyticsEntryData, CreateAnalyticsEntryVariables>;
-export function createAnalyticsEntry(dc: DataConnect, vars: CreateAnalyticsEntryVariables): MutationPromise<CreateAnalyticsEntryData, CreateAnalyticsEntryVariables>;
-
-interface LogLegalDisclaimerAcceptanceRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: LogLegalDisclaimerAcceptanceVariables): MutationRef<LogLegalDisclaimerAcceptanceData, LogLegalDisclaimerAcceptanceVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: LogLegalDisclaimerAcceptanceVariables): MutationRef<LogLegalDisclaimerAcceptanceData, LogLegalDisclaimerAcceptanceVariables>;
-  operationName: string;
-}
-export const logLegalDisclaimerAcceptanceRef: LogLegalDisclaimerAcceptanceRef;
-
-export function logLegalDisclaimerAcceptance(vars: LogLegalDisclaimerAcceptanceVariables): MutationPromise<LogLegalDisclaimerAcceptanceData, LogLegalDisclaimerAcceptanceVariables>;
-export function logLegalDisclaimerAcceptance(dc: DataConnect, vars: LogLegalDisclaimerAcceptanceVariables): MutationPromise<LogLegalDisclaimerAcceptanceData, LogLegalDisclaimerAcceptanceVariables>;
 

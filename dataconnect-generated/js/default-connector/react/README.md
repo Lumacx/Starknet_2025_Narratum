@@ -23,8 +23,8 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*GetAppSubscription*](#getappsubscription)
   - [*GetTemplate*](#gettemplate)
   - [*GetAllTemplates*](#getalltemplates)
-  - [*GetAIGeneratedImage*](#getaigeneratedimage)
-  - [*GetAIGeneratedGIF*](#getaigeneratedgif)
+  - [*GetAiGeneratedImage*](#getaigeneratedimage)
+  - [*GetAiGeneratedGif*](#getaigeneratedgif)
   - [*GetPayment*](#getpayment)
   - [*GetAdminAction*](#getadminaction)
   - [*GetAnalyticsEntry*](#getanalyticsentry)
@@ -34,8 +34,8 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*CreateStory*](#createstory)
   - [*CreateStoryContent*](#createstorycontent)
   - [*CreateTemplate*](#createtemplate)
-  - [*CreateAIGeneratedImage*](#createaigeneratedimage)
-  - [*CreateAIGeneratedGIF*](#createaigeneratedgif)
+  - [*CreateAiGeneratedImage*](#createaigeneratedimage)
+  - [*CreateAiGeneratedGif*](#createaigeneratedgif)
   - [*CreatePayment*](#createpayment)
   - [*CreateAdminAction*](#createadminaction)
   - [*CreateAnalyticsEntry*](#createanalyticsentry)
@@ -332,15 +332,17 @@ To check the status of a Query, use the `UseQueryResult.status` field. You can a
 To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetAllStories` Query is of type `GetAllStoriesData`, which is defined in [default-connector/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
 export interface GetAllStoriesData {
-  story?: {
+  stories: ({
     id: string;
     title?: string | null;
     genre?: string | null;
     status: string;
+    coverImageUrl?: string | null;
     creator: {
       id: string;
+      displayname: string;
     } & User_Key;
-  } & Story_Key;
+  } & Story_Key)[];
 }
 ```
 
@@ -382,7 +384,7 @@ export default function GetAllStoriesComponent() {
 
   // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
   if (query.isSuccess) {
-    console.log(query.data.story);
+    console.log(query.data.stories);
   }
   return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -633,8 +635,8 @@ export default function GetAllTemplatesComponent() {
 }
 ```
 
-## GetAIGeneratedImage
-You can execute the `GetAIGeneratedImage` Query using the following Query hook function, which is defined in [default-connector/react/index.d.ts](./index.d.ts):
+## GetAiGeneratedImage
+You can execute the `GetAiGeneratedImage` Query using the following Query hook function, which is defined in [default-connector/react/index.d.ts](./index.d.ts):
 
 ```javascript
 useGetAiGeneratedImage(dc: DataConnect, vars: GetAiGeneratedImageVariables, options?: useDataConnectQueryOptions<GetAiGeneratedImageData>): UseDataConnectQueryResult<GetAiGeneratedImageData, GetAiGeneratedImageVariables>;
@@ -645,7 +647,7 @@ useGetAiGeneratedImage(vars: GetAiGeneratedImageVariables, options?: useDataConn
 ```
 
 ### Variables
-The `GetAIGeneratedImage` Query requires an argument of type `GetAiGeneratedImageVariables`, which is defined in [default-connector/index.d.ts](../index.d.ts). It has the following fields:
+The `GetAiGeneratedImage` Query requires an argument of type `GetAiGeneratedImageVariables`, which is defined in [default-connector/index.d.ts](../index.d.ts). It has the following fields:
 
 ```javascript
 export interface GetAiGeneratedImageVariables {
@@ -653,26 +655,26 @@ export interface GetAiGeneratedImageVariables {
 }
 ```
 ### Return Type
-Recall that calling the `GetAIGeneratedImage` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+Recall that calling the `GetAiGeneratedImage` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
 
 To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
 
-To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetAIGeneratedImage` Query is of type `GetAiGeneratedImageData`, which is defined in [default-connector/index.d.ts](../index.d.ts). It has the following fields:
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetAiGeneratedImage` Query is of type `GetAiGeneratedImageData`, which is defined in [default-connector/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
 export interface GetAiGeneratedImageData {
-  aIGeneratedImage?: {
+  aiGeneratedImage?: {
     id: string;
     promptText?: string | null;
     sketchUrl?: string | null;
     generatedImageUrl?: string | null;
     status: string;
-  } & AIGeneratedImage_Key;
+  } & AiGeneratedImage_Key;
 }
 ```
 
 To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
 
-### Using `GetAIGeneratedImage`'s Query hook function
+### Using `GetAiGeneratedImage`'s Query hook function
 
 ```javascript
 import { getDataConnect } from 'firebase/data-connect';
@@ -715,14 +717,14 @@ export default function GetAiGeneratedImageComponent() {
 
   // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
   if (query.isSuccess) {
-    console.log(query.data.aIGeneratedImage);
+    console.log(query.data.aiGeneratedImage);
   }
   return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
 }
 ```
 
-## GetAIGeneratedGIF
-You can execute the `GetAIGeneratedGIF` Query using the following Query hook function, which is defined in [default-connector/react/index.d.ts](./index.d.ts):
+## GetAiGeneratedGif
+You can execute the `GetAiGeneratedGif` Query using the following Query hook function, which is defined in [default-connector/react/index.d.ts](./index.d.ts):
 
 ```javascript
 useGetAiGeneratedGif(dc: DataConnect, vars: GetAiGeneratedGifVariables, options?: useDataConnectQueryOptions<GetAiGeneratedGifData>): UseDataConnectQueryResult<GetAiGeneratedGifData, GetAiGeneratedGifVariables>;
@@ -733,7 +735,7 @@ useGetAiGeneratedGif(vars: GetAiGeneratedGifVariables, options?: useDataConnectQ
 ```
 
 ### Variables
-The `GetAIGeneratedGIF` Query requires an argument of type `GetAiGeneratedGifVariables`, which is defined in [default-connector/index.d.ts](../index.d.ts). It has the following fields:
+The `GetAiGeneratedGif` Query requires an argument of type `GetAiGeneratedGifVariables`, which is defined in [default-connector/index.d.ts](../index.d.ts). It has the following fields:
 
 ```javascript
 export interface GetAiGeneratedGifVariables {
@@ -741,23 +743,23 @@ export interface GetAiGeneratedGifVariables {
 }
 ```
 ### Return Type
-Recall that calling the `GetAIGeneratedGIF` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+Recall that calling the `GetAiGeneratedGif` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
 
 To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
 
-To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetAIGeneratedGIF` Query is of type `GetAiGeneratedGifData`, which is defined in [default-connector/index.d.ts](../index.d.ts). It has the following fields:
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetAiGeneratedGif` Query is of type `GetAiGeneratedGifData`, which is defined in [default-connector/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
 export interface GetAiGeneratedGifData {
-  aIGeneratedGIF?: {
+  aiGeneratedGif?: {
     id: string;
     gifUrl?: string | null;
-  } & AIGeneratedGIF_Key;
+  } & AiGeneratedGif_Key;
 }
 ```
 
 To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
 
-### Using `GetAIGeneratedGIF`'s Query hook function
+### Using `GetAiGeneratedGif`'s Query hook function
 
 ```javascript
 import { getDataConnect } from 'firebase/data-connect';
@@ -800,7 +802,7 @@ export default function GetAiGeneratedGifComponent() {
 
   // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
   if (query.isSuccess) {
-    console.log(query.data.aIGeneratedGIF);
+    console.log(query.data.aiGeneratedGif);
   }
   return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -1581,8 +1583,8 @@ export default function CreateTemplateComponent() {
 }
 ```
 
-## CreateAIGeneratedImage
-You can execute the `CreateAIGeneratedImage` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [default-connector/react/index.d.ts](./index.d.ts)):
+## CreateAiGeneratedImage
+You can execute the `CreateAiGeneratedImage` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [default-connector/react/index.d.ts](./index.d.ts)):
 ```javascript
 useCreateAiGeneratedImage(options?: useDataConnectMutationOptions<CreateAiGeneratedImageData, FirebaseError, CreateAiGeneratedImageVariables>): UseDataConnectMutationResult<CreateAiGeneratedImageData, CreateAiGeneratedImageVariables>;
 ```
@@ -1592,7 +1594,7 @@ useCreateAiGeneratedImage(dc: DataConnect, options?: useDataConnectMutationOptio
 ```
 
 ### Variables
-The `CreateAIGeneratedImage` Mutation requires an argument of type `CreateAiGeneratedImageVariables`, which is defined in [default-connector/index.d.ts](../index.d.ts). It has the following fields:
+The `CreateAiGeneratedImage` Mutation requires an argument of type `CreateAiGeneratedImageVariables`, which is defined in [default-connector/index.d.ts](../index.d.ts). It has the following fields:
 
 ```javascript
 export interface CreateAiGeneratedImageVariables {
@@ -1604,22 +1606,22 @@ export interface CreateAiGeneratedImageVariables {
 }
 ```
 ### Return Type
-Recall that calling the `CreateAIGeneratedImage` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+Recall that calling the `CreateAiGeneratedImage` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
 
 To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
 
 To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
 
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateAIGeneratedImage` Mutation is of type `CreateAiGeneratedImageData`, which is defined in [default-connector/index.d.ts](../index.d.ts). It has the following fields:
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateAiGeneratedImage` Mutation is of type `CreateAiGeneratedImageData`, which is defined in [default-connector/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
 export interface CreateAiGeneratedImageData {
-  aIGeneratedImage_insert: AIGeneratedImage_Key;
+  aiGeneratedImage_insert: AiGeneratedImage_Key;
 }
 ```
 
 To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
 
-### Using `CreateAIGeneratedImage`'s Mutation hook function
+### Using `CreateAiGeneratedImage`'s Mutation hook function
 
 ```javascript
 import { getDataConnect } from 'firebase/data-connect';
@@ -1677,14 +1679,14 @@ export default function CreateAiGeneratedImageComponent() {
 
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
-    console.log(mutation.data.aIGeneratedImage_insert);
+    console.log(mutation.data.aiGeneratedImage_insert);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
 ```
 
-## CreateAIGeneratedGIF
-You can execute the `CreateAIGeneratedGIF` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [default-connector/react/index.d.ts](./index.d.ts)):
+## CreateAiGeneratedGif
+You can execute the `CreateAiGeneratedGif` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [default-connector/react/index.d.ts](./index.d.ts)):
 ```javascript
 useCreateAiGeneratedGif(options?: useDataConnectMutationOptions<CreateAiGeneratedGifData, FirebaseError, CreateAiGeneratedGifVariables>): UseDataConnectMutationResult<CreateAiGeneratedGifData, CreateAiGeneratedGifVariables>;
 ```
@@ -1694,7 +1696,7 @@ useCreateAiGeneratedGif(dc: DataConnect, options?: useDataConnectMutationOptions
 ```
 
 ### Variables
-The `CreateAIGeneratedGIF` Mutation requires an argument of type `CreateAiGeneratedGifVariables`, which is defined in [default-connector/index.d.ts](../index.d.ts). It has the following fields:
+The `CreateAiGeneratedGif` Mutation requires an argument of type `CreateAiGeneratedGifVariables`, which is defined in [default-connector/index.d.ts](../index.d.ts). It has the following fields:
 
 ```javascript
 export interface CreateAiGeneratedGifVariables {
@@ -1703,22 +1705,22 @@ export interface CreateAiGeneratedGifVariables {
 }
 ```
 ### Return Type
-Recall that calling the `CreateAIGeneratedGIF` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+Recall that calling the `CreateAiGeneratedGif` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
 
 To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
 
 To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
 
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateAIGeneratedGIF` Mutation is of type `CreateAiGeneratedGifData`, which is defined in [default-connector/index.d.ts](../index.d.ts). It has the following fields:
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateAiGeneratedGif` Mutation is of type `CreateAiGeneratedGifData`, which is defined in [default-connector/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
 export interface CreateAiGeneratedGifData {
-  aIGeneratedGIF_insert: AIGeneratedGIF_Key;
+  aiGeneratedGif_insert: AiGeneratedGif_Key;
 }
 ```
 
 To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
 
-### Using `CreateAIGeneratedGIF`'s Mutation hook function
+### Using `CreateAiGeneratedGif`'s Mutation hook function
 
 ```javascript
 import { getDataConnect } from 'firebase/data-connect';
@@ -1773,7 +1775,7 @@ export default function CreateAiGeneratedGifComponent() {
 
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
-    console.log(mutation.data.aIGeneratedGIF_insert);
+    console.log(mutation.data.aiGeneratedGif_insert);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
