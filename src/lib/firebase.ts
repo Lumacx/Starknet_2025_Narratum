@@ -2,6 +2,7 @@ import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getStorage, connectStorageEmulator, type FirebaseStorage } from 'firebase/storage';
 
 // Explicitly import types using 'type' keyword to avoid namespace conflicts
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -35,6 +36,7 @@ if (!getApps().length) {
 const auth = getAuth(app);
 const functions = getFunctions(app);
 const db = getFirestore(app);
+const storage: FirebaseStorage = getStorage(app); // 👈 AÑADIDO
 
 export const firestoreAppId = firebaseConfig.appId || "default-app-id";
 
@@ -46,61 +48,54 @@ const useEmulators =
 if (useEmulators && typeof window !== "undefined") {
   console.log("Development mode: Attempting to connect to Firebase emulators.");
 
-  const authHost = "127.0.0.1";
-  const authPort = parseInt(process.env.NEXT_PUBLIC_AUTH_EMULATOR_PORT || "9099", 10);
-  const firestoreHost = "127.0.0.1";
-  const firestorePort = parseInt(process.env.NEXT_PUBLIC_FIRESTORE_EMULATOR_PORT || "8080", 10);
-  const functionsHost = "127.0.0.1";
-  const functionsPort = parseInt(process.env.NEXT_PUBLIC_FUNCTIONS_EMULATOR_PORT || "5001", 10);
+  const authHost = '127.0.0.1';
+  const authPort = parseInt(process.env.NEXT_PUBLIC_AUTH_EMULATOR_PORT || '9099', 10);
+  const firestoreHost = '127.0.0.1';
+  const firestorePort = parseInt(process.env.NEXT_PUBLIC_FIRESTORE_EMULATOR_PORT || '8080', 10);
+  const functionsHost = '127.0.0.1';
+  const functionsPort = parseInt(process.env.NEXT_PUBLIC_FUNCTIONS_EMULATOR_PORT || '5001', 10);
+  const storageHost = '127.0.0.1';
+  const storagePort = parseInt(process.env.NEXT_PUBLIC_STORAGE_EMULATOR_PORT || '9199', 10);
 
   const emulatorOptions = { disableWarnings: true };
-  const authEmulatorUrl = `http://${authHost}:${authPort}`;
 
-  // ✅ Tipado extendido corregido - This line correctly uses FirebaseAuthType as a type
+  // Auth
   type ExtendedAuth = FirebaseAuthType & { emulatorConfig?: unknown };
   const extendedAuth = auth as ExtendedAuth;
-
   if (!extendedAuth.emulatorConfig) {
     try {
-      connectAuthEmulator(auth, authEmulatorUrl, emulatorOptions);
-      console.log(`✅ connectAuthEmulator called: ${authEmulatorUrl}`);
-    } catch (e: unknown) {
-      const error = e as Error;
-      console.error(`❌ Error connecting Auth Emulator: ${error.message}`);
+      connectAuthEmulator(auth, `http://${authHost}:${authPort}`, emulatorOptions);
+      console.log(`✅ connectAuthEmulator: http://${authHost}:${authPort}`);
+    } catch (e: any) {
+      console.error(`❌ Auth emulator: ${e?.message}`);
     }
   }
 
+  // Firestore
   try {
     connectFirestoreEmulator(db, firestoreHost, firestorePort);
-    console.log(`✅ Firestore emulator connected at ${firestoreHost}:${firestorePort}`);
-  } catch (e: unknown) {
-    const error = e as { message?: string; code?: string };
-    if (
-      error.code !== "failed-precondition" &&
-      (!error.message || !error.message.includes("already connected"))
-    ) {
-      console.warn("⚠️ Error connecting Firestore emulator:", error.message, error.code);
-    } else {
-      console.log("ℹ️ Firestore emulator already connected.");
-    }
+    console.log(`✅ Firestore emulator: ${firestoreHost}:${firestorePort}`);
+  } catch (e: any) {
+    console.warn('⚠️ Firestore emulator:', e?.message || e);
   }
 
+  // Functions
   try {
     connectFunctionsEmulator(functions, functionsHost, functionsPort);
-    console.log(`✅ Functions emulator connected at ${functionsHost}:${functionsPort}`);
-  } catch (e: unknown) {
-    const error = e as { message?: string; code?: string };
-    if (
-      error.code !== "functions/already-initialized" &&
-      (!error.message || !error.message.includes("already connected"))
-    ) {
-      console.warn("⚠️ Error connecting Functions emulator:", error.message, error.code);
-    } else {
-      console.log("ℹ️ Functions emulator already connected.");
-    }
+    console.log(`✅ Functions emulator: ${functionsHost}:${functionsPort}`);
+  } catch (e: any) {
+    console.warn('⚠️ Functions emulator:', e?.message || e);
   }
-} else if (process.env.NODE_ENV === "development") {
-  console.log("Development mode: Firebase emulators are NOT being used (based on config).");
+
+  // Storage 👇
+  try {
+    connectStorageEmulator(storage, storageHost, storagePort);
+    console.log(`✅ Storage emulator: ${storageHost}:${storagePort}`);
+  } catch (e: any) {
+    console.warn('⚠️ Storage emulator:', e?.message || e);
+  }
+} else if (process.env.NODE_ENV === 'development') {
+  console.log('Development mode: Firebase emulators are NOT being used (based on config).');
 }
 
-export { app, auth, db, functions };
+export { app, auth, db, functions, storage }; // 👈 EXPORTA storage
