@@ -32,7 +32,9 @@ const GenreMultiSelect: React.FC<GenreMultiSelectProps> = ({
           <ChevronDown className="ml-2 h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-[180px]">
+      <DropdownMenuContent 
+        className="w-[180px] bg-white text-[#3A4B5C] dark:bg-[#233446] dark:text-[#E0C9A0] border border-[#D4E1EE] dark:border-[#4A5C6E]"
+      >
         <DropdownMenuLabel>Select Genres</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {genresList.map((genre) => (
@@ -40,7 +42,15 @@ const GenreMultiSelect: React.FC<GenreMultiSelectProps> = ({
             key={genre}
             checked={selectedGenres.includes(genre)}
             onCheckedChange={(checked) => handleCheckboxChange(genre, checked)}
-            className="capitalize"
+            className="capitalize 
+              data-[state=checked]:bg-[#E97451] data-[state=checked]:text-white 
+              dark:data-[state=checked]:bg-[#BFA071] dark:data-[state=checked]:text-[#1A2533] 
+              focus:bg-gray-100 dark:focus:bg-[#4A5C6E] 
+              hover:bg-gray-100 dark:hover:bg-[#4A5C6E] 
+              focus:text-[#3A4B5C] dark:focus:text-[#E0C9A0] 
+              hover:text-[#3A4B5C] dark:hover:text-[#E0C9A0] 
+              cursor-pointer
+            "
           >
             {genre}
           </DropdownMenuCheckboxItem>
