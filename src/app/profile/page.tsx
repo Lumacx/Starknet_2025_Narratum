@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { signOut } from 'firebase/auth';
+import { signOut, updateProfile } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+
+import DebugAvatar from './DebugAvatar';
 
 const ProfilePage: React.FC = () => {
   const { user, starknetAddress, loading, logout } = useAuth();
@@ -17,31 +19,58 @@ const ProfilePage: React.FC = () => {
     if (!loading && !isLoggedIn) router.push('/login');
   }, [isLoggedIn, loading, router]);
 
-  const getGoogleAvatar = () => {
-    const candidate =
-      user?.photoURL ||
+  // 1) Toma primero la foto del proveedor google.com (si existe), después user.photoURL
+  const providerPhotoURL = useMemo(() => {
+    const firstWithPhoto =
+      user?.providerData?.find(p => p?.providerId === 'google.com' && !!p.photoURL)?.photoURL ||
       user?.providerData?.find(p => !!p.photoURL)?.photoURL ||
       null;
+    return firstWithPhoto;
+  }, [user]);
 
-    if (!candidate) return null;
-
+  // 2) Normaliza tamaño (256) si es foto de Google
+  const normalizeGooglePic = (urlStr: string | null) => {
+    if (!urlStr) return null;
     try {
-      const url = new URL(candidate);
-      const isGUserPic = url.hostname.endsWith('googleusercontent.com');
-      if (isGUserPic) {
+      const url = new URL(urlStr);
+      if (url.hostname.endsWith('googleusercontent.com')) {
         if (url.searchParams.has('sz')) {
           url.searchParams.set('sz', '256');
           return url.toString();
         }
-        return candidate.replace(/=s\d+-c/g, '=s256-c').replace(/\/s\d+-c\//g, '/s256-c/');
+        return urlStr
+          .replace(/=s\d+-c/g, '=s256-c')
+          .replace(/\/s\d+-c\//g, '/s256-c/');
       }
-      return candidate;
+      return urlStr;
     } catch {
-      return candidate;
+      return urlStr;
     }
   };
 
-  const avatarSrc = getGoogleAvatar() || 'https://placehold.co/160x160/A88F72/FFFFFF?text=User';
+  // 3) Computa el avatar dando prioridad al provider
+  const avatarSrc =
+    normalizeGooglePic(providerPhotoURL) ||
+    normalizeGooglePic(user?.photoURL || null) ||
+    'https://placehold.co/160x160/A88F72/FFFFFF?text=User';
+
+  // 4) Sincroniza user.photoURL con la del provider si difieren (una sola vez por cambio)
+  useEffect(() => {
+    const syncPhoto = async () => {
+      if (!user) return;
+      if (providerPhotoURL && providerPhotoURL !== user.photoURL) {
+        try {
+          await updateProfile(user, { photoURL: providerPhotoURL });
+          await user.reload();
+        } catch (e) {
+          // No bloquea la UI si falla; sólo dejamos log
+          console.warn('[profile] updateProfile photoURL failed:', e);
+        }
+      }
+    };
+    syncPhoto();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [providerPhotoURL, user?.uid]); // reintenta si cambia de usuario o cambia la foto del provider
 
   const contentImages = [
     'https://placehold.co/160x160/A88F72/FFFFFF?text=Story+1',
@@ -55,7 +84,9 @@ const ProfilePage: React.FC = () => {
   if (loading || !isLoggedIn) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
-        <p className="text-xl font-semibold">{loading ? 'Loading profile...' : 'Redirecting to login...'}</p>
+        <p className="text-xl font-semibold">
+          {loading ? 'Loading profile...' : 'Redirecting to login...'}
+        </p>
       </div>
     );
   }
@@ -63,7 +94,8 @@ const ProfilePage: React.FC = () => {
   let displayName = 'Narratum User';
   if (user?.displayName) displayName = user.displayName;
   else if (user?.email) displayName = user.email;
-  else if (starknetAddress) displayName = `${starknetAddress.substring(0, 6)}...${starknetAddress.substring(starknetAddress.length - 4)}`;
+  else if (starknetAddress)
+    displayName = `${starknetAddress.substring(0, 6)}...${starknetAddress.substring(starknetAddress.length - 4)}`;
 
   const loginMethod = user ? 'Logged in with Google' : 'Connected via Starknet';
 
@@ -72,12 +104,20 @@ const ProfilePage: React.FC = () => {
     bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26] 
     text-[#3A4B5C] dark:text-[#E0C9A0] font-['Georgia'] p-5 md:p-10 box-border">
 
+      {/* Top Right Buttons */}
       <div className="fixed top-7 right-4 z-50 flex gap-4">
-        <Link href="/" className="px-6 py-3 bg-gray-600 text-white font-semibold rounded-full shadow-md hover:bg-gray-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300">
+        <Link
+          href="/"
+          className="px-6 py-3 bg-gray-600 text-white font-semibold rounded-full shadow-md hover:bg-gray-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300"
+        >
           Back to Landing
         </Link>
         <button
-          onClick={async () => { await signOut(auth); if (logout) logout(); router.push('/login'); }}
+          onClick={async () => {
+            await signOut(auth);
+            if (logout) logout();
+            router.push('/login');
+          }}
           className="px-6 py-3 bg-red-600 text-white font-semibold rounded-full shadow-md hover:bg-red-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-red-300"
         >
           Logout
@@ -96,8 +136,14 @@ const ProfilePage: React.FC = () => {
                 loading="lazy"
               />
             </div>
+
+            {/* Debug solo en dev */}
+            {/*<DebugAvatar computed={avatarSrc} />*/}
           </div>
-          <h1 className="user-name text-4xl md:text-5xl font-bold text-[#3A4B5C] dark:text-[#E0C9A0] m-0">{displayName}</h1>
+
+          <h1 className="user-name text-4xl md:text-5xl font-bold text-[#3A4B5C] dark:text-[#E0C9A0] m-0">
+            {displayName}
+          </h1>
           <p className="text-sm text-[#6B7280] dark:text-[#C2B6A3] mt-2">{loginMethod}</p>
         </header>
 
@@ -109,11 +155,20 @@ const ProfilePage: React.FC = () => {
           <button onClick={() => setMessage('Favorites clicked!')} className="nav-link text-lg font-bold uppercase tracking-wide px-3 py-1.5 text-[#3A4B5C] dark:text-[#E0C9A0] hover:text-[#8B6F4E] dark:hover:text-[#3A4B5C] focus:outline-none">FAVORITES</button>
         </nav>
 
-        {message && <div className="mb-6 p-3 rounded-lg text-sm bg-blue-100 text-blue-700">{message}</div>}
+        {message && (
+          <div className="mb-6 p-3 rounded-lg text-sm bg-blue-100 text-blue-700">
+            {message}
+          </div>
+        )}
 
         <main className="content-grid flex justify-center gap-5 flex-wrap">
           {contentImages.map((src, index) => (
-            <a key={index} href={`#story${index + 1}`} onClick={(e) => { e.preventDefault(); setMessage('Story clicked!') }} className="content-card w-40 bg-[#F0E6D2] border-3 border-[#A88F72] rounded-lg p-1.5 block shadow-sm transition-transform duration-200 ease-in-out hover:translate-y-[-4px] hover:shadow-md">
+            <a
+              key={index}
+              href={`#story${index + 1}`}
+              onClick={(e) => { e.preventDefault(); setMessage('Story clicked!'); }}
+              className="content-card w-40 bg-[#F0E6D2] border-3 border-[#A88F72] rounded-lg p-1.5 block shadow-sm transition-transform duration-200 ease-in-out hover:translate-y-[-4px] hover:shadow-md"
+            >
               <img src={src} alt={`Story ${index + 1}`} className="w-full h-auto block rounded-sm" />
             </a>
           ))}

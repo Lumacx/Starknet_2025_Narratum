@@ -11,18 +11,26 @@ import GSIButton from '@/components/GSIButton';
 import { signInWithCredential, GoogleAuthProvider, onAuthStateChanged, User, updateProfile } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { parseGsiJwt } from '@/lib/parseGsiJwt';
+
+function parseGsiJwt(idToken: string): any | null {
+  try {
+    const base64 = idToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const json = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+    return JSON.parse(json);
+  } catch { return null; }
+}
 
 function ConnectPage() {
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
   const { address, isConnected, chainId } = useAccount();
   const router = useRouter();
+
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) try { await user.reload(); } catch {}
+      if (user) { try { await user.reload(); } catch {} }
       setFirebaseUser(user);
     });
     return () => unsubscribe();
@@ -55,7 +63,6 @@ function ConnectPage() {
         lastLogin: serverTimestamp(),
       }, { merge: true });
 
-      console.log('[✅ Firebase Login + Firestore Save]:', { uid: user.uid, photoURL: user.photoURL });
       router.refresh();
     } catch (error) {
       console.error('[❌ Firebase Login Error]:', error);
@@ -73,10 +80,12 @@ function ConnectPage() {
       <div className="w-full max-w-md mx-auto p-8 rounded-lg shadow-lg bg-gray-800">
         <h1 className="text-4xl font-bold text-center mb-8 text-starknet-blue">NARRATUM</h1>
 
+        {/* Google Sign-In */}
         <div className="mb-6 flex justify-center">
           <GSIButton onCredentialResponse={handleCredentialResponse} />
         </div>
 
+        {/* Firebase User Info */}
         {firebaseUser && (
           <div className="flex items-center space-x-4 justify-center mb-4">
             <img
@@ -132,3 +141,4 @@ function ConnectPage() {
 }
 
 export default ConnectPage;
+

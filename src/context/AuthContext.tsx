@@ -14,9 +14,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
+interface AuthProviderProps { children: React.ReactNode; }
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
@@ -27,7 +25,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
       if (firebaseUser) {
-        // 🔄 Garantiza que traiga photoURL/displayName actualizados (p.ej. tras updateProfile)
         try { await firebaseUser.reload(); } catch {}
         setUser(auth.currentUser ?? firebaseUser);
       } else {
@@ -35,7 +32,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
       setLoading(false);
     });
-
     return () => unsubscribe();
   }, []);
 
@@ -54,21 +50,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setStarknetLoginStatus(null);
   };
 
-  const value: AuthContextType = {
-    user,
-    starknetAddress,
-    loading,
-    setStarknetLoginStatus,
-    logout,
-  };
-
+  const value: AuthContextType = { user, starknetAddress, loading, setStarknetLoginStatus, logout };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within an AuthProvider');
+  return ctx;
 };

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, FormEvent, useCallback } from 'react';
+import React, { useState, useEffect, FormEvent, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -15,11 +15,17 @@ import { NARRATUM_CONTRACT_ADDRESS } from '@/constants';
 import { Call, shortString } from 'starknet';
 
 import GSIButton from '@/components/GSIButton';
-import { parseGsiJwt } from '@/lib/parseGsiJwt';
+
+function parseGsiJwt(idToken: string): any | null {
+  try {
+    const base64 = idToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const json = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+    return JSON.parse(json);
+  } catch { return null; }
+}
 
 const LoginPage: React.FC = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState(''); const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [isExecuting, setIsExecuting] = useState(false);
   const [hasAttemptedExecute, setHasAttemptedExecute] = useState(false);
@@ -31,9 +37,7 @@ const LoginPage: React.FC = () => {
   const { connect } = useConnect();
 
   useEffect(() => {
-    if (!loading && (user || starknetAddress)) {
-      router.push('/');
-    }
+    if (!loading && (user || starknetAddress)) router.push('/');
   }, [user, starknetAddress, loading, router]);
 
   const generateNickname = () => {
@@ -50,8 +54,7 @@ const LoginPage: React.FC = () => {
 
   const handleExecuteSaveWalletData = useCallback(async () => {
     if (!account || calls.length === 0 || isExecuting || hasAttemptedExecute) return;
-    setIsExecuting(true);
-    setHasAttemptedExecute(true);
+    setIsExecuting(true); setHasAttemptedExecute(true);
     try {
       const tx = await account.execute(calls);
       await account.waitForTransaction(tx.transaction_hash);
@@ -96,7 +99,7 @@ const LoginPage: React.FC = () => {
     }
   };
 
-  // ✅ Único flujo GSI
+  // ✅ Google Sign-In (único handler)
   const handleCredentialResponse = async (response: google.accounts.id.CredentialResponse) => {
     try {
       const credential = GoogleAuthProvider.credential(response.credential);
@@ -143,6 +146,7 @@ const LoginPage: React.FC = () => {
 
         {message && <div className="mb-4 p-3 rounded-lg text-sm bg-red-100 text-red-700">{message}</div>}
 
+        {/* Google Sign-In */}
         <div className="w-full flex justify-center py-4 min-h-[60px]">
           <GSIButton onCredentialResponse={handleCredentialResponse} />
         </div>
@@ -172,7 +176,9 @@ const LoginPage: React.FC = () => {
           <button onClick={() => {}} className="text-blue-600 hover:underline">Forgot password?</button>
         </div>
 
-        <Link href="/" className="mt-6 inline-block px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-lg hover:bg-gray-400 transition">Back to Landing</Link>
+        <Link href="/" className="mt-6 inline-block px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-lg hover:bg-gray-400 transition">
+          Back to Landing
+        </Link>
       </div>
     </div>
   );
