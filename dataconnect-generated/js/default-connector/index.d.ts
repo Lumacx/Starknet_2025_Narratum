@@ -106,7 +106,7 @@ export interface CreateStoryData {
 export interface CreateStoryVariables {
   creatorId: string;
   title?: string | null;
-  genre?: string | null;
+  genres?: string[] | null;
   description?: string | null;
   coverImageUrl?: string | null;
 }
@@ -175,7 +175,7 @@ export interface GetAllStoriesData {
   stories: ({
     id: string;
     title?: string | null;
-    genre?: string | null;
+    genres?: string[] | null;
     status: string;
     coverImageUrl?: string | null;
     creator: {
@@ -247,7 +247,7 @@ export interface GetStoryWithContentData {
   story?: {
     id: string;
     title?: string | null;
-    genre?: string | null;
+    genres?: string[] | null;
     description?: string | null;
     coverImageUrl?: string | null;
     status: string;

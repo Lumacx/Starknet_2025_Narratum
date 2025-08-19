@@ -2008,6 +2008,18 @@ input Story_Data {
   """
   creator: User_Key
   """
+  ✨ Generated from Field `Story`.`commentsCount` of type `Int!`
+  """
+  commentsCount: Int
+  """
+  ✨ `_expr` server value variant of `commentsCount` (✨ Generated from Field `Story`.`commentsCount` of type `Int!`)
+  """
+  commentsCount_expr: Int_Expr
+  """
+  ✨ `_update` server value variant of `commentsCount` (✨ Generated from Field `Story`.`commentsCount` of type `Int!`)
+  """
+  commentsCount_update: [Int_Update!]
+  """
   ✨ Generated from Field `Story`.`coverImageUrl` of type `String`
   """
   coverImageUrl: String
@@ -2040,13 +2052,13 @@ input Story_Data {
   """
   description_expr: String_Expr
   """
-  ✨ Generated from Field `Story`.`genre` of type `String`
+  ✨ Generated from Field `Story`.`genres` of type `[String!]`
   """
-  genre: String
+  genres: [String!]
   """
-  ✨ `_expr` server value variant of `genre` (✨ Generated from Field `Story`.`genre` of type `String`)
+  ✨ `_update` server value variant of `genres` (✨ Generated from Field `Story`.`genres` of type `[String!]`)
   """
-  genre_expr: String_Expr
+  genres_update: [String_ListUpdate!]
   """
   ✨ Generated from Field `Story`.`status` of type `String!`
   """
@@ -2109,6 +2121,10 @@ input Story_Filter {
   """
   creator: User_Filter
   """
+  ✨ Generated from Field `Story`.`commentsCount` of type `Int!`
+  """
+  commentsCount: Int_Filter
+  """
   ✨ Generated from Field `Story`.`coverImageUrl` of type `String`
   """
   coverImageUrl: String_Filter
@@ -2121,9 +2137,9 @@ input Story_Filter {
   """
   description: String_Filter
   """
-  ✨ Generated from Field `Story`.`genre` of type `String`
+  ✨ Generated from Field `Story`.`genres` of type `[String!]`
   """
-  genre: String_Filter
+  genres: String_ListFilter
   """
   ✨ Generated from Field `Story`.`status` of type `String!`
   """
@@ -2187,6 +2203,10 @@ input Story_Having {
   """
   _count: Int_Filter
   """
+  ✨ Generated from Field `Story`.`commentsCount_count` of type `Int!`
+  """
+  commentsCount_count: Int_Filter
+  """
   ✨ Generated from Field `Story`.`coverImageUrl_count` of type `Int!`
   """
   coverImageUrl_count: Int_Filter
@@ -2202,10 +2222,6 @@ input Story_Having {
   ✨ Generated from Field `Story`.`description_count` of type `Int!`
   """
   description_count: Int_Filter
-  """
-  ✨ Generated from Field `Story`.`genre_count` of type `Int!`
-  """
-  genre_count: Int_Filter
   """
   ✨ Generated from Field `Story`.`id_count` of type `Int!`
   """
@@ -2223,6 +2239,18 @@ input Story_Having {
   """
   updatedAt_count: Int_Filter
   """
+  ✨ Generated from Field `Story`.`commentsCount_sum` of type `Int`
+  """
+  commentsCount_sum: Int_Filter
+  """
+  ✨ Generated from Field `Story`.`commentsCount_avg` of type `Float`
+  """
+  commentsCount_avg: Float_Filter
+  """
+  ✨ Generated from Field `Story`.`commentsCount_min` of type `Int`
+  """
+  commentsCount_min: Int_Filter
+  """
   ✨ Generated from Field `Story`.`createdAt_min` of type `Timestamp`
   """
   createdAt_min: Timestamp_Filter
@@ -2230,6 +2258,10 @@ input Story_Having {
   ✨ Generated from Field `Story`.`updatedAt_min` of type `Timestamp`
   """
   updatedAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `Story`.`commentsCount_max` of type `Int`
+  """
+  commentsCount_max: Int_Filter
   """
   ✨ Generated from Field `Story`.`createdAt_max` of type `Timestamp`
   """
@@ -2282,6 +2314,10 @@ input Story_Order {
   """
   creator: User_Order
   """
+  ✨ Generated from Field `Story`.`commentsCount` of type `Int!`
+  """
+  commentsCount: OrderDirection
+  """
   ✨ Generated from Field `Story`.`coverImageUrl` of type `String`
   """
   coverImageUrl: OrderDirection
@@ -2293,10 +2329,6 @@ input Story_Order {
   ✨ Generated from Field `Story`.`description` of type `String`
   """
   description: OrderDirection
-  """
-  ✨ Generated from Field `Story`.`genre` of type `String`
-  """
-  genre: OrderDirection
   """
   ✨ Generated from Field `Story`.`status` of type `String!`
   """

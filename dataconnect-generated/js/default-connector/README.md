@@ -242,7 +242,7 @@ export interface GetStoryWithContentData {
   story?: {
     id: string;
     title?: string | null;
-    genre?: string | null;
+    genres?: string[] | null;
     description?: string | null;
     coverImageUrl?: string | null;
     status: string;
@@ -353,7 +353,7 @@ export interface GetAllStoriesData {
   stories: ({
     id: string;
     title?: string | null;
-    genre?: string | null;
+    genres?: string[] | null;
     status: string;
     coverImageUrl?: string | null;
     creator: {
@@ -1587,7 +1587,7 @@ The `CreateStory` mutation requires an argument of type `CreateStoryVariables`, 
 export interface CreateStoryVariables {
   creatorId: string;
   title?: string | null;
-  genre?: string | null;
+  genres?: string[] | null;
   description?: string | null;
   coverImageUrl?: string | null;
 }
@@ -1611,7 +1611,7 @@ import { connectorConfig, createStory, CreateStoryVariables } from '@firebasegen
 const createStoryVars: CreateStoryVariables = {
   creatorId: ..., 
   title: ..., // optional
-  genre: ..., // optional
+  genres: ..., // optional
   description: ..., // optional
   coverImageUrl: ..., // optional
 };
@@ -1620,7 +1620,7 @@ const createStoryVars: CreateStoryVariables = {
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await createStory(createStoryVars);
 // Variables can be defined inline as well.
-const { data } = await createStory({ creatorId: ..., title: ..., genre: ..., description: ..., coverImageUrl: ..., });
+const { data } = await createStory({ creatorId: ..., title: ..., genres: ..., description: ..., coverImageUrl: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -1645,7 +1645,7 @@ import { connectorConfig, createStoryRef, CreateStoryVariables } from '@firebase
 const createStoryVars: CreateStoryVariables = {
   creatorId: ..., 
   title: ..., // optional
-  genre: ..., // optional
+  genres: ..., // optional
   description: ..., // optional
   coverImageUrl: ..., // optional
 };
@@ -1653,7 +1653,7 @@ const createStoryVars: CreateStoryVariables = {
 // Call the `createStoryRef()` function to get a reference to the mutation.
 const ref = createStoryRef(createStoryVars);
 // Variables can be defined inline as well.
-const ref = createStoryRef({ creatorId: ..., title: ..., genre: ..., description: ..., coverImageUrl: ..., });
+const ref = createStoryRef({ creatorId: ..., title: ..., genres: ..., description: ..., coverImageUrl: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);

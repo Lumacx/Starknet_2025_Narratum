@@ -2667,3 +2667,417 @@ I0819 13:00:53.787535     527 load.go:115] Finished reloading
  {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 13:00:53.809316     527 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50001\n"}}
 [debug] [2025-08-19T13:00:54.141Z] I0819 13:00:54.139391     527 engine.go:174] [/emulator/studio-v0 5258] ExecuteGraphqlRead IntrospectionQuery: succeeded. 
  {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 13:00:54.139391     527 engine.go:174] [/emulator/studio-v0 5258] ExecuteGraphqlRead IntrospectionQuery: succeeded. \n"}}
+[debug] [2025-08-19T16:09:33.195Z] [Firebase Plugin] Activating Firebase extension.
+[debug] [2025-08-19T16:09:48.309Z] [Firebase Plugin] requireAuthWrapper
+[debug] [2025-08-19T16:09:48.311Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-08-19T16:09:48.312Z] > authorizing via signed-in user (lumacx@gmail.com)
+[debug] [2025-08-19T16:09:48.318Z] Checked if tokens are valid: false, expires at: 1755612047774
+[debug] [2025-08-19T16:09:48.319Z] Checked if tokens are valid: false, expires at: 1755612047774
+[debug] [2025-08-19T16:09:48.320Z] > refreshing access token with scopes: []
+[debug] [2025-08-19T16:09:48.323Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-08-19T16:09:48.323Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-08-19T16:09:48.384Z] [Firebase Plugin] VSCode notification server listening on port 40001
+[debug] [2025-08-19T16:09:48.506Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-08-19T16:09:48.507Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-08-19T16:09:48.524Z] [Firebase Plugin] User found:  lumacx@gmail.com
+[info] [Firebase Plugin] (Core:Project) New user detected, fetching projects
+[debug] [2025-08-19T16:09:48.526Z] Checked if tokens are valid: true, expires at: 1755623387508
+[debug] [2025-08-19T16:09:48.527Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=1000
+[info] [Firebase Plugin] Starting Data Connect toolkit (version 2.10.1) on port 50001
+[debug] [2025-08-19T16:09:50.406Z] I0819 16:09:50.325682     466 control.go:84] [/emulator/studio-v0 9d47] UpdateResources(): done
+Schema: sources: schema/schema.gql [3459B] 
+Connector "default": sources: connector/queries.gql [2291B] connector/mutations.gql [2615B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 16:09:50.325682     466 control.go:84] [/emulator/studio-v0 9d47] UpdateResources(): done\nSchema: sources: schema/schema.gql [3459B] \nConnector \"default\": sources: connector/queries.gql [2291B] connector/mutations.gql [2615B] \n"}}
+[debug] [2025-08-19T16:09:50.409Z] Ignoring unsupported arg: auto_download {"metadata":{"emulator":{"name":"dataconnect"},"message":"Ignoring unsupported arg: auto_download"}}
+[debug] [2025-08-19T16:09:50.410Z] Ignoring unsupported arg: port {"metadata":{"emulator":{"name":"dataconnect"},"message":"Ignoring unsupported arg: port"}}
+[debug] [2025-08-19T16:09:50.411Z] Starting Data Connect Emulator with command {"binary":"/home/user/.cache/firebase/emulators/dataconnect-emulator-2.10.1","args":["--logtostderr","-v=2","dev","--listen=localhost:50001","--config_dir=/home/user/studio/dataconnect","--enable_output_schema_extensions=true","--enable_output_generated_sdk=true"],"optionalArgs":["listen","config_dir","enable_output_schema_extensions","enable_output_generated_sdk"],"joinArgs":true,"shell":false,"port":9399} {"metadata":{"emulator":{"name":"dataconnect"},"message":"Starting Data Connect Emulator with command {\"binary\":\"/home/user/.cache/firebase/emulators/dataconnect-emulator-2.10.1\",\"args\":[\"--logtostderr\",\"-v=2\",\"dev\",\"--listen=localhost:50001\",\"--config_dir=/home/user/studio/dataconnect\",\"--enable_output_schema_extensions=true\",\"--enable_output_generated_sdk=true\"],\"optionalArgs\":[\"listen\",\"config_dir\",\"enable_output_schema_extensions\",\"enable_output_generated_sdk\"],\"joinArgs\":true,\"shell\":false,\"port\":9399}"}}
+[info] i  dataconnect: Data Connect Emulator logging to dataconnect-debug.log {"metadata":{"emulator":{"name":"dataconnect"},"message":"Data Connect Emulator logging to dataconnect-debug.log"}}
+[debug] [2025-08-19T16:09:50.535Z] I0819 16:09:50.478710     471 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 16:09:50.478710     471 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-19T16:09:50.613Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
+[debug] [2025-08-19T16:09:50.614Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
+[debug] [2025-08-19T16:09:50.798Z] I0819 16:09:50.797969     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done
+Schema: sources: schema/schema.gql [3459B] 
+Connector "default": sources: connector/queries.gql [2291B] connector/mutations.gql [2615B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 16:09:50.797969     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done\nSchema: sources: schema/schema.gql [3459B] \nConnector \"default\": sources: connector/queries.gql [2291B] connector/mutations.gql [2615B] \n"}}
+[debug] [2025-08-19T16:09:51.024Z] I0819 16:09:51.023875     471 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "/home/user/studio/dataconnect-generated/js/default-connector"
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 16:09:51.023875     471 codegen.go:82] [connector \"default\" javascriptSdk] Generating sources into \"/home/user/studio/dataconnect-generated/js/default-connector\"\n"}}
+[debug] [2025-08-19T16:09:51.100Z] I0819 16:09:51.099455     471 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [73172B] main/implicit.gql [3267B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 16:09:51.099455     471 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [73172B] main/implicit.gql [3267B] \n"}}
+[debug] [2025-08-19T16:09:51.110Z] I0819 16:09:51.108233     471 collector.go:107] connector "default" javascriptSdk wrote into "/home/user/studio/dataconnect-generated/js/default-connector"
+Generated sources: react/package.json [468B] react/README.md [109645B] index.d.ts [22472B] esm/index.esm.js [9534B] esm/package.json [17B] package.json [860B] react/esm/package.json [17B] react/index.cjs.js [8849B] react/esm/index.esm.js [8322B] index.cjs.js [11043B] README.md [106299B] react/index.d.ts [11137B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 16:09:51.108233     471 collector.go:107] connector \"default\" javascriptSdk wrote into \"/home/user/studio/dataconnect-generated/js/default-connector\"\nGenerated sources: react/package.json [468B] react/README.md [109645B] index.d.ts [22472B] esm/index.esm.js [9534B] esm/package.json [17B] package.json [860B] react/esm/package.json [17B] react/index.cjs.js [8849B] react/esm/index.esm.js [8322B] index.cjs.js [11043B] README.md [106299B] react/index.d.ts [11137B] \n"}}
+[debug] [2025-08-19T16:09:51.151Z] I0819 16:09:51.150992     471 installsdk.go:55] Package @firebasegen/default-connector is already installed. Skipping installation
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 16:09:51.150992     471 installsdk.go:55] Package @firebasegen/default-connector is already installed. Skipping installation\n"}}
+[debug] [2025-08-19T16:09:51.160Z] I0819 16:09:51.156050     471 load.go:115] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 16:09:51.156050     471 load.go:115] Finished reloading\n"}}
+[debug] [2025-08-19T16:09:51.180Z] I0819 16:09:51.179589     471 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50001
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 16:09:51.179589     471 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50001\n"}}
+[debug] [2025-08-19T16:09:51.477Z] I0819 16:09:51.426401     471 engine.go:174] [/emulator/studio-v0 845a] ExecuteGraphqlRead IntrospectionQuery: succeeded. 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 16:09:51.426401     471 engine.go:174] [/emulator/studio-v0 845a] ExecuteGraphqlRead IntrospectionQuery: succeeded. \n"}}
+[debug] [2025-08-19T17:14:47.499Z] I0819 17:14:47.492443     471 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:14:47.492443     471 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-19T17:14:47.726Z] E0819 17:14:47.713776     471 load.go:79] Could not load sources: 
+Errors: schema/schema.gql:58: On Story.comments_count: field name must not contain '_', we recommend camelCase
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0819 17:14:47.713776     471 load.go:79] Could not load sources: \nErrors: schema/schema.gql:58: On Story.comments_count: field name must not contain '_', we recommend camelCase\n"}}
+[debug] [2025-08-19T17:14:47.738Z] I0819 17:14:47.725274     471 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/mutation.gql [41655B] main/implicit.gql [3267B] prelude.gql [73172B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] 
+I0819 17:14:47.732972     471 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:14:47.725274     471 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/mutation.gql [41655B] main/implicit.gql [3267B] prelude.gql [73172B] main/input.gql [98192B] main/relation.gql [48131B] main/query.gql [15655B] \nI0819 17:14:47.732972     471 load.go:80] Finished reloading\n"}}
+[debug] [2025-08-19T17:22:54.401Z] I0819 17:22:54.400078     471 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:22:54.400078     471 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-19T17:22:55.061Z] 2025/08/19 17:22:55 ERROR: Failed to flush response to client: write tcp 127.0.0.1:50001->127.0.0.1:46190: write: broken pipe
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"2025/08/19 17:22:55 ERROR: Failed to flush response to client: write tcp 127.0.0.1:50001->127.0.0.1:46190: write: broken pipe\n"}}
+[debug] [2025-08-19T17:22:55.182Z] W0819 17:22:55.181442     471 control.go:58] [/emulator/studio-v0 845a] connector "default" has errors: connector/mutations.gql:6: Field "genre" is not defined by type "Story_Data". Did you mean "genres"?
+connector/queries.gql:21: Cannot query field "genre" on type "Story". Did you mean "genres"?
+connector/queries.gql:34: Cannot query field "genre" on type "Story". Did you mean "genres"?
+
+sources: connector/queries.gql [2291B] connector/mutations.gql [2615B] 
+I0819 17:22:55.182579     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done
+Schema: sources: schema/schema.gql [3586B] 
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0819 17:22:55.181442     471 control.go:58] [/emulator/studio-v0 845a] connector \"default\" has errors: connector/mutations.gql:6: Field \"genre\" is not defined by type \"Story_Data\". Did you mean \"genres\"?\nconnector/queries.gql:21: Cannot query field \"genre\" on type \"Story\". Did you mean \"genres\"?\nconnector/queries.gql:34: Cannot query field \"genre\" on type \"Story\". Did you mean \"genres\"?\n\nsources: connector/queries.gql [2291B] connector/mutations.gql [2615B] \nI0819 17:22:55.182579     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done\nSchema: sources: schema/schema.gql [3586B] \nConnector \"default\": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \n"}}
+[debug] [2025-08-19T17:22:55.225Z] E0819 17:22:55.202930     471 load.go:79] Could not load sources: 
+Errors: connector/mutations.gql:6: Field "genre" is not defined by type "Story_Data". Did you mean "genres"?
+connector/queries.gql:21: Cannot query field "genre" on type "Story". Did you mean "genres"?
+connector/queries.gql:34: Cannot query field "genre" on type "Story". Did you mean "genres"?
+I0819 17:22:55.206603     471 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [73172B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] 
+I0819 17:22:55.206702     471 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0819 17:22:55.202930     471 load.go:79] Could not load sources: \nErrors: connector/mutations.gql:6: Field \"genre\" is not defined by type \"Story_Data\". Did you mean \"genres\"?\nconnector/queries.gql:21: Cannot query field \"genre\" on type \"Story\". Did you mean \"genres\"?\nconnector/queries.gql:34: Cannot query field \"genre\" on type \"Story\". Did you mean \"genres\"?\nI0819 17:22:55.206603     471 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [73172B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] \nI0819 17:22:55.206702     471 load.go:80] Finished reloading\n"}}
+[debug] [2025-08-19T17:22:56.519Z] I0819 17:22:56.489577     471 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:22:56.489577     471 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-19T17:22:57.052Z] W0819 17:22:57.017281     471 control.go:58] [/emulator/studio-v0 845a] connector "default" has errors: connector/mutations.gql:6: Field "genre" is not defined by type "Story_Data". Did you mean "genres"?
+connector/queries.gql:21: Cannot query field "genre" on type "Story". Did you mean "genres"?
+connector/queries.gql:34: Cannot query field "genre" on type "Story". Did you mean "genres"?
+
+sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+I0819 17:22:57.017479     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done
+Schema: sources: schema/schema.gql [3586B] 
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+E0819 17:22:57.025011     471 load.go:79] Could not load sources: 
+Errors: connector/mutations.gql:6: Field "genre" is not defined by type "Story_Data". Did you mean "genres"?
+connector/queries.gql:21: Cannot query field "genre" on type "Story". Did you mean "genres"?
+connector/queries.gql:34: Cannot query field "genre" on type "Story". Did you mean "genres"?
+I0819 17:22:57.030689     471 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] prelude.gql [73172B] 
+I0819 17:22:57.030790     471 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0819 17:22:57.017281     471 control.go:58] [/emulator/studio-v0 845a] connector \"default\" has errors: connector/mutations.gql:6: Field \"genre\" is not defined by type \"Story_Data\". Did you mean \"genres\"?\nconnector/queries.gql:21: Cannot query field \"genre\" on type \"Story\". Did you mean \"genres\"?\nconnector/queries.gql:34: Cannot query field \"genre\" on type \"Story\". Did you mean \"genres\"?\n\nsources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \nI0819 17:22:57.017479     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done\nSchema: sources: schema/schema.gql [3586B] \nConnector \"default\": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \nE0819 17:22:57.025011     471 load.go:79] Could not load sources: \nErrors: connector/mutations.gql:6: Field \"genre\" is not defined by type \"Story_Data\". Did you mean \"genres\"?\nconnector/queries.gql:21: Cannot query field \"genre\" on type \"Story\". Did you mean \"genres\"?\nconnector/queries.gql:34: Cannot query field \"genre\" on type \"Story\". Did you mean \"genres\"?\nI0819 17:22:57.030689     471 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] prelude.gql [73172B] \nI0819 17:22:57.030790     471 load.go:80] Finished reloading\n"}}
+[debug] [2025-08-19T17:23:38.380Z] I0819 17:23:38.379285     471 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:23:38.379285     471 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-19T17:23:38.648Z] W0819 17:23:38.648424     471 control.go:58] [/emulator/studio-v0 845a] connector "default" has errors: connector/mutations.gql:6: Field "genre" is not defined by type "Story_Data". Did you mean "genres"?
+connector/queries.gql:21: Cannot query field "genre" on type "Story". Did you mean "genres"?
+connector/queries.gql:34: Cannot query field "genre" on type "Story". Did you mean "genres"?
+
+sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+I0819 17:23:38.648629     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done
+Schema: sources: schema/schema.gql [3585B] 
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0819 17:23:38.648424     471 control.go:58] [/emulator/studio-v0 845a] connector \"default\" has errors: connector/mutations.gql:6: Field \"genre\" is not defined by type \"Story_Data\". Did you mean \"genres\"?\nconnector/queries.gql:21: Cannot query field \"genre\" on type \"Story\". Did you mean \"genres\"?\nconnector/queries.gql:34: Cannot query field \"genre\" on type \"Story\". Did you mean \"genres\"?\n\nsources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \nI0819 17:23:38.648629     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done\nSchema: sources: schema/schema.gql [3585B] \nConnector \"default\": sources: connector/mutations.gql [2615B] connector/queries.gql [2291B] \n"}}
+[debug] [2025-08-19T17:23:38.661Z] E0819 17:23:38.661474     471 load.go:79] Could not load sources: 
+Errors: connector/mutations.gql:6: Field "genre" is not defined by type "Story_Data". Did you mean "genres"?
+connector/queries.gql:21: Cannot query field "genre" on type "Story". Did you mean "genres"?
+connector/queries.gql:34: Cannot query field "genre" on type "Story". Did you mean "genres"?
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0819 17:23:38.661474     471 load.go:79] Could not load sources: \nErrors: connector/mutations.gql:6: Field \"genre\" is not defined by type \"Story_Data\". Did you mean \"genres\"?\nconnector/queries.gql:21: Cannot query field \"genre\" on type \"Story\". Did you mean \"genres\"?\nconnector/queries.gql:34: Cannot query field \"genre\" on type \"Story\". Did you mean \"genres\"?\n"}}
+[debug] [2025-08-19T17:23:38.666Z] I0819 17:23:38.666102     471 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: prelude.gql [73172B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:23:38.666102     471 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: prelude.gql [73172B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] \n"}}
+[debug] [2025-08-19T17:23:38.673Z] I0819 17:23:38.667243     471 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:23:38.667243     471 load.go:80] Finished reloading\n"}}
+[debug] [2025-08-19T17:43:19.500Z] I0819 17:43:19.499524     471 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:43:19.499524     471 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-19T17:43:19.723Z] W0819 17:43:19.707436     471 control.go:58] [/emulator/studio-v0 845a] connector "default" has errors: connector/mutations.gql:6: Field "genre" is not defined by type "Story_Data". Did you mean "genres"?
+connector/queries.gql:34: Cannot query field "genre" on type "Story". Did you mean "genres"?
+
+sources: connector/queries.gql [2292B] connector/mutations.gql [2615B] 
+I0819 17:43:19.707534     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done
+Connector "default": sources: connector/mutations.gql [2615B] connector/queries.gql [2292B] 
+E0819 17:43:19.718194     471 load.go:79] Could not load sources: 
+Errors: connector/mutations.gql:6: Field "genre" is not defined by type "Story_Data". Did you mean "genres"?
+connector/queries.gql:34: Cannot query field "genre" on type "Story". Did you mean "genres"?
+I0819 17:43:19.720408     471 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/input.gql [99254B] prelude.gql [73172B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] 
+I0819 17:43:19.720446     471 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0819 17:43:19.707436     471 control.go:58] [/emulator/studio-v0 845a] connector \"default\" has errors: connector/mutations.gql:6: Field \"genre\" is not defined by type \"Story_Data\". Did you mean \"genres\"?\nconnector/queries.gql:34: Cannot query field \"genre\" on type \"Story\". Did you mean \"genres\"?\n\nsources: connector/queries.gql [2292B] connector/mutations.gql [2615B] \nI0819 17:43:19.707534     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done\nConnector \"default\": sources: connector/mutations.gql [2615B] connector/queries.gql [2292B] \nE0819 17:43:19.718194     471 load.go:79] Could not load sources: \nErrors: connector/mutations.gql:6: Field \"genre\" is not defined by type \"Story_Data\". Did you mean \"genres\"?\nconnector/queries.gql:34: Cannot query field \"genre\" on type \"Story\". Did you mean \"genres\"?\nI0819 17:43:19.720408     471 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/input.gql [99254B] prelude.gql [73172B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] \nI0819 17:43:19.720446     471 load.go:80] Finished reloading\n"}}
+[debug] [2025-08-19T17:43:28.984Z] I0819 17:43:28.984036     471 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:43:28.984036     471 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-19T17:43:29.162Z] W0819 17:43:29.158720     471 control.go:58] [/emulator/studio-v0 845a] connector "default" has errors: connector/mutations.gql:6: Variable "$genre" of type "String" used in position expecting type "[String!]".
+connector/queries.gql:34: Cannot query field "genre" on type "Story". Did you mean "genres"?
+
+sources: connector/queries.gql [2292B] connector/mutations.gql [2616B] 
+I0819 17:43:29.159408     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done
+Connector "default": sources: connector/mutations.gql [2616B] connector/queries.gql [2292B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0819 17:43:29.158720     471 control.go:58] [/emulator/studio-v0 845a] connector \"default\" has errors: connector/mutations.gql:6: Variable \"$genre\" of type \"String\" used in position expecting type \"[String!]\".\nconnector/queries.gql:34: Cannot query field \"genre\" on type \"Story\". Did you mean \"genres\"?\n\nsources: connector/queries.gql [2292B] connector/mutations.gql [2616B] \nI0819 17:43:29.159408     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done\nConnector \"default\": sources: connector/mutations.gql [2616B] connector/queries.gql [2292B] \n"}}
+[debug] [2025-08-19T17:43:29.185Z] E0819 17:43:29.170806     471 load.go:79] Could not load sources: 
+Errors: connector/mutations.gql:6: Variable "$genre" of type "String" used in position expecting type "[String!]".
+connector/queries.gql:34: Cannot query field "genre" on type "Story". Did you mean "genres"?
+I0819 17:43:29.172733     471 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] prelude.gql [73172B] main/query.gql [15655B] 
+I0819 17:43:29.172772     471 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0819 17:43:29.170806     471 load.go:79] Could not load sources: \nErrors: connector/mutations.gql:6: Variable \"$genre\" of type \"String\" used in position expecting type \"[String!]\".\nconnector/queries.gql:34: Cannot query field \"genre\" on type \"Story\". Did you mean \"genres\"?\nI0819 17:43:29.172733     471 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] prelude.gql [73172B] main/query.gql [15655B] \nI0819 17:43:29.172772     471 load.go:80] Finished reloading\n"}}
+[debug] [2025-08-19T17:43:31.547Z] I0819 17:43:31.545789     471 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:43:31.545789     471 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-19T17:43:31.856Z] W0819 17:43:31.854067     471 control.go:58] [/emulator/studio-v0 845a] connector "default" has errors: connector/mutations.gql:6: Variable "$genres" is not defined by operation "CreateStory".
+connector/queries.gql:34: Cannot query field "genre" on type "Story". Did you mean "genres"?
+
+sources: connector/mutations.gql [2617B] connector/queries.gql [2292B] 
+I0819 17:43:31.854860     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done
+Connector "default": sources: connector/mutations.gql [2617B] connector/queries.gql [2292B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0819 17:43:31.854067     471 control.go:58] [/emulator/studio-v0 845a] connector \"default\" has errors: connector/mutations.gql:6: Variable \"$genres\" is not defined by operation \"CreateStory\".\nconnector/queries.gql:34: Cannot query field \"genre\" on type \"Story\". Did you mean \"genres\"?\n\nsources: connector/mutations.gql [2617B] connector/queries.gql [2292B] \nI0819 17:43:31.854860     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done\nConnector \"default\": sources: connector/mutations.gql [2617B] connector/queries.gql [2292B] \n"}}
+[debug] [2025-08-19T17:43:31.906Z] E0819 17:43:31.894834     471 load.go:79] Could not load sources: 
+Errors: connector/mutations.gql:6: Variable "$genres" is not defined by operation "CreateStory".
+connector/queries.gql:34: Cannot query field "genre" on type "Story". Did you mean "genres"?
+I0819 17:43:31.902108     471 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: prelude.gql [73172B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] 
+I0819 17:43:31.902144     471 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0819 17:43:31.894834     471 load.go:79] Could not load sources: \nErrors: connector/mutations.gql:6: Variable \"$genres\" is not defined by operation \"CreateStory\".\nconnector/queries.gql:34: Cannot query field \"genre\" on type \"Story\". Did you mean \"genres\"?\nI0819 17:43:31.902108     471 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: prelude.gql [73172B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] \nI0819 17:43:31.902144     471 load.go:80] Finished reloading\n"}}
+[debug] [2025-08-19T17:43:34.136Z] I0819 17:43:34.135861     471 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:43:34.135861     471 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-19T17:43:34.268Z] W0819 17:43:34.267795     471 control.go:58] [/emulator/studio-v0 845a] connector "default" has errors: connector/mutations.gql:6: Variable "$genres" of type "String" used in position expecting type "[String!]".
+connector/queries.gql:34: Cannot query field "genre" on type "Story". Did you mean "genres"?
+
+sources: connector/mutations.gql [2618B] connector/queries.gql [2292B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0819 17:43:34.267795     471 control.go:58] [/emulator/studio-v0 845a] connector \"default\" has errors: connector/mutations.gql:6: Variable \"$genres\" of type \"String\" used in position expecting type \"[String!]\".\nconnector/queries.gql:34: Cannot query field \"genre\" on type \"Story\". Did you mean \"genres\"?\n\nsources: connector/mutations.gql [2618B] connector/queries.gql [2292B] \n"}}
+[debug] [2025-08-19T17:43:34.272Z] I0819 17:43:34.267918     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done
+Connector "default": sources: connector/mutations.gql [2618B] connector/queries.gql [2292B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:43:34.267918     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done\nConnector \"default\": sources: connector/mutations.gql [2618B] connector/queries.gql [2292B] \n"}}
+[debug] [2025-08-19T17:43:34.286Z] E0819 17:43:34.285560     471 load.go:79] Could not load sources: 
+Errors: connector/mutations.gql:6: Variable "$genres" of type "String" used in position expecting type "[String!]".
+connector/queries.gql:34: Cannot query field "genre" on type "Story". Did you mean "genres"?
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0819 17:43:34.285560     471 load.go:79] Could not load sources: \nErrors: connector/mutations.gql:6: Variable \"$genres\" of type \"String\" used in position expecting type \"[String!]\".\nconnector/queries.gql:34: Cannot query field \"genre\" on type \"Story\". Did you mean \"genres\"?\n"}}
+[debug] [2025-08-19T17:43:34.312Z] I0819 17:43:34.298763     471 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/mutation.gql [41655B] main/implicit.gql [3267B] prelude.gql [73172B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] 
+I0819 17:43:34.298804     471 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:43:34.298763     471 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/mutation.gql [41655B] main/implicit.gql [3267B] prelude.gql [73172B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] \nI0819 17:43:34.298804     471 load.go:80] Finished reloading\n"}}
+[debug] [2025-08-19T17:44:09.766Z] I0819 17:44:09.764863     471 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:44:09.764863     471 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-19T17:44:09.904Z] W0819 17:44:09.903380     471 control.go:58] [/emulator/studio-v0 845a] connector "default" has errors: connector/mutations.gql:6: Variable "$genres" of type "String" used in position expecting type "[String!]".
+
+sources: connector/mutations.gql [2618B] connector/queries.gql [2293B] 
+I0819 17:44:09.903449     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done
+Connector "default": sources: connector/queries.gql [2293B] connector/mutations.gql [2618B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0819 17:44:09.903380     471 control.go:58] [/emulator/studio-v0 845a] connector \"default\" has errors: connector/mutations.gql:6: Variable \"$genres\" of type \"String\" used in position expecting type \"[String!]\".\n\nsources: connector/mutations.gql [2618B] connector/queries.gql [2293B] \nI0819 17:44:09.903449     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done\nConnector \"default\": sources: connector/queries.gql [2293B] connector/mutations.gql [2618B] \n"}}
+[debug] [2025-08-19T17:44:09.920Z] E0819 17:44:09.918491     471 load.go:79] Could not load sources: 
+Errors: connector/mutations.gql:6: Variable "$genres" of type "String" used in position expecting type "[String!]".
+I0819 17:44:09.920057     471 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: prelude.gql [73172B] main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] 
+I0819 17:44:09.920095     471 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0819 17:44:09.918491     471 load.go:79] Could not load sources: \nErrors: connector/mutations.gql:6: Variable \"$genres\" of type \"String\" used in position expecting type \"[String!]\".\nI0819 17:44:09.920057     471 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: prelude.gql [73172B] main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] \nI0819 17:44:09.920095     471 load.go:80] Finished reloading\n"}}
+[debug] [2025-08-19T17:44:23.826Z] I0819 17:44:23.826210     471 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:44:23.826210     471 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-19T17:44:24.111Z] W0819 17:44:24.108759     471 control.go:58] [/emulator/studio-v0 845a] connector "default" has errors: connector/mutations.gql:6: Variable "$genres" of type "String" used in position expecting type "[String!]".
+
+sources: connector/mutations.gql [2618B] connector/queries.gql [2293B] 
+I0819 17:44:24.108855     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done
+Schema: sources: schema/schema.gql [3532B] 
+Connector "default": sources: connector/mutations.gql [2618B] connector/queries.gql [2293B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0819 17:44:24.108759     471 control.go:58] [/emulator/studio-v0 845a] connector \"default\" has errors: connector/mutations.gql:6: Variable \"$genres\" of type \"String\" used in position expecting type \"[String!]\".\n\nsources: connector/mutations.gql [2618B] connector/queries.gql [2293B] \nI0819 17:44:24.108855     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done\nSchema: sources: schema/schema.gql [3532B] \nConnector \"default\": sources: connector/mutations.gql [2618B] connector/queries.gql [2293B] \n"}}
+[debug] [2025-08-19T17:44:24.130Z] E0819 17:44:24.129873     471 load.go:79] Could not load sources: 
+Errors: connector/mutations.gql:6: Variable "$genres" of type "String" used in position expecting type "[String!]".
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0819 17:44:24.129873     471 load.go:79] Could not load sources: \nErrors: connector/mutations.gql:6: Variable \"$genres\" of type \"String\" used in position expecting type \"[String!]\".\n"}}
+[debug] [2025-08-19T17:44:24.133Z] I0819 17:44:24.132162     471 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/relation.gql [49005B] prelude.gql [73172B] main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [99254B] 
+I0819 17:44:24.132252     471 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:44:24.132162     471 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/relation.gql [49005B] prelude.gql [73172B] main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [99254B] \nI0819 17:44:24.132252     471 load.go:80] Finished reloading\n"}}
+[debug] [2025-08-19T17:44:37.488Z] I0819 17:44:37.488261     471 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:44:37.488261     471 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-19T17:44:37.606Z] W0819 17:44:37.585169     471 control.go:58] [/emulator/studio-v0 845a] connector "default" has errors: connector/mutations.gql:6: Variable "$genres" is not defined by operation "CreateStory".
+
+sources: connector/queries.gql [2293B] connector/mutations.gql [2617B] 
+I0819 17:44:37.585247     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done
+Connector "default": sources: connector/queries.gql [2293B] connector/mutations.gql [2617B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0819 17:44:37.585169     471 control.go:58] [/emulator/studio-v0 845a] connector \"default\" has errors: connector/mutations.gql:6: Variable \"$genres\" is not defined by operation \"CreateStory\".\n\nsources: connector/queries.gql [2293B] connector/mutations.gql [2617B] \nI0819 17:44:37.585247     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done\nConnector \"default\": sources: connector/queries.gql [2293B] connector/mutations.gql [2617B] \n"}}
+[debug] [2025-08-19T17:44:37.625Z] E0819 17:44:37.623566     471 load.go:79] Could not load sources: 
+Errors: connector/mutations.gql:6: Variable "$genres" is not defined by operation "CreateStory".
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0819 17:44:37.623566     471 load.go:79] Could not load sources: \nErrors: connector/mutations.gql:6: Variable \"$genres\" is not defined by operation \"CreateStory\".\n"}}
+[debug] [2025-08-19T17:44:37.643Z] I0819 17:44:37.639187     471 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [73172B] 
+I0819 17:44:37.639238     471 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:44:37.639187     471 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [73172B] \nI0819 17:44:37.639238     471 load.go:80] Finished reloading\n"}}
+[debug] [2025-08-19T17:44:40.170Z] I0819 17:44:40.169049     471 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:44:40.169049     471 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-19T17:44:40.372Z] W0819 17:44:40.371305     471 control.go:58] [/emulator/studio-v0 845a] connector "default" has errors: connector/mutations.gql:6: Variable "$genre" of type "String" used in position expecting type "[String!]".
+
+sources: connector/queries.gql [2293B] connector/mutations.gql [2616B] 
+I0819 17:44:40.371377     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done
+Connector "default": sources: connector/queries.gql [2293B] connector/mutations.gql [2616B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0819 17:44:40.371305     471 control.go:58] [/emulator/studio-v0 845a] connector \"default\" has errors: connector/mutations.gql:6: Variable \"$genre\" of type \"String\" used in position expecting type \"[String!]\".\n\nsources: connector/queries.gql [2293B] connector/mutations.gql [2616B] \nI0819 17:44:40.371377     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done\nConnector \"default\": sources: connector/queries.gql [2293B] connector/mutations.gql [2616B] \n"}}
+[debug] [2025-08-19T17:44:40.380Z] E0819 17:44:40.377685     471 load.go:79] Could not load sources: 
+Errors: connector/mutations.gql:6: Variable "$genre" of type "String" used in position expecting type "[String!]".
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0819 17:44:40.377685     471 load.go:79] Could not load sources: \nErrors: connector/mutations.gql:6: Variable \"$genre\" of type \"String\" used in position expecting type \"[String!]\".\n"}}
+[debug] [2025-08-19T17:44:40.392Z] I0819 17:44:40.383353     471 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/implicit.gql [3267B] main/input.gql [99254B] prelude.gql [73172B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] 
+I0819 17:44:40.383394     471 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:44:40.383353     471 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/implicit.gql [3267B] main/input.gql [99254B] prelude.gql [73172B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] \nI0819 17:44:40.383394     471 load.go:80] Finished reloading\n"}}
+[debug] [2025-08-19T17:44:53.107Z] I0819 17:44:53.107057     471 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:44:53.107057     471 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-19T17:44:53.237Z] W0819 17:44:53.207183     471 control.go:58] [/emulator/studio-v0 845a] connector "default" has errors: connector/mutations.gql:6: Variable "$genres" is not defined by operation "CreateStory".
+
+sources: connector/mutations.gql [2617B] connector/queries.gql [2293B] 
+I0819 17:44:53.207245     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done
+Connector "default": sources: connector/queries.gql [2293B] connector/mutations.gql [2617B] 
+E0819 17:44:53.220586     471 load.go:79] Could not load sources: 
+Errors: connector/mutations.gql:6: Variable "$genres" is not defined by operation "CreateStory".
+I0819 17:44:53.227879     471 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] prelude.gql [73172B] main/query.gql [15655B] 
+I0819 17:44:53.229982     471 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0819 17:44:53.207183     471 control.go:58] [/emulator/studio-v0 845a] connector \"default\" has errors: connector/mutations.gql:6: Variable \"$genres\" is not defined by operation \"CreateStory\".\n\nsources: connector/mutations.gql [2617B] connector/queries.gql [2293B] \nI0819 17:44:53.207245     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done\nConnector \"default\": sources: connector/queries.gql [2293B] connector/mutations.gql [2617B] \nE0819 17:44:53.220586     471 load.go:79] Could not load sources: \nErrors: connector/mutations.gql:6: Variable \"$genres\" is not defined by operation \"CreateStory\".\nI0819 17:44:53.227879     471 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] prelude.gql [73172B] main/query.gql [15655B] \nI0819 17:44:53.229982     471 load.go:80] Finished reloading\n"}}
+[debug] [2025-08-19T17:44:57.693Z] I0819 17:44:57.692749     471 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:44:57.692749     471 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-19T17:44:57.839Z] W0819 17:44:57.831494     471 control.go:58] [/emulator/studio-v0 845a] connector "default" has errors: connector/mutations.gql:6: Variable "$genre" of type "String" used in position expecting type "[String!]".
+
+sources: connector/mutations.gql [2616B] connector/queries.gql [2293B] 
+I0819 17:44:57.831586     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done
+Connector "default": sources: connector/mutations.gql [2616B] connector/queries.gql [2293B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0819 17:44:57.831494     471 control.go:58] [/emulator/studio-v0 845a] connector \"default\" has errors: connector/mutations.gql:6: Variable \"$genre\" of type \"String\" used in position expecting type \"[String!]\".\n\nsources: connector/mutations.gql [2616B] connector/queries.gql [2293B] \nI0819 17:44:57.831586     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done\nConnector \"default\": sources: connector/mutations.gql [2616B] connector/queries.gql [2293B] \n"}}
+[debug] [2025-08-19T17:44:57.844Z] E0819 17:44:57.839592     471 load.go:79] Could not load sources: 
+Errors: connector/mutations.gql:6: Variable "$genre" of type "String" used in position expecting type "[String!]".
+I0819 17:44:57.842715     471 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [73172B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] 
+I0819 17:44:57.842750     471 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0819 17:44:57.839592     471 load.go:79] Could not load sources: \nErrors: connector/mutations.gql:6: Variable \"$genre\" of type \"String\" used in position expecting type \"[String!]\".\nI0819 17:44:57.842715     471 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [73172B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] \nI0819 17:44:57.842750     471 load.go:80] Finished reloading\n"}}
+[debug] [2025-08-19T17:44:59.590Z] I0819 17:44:59.589732     471 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:44:59.589732     471 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-19T17:44:59.728Z] W0819 17:44:59.727798     471 control.go:58] [/emulator/studio-v0 845a] connector "default" has errors: connector/mutations.gql:6: Variable "$genres" is not defined by operation "CreateStory".
+
+sources: connector/mutations.gql [2617B] connector/queries.gql [2293B] 
+I0819 17:44:59.727873     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done
+Connector "default": sources: connector/mutations.gql [2617B] connector/queries.gql [2293B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0819 17:44:59.727798     471 control.go:58] [/emulator/studio-v0 845a] connector \"default\" has errors: connector/mutations.gql:6: Variable \"$genres\" is not defined by operation \"CreateStory\".\n\nsources: connector/mutations.gql [2617B] connector/queries.gql [2293B] \nI0819 17:44:59.727873     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done\nConnector \"default\": sources: connector/mutations.gql [2617B] connector/queries.gql [2293B] \n"}}
+[debug] [2025-08-19T17:44:59.738Z] E0819 17:44:59.736704     471 load.go:79] Could not load sources: 
+Errors: connector/mutations.gql:6: Variable "$genres" is not defined by operation "CreateStory".
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0819 17:44:59.736704     471 load.go:79] Could not load sources: \nErrors: connector/mutations.gql:6: Variable \"$genres\" is not defined by operation \"CreateStory\".\n"}}
+[debug] [2025-08-19T17:44:59.747Z] I0819 17:44:59.745488     471 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/implicit.gql [3267B] main/input.gql [99254B] prelude.gql [73172B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] 
+I0819 17:44:59.745539     471 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:44:59.745488     471 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/implicit.gql [3267B] main/input.gql [99254B] prelude.gql [73172B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] \nI0819 17:44:59.745539     471 load.go:80] Finished reloading\n"}}
+[debug] [2025-08-19T17:45:06.391Z] I0819 17:45:06.391153     471 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:45:06.391153     471 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-19T17:45:06.589Z] W0819 17:45:06.589199     471 control.go:58] [/emulator/studio-v0 845a] connector "default" has errors: connector/mutations.gql:6: Variable "$genres" of type "String" used in position expecting type "[String!]".
+
+sources: connector/queries.gql [2293B] connector/mutations.gql [2618B] 
+I0819 17:45:06.589275     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done
+Connector "default": sources: connector/mutations.gql [2618B] connector/queries.gql [2293B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0819 17:45:06.589199     471 control.go:58] [/emulator/studio-v0 845a] connector \"default\" has errors: connector/mutations.gql:6: Variable \"$genres\" of type \"String\" used in position expecting type \"[String!]\".\n\nsources: connector/queries.gql [2293B] connector/mutations.gql [2618B] \nI0819 17:45:06.589275     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done\nConnector \"default\": sources: connector/mutations.gql [2618B] connector/queries.gql [2293B] \n"}}
+[debug] [2025-08-19T17:45:06.604Z] E0819 17:45:06.601229     471 load.go:79] Could not load sources: 
+Errors: connector/mutations.gql:6: Variable "$genres" of type "String" used in position expecting type "[String!]".
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0819 17:45:06.601229     471 load.go:79] Could not load sources: \nErrors: connector/mutations.gql:6: Variable \"$genres\" of type \"String\" used in position expecting type \"[String!]\".\n"}}
+[debug] [2025-08-19T17:45:06.615Z] I0819 17:45:06.615109     471 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: prelude.gql [73172B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] 
+I0819 17:45:06.615158     471 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:45:06.615109     471 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: prelude.gql [73172B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] \nI0819 17:45:06.615158     471 load.go:80] Finished reloading\n"}}
+[debug] [2025-08-19T17:46:12.093Z] I0819 17:46:12.093072     471 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:46:12.093072     471 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-19T17:46:12.382Z] W0819 17:46:12.382260     471 control.go:58] [/emulator/studio-v0 845a] connector "default" has errors: connector/mutations.gql:6: Variable "$genres" of type "String" used in position expecting type "[String!]".
+
+sources: connector/mutations.gql [2618B] connector/queries.gql [2293B] 
+I0819 17:46:12.382347     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done
+Schema: sources: schema/schema.gql [3505B] 
+Connector "default": sources: connector/mutations.gql [2618B] connector/queries.gql [2293B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0819 17:46:12.382260     471 control.go:58] [/emulator/studio-v0 845a] connector \"default\" has errors: connector/mutations.gql:6: Variable \"$genres\" of type \"String\" used in position expecting type \"[String!]\".\n\nsources: connector/mutations.gql [2618B] connector/queries.gql [2293B] \nI0819 17:46:12.382347     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done\nSchema: sources: schema/schema.gql [3505B] \nConnector \"default\": sources: connector/mutations.gql [2618B] connector/queries.gql [2293B] \n"}}
+[debug] [2025-08-19T17:46:12.408Z] E0819 17:46:12.399935     471 load.go:79] Could not load sources: 
+Errors: connector/mutations.gql:6: Variable "$genres" of type "String" used in position expecting type "[String!]".
+I0819 17:46:12.401330     471 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [73172B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] 
+I0819 17:46:12.401374     471 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0819 17:46:12.399935     471 load.go:79] Could not load sources: \nErrors: connector/mutations.gql:6: Variable \"$genres\" of type \"String\" used in position expecting type \"[String!]\".\nI0819 17:46:12.401330     471 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [73172B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] \nI0819 17:46:12.401374     471 load.go:80] Finished reloading\n"}}
+[debug] [2025-08-19T17:46:18.733Z] I0819 17:46:18.733324     471 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:46:18.733324     471 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-19T17:46:18.986Z] W0819 17:46:18.986011     471 control.go:58] [/emulator/studio-v0 845a] connector "default" has errors: connector/mutations.gql:6: Variable "$genres" of type "String" used in position expecting type "[String!]".
+
+sources: connector/mutations.gql [2618B] connector/queries.gql [2293B] 
+I0819 17:46:18.986101     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done
+Schema: sources: schema/schema.gql [3499B] 
+Connector "default": sources: connector/mutations.gql [2618B] connector/queries.gql [2293B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0819 17:46:18.986011     471 control.go:58] [/emulator/studio-v0 845a] connector \"default\" has errors: connector/mutations.gql:6: Variable \"$genres\" of type \"String\" used in position expecting type \"[String!]\".\n\nsources: connector/mutations.gql [2618B] connector/queries.gql [2293B] \nI0819 17:46:18.986101     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done\nSchema: sources: schema/schema.gql [3499B] \nConnector \"default\": sources: connector/mutations.gql [2618B] connector/queries.gql [2293B] \n"}}
+[debug] [2025-08-19T17:46:19.006Z] E0819 17:46:19.006171     471 load.go:79] Could not load sources: 
+Errors: connector/mutations.gql:6: Variable "$genres" of type "String" used in position expecting type "[String!]".
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0819 17:46:19.006171     471 load.go:79] Could not load sources: \nErrors: connector/mutations.gql:6: Variable \"$genres\" of type \"String\" used in position expecting type \"[String!]\".\n"}}
+[debug] [2025-08-19T17:46:19.059Z] I0819 17:46:19.013930     471 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/relation.gql [48915B] main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [73172B] main/implicit.gql [3267B] main/input.gql [99122B] 
+I0819 17:46:19.014012     471 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:46:19.013930     471 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/relation.gql [48915B] main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [73172B] main/implicit.gql [3267B] main/input.gql [99122B] \nI0819 17:46:19.014012     471 load.go:80] Finished reloading\n"}}
+[debug] [2025-08-19T17:46:21.634Z] I0819 17:46:21.634067     471 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:46:21.634067     471 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-19T17:46:21.986Z] W0819 17:46:21.986489     471 control.go:58] [/emulator/studio-v0 845a] connector "default" has errors: connector/mutations.gql:6: Variable "$genres" of type "String" used in position expecting type "[String!]".
+
+sources: connector/mutations.gql [2618B] connector/queries.gql [2293B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0819 17:46:21.986489     471 control.go:58] [/emulator/studio-v0 845a] connector \"default\" has errors: connector/mutations.gql:6: Variable \"$genres\" of type \"String\" used in position expecting type \"[String!]\".\n\nsources: connector/mutations.gql [2618B] connector/queries.gql [2293B] \n"}}
+[debug] [2025-08-19T17:46:21.990Z] I0819 17:46:21.989365     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done
+Schema: sources: schema/schema.gql [3505B] 
+Connector "default": sources: connector/mutations.gql [2618B] connector/queries.gql [2293B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:46:21.989365     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done\nSchema: sources: schema/schema.gql [3505B] \nConnector \"default\": sources: connector/mutations.gql [2618B] connector/queries.gql [2293B] \n"}}
+[debug] [2025-08-19T17:46:21.999Z] E0819 17:46:21.999128     471 load.go:79] Could not load sources: 
+Errors: connector/mutations.gql:6: Variable "$genres" of type "String" used in position expecting type "[String!]".
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0819 17:46:21.999128     471 load.go:79] Could not load sources: \nErrors: connector/mutations.gql:6: Variable \"$genres\" of type \"String\" used in position expecting type \"[String!]\".\n"}}
+[debug] [2025-08-19T17:46:22.004Z] I0819 17:46:22.002548     471 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: prelude.gql [73172B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] 
+I0819 17:46:22.002617     471 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:46:22.002548     471 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: prelude.gql [73172B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] \nI0819 17:46:22.002617     471 load.go:80] Finished reloading\n"}}
+[debug] [2025-08-19T17:49:46.824Z] I0819 17:49:46.824042     471 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:49:46.824042     471 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-19T17:49:47.238Z] I0819 17:49:47.238007     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done
+Connector "default": sources: connector/mutations.gql [2621B] connector/queries.gql [2293B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:49:47.238007     471 control.go:84] [/emulator/studio-v0 845a] UpdateResources(): done\nConnector \"default\": sources: connector/mutations.gql [2621B] connector/queries.gql [2293B] \n"}}
+[debug] [2025-08-19T17:49:47.587Z] I0819 17:49:47.585313     471 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "/home/user/studio/dataconnect-generated/js/default-connector"
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:49:47.585313     471 codegen.go:82] [connector \"default\" javascriptSdk] Generating sources into \"/home/user/studio/dataconnect-generated/js/default-connector\"\n"}}
+[debug] [2025-08-19T17:49:47.675Z] I0819 17:49:47.675141     471 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: prelude.gql [73172B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:49:47.675141     471 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: prelude.gql [73172B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] \n"}}
+[debug] [2025-08-19T17:49:47.686Z] I0819 17:49:47.681287     471 collector.go:107] connector "default" javascriptSdk wrote into "/home/user/studio/dataconnect-generated/js/default-connector"
+Generated sources: index.cjs.js [11043B] package.json [860B] README.md [106312B] react/package.json [468B] react/index.cjs.js [8849B] index.d.ts [22481B] react/index.d.ts [11137B] react/esm/package.json [17B] react/esm/index.esm.js [8322B] react/README.md [109656B] esm/index.esm.js [9534B] esm/package.json [17B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:49:47.681287     471 collector.go:107] connector \"default\" javascriptSdk wrote into \"/home/user/studio/dataconnect-generated/js/default-connector\"\nGenerated sources: index.cjs.js [11043B] package.json [860B] README.md [106312B] react/package.json [468B] react/index.cjs.js [8849B] index.d.ts [22481B] react/index.d.ts [11137B] react/esm/package.json [17B] react/esm/index.esm.js [8322B] react/README.md [109656B] esm/index.esm.js [9534B] esm/package.json [17B] \n"}}
+[debug] [2025-08-19T17:49:47.733Z] I0819 17:49:47.728326     471 installsdk.go:55] Package @firebasegen/default-connector is already installed. Skipping installation
+I0819 17:49:47.728377     471 load.go:115] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:49:47.728326     471 installsdk.go:55] Package @firebasegen/default-connector is already installed. Skipping installation\nI0819 17:49:47.728377     471 load.go:115] Finished reloading\n"}}
+[debug] [2025-08-19T17:58:46.230Z] [Firebase Plugin] Activating Firebase extension.
+[debug] [2025-08-19T17:59:15.749Z] [Firebase Plugin] requireAuthWrapper
+[debug] [2025-08-19T17:59:15.752Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-08-19T17:59:15.753Z] > authorizing via signed-in user (lumacx@gmail.com)
+[debug] [2025-08-19T17:59:15.761Z] Checked if tokens are valid: true, expires at: 1755627337215
+[debug] [2025-08-19T17:59:15.763Z] Checked if tokens are valid: true, expires at: 1755627337215
+[debug] [2025-08-19T17:59:15.763Z] [Firebase Plugin] User found:  lumacx@gmail.com
+[info] [Firebase Plugin] (Core:Project) New user detected, fetching projects
+[debug] [2025-08-19T17:59:15.767Z] Checked if tokens are valid: true, expires at: 1755627337215
+[debug] [2025-08-19T17:59:15.770Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=1000
+[debug] [2025-08-19T17:59:15.880Z] [Firebase Plugin] VSCode notification server listening on port 40002
+[debug] [2025-08-19T17:59:16.248Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
+[debug] [2025-08-19T17:59:16.249Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
+[info] [Firebase Plugin] Starting Data Connect toolkit (version 2.10.1) on port 50002
+[info] i  dataconnect: downloading dataconnect-emulator-2.10.1... {"metadata":{"emulator":{"name":"dataconnect"},"message":"downloading dataconnect-emulator-2.10.1..."}}
+[debug] [2025-08-19T17:59:17.564Z] >>> [apiv2][query] GET https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v2.10.1 
+[debug] [2025-08-19T17:59:17.823Z] <<< [apiv2][status] GET https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v2.10.1 200
+[debug] [2025-08-19T17:59:17.824Z] <<< [apiv2][body] GET https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v2.10.1 [stream]
+[info] i  dataconnect: Removing outdated emulator files: dataconnect-emulator-2.11.1 {"metadata":{"emulator":{"name":"dataconnect"},"message":"Removing outdated emulator files: dataconnect-emulator-2.11.1"}}
+[debug] [2025-08-19T17:59:21.779Z] I0819 17:59:21.598599   23311 control.go:84] [/emulator/studio-v0 89e6] UpdateResources(): done
+Schema: sources: schema/schema.gql [3505B] 
+Connector "default": sources: connector/mutations.gql [2621B] connector/queries.gql [2293B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:59:21.598599   23311 control.go:84] [/emulator/studio-v0 89e6] UpdateResources(): done\nSchema: sources: schema/schema.gql [3505B] \nConnector \"default\": sources: connector/mutations.gql [2621B] connector/queries.gql [2293B] \n"}}
+[debug] [2025-08-19T17:59:21.783Z] Ignoring unsupported arg: auto_download {"metadata":{"emulator":{"name":"dataconnect"},"message":"Ignoring unsupported arg: auto_download"}}
+[debug] [2025-08-19T17:59:21.785Z] Ignoring unsupported arg: port {"metadata":{"emulator":{"name":"dataconnect"},"message":"Ignoring unsupported arg: port"}}
+[debug] [2025-08-19T17:59:21.787Z] Starting Data Connect Emulator with command {"binary":"/home/user/.cache/firebase/emulators/dataconnect-emulator-2.10.1","args":["--logtostderr","-v=2","dev","--listen=localhost:50002","--config_dir=/home/user/studio/dataconnect","--enable_output_schema_extensions=true","--enable_output_generated_sdk=true"],"optionalArgs":["listen","config_dir","enable_output_schema_extensions","enable_output_generated_sdk"],"joinArgs":true,"shell":false,"port":9399} {"metadata":{"emulator":{"name":"dataconnect"},"message":"Starting Data Connect Emulator with command {\"binary\":\"/home/user/.cache/firebase/emulators/dataconnect-emulator-2.10.1\",\"args\":[\"--logtostderr\",\"-v=2\",\"dev\",\"--listen=localhost:50002\",\"--config_dir=/home/user/studio/dataconnect\",\"--enable_output_schema_extensions=true\",\"--enable_output_generated_sdk=true\"],\"optionalArgs\":[\"listen\",\"config_dir\",\"enable_output_schema_extensions\",\"enable_output_generated_sdk\"],\"joinArgs\":true,\"shell\":false,\"port\":9399}"}}
+[info] i  dataconnect: Data Connect Emulator logging to dataconnect-debug.log {"metadata":{"emulator":{"name":"dataconnect"},"message":"Data Connect Emulator logging to dataconnect-debug.log"}}
+[debug] [2025-08-19T17:59:21.933Z] I0819 17:59:21.883360   23319 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:59:21.883360   23319 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-19T17:59:22.637Z] I0819 17:59:22.637461   23319 control.go:84] [/emulator/studio-v0 f498] UpdateResources(): done
+Schema: sources: schema/schema.gql [3505B] 
+Connector "default": sources: connector/mutations.gql [2621B] connector/queries.gql [2293B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:59:22.637461   23319 control.go:84] [/emulator/studio-v0 f498] UpdateResources(): done\nSchema: sources: schema/schema.gql [3505B] \nConnector \"default\": sources: connector/mutations.gql [2621B] connector/queries.gql [2293B] \n"}}
+[debug] [2025-08-19T17:59:23.460Z] I0819 17:59:23.458215   23319 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "/home/user/studio/dataconnect-generated/js/default-connector"
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:59:23.458215   23319 codegen.go:82] [connector \"default\" javascriptSdk] Generating sources into \"/home/user/studio/dataconnect-generated/js/default-connector\"\n"}}
+[debug] [2025-08-19T17:59:23.771Z] I0819 17:59:23.769737   23319 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: prelude.gql [73172B] main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:59:23.769737   23319 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: prelude.gql [73172B] main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] \n"}}
+[debug] [2025-08-19T17:59:23.789Z] I0819 17:59:23.786844   23319 collector.go:107] connector "default" javascriptSdk wrote into "/home/user/studio/dataconnect-generated/js/default-connector"
+Generated sources: package.json [860B] README.md [106312B] react/index.d.ts [11137B] react/esm/package.json [17B] react/esm/index.esm.js [8322B] esm/index.esm.js [9534B] react/package.json [468B] react/index.cjs.js [8849B] react/README.md [109656B] index.d.ts [22481B] esm/package.json [17B] index.cjs.js [11043B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:59:23.786844   23319 collector.go:107] connector \"default\" javascriptSdk wrote into \"/home/user/studio/dataconnect-generated/js/default-connector\"\nGenerated sources: package.json [860B] README.md [106312B] react/index.d.ts [11137B] react/esm/package.json [17B] react/esm/index.esm.js [8322B] esm/index.esm.js [9534B] react/package.json [468B] react/index.cjs.js [8849B] react/README.md [109656B] index.d.ts [22481B] esm/package.json [17B] index.cjs.js [11043B] \n"}}
+[debug] [2025-08-19T17:59:23.803Z] I0819 17:59:23.801129   23319 installsdk.go:55] Package @firebasegen/default-connector is already installed. Skipping installation
+I0819 17:59:23.801211   23319 load.go:115] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:59:23.801129   23319 installsdk.go:55] Package @firebasegen/default-connector is already installed. Skipping installation\nI0819 17:59:23.801211   23319 load.go:115] Finished reloading\n"}}
+[debug] [2025-08-19T17:59:23.936Z] I0819 17:59:23.855014   23319 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50002
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:59:23.855014   23319 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50002\n"}}
+[debug] [2025-08-19T17:59:24.501Z] I0819 17:59:24.500535   23319 engine.go:174] [/emulator/studio-v0 f498] ExecuteGraphqlRead IntrospectionQuery: succeeded. 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 17:59:24.500535   23319 engine.go:174] [/emulator/studio-v0 f498] ExecuteGraphqlRead IntrospectionQuery: succeeded. \n"}}
+[info] [Firebase Plugin] Stopping Data Connect toolkit
+[warn] ⚠  Data Connect Emulator has exited upon receiving signal: SIGINT 

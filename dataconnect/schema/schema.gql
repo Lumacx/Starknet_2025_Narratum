@@ -50,11 +50,12 @@ type AppSubscription @table {
 type Story @table {
   id: String! @default(expr: "uuidV4()")
   title: String
-  genre: String
+  genres: [String!] 
   description: String
   coverImageUrl: String
   creator: User!
   status: String! @default(value: "'draft'")
+  commentsCount: Int! @default(value: 0)
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
 }

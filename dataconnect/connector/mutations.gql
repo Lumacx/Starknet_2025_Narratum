@@ -2,8 +2,8 @@
 mutation CreateUserProfile($username: String!, $email: String!, $displayname: String!, $avatarUrl: String) @auth(level: USER) {
   user_insert( data: { username: $username, email: $email, displayname: $displayname, avatarUrl: $avatarUrl } )
 }
-mutation CreateStory($creatorId: String!, $title: String, $genre: String, $description: String, $coverImageUrl: String) @auth(level: USER) {
-  story_insert( data: { creatorId: $creatorId, title: $title, genre: $genre, description: $description, coverImageUrl: $coverImageUrl } )
+mutation CreateStory($creatorId: String!, $title: String, $genres: [String!], $description: String, $coverImageUrl: String) @auth(level: USER) {
+  story_insert( data: { creatorId: $creatorId, title: $title, genres: $genres, description: $description, coverImageUrl: $coverImageUrl } )
 }
 mutation CreateStoryContent($storyId: String!, $textContent: String, $pageNumber: Int, $imageUrl: String, $audioUrl: String) @auth(level: USER) {
   storyContent_insert( data: { storyId: $storyId, textContent: $textContent, pageNumber: $pageNumber, imageUrl: $imageUrl, audioUrl: $audioUrl } )

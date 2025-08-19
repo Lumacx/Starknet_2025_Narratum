@@ -251,7 +251,7 @@ export interface GetStoryWithContentData {
   story?: {
     id: string;
     title?: string | null;
-    genre?: string | null;
+    genres?: string[] | null;
     description?: string | null;
     coverImageUrl?: string | null;
     status: string;
@@ -335,7 +335,7 @@ export interface GetAllStoriesData {
   stories: ({
     id: string;
     title?: string | null;
-    genre?: string | null;
+    genres?: string[] | null;
     status: string;
     coverImageUrl?: string | null;
     creator: {
@@ -1298,7 +1298,7 @@ The `CreateStory` Mutation requires an argument of type `CreateStoryVariables`, 
 export interface CreateStoryVariables {
   creatorId: string;
   title?: string | null;
-  genre?: string | null;
+  genres?: string[] | null;
   description?: string | null;
   coverImageUrl?: string | null;
 }
@@ -1352,13 +1352,13 @@ export default function CreateStoryComponent() {
   const createStoryVars: CreateStoryVariables = {
     creatorId: ..., 
     title: ..., // optional
-    genre: ..., // optional
+    genres: ..., // optional
     description: ..., // optional
     coverImageUrl: ..., // optional
   };
   mutation.mutate(createStoryVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ creatorId: ..., title: ..., genre: ..., description: ..., coverImageUrl: ..., });
+  mutation.mutate({ creatorId: ..., title: ..., genres: ..., description: ..., coverImageUrl: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {

@@ -18,7 +18,7 @@ query GetStoryWithContent($storyId: String!) @auth(level: USER) {
   story(id: $storyId) {
     id
     title
-    genre
+    genres
     description
     coverImageUrl
     status
@@ -31,7 +31,7 @@ query GetAllStories @auth(level: PUBLIC) {
   stories(limit: 20) {
     id
     title
-    genre
+    genres
     status
      coverImageUrl
     creator {

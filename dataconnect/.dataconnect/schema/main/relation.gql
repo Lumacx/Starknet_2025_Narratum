@@ -757,6 +757,15 @@ extend type Story {
   """
   _count: Int! @fdc_generated(from: "Story", purpose: QUERY_COUNT)
   """
+  ✨ Count the number of rows in the `Story` table where the `commentsCount` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  commentsCount_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Story.commentsCount", purpose: QUERY_COUNT)
+  """
   ✨ Count the number of rows in the `Story` table where the `coverImageUrl` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
   """
   coverImageUrl_count(
@@ -792,15 +801,6 @@ extend type Story {
     """
     distinct: Boolean = false
   ): Int! @fdc_generated(from: "Story.description", purpose: QUERY_COUNT)
-  """
-  ✨ Count the number of rows in the `Story` table where the `genre` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
-  """
-  genre_count(
-    """
-    Set to true to count the number of distinct values.
-    """
-    distinct: Boolean = false
-  ): Int! @fdc_generated(from: "Story.genre", purpose: QUERY_COUNT)
   """
   ✨ Count the number of rows in the `Story` table where the `id` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
   """
@@ -838,6 +838,28 @@ extend type Story {
     distinct: Boolean = false
   ): Int! @fdc_generated(from: "Story.updatedAt", purpose: QUERY_COUNT)
   """
+  ✨ Sum the `commentsCount` field in the `Story` table.
+  """
+  commentsCount_sum(
+    """
+    Set to true to sum the distinct values.
+    """
+    distinct: Boolean = false
+  ): Int @fdc_generated(from: "Story.commentsCount", purpose: QUERY_SUM)
+  """
+  ✨ Average the `commentsCount` field in the `Story` table.
+  """
+  commentsCount_avg(
+    """
+    Set to true to average the distinct values.
+    """
+    distinct: Boolean = false
+  ): Float @fdc_generated(from: "Story.commentsCount", purpose: QUERY_AVG)
+  """
+  ✨ Minimum of the `commentsCount` field in the `Story` table.
+  """
+  commentsCount_min: Int @fdc_generated(from: "Story.commentsCount", purpose: QUERY_MIN)
+  """
   ✨ Minimum of the `createdAt` field in the `Story` table.
   """
   createdAt_min: Timestamp @fdc_generated(from: "Story.createdAt", purpose: QUERY_MIN)
@@ -845,6 +867,10 @@ extend type Story {
   ✨ Minimum of the `updatedAt` field in the `Story` table.
   """
   updatedAt_min: Timestamp @fdc_generated(from: "Story.updatedAt", purpose: QUERY_MIN)
+  """
+  ✨ Maximum of the `commentsCount` field in the `Story` table.
+  """
+  commentsCount_max: Int @fdc_generated(from: "Story.commentsCount", purpose: QUERY_MAX)
   """
   ✨ Maximum of the `createdAt` field in the `Story` table.
   """
