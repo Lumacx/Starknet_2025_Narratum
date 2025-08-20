@@ -33,6 +33,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*CreateAdminAction*](#createadminaction)
   - [*CreateAnalyticsEntry*](#createanalyticsentry)
   - [*LogLegalDisclaimerAcceptance*](#loglegaldisclaimeracceptance)
+  - [*UpdateStoryContent*](#updatestorycontent)
 
 # Accessing the connector
 A connector is a collection of Queries and Mutations. One SDK is generated for each connector - this SDK is generated for the connector `default`. You can find more information about connectors in the [Data Connect documentation](https://firebase.google.com/docs/data-connect#how-does).
@@ -2607,6 +2608,127 @@ console.log(data.legalDisclaimer_insert);
 executeMutation(ref).then((response) => {
   const data = response.data;
   console.log(data.legalDisclaimer_insert);
+});
+```
+
+## UpdateStoryContent
+You can execute the `UpdateStoryContent` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [default-connector/index.d.ts](./index.d.ts):
+```typescript
+updateStoryContent(vars: UpdateStoryContentVariables): MutationPromise<UpdateStoryContentData, UpdateStoryContentVariables>;
+
+interface UpdateStoryContentRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateStoryContentVariables): MutationRef<UpdateStoryContentData, UpdateStoryContentVariables>;
+}
+export const updateStoryContentRef: UpdateStoryContentRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+updateStoryContent(dc: DataConnect, vars: UpdateStoryContentVariables): MutationPromise<UpdateStoryContentData, UpdateStoryContentVariables>;
+
+interface UpdateStoryContentRef {
+  ...
+  (dc: DataConnect, vars: UpdateStoryContentVariables): MutationRef<UpdateStoryContentData, UpdateStoryContentVariables>;
+}
+export const updateStoryContentRef: UpdateStoryContentRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the updateStoryContentRef:
+```typescript
+const name = updateStoryContentRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `UpdateStoryContent` mutation requires an argument of type `UpdateStoryContentVariables`, which is defined in [default-connector/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface UpdateStoryContentVariables {
+  id: string;
+  textContent?: string | null;
+  pageNumber?: number | null;
+  imageUrl?: string | null;
+  audioUrl?: string | null;
+}
+```
+### Return Type
+Recall that executing the `UpdateStoryContent` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `UpdateStoryContentData`, which is defined in [default-connector/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface UpdateStoryContentData {
+  storyContent_update?: StoryContent_Key | null;
+}
+```
+### Using `UpdateStoryContent`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, updateStoryContent, UpdateStoryContentVariables } from '@firebasegen/default-connector';
+
+// The `UpdateStoryContent` mutation requires an argument of type `UpdateStoryContentVariables`:
+const updateStoryContentVars: UpdateStoryContentVariables = {
+  id: ..., 
+  textContent: ..., // optional
+  pageNumber: ..., // optional
+  imageUrl: ..., // optional
+  audioUrl: ..., // optional
+};
+
+// Call the `updateStoryContent()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await updateStoryContent(updateStoryContentVars);
+// Variables can be defined inline as well.
+const { data } = await updateStoryContent({ id: ..., textContent: ..., pageNumber: ..., imageUrl: ..., audioUrl: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await updateStoryContent(dataConnect, updateStoryContentVars);
+
+console.log(data.storyContent_update);
+
+// Or, you can use the `Promise` API.
+updateStoryContent(updateStoryContentVars).then((response) => {
+  const data = response.data;
+  console.log(data.storyContent_update);
+});
+```
+
+### Using `UpdateStoryContent`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, updateStoryContentRef, UpdateStoryContentVariables } from '@firebasegen/default-connector';
+
+// The `UpdateStoryContent` mutation requires an argument of type `UpdateStoryContentVariables`:
+const updateStoryContentVars: UpdateStoryContentVariables = {
+  id: ..., 
+  textContent: ..., // optional
+  pageNumber: ..., // optional
+  imageUrl: ..., // optional
+  audioUrl: ..., // optional
+};
+
+// Call the `updateStoryContentRef()` function to get a reference to the mutation.
+const ref = updateStoryContentRef(updateStoryContentVars);
+// Variables can be defined inline as well.
+const ref = updateStoryContentRef({ id: ..., textContent: ..., pageNumber: ..., imageUrl: ..., audioUrl: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = updateStoryContentRef(dataConnect, updateStoryContentVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.storyContent_update);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.storyContent_update);
 });
 ```
 

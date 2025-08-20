@@ -116,6 +116,17 @@ export function logLegalDisclaimerAcceptance(dcOrVars, vars) {
   return executeMutation(logLegalDisclaimerAcceptanceRef(dcOrVars, vars));
 }
 
+export const updateStoryContentRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateStoryContent', inputVars);
+}
+updateStoryContentRef.operationName = 'UpdateStoryContent';
+
+export function updateStoryContent(dcOrVars, vars) {
+  return executeMutation(updateStoryContentRef(dcOrVars, vars));
+}
+
 export const getUserProfileRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();

@@ -18,9 +18,12 @@
     "typecheck": "tsc --noEmit",
 
     "dc:enable": "npx -y firebase-tools@latest experiments:enable dataconnect",
-    "dc:apply": "npx -y firebase-tools@latest dataconnect:apply",
-    "dc:codegen": "npx -y firebase-tools@latest dataconnect:codegen --language typescript --react --out dataconnect-generated/js",
-    "dc:all": "npm run dc:enable && npm run dc:apply && npm run dc:codegen"
+    "dc:deploy": "npx -y firebase-tools@latest deploy --only dataconnect",
+    "dc:sdk": "npx -y firebase-tools@latest dataconnect:sdk:generate --out dataconnect-generated/js",
+    "dc:all": "npm run dc:deploy && npm run dc:sdk",
+
+    "generate:connector": "npx -y firebase-tools@latest dataconnect:sdk:generate"
+
     },
   "dependencies": {
     "@argent/x-ui": "^1.87.0",

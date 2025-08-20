@@ -328,6 +328,18 @@ export interface Template_Key {
   __typename?: 'Template_Key';
 }
 
+export interface UpdateStoryContentData {
+  storyContent_update?: StoryContent_Key | null;
+}
+
+export interface UpdateStoryContentVariables {
+  id: string;
+  textContent?: string | null;
+  pageNumber?: number | null;
+  imageUrl?: string | null;
+  audioUrl?: string | null;
+}
+
 export interface User_Key {
   id: string;
   __typename?: 'User_Key';
@@ -452,6 +464,18 @@ export const logLegalDisclaimerAcceptanceRef: LogLegalDisclaimerAcceptanceRef;
 
 export function logLegalDisclaimerAcceptance(vars: LogLegalDisclaimerAcceptanceVariables): MutationPromise<LogLegalDisclaimerAcceptanceData, LogLegalDisclaimerAcceptanceVariables>;
 export function logLegalDisclaimerAcceptance(dc: DataConnect, vars: LogLegalDisclaimerAcceptanceVariables): MutationPromise<LogLegalDisclaimerAcceptanceData, LogLegalDisclaimerAcceptanceVariables>;
+
+interface UpdateStoryContentRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateStoryContentVariables): MutationRef<UpdateStoryContentData, UpdateStoryContentVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpdateStoryContentVariables): MutationRef<UpdateStoryContentData, UpdateStoryContentVariables>;
+  operationName: string;
+}
+export const updateStoryContentRef: UpdateStoryContentRef;
+
+export function updateStoryContent(vars: UpdateStoryContentVariables): MutationPromise<UpdateStoryContentData, UpdateStoryContentVariables>;
+export function updateStoryContent(dc: DataConnect, vars: UpdateStoryContentVariables): MutationPromise<UpdateStoryContentData, UpdateStoryContentVariables>;
 
 interface GetUserProfileRef {
   /* Allow users to create refs without passing in DataConnect */

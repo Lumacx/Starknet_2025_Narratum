@@ -6,6 +6,7 @@ import Link from 'next/link';
 import {
   useGetStoryWithContent,
   useCreateStoryContent,
+  useUpdateStoryContent, // Import the new update mutation hook
 } from '@firebasegen/default-connector/react';
 import type { GetStoryWithContentData } from '@firebasegen/default-connector';
 import { generateWritingPrompts } from '@/ai/flows/generate-writing-prompts';
@@ -51,6 +52,7 @@ const StoryEditorPage: React.FC = () => {
 
   const { mutate: createStoryContent, isPending: isSavingPage } =
     useCreateStoryContent();
+  const { mutate: updateStoryContent, isPending: isUpdatingPage } = useUpdateStoryContent(); // Use the update mutation
 
   const story = data?.story ?? null;
   const pages = (data?.storyContents ?? []) as StoryPage[];
@@ -127,28 +129,40 @@ const StoryEditorPage: React.FC = () => {
   };
 
   // Save current buffer as a NEW page (note: update mutation not defined yet)
-  const handleSaveAsNewPage = () => {
-    if (!story) return;
-
-    const pageNumber = activePage?.pageNumber ?? pages.length + 1;
+  const handleSavePageContent = () => {
+    if (!story || !activePage) return;
 
     setSaveStatus('saving');
-    createStoryContent(
-      {
-        storyId,
-        pageNumber,
-        textContent: currentPageContent,
-      },
-      {
-        onSuccess: async () => {
-          setSaveStatus('saved');
-          await refetch();
-        },
-        onError: () => {
+    const commonData = {
+      textContent: currentPageContent,
+      pageNumber: activePage.pageNumber,
+      imageUrl: activePage.imageUrl, // Preserve existing image URL
+      audioUrl: activePage.audioUrl, // Preserve existing audio URL
+    };
+
+    if (activePage.id) { // If page exists, update it
+      updateStoryContent({
+        id: activePage.id,
+        ...commonData,
+      }, {
+        onSuccess: () => setSaveStatus('saved'),
+        onError: (e: Error) => {
+          console.error("Failed to update content:", e);
           setSaveStatus('unsaved');
-        },
-      }
-    );
+        }
+      });
+    } else { // If it's a new page (should be handled by handleAddPage now)
+      createStoryContent({
+        storyId,
+        ...commonData,
+      }, {
+        onSuccess: () => setSaveStatus('saved'),
+        onError: (e: Error) => {
+          console.error("Failed to create content:", e);
+          setSaveStatus('unsaved');
+        }
+      });
+    }
   };
 
   const handleGeneratePrompt = async () => {
@@ -207,6 +221,24 @@ const StoryEditorPage: React.FC = () => {
 
       const { imageUrl } = await response.json();
       setGeneratedImageUrl(imageUrl);
+      
+      // Save the generated image URL to the current active page
+      if (activePage && imageUrl) {
+        setSaveStatus('saving');
+        updateStoryContent({
+          id: activePage.id,
+          textContent: activePage.textContent,
+          pageNumber: activePage.pageNumber,
+          imageUrl: imageUrl, // Set the new image URL
+          audioUrl: activePage.audioUrl, // Preserve existing audio URL
+        }, {
+          onSuccess: () => {
+            setSaveStatus('saved');
+            refetch(); // Refetch story content to update UI
+          },
+          onError: (e: Error) => console.error("Failed to save image to page:", e)
+        });
+      }
     } catch (e: any) {
       setImageGenerationError(e.message);
     } finally {
@@ -305,8 +337,8 @@ const StoryEditorPage: React.FC = () => {
 
           <div className="flex justify-end">
             <button
-              onClick={handleSaveAsNewPage}
-              disabled={!activePage || isSavingPage || saveStatus !== 'unsaved'}
+              onClick={handleSavePageContent}
+              disabled={!activePage || isSavingPage || isUpdatingPage || saveStatus !== 'unsaved'}
               className="px-4 py-2 bg-[#E97451] text-white font-semibold rounded-lg shadow hover:bg-[#d8633f] transition-colors disabled:opacity-50"
             >
               Save (create page)

@@ -228,8 +228,20 @@ const CatalogPage: React.FC = () => {
                 </h3>
                 {/* Displaying genres */}
                 {story.genres && story.genres.length > 0 && (
-                  <p className="text-xs text-gray-400 mb-1">
+                  <p className="text-xs text-[#8FA0AF] mb-1">
                     {story.genres.join(', ')}
+                  </p>
+                )}
+                {/* Displaying Author */}
+                {story.creator && ( // Ensure creator exists before trying to access displayname
+                  <p className="text-sm text-[#8FA0AF] mb-1">
+                    By {story.creator.displayname || 'Unknown Author'}
+                  </p>
+                )}
+                {/* Displaying Comments Count */}
+                {story.commentsCount !== undefined && ( // Check if commentsCount exists and is not null/undefined
+                  <p className="text-sm text-[#8FA0AF] flex items-center justify-center gap-1">
+                    💬 {story.commentsCount} Comments
                   </p>
                 )}
                 <div className="font-['Lato'] bg-[#BFA071] text-[#1A2533] py-2.5 px-6 rounded-md text-base font-bold uppercase tracking-wide inline-block mb-1.5 transition-colors duration-300 hover:bg-[#E0C9A0] z-20 relative">

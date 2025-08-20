@@ -1,4 +1,4 @@
-const { createUserProfileRef, createStoryRef, createStoryContentRef, createTemplateRef, createAiGeneratedImageRef, createAiGeneratedGifRef, createPaymentRef, createAdminActionRef, createAnalyticsEntryRef, logLegalDisclaimerAcceptanceRef, getUserProfileRef, getStoryWithContentRef, getAllStoriesRef, getAppSubscriptionRef, getTemplateRef, getAllTemplatesRef, getAiGeneratedImageRef, getAiGeneratedGifRef, getPaymentRef, getAdminActionRef, getAnalyticsEntryRef, getLegalDisclaimerRef, connectorConfig } = require('../index.cjs.js');
+const { createUserProfileRef, createStoryRef, createStoryContentRef, createTemplateRef, createAiGeneratedImageRef, createAiGeneratedGifRef, createPaymentRef, createAdminActionRef, createAnalyticsEntryRef, logLegalDisclaimerAcceptanceRef, updateStoryContentRef, getUserProfileRef, getStoryWithContentRef, getAllStoriesRef, getAppSubscriptionRef, getTemplateRef, getAllTemplatesRef, getAiGeneratedImageRef, getAiGeneratedGifRef, getPaymentRef, getAdminActionRef, getAnalyticsEntryRef, getLegalDisclaimerRef, connectorConfig } = require('../index.cjs.js');
 const { validateArgs, CallerSdkTypeEnum } = require('firebase/data-connect');
 const { useDataConnectQuery, useDataConnectMutation, validateReactArgs } = require('@tanstack-query-firebase/react/data-connect');
 
@@ -78,6 +78,14 @@ exports.useLogLegalDisclaimerAcceptance = function useLogLegalDisclaimerAcceptan
   const { dc: dcInstance, vars: inputOpts } = validateArgs(connectorConfig, dcOrOptions, options);
   function refFactory(vars) {
     return logLegalDisclaimerAcceptanceRef(dcInstance, vars);
+  }
+  return useDataConnectMutation(refFactory, inputOpts, CallerSdkTypeEnum.GeneratedReact);
+}
+
+exports.useUpdateStoryContent = function useUpdateStoryContent(dcOrOptions, options) {
+  const { dc: dcInstance, vars: inputOpts } = validateArgs(connectorConfig, dcOrOptions, options);
+  function refFactory(vars) {
+    return updateStoryContentRef(dcInstance, vars);
   }
   return useDataConnectMutation(refFactory, inputOpts, CallerSdkTypeEnum.GeneratedReact);
 }

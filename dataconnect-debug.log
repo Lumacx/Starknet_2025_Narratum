@@ -1,82 +1,13 @@
-I0820 03:28:21.523521     502 load.go:37] Reloading schema and connectors...
-I0820 03:28:22.193648     502 control.go:84] [/emulator/studio-v0 4843] UpdateResources(): done
-Schema: sources: schema/schema.gql [3505B] 
-Connector "default": sources: connector/mutations.gql [2621B] connector/queries.gql [2293B] 
-I0820 03:28:22.967439     502 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "/home/user/studio/dataconnect-generated/js/default-connector"
-I0820 03:28:23.263085     502 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
-Generated sources: main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [73172B] 
-I0820 03:28:23.279718     502 collector.go:107] connector "default" javascriptSdk wrote into "/home/user/studio/dataconnect-generated/js/default-connector"
-Generated sources: index.d.ts [22481B] index.cjs.js [11043B] react/esm/package.json [17B] react/README.md [109656B] esm/index.esm.js [9534B] esm/package.json [17B] package.json [860B] README.md [106312B] react/index.d.ts [11137B] react/package.json [468B] react/index.cjs.js [8849B] react/esm/index.esm.js [8322B] 
-I0820 03:28:23.298934     502 installsdk.go:55] Package @firebasegen/default-connector is already installed. Skipping installation
-I0820 03:28:23.299000     502 load.go:115] Finished reloading
-I0820 03:28:23.316554     502 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50001
-I0820 03:28:23.666728     502 engine.go:174] [/emulator/studio-v0 4843] ExecuteGraphqlRead IntrospectionQuery: succeeded. 
-I0820 03:31:56.277239     502 load.go:37] Reloading schema and connectors...
-E0820 03:31:56.296226     502 load.go:79] Could not load sources: 
-Errors: schema/schema.gql:134: Cannot redeclare type Query.
-I0820 03:31:56.297748     502 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
-Generated sources: main/relation.gql [49005B] main/query.gql [15655B] prelude.gql [73172B] main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [99254B] 
-I0820 03:31:56.297829     502 load.go:80] Finished reloading
-I0820 03:36:39.132117     502 load.go:37] Reloading schema and connectors...
-E0820 03:36:39.227728     502 load.go:79] Could not load sources: 
-Errors: schema/schema.gql:234: Unsupported GQL type kind input_object: IntFilter
-schema/schema.gql:186: Unsupported GQL type kind input_object: PaymentFilter
-schema/schema.gql:208: Unsupported GQL type kind input_object: LegalDisclaimerFilter
-schema/schema.gql:245: Unsupported GQL type kind input_object: FloatFilter
-schema/schema.gql:134: Unsupported GQL type kind input_object: UserFilter
-schema/schema.gql:256: Unsupported GQL type kind input_object: BooleanFilter
-schema/schema.gql:155: Unsupported GQL type kind input_object: StoryContentFilter
-schema/schema.gql:180: Unsupported GQL type kind input_object: AiGeneratedGifFilter
-schema/schema.gql:164: Unsupported GQL type kind input_object: TemplateFilter
-schema/schema.gql:171: Unsupported GQL type kind input_object: AiGeneratedImageFilter
-schema/schema.gql:144: Unsupported GQL type kind input_object: StoryFilter
-schema/schema.gql:271: Unsupported GQL type kind input_object: StringArrayFilter
-schema/schema.gql:194: Unsupported GQL type kind input_object: AdminActionFilter
-schema/schema.gql:261: Unsupported GQL type kind input_object: TimestampFilter
-schema/schema.gql:215: Unsupported GQL type kind input_object: StringFilter
-schema/schema.gql:202: Unsupported GQL type kind input_object: AnalyticsFilter
-I0820 03:36:39.240661     502 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
-Generated sources: prelude.gql [73172B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] 
-I0820 03:36:39.240815     502 load.go:80] Finished reloading
-I0820 03:37:52.184871     502 load.go:37] Reloading schema and connectors...
-E0820 03:37:52.209409     502 load.go:79] Could not load sources: 
-Errors: schema/schema.gql:134: Unsupported GQL type kind input_object: StringArrayFilter
-I0820 03:37:52.214538     502 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
-Generated sources: main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] prelude.gql [73172B] main/input.gql [99254B] main/relation.gql [49005B] 
-I0820 03:37:52.214603     502 load.go:80] Finished reloading
-I0820 03:38:33.127511     502 load.go:37] Reloading schema and connectors...
-I0820 03:38:33.362322     502 control.go:84] [/emulator/studio-v0 4843] UpdateResources(): done
+I0820 16:19:21.591479     751 load.go:37] Reloading schema and connectors...
+I0820 16:19:21.914400     751 control.go:84] [/emulator/studio-v0 ffbf] UpdateResources(): done
 Schema: sources: schema/schema.gql [3557B] 
-Connector "default": sources: connector/queries.gql [2293B] connector/mutations.gql [2621B] 
-I0820 03:38:33.578862     502 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "/home/user/studio/dataconnect-generated/js/default-connector"
-I0820 03:38:33.644483     502 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
-Generated sources: prelude.gql [73172B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] 
-I0820 03:38:33.648272     502 collector.go:107] connector "default" javascriptSdk wrote into "/home/user/studio/dataconnect-generated/js/default-connector"
-Generated sources: react/esm/package.json [17B] react/index.cjs.js [8849B] react/esm/index.esm.js [8322B] index.d.ts [22481B] README.md [106312B] react/index.d.ts [11137B] react/README.md [109656B] esm/index.esm.js [9534B] esm/package.json [17B] index.cjs.js [11043B] package.json [860B] react/package.json [468B] 
-I0820 03:38:33.666074     502 installsdk.go:55] Package @firebasegen/default-connector is already installed. Skipping installation
-I0820 03:38:33.666154     502 load.go:115] Finished reloading
-I0820 04:31:19.709272     502 load.go:37] Reloading schema and connectors...
-W0820 04:31:19.934891     502 control.go:58] [/emulator/studio-v0 4843] connector "default" has errors: connector/queries.gql:17: Unknown argument "reason" on directive "@auth".
-connector/queries.gql:28: Field "_eq" is not defined by type "String_Filter". Did you mean "eq", "ne", "ge", or "le"?
-connector/queries.gql:27: Unknown argument "order_by" on field "Query.storyContents". Did you mean "orderBy"?
-
-sources: connector/mutations.gql [2621B] connector/queries.gql [2529B] 
-I0820 04:31:19.937952     502 control.go:84] [/emulator/studio-v0 4843] UpdateResources(): done
-Connector "default": sources: connector/queries.gql [2529B] connector/mutations.gql [2621B] 
-E0820 04:31:19.945446     502 load.go:79] Could not load sources: 
-Errors: connector/queries.gql:17: Unknown argument "reason" on directive "@auth".
-connector/queries.gql:28: Field "_eq" is not defined by type "String_Filter". Did you mean "eq", "ne", "ge", or "le"?
-connector/queries.gql:27: Unknown argument "order_by" on field "Query.storyContents". Did you mean "orderBy"?
-I0820 04:31:19.947247     502 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Connector "default": sources: connector/mutations.gql [2966B] connector/queries.gql [2481B] 
+I0820 16:19:22.213173     751 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "/home/user/studio/dataconnect-generated/js/default-connector"
+I0820 16:19:22.303233     751 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
 Generated sources: main/mutation.gql [41655B] prelude.gql [73172B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] 
-I0820 04:31:19.947298     502 load.go:80] Finished reloading
-I0820 04:35:53.477277     502 load.go:37] Reloading schema and connectors...
-I0820 04:35:53.841978     502 control.go:84] [/emulator/studio-v0 4843] UpdateResources(): done
-Connector "default": sources: connector/mutations.gql [2621B] connector/queries.gql [2481B] 
-I0820 04:35:54.036271     502 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "/home/user/studio/dataconnect-generated/js/default-connector"
-I0820 04:35:54.075895     502 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
-Generated sources: main/mutation.gql [41655B] prelude.gql [73172B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] 
-I0820 04:35:54.082569     502 collector.go:107] connector "default" javascriptSdk wrote into "/home/user/studio/dataconnect-generated/js/default-connector"
-Generated sources: esm/index.esm.js [9534B] esm/package.json [17B] README.md [106684B] react/README.md [109935B] index.d.ts [22717B] index.cjs.js [11043B] package.json [860B] react/index.d.ts [11137B] react/package.json [468B] react/esm/package.json [17B] react/index.cjs.js [8849B] react/esm/index.esm.js [8322B] 
-I0820 04:35:54.101225     502 installsdk.go:55] Package @firebasegen/default-connector is already installed. Skipping installation
-I0820 04:35:54.101303     502 load.go:115] Finished reloading
+I0820 16:19:22.307670     751 collector.go:107] connector "default" javascriptSdk wrote into "/home/user/studio/dataconnect-generated/js/default-connector"
+Generated sources: esm/index.esm.js [9975B] index.cjs.js [11555B] package.json [860B] react/package.json [468B] react/index.cjs.js [9237B] react/README.md [115028B] esm/package.json [17B] README.md [111806B] react/index.d.ts [11670B] react/esm/package.json [17B] react/esm/index.esm.js [8685B] index.d.ts [23766B] 
+I0820 16:19:22.312533     751 installsdk.go:55] Package @firebasegen/default-connector is already installed. Skipping installation
+I0820 16:19:22.315309     751 load.go:115] Finished reloading
+I0820 16:19:22.324430     751 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50001
+I0820 16:19:22.541109     751 engine.go:174] [/emulator/studio-v0 ffbf] ExecuteGraphqlRead IntrospectionQuery: succeeded. 

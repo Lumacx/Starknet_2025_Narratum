@@ -38,3 +38,17 @@ mutation CreateAnalyticsEntry($userId: String!, $storyId: String!, $action: Stri
 mutation LogLegalDisclaimerAcceptance($userId: String!) @auth(level: USER) {
   legalDisclaimer_insert( data: { userId: $userId, accepted: true } ) # acceptedDate is nullable, set by app
 }
+
+# ✅ Update an existing StoryContent page
+mutation UpdateStoryContent(
+  $id: String!,
+  $textContent: String,
+  $pageNumber: Int,
+  $imageUrl: String,
+  $audioUrl: String
+) @auth(level: USER) {
+  storyContent_update(
+    id: $id,
+    data: { textContent: $textContent, pageNumber: $pageNumber, imageUrl: $imageUrl, audioUrl: $audioUrl }
+  )
+}
