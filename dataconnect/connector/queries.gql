@@ -13,7 +13,7 @@ query GetUserProfile($userId: String!) @auth(level: USER) {
   }
 }
 
-# ✅ Get a specific story by ID
+# ✅ Get a specific story plus its pages
 query GetStoryWithContent($storyId: String!) @auth(level: USER) {
   story(id: $storyId) {
     id
@@ -22,6 +22,17 @@ query GetStoryWithContent($storyId: String!) @auth(level: USER) {
     description
     coverImageUrl
     status
+    createdAt
+  }
+  storyContents(
+    where: { storyId: { eq: $storyId } }
+    orderBy: { pageNumber: ASC }
+  ) {
+    id
+    pageNumber
+    textContent
+    imageUrl
+    audioUrl
     createdAt
   }
 }

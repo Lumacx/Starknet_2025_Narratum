@@ -3225,3 +3225,183 @@ I0819 21:17:23.104539     473 load.go:115] Finished reloading
  {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 21:17:23.130026     473 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50001\n"}}
 [debug] [2025-08-19T21:17:23.592Z] I0819 21:17:23.418946     473 engine.go:174] [/emulator/studio-v0 409c] ExecuteGraphqlRead IntrospectionQuery: succeeded. 
  {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0819 21:17:23.418946     473 engine.go:174] [/emulator/studio-v0 409c] ExecuteGraphqlRead IntrospectionQuery: succeeded. \n"}}
+[debug] [2025-08-20T00:19:44.862Z] [Firebase Plugin] Activating Firebase extension.
+[debug] [2025-08-20T00:20:04.859Z] [Firebase Plugin] requireAuthWrapper
+[debug] [2025-08-20T00:20:04.861Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-08-20T00:20:04.863Z] > authorizing via signed-in user (lumacx@gmail.com)
+[debug] [2025-08-20T00:20:04.871Z] Checked if tokens are valid: false, expires at: 1755641838140
+[debug] [2025-08-20T00:20:04.872Z] Checked if tokens are valid: false, expires at: 1755641838140
+[debug] [2025-08-20T00:20:04.873Z] > refreshing access token with scopes: []
+[debug] [2025-08-20T00:20:04.879Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-08-20T00:20:04.879Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-08-20T00:20:04.975Z] [Firebase Plugin] VSCode notification server listening on port 40001
+[debug] [2025-08-20T00:20:05.618Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-08-20T00:20:05.623Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-08-20T00:20:05.644Z] [Firebase Plugin] User found:  lumacx@gmail.com
+[info] [Firebase Plugin] (Core:Project) New user detected, fetching projects
+[debug] [2025-08-20T00:20:05.648Z] Checked if tokens are valid: true, expires at: 1755652804624
+[debug] [2025-08-20T00:20:05.653Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=1000
+[info] [Firebase Plugin] Starting Data Connect toolkit (version 2.10.1) on port 50001
+[debug] [2025-08-20T00:20:09.335Z] I0820 00:20:09.262562     542 control.go:84] [/emulator/studio-v0 baf6] UpdateResources(): done
+Schema: sources: schema/schema.gql [3505B] 
+Connector "default": sources: connector/mutations.gql [2621B] connector/queries.gql [2293B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0820 00:20:09.262562     542 control.go:84] [/emulator/studio-v0 baf6] UpdateResources(): done\nSchema: sources: schema/schema.gql [3505B] \nConnector \"default\": sources: connector/mutations.gql [2621B] connector/queries.gql [2293B] \n"}}
+[debug] [2025-08-20T00:20:09.337Z] Ignoring unsupported arg: auto_download {"metadata":{"emulator":{"name":"dataconnect"},"message":"Ignoring unsupported arg: auto_download"}}
+[debug] [2025-08-20T00:20:09.338Z] Ignoring unsupported arg: port {"metadata":{"emulator":{"name":"dataconnect"},"message":"Ignoring unsupported arg: port"}}
+[debug] [2025-08-20T00:20:09.338Z] Starting Data Connect Emulator with command {"binary":"/home/user/.cache/firebase/emulators/dataconnect-emulator-2.10.1","args":["--logtostderr","-v=2","dev","--listen=localhost:50001","--config_dir=/home/user/studio/dataconnect","--enable_output_schema_extensions=true","--enable_output_generated_sdk=true"],"optionalArgs":["listen","config_dir","enable_output_schema_extensions","enable_output_generated_sdk"],"joinArgs":true,"shell":false,"port":9399} {"metadata":{"emulator":{"name":"dataconnect"},"message":"Starting Data Connect Emulator with command {\"binary\":\"/home/user/.cache/firebase/emulators/dataconnect-emulator-2.10.1\",\"args\":[\"--logtostderr\",\"-v=2\",\"dev\",\"--listen=localhost:50001\",\"--config_dir=/home/user/studio/dataconnect\",\"--enable_output_schema_extensions=true\",\"--enable_output_generated_sdk=true\"],\"optionalArgs\":[\"listen\",\"config_dir\",\"enable_output_schema_extensions\",\"enable_output_generated_sdk\"],\"joinArgs\":true,\"shell\":false,\"port\":9399}"}}
+[info] i  dataconnect: Data Connect Emulator logging to dataconnect-debug.log {"metadata":{"emulator":{"name":"dataconnect"},"message":"Data Connect Emulator logging to dataconnect-debug.log"}}
+[debug] [2025-08-20T00:20:16.889Z] I0820 00:20:09.392803     547 load.go:37] Reloading schema and connectors...
+I0820 00:20:09.921877     547 control.go:84] [/emulator/studio-v0 1b89] UpdateResources(): done
+Schema: sources: schema/schema.gql [3505B] 
+Connector "default": sources: connector/mutations.gql [2621B] connector/queries.gql [2293B] 
+I0820 00:20:10.758295     547 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "/home/user/studio/dataconnect-generated/js/default-connector"
+I0820 00:20:11.033029     547 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: prelude.gql [73172B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] 
+I0820 00:20:11.079147     547 collector.go:107] connector "default" javascriptSdk wrote into "/home/user/studio/dataconnect-generated/js/default-connector"
+Generated sources: react/esm/index.esm.js [8322B] esm/index.esm.js [9534B] package.json [860B] README.md [106312B] react/esm/package.json [17B] react/index.cjs.js [8849B] react/README.md [109656B] index.d.ts [22481B] esm/package.json [17B] index.cjs.js [11043B] react/index.d.ts [11137B] react/package.json [468B] 
+I0820 00:20:11.124730     547 installsdk.go:55] Package @firebasegen/default-connector is already installed. Skipping installation
+I0820 00:20:11.124786     547 load.go:115] Finished reloading
+I0820 00:20:11.155876     547 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50001
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0820 00:20:09.392803     547 load.go:37] Reloading schema and connectors...\nI0820 00:20:09.921877     547 control.go:84] [/emulator/studio-v0 1b89] UpdateResources(): done\nSchema: sources: schema/schema.gql [3505B] \nConnector \"default\": sources: connector/mutations.gql [2621B] connector/queries.gql [2293B] \nI0820 00:20:10.758295     547 codegen.go:82] [connector \"default\" javascriptSdk] Generating sources into \"/home/user/studio/dataconnect-generated/js/default-connector\"\nI0820 00:20:11.033029     547 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: prelude.gql [73172B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] \nI0820 00:20:11.079147     547 collector.go:107] connector \"default\" javascriptSdk wrote into \"/home/user/studio/dataconnect-generated/js/default-connector\"\nGenerated sources: react/esm/index.esm.js [8322B] esm/index.esm.js [9534B] package.json [860B] README.md [106312B] react/esm/package.json [17B] react/index.cjs.js [8849B] react/README.md [109656B] index.d.ts [22481B] esm/package.json [17B] index.cjs.js [11043B] react/index.d.ts [11137B] react/package.json [468B] \nI0820 00:20:11.124730     547 installsdk.go:55] Package @firebasegen/default-connector is already installed. Skipping installation\nI0820 00:20:11.124786     547 load.go:115] Finished reloading\nI0820 00:20:11.155876     547 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50001\n"}}
+[debug] [2025-08-20T00:20:17.752Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
+[debug] [2025-08-20T00:20:17.755Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
+[debug] [2025-08-20T00:20:18.098Z] I0820 00:20:17.958222     547 engine.go:174] [/emulator/studio-v0 1b89] ExecuteGraphqlRead IntrospectionQuery: succeeded. 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0820 00:20:17.958222     547 engine.go:174] [/emulator/studio-v0 1b89] ExecuteGraphqlRead IntrospectionQuery: succeeded. \n"}}
+[debug] [2025-08-20T03:27:42.144Z] [Firebase Plugin] Activating Firebase extension.
+[debug] [2025-08-20T03:28:15.794Z] [Firebase Plugin] requireAuthWrapper
+[debug] [2025-08-20T03:28:15.797Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-08-20T03:28:15.798Z] > authorizing via signed-in user (lumacx@gmail.com)
+[debug] [2025-08-20T03:28:15.804Z] Checked if tokens are valid: false, expires at: 1755652804624
+[debug] [2025-08-20T03:28:15.804Z] Checked if tokens are valid: false, expires at: 1755652804624
+[debug] [2025-08-20T03:28:15.805Z] > refreshing access token with scopes: []
+[debug] [2025-08-20T03:28:15.809Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-08-20T03:28:15.809Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-08-20T03:28:15.873Z] [Firebase Plugin] VSCode notification server listening on port 40001
+[debug] [2025-08-20T03:28:16.070Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-08-20T03:28:16.071Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-08-20T03:28:16.089Z] [Firebase Plugin] User found:  lumacx@gmail.com
+[info] [Firebase Plugin] (Core:Project) New user detected, fetching projects
+[debug] [2025-08-20T03:28:16.092Z] Checked if tokens are valid: true, expires at: 1755664095071
+[debug] [2025-08-20T03:28:16.093Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=1000
+[debug] [2025-08-20T03:28:17.327Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
+[debug] [2025-08-20T03:28:17.329Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
+[info] [Firebase Plugin] Starting Data Connect toolkit (version 2.10.1) on port 50001
+[debug] [2025-08-20T03:28:21.385Z] I0820 03:28:21.109495     497 control.go:84] [/emulator/studio-v0 dd66] UpdateResources(): done
+Schema: sources: schema/schema.gql [3505B] 
+Connector "default": sources: connector/mutations.gql [2621B] connector/queries.gql [2293B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0820 03:28:21.109495     497 control.go:84] [/emulator/studio-v0 dd66] UpdateResources(): done\nSchema: sources: schema/schema.gql [3505B] \nConnector \"default\": sources: connector/mutations.gql [2621B] connector/queries.gql [2293B] \n"}}
+[debug] [2025-08-20T03:28:21.389Z] Ignoring unsupported arg: auto_download {"metadata":{"emulator":{"name":"dataconnect"},"message":"Ignoring unsupported arg: auto_download"}}
+[debug] [2025-08-20T03:28:21.392Z] Ignoring unsupported arg: port {"metadata":{"emulator":{"name":"dataconnect"},"message":"Ignoring unsupported arg: port"}}
+[debug] [2025-08-20T03:28:21.393Z] Starting Data Connect Emulator with command {"binary":"/home/user/.cache/firebase/emulators/dataconnect-emulator-2.10.1","args":["--logtostderr","-v=2","dev","--listen=localhost:50001","--config_dir=/home/user/studio/dataconnect","--enable_output_schema_extensions=true","--enable_output_generated_sdk=true"],"optionalArgs":["listen","config_dir","enable_output_schema_extensions","enable_output_generated_sdk"],"joinArgs":true,"shell":false,"port":9399} {"metadata":{"emulator":{"name":"dataconnect"},"message":"Starting Data Connect Emulator with command {\"binary\":\"/home/user/.cache/firebase/emulators/dataconnect-emulator-2.10.1\",\"args\":[\"--logtostderr\",\"-v=2\",\"dev\",\"--listen=localhost:50001\",\"--config_dir=/home/user/studio/dataconnect\",\"--enable_output_schema_extensions=true\",\"--enable_output_generated_sdk=true\"],\"optionalArgs\":[\"listen\",\"config_dir\",\"enable_output_schema_extensions\",\"enable_output_generated_sdk\"],\"joinArgs\":true,\"shell\":false,\"port\":9399}"}}
+[info] i  dataconnect: Data Connect Emulator logging to dataconnect-debug.log {"metadata":{"emulator":{"name":"dataconnect"},"message":"Data Connect Emulator logging to dataconnect-debug.log"}}
+[debug] [2025-08-20T03:28:21.588Z] I0820 03:28:21.523521     502 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0820 03:28:21.523521     502 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-20T03:28:22.245Z] I0820 03:28:22.193648     502 control.go:84] [/emulator/studio-v0 4843] UpdateResources(): done
+Schema: sources: schema/schema.gql [3505B] 
+Connector "default": sources: connector/mutations.gql [2621B] connector/queries.gql [2293B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0820 03:28:22.193648     502 control.go:84] [/emulator/studio-v0 4843] UpdateResources(): done\nSchema: sources: schema/schema.gql [3505B] \nConnector \"default\": sources: connector/mutations.gql [2621B] connector/queries.gql [2293B] \n"}}
+[debug] [2025-08-20T03:28:22.968Z] I0820 03:28:22.967439     502 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "/home/user/studio/dataconnect-generated/js/default-connector"
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0820 03:28:22.967439     502 codegen.go:82] [connector \"default\" javascriptSdk] Generating sources into \"/home/user/studio/dataconnect-generated/js/default-connector\"\n"}}
+[debug] [2025-08-20T03:28:23.266Z] I0820 03:28:23.263085     502 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [73172B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0820 03:28:23.263085     502 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [73172B] \n"}}
+[debug] [2025-08-20T03:28:23.281Z] I0820 03:28:23.279718     502 collector.go:107] connector "default" javascriptSdk wrote into "/home/user/studio/dataconnect-generated/js/default-connector"
+Generated sources: index.d.ts [22481B] index.cjs.js [11043B] react/esm/package.json [17B] react/README.md [109656B] esm/index.esm.js [9534B] esm/package.json [17B] package.json [860B] README.md [106312B] react/index.d.ts [11137B] react/package.json [468B] react/index.cjs.js [8849B] react/esm/index.esm.js [8322B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0820 03:28:23.279718     502 collector.go:107] connector \"default\" javascriptSdk wrote into \"/home/user/studio/dataconnect-generated/js/default-connector\"\nGenerated sources: index.d.ts [22481B] index.cjs.js [11043B] react/esm/package.json [17B] react/README.md [109656B] esm/index.esm.js [9534B] esm/package.json [17B] package.json [860B] README.md [106312B] react/index.d.ts [11137B] react/package.json [468B] react/index.cjs.js [8849B] react/esm/index.esm.js [8322B] \n"}}
+[debug] [2025-08-20T03:28:23.299Z] I0820 03:28:23.298934     502 installsdk.go:55] Package @firebasegen/default-connector is already installed. Skipping installation
+I0820 03:28:23.299000     502 load.go:115] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0820 03:28:23.298934     502 installsdk.go:55] Package @firebasegen/default-connector is already installed. Skipping installation\nI0820 03:28:23.299000     502 load.go:115] Finished reloading\n"}}
+[debug] [2025-08-20T03:28:23.317Z] I0820 03:28:23.316554     502 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50001
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0820 03:28:23.316554     502 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50001\n"}}
+[debug] [2025-08-20T03:28:23.706Z] I0820 03:28:23.666728     502 engine.go:174] [/emulator/studio-v0 4843] ExecuteGraphqlRead IntrospectionQuery: succeeded. 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0820 03:28:23.666728     502 engine.go:174] [/emulator/studio-v0 4843] ExecuteGraphqlRead IntrospectionQuery: succeeded. \n"}}
+[debug] [2025-08-20T03:31:56.277Z] I0820 03:31:56.277239     502 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0820 03:31:56.277239     502 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-20T03:31:56.296Z] E0820 03:31:56.296226     502 load.go:79] Could not load sources: 
+Errors: schema/schema.gql:134: Cannot redeclare type Query.
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0820 03:31:56.296226     502 load.go:79] Could not load sources: \nErrors: schema/schema.gql:134: Cannot redeclare type Query.\n"}}
+[debug] [2025-08-20T03:31:56.299Z] I0820 03:31:56.297748     502 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/relation.gql [49005B] main/query.gql [15655B] prelude.gql [73172B] main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [99254B] 
+I0820 03:31:56.297829     502 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0820 03:31:56.297748     502 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/relation.gql [49005B] main/query.gql [15655B] prelude.gql [73172B] main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [99254B] \nI0820 03:31:56.297829     502 load.go:80] Finished reloading\n"}}
+[debug] [2025-08-20T03:36:39.139Z] I0820 03:36:39.132117     502 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0820 03:36:39.132117     502 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-20T03:36:39.267Z] E0820 03:36:39.227728     502 load.go:79] Could not load sources: 
+Errors: schema/schema.gql:234: Unsupported GQL type kind input_object: IntFilter
+schema/schema.gql:186: Unsupported GQL type kind input_object: PaymentFilter
+schema/schema.gql:208: Unsupported GQL type kind input_object: LegalDisclaimerFilter
+schema/schema.gql:245: Unsupported GQL type kind input_object: FloatFilter
+schema/schema.gql:134: Unsupported GQL type kind input_object: UserFilter
+schema/schema.gql:256: Unsupported GQL type kind input_object: BooleanFilter
+schema/schema.gql:155: Unsupported GQL type kind input_object: StoryContentFilter
+schema/schema.gql:180: Unsupported GQL type kind input_object: AiGeneratedGifFilter
+schema/schema.gql:164: Unsupported GQL type kind input_object: TemplateFilter
+schema/schema.gql:171: Unsupported GQL type kind input_object: AiGeneratedImageFilter
+schema/schema.gql:144: Unsupported GQL type kind input_object: StoryFilter
+schema/schema.gql:271: Unsupported GQL type kind input_object: StringArrayFilter
+schema/schema.gql:194: Unsupported GQL type kind input_object: AdminActionFilter
+schema/schema.gql:261: Unsupported GQL type kind input_object: TimestampFilter
+schema/schema.gql:215: Unsupported GQL type kind input_object: StringFilter
+schema/schema.gql:202: Unsupported GQL type kind input_object: AnalyticsFilter
+I0820 03:36:39.240661     502 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: prelude.gql [73172B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] 
+I0820 03:36:39.240815     502 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0820 03:36:39.227728     502 load.go:79] Could not load sources: \nErrors: schema/schema.gql:234: Unsupported GQL type kind input_object: IntFilter\nschema/schema.gql:186: Unsupported GQL type kind input_object: PaymentFilter\nschema/schema.gql:208: Unsupported GQL type kind input_object: LegalDisclaimerFilter\nschema/schema.gql:245: Unsupported GQL type kind input_object: FloatFilter\nschema/schema.gql:134: Unsupported GQL type kind input_object: UserFilter\nschema/schema.gql:256: Unsupported GQL type kind input_object: BooleanFilter\nschema/schema.gql:155: Unsupported GQL type kind input_object: StoryContentFilter\nschema/schema.gql:180: Unsupported GQL type kind input_object: AiGeneratedGifFilter\nschema/schema.gql:164: Unsupported GQL type kind input_object: TemplateFilter\nschema/schema.gql:171: Unsupported GQL type kind input_object: AiGeneratedImageFilter\nschema/schema.gql:144: Unsupported GQL type kind input_object: StoryFilter\nschema/schema.gql:271: Unsupported GQL type kind input_object: StringArrayFilter\nschema/schema.gql:194: Unsupported GQL type kind input_object: AdminActionFilter\nschema/schema.gql:261: Unsupported GQL type kind input_object: TimestampFilter\nschema/schema.gql:215: Unsupported GQL type kind input_object: StringFilter\nschema/schema.gql:202: Unsupported GQL type kind input_object: AnalyticsFilter\nI0820 03:36:39.240661     502 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: prelude.gql [73172B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] \nI0820 03:36:39.240815     502 load.go:80] Finished reloading\n"}}
+[debug] [2025-08-20T03:37:52.185Z] I0820 03:37:52.184871     502 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0820 03:37:52.184871     502 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-20T03:37:52.209Z] E0820 03:37:52.209409     502 load.go:79] Could not load sources: 
+Errors: schema/schema.gql:134: Unsupported GQL type kind input_object: StringArrayFilter
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0820 03:37:52.209409     502 load.go:79] Could not load sources: \nErrors: schema/schema.gql:134: Unsupported GQL type kind input_object: StringArrayFilter\n"}}
+[debug] [2025-08-20T03:37:52.216Z] I0820 03:37:52.214538     502 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] prelude.gql [73172B] main/input.gql [99254B] main/relation.gql [49005B] 
+I0820 03:37:52.214603     502 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0820 03:37:52.214538     502 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] prelude.gql [73172B] main/input.gql [99254B] main/relation.gql [49005B] \nI0820 03:37:52.214603     502 load.go:80] Finished reloading\n"}}
+[debug] [2025-08-20T03:38:33.127Z] I0820 03:38:33.127511     502 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0820 03:38:33.127511     502 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-20T03:38:33.362Z] I0820 03:38:33.362322     502 control.go:84] [/emulator/studio-v0 4843] UpdateResources(): done
+Schema: sources: schema/schema.gql [3557B] 
+Connector "default": sources: connector/queries.gql [2293B] connector/mutations.gql [2621B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0820 03:38:33.362322     502 control.go:84] [/emulator/studio-v0 4843] UpdateResources(): done\nSchema: sources: schema/schema.gql [3557B] \nConnector \"default\": sources: connector/queries.gql [2293B] connector/mutations.gql [2621B] \n"}}
+[debug] [2025-08-20T03:38:36.348Z] I0820 03:38:33.578862     502 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "/home/user/studio/dataconnect-generated/js/default-connector"
+I0820 03:38:33.644483     502 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: prelude.gql [73172B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] 
+I0820 03:38:33.648272     502 collector.go:107] connector "default" javascriptSdk wrote into "/home/user/studio/dataconnect-generated/js/default-connector"
+Generated sources: react/esm/package.json [17B] react/index.cjs.js [8849B] react/esm/index.esm.js [8322B] index.d.ts [22481B] README.md [106312B] react/index.d.ts [11137B] react/README.md [109656B] esm/index.esm.js [9534B] esm/package.json [17B] index.cjs.js [11043B] package.json [860B] react/package.json [468B] 
+I0820 03:38:33.666074     502 installsdk.go:55] Package @firebasegen/default-connector is already installed. Skipping installation
+I0820 03:38:33.666154     502 load.go:115] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0820 03:38:33.578862     502 codegen.go:82] [connector \"default\" javascriptSdk] Generating sources into \"/home/user/studio/dataconnect-generated/js/default-connector\"\nI0820 03:38:33.644483     502 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: prelude.gql [73172B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] \nI0820 03:38:33.648272     502 collector.go:107] connector \"default\" javascriptSdk wrote into \"/home/user/studio/dataconnect-generated/js/default-connector\"\nGenerated sources: react/esm/package.json [17B] react/index.cjs.js [8849B] react/esm/index.esm.js [8322B] index.d.ts [22481B] README.md [106312B] react/index.d.ts [11137B] react/README.md [109656B] esm/index.esm.js [9534B] esm/package.json [17B] index.cjs.js [11043B] package.json [860B] react/package.json [468B] \nI0820 03:38:33.666074     502 installsdk.go:55] Package @firebasegen/default-connector is already installed. Skipping installation\nI0820 03:38:33.666154     502 load.go:115] Finished reloading\n"}}
+[debug] [2025-08-20T04:31:19.774Z] I0820 04:31:19.709272     502 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0820 04:31:19.709272     502 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-20T04:31:19.938Z] W0820 04:31:19.934891     502 control.go:58] [/emulator/studio-v0 4843] connector "default" has errors: connector/queries.gql:17: Unknown argument "reason" on directive "@auth".
+connector/queries.gql:28: Field "_eq" is not defined by type "String_Filter". Did you mean "eq", "ne", "ge", or "le"?
+connector/queries.gql:27: Unknown argument "order_by" on field "Query.storyContents". Did you mean "orderBy"?
+
+sources: connector/mutations.gql [2621B] connector/queries.gql [2529B] 
+I0820 04:31:19.937952     502 control.go:84] [/emulator/studio-v0 4843] UpdateResources(): done
+Connector "default": sources: connector/queries.gql [2529B] connector/mutations.gql [2621B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"W0820 04:31:19.934891     502 control.go:58] [/emulator/studio-v0 4843] connector \"default\" has errors: connector/queries.gql:17: Unknown argument \"reason\" on directive \"@auth\".\nconnector/queries.gql:28: Field \"_eq\" is not defined by type \"String_Filter\". Did you mean \"eq\", \"ne\", \"ge\", or \"le\"?\nconnector/queries.gql:27: Unknown argument \"order_by\" on field \"Query.storyContents\". Did you mean \"orderBy\"?\n\nsources: connector/mutations.gql [2621B] connector/queries.gql [2529B] \nI0820 04:31:19.937952     502 control.go:84] [/emulator/studio-v0 4843] UpdateResources(): done\nConnector \"default\": sources: connector/queries.gql [2529B] connector/mutations.gql [2621B] \n"}}
+[debug] [2025-08-20T04:31:19.947Z] E0820 04:31:19.945446     502 load.go:79] Could not load sources: 
+Errors: connector/queries.gql:17: Unknown argument "reason" on directive "@auth".
+connector/queries.gql:28: Field "_eq" is not defined by type "String_Filter". Did you mean "eq", "ne", "ge", or "le"?
+connector/queries.gql:27: Unknown argument "order_by" on field "Query.storyContents". Did you mean "orderBy"?
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"E0820 04:31:19.945446     502 load.go:79] Could not load sources: \nErrors: connector/queries.gql:17: Unknown argument \"reason\" on directive \"@auth\".\nconnector/queries.gql:28: Field \"_eq\" is not defined by type \"String_Filter\". Did you mean \"eq\", \"ne\", \"ge\", or \"le\"?\nconnector/queries.gql:27: Unknown argument \"order_by\" on field \"Query.storyContents\". Did you mean \"orderBy\"?\n"}}
+[debug] [2025-08-20T04:31:19.954Z] I0820 04:31:19.947247     502 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/mutation.gql [41655B] prelude.gql [73172B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] 
+I0820 04:31:19.947298     502 load.go:80] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0820 04:31:19.947247     502 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/mutation.gql [41655B] prelude.gql [73172B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] \nI0820 04:31:19.947298     502 load.go:80] Finished reloading\n"}}
+[debug] [2025-08-20T04:35:53.477Z] I0820 04:35:53.477277     502 load.go:37] Reloading schema and connectors...
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0820 04:35:53.477277     502 load.go:37] Reloading schema and connectors...\n"}}
+[debug] [2025-08-20T04:35:53.842Z] I0820 04:35:53.841978     502 control.go:84] [/emulator/studio-v0 4843] UpdateResources(): done
+Connector "default": sources: connector/mutations.gql [2621B] connector/queries.gql [2481B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0820 04:35:53.841978     502 control.go:84] [/emulator/studio-v0 4843] UpdateResources(): done\nConnector \"default\": sources: connector/mutations.gql [2621B] connector/queries.gql [2481B] \n"}}
+[debug] [2025-08-20T04:35:54.036Z] I0820 04:35:54.036271     502 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "/home/user/studio/dataconnect-generated/js/default-connector"
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0820 04:35:54.036271     502 codegen.go:82] [connector \"default\" javascriptSdk] Generating sources into \"/home/user/studio/dataconnect-generated/js/default-connector\"\n"}}
+[debug] [2025-08-20T04:35:54.076Z] I0820 04:35:54.075895     502 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/mutation.gql [41655B] prelude.gql [73172B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0820 04:35:54.075895     502 collector.go:107] schema extensions wrote into \"/home/user/studio/dataconnect/.dataconnect/schema\"\nGenerated sources: main/mutation.gql [41655B] prelude.gql [73172B] main/implicit.gql [3267B] main/input.gql [99254B] main/relation.gql [49005B] main/query.gql [15655B] \n"}}
+[debug] [2025-08-20T04:35:54.083Z] I0820 04:35:54.082569     502 collector.go:107] connector "default" javascriptSdk wrote into "/home/user/studio/dataconnect-generated/js/default-connector"
+Generated sources: esm/index.esm.js [9534B] esm/package.json [17B] README.md [106684B] react/README.md [109935B] index.d.ts [22717B] index.cjs.js [11043B] package.json [860B] react/index.d.ts [11137B] react/package.json [468B] react/esm/package.json [17B] react/index.cjs.js [8849B] react/esm/index.esm.js [8322B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0820 04:35:54.082569     502 collector.go:107] connector \"default\" javascriptSdk wrote into \"/home/user/studio/dataconnect-generated/js/default-connector\"\nGenerated sources: esm/index.esm.js [9534B] esm/package.json [17B] README.md [106684B] react/README.md [109935B] index.d.ts [22717B] index.cjs.js [11043B] package.json [860B] react/index.d.ts [11137B] react/package.json [468B] react/esm/package.json [17B] react/index.cjs.js [8849B] react/esm/index.esm.js [8322B] \n"}}
+[debug] [2025-08-20T04:35:54.102Z] I0820 04:35:54.101225     502 installsdk.go:55] Package @firebasegen/default-connector is already installed. Skipping installation
+I0820 04:35:54.101303     502 load.go:115] Finished reloading
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0820 04:35:54.101225     502 installsdk.go:55] Package @firebasegen/default-connector is already installed. Skipping installation\nI0820 04:35:54.101303     502 load.go:115] Finished reloading\n"}}

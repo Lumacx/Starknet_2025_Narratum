@@ -4,8 +4,8 @@ import React, { useState, useEffect, ChangeEvent, FormEvent, useRef } from 'reac
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { useCreateStory } from '../../../dataconnect-generated/js/default-connector/react';
-import type { CreateStoryData } from '../../../dataconnect-generated/js/default-connector';
+import { useCreateStory } from '@firebasegen/default-connector/react';
+import type { CreateStoryData } from '@firebasegen/default-connector';
 import { getUserProfile } from '@/lib/userUtils';
 import ThemeToggle from '../../components/ThemeToggle';
 import GenreMultiSelect from '@/components/GenreMultiSelect'; // Import the new component

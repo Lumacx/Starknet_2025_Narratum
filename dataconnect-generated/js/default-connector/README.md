@@ -248,6 +248,14 @@ export interface GetStoryWithContentData {
     status: string;
     createdAt: TimestampString;
   } & Story_Key;
+    storyContents: ({
+      id: string;
+      pageNumber?: number | null;
+      textContent?: string | null;
+      imageUrl?: string | null;
+      audioUrl?: string | null;
+      createdAt: TimestampString;
+    } & StoryContent_Key)[];
 }
 ```
 ### Using `GetStoryWithContent`'s action shortcut function
@@ -272,11 +280,13 @@ const dataConnect = getDataConnect(connectorConfig);
 const { data } = await getStoryWithContent(dataConnect, getStoryWithContentVars);
 
 console.log(data.story);
+console.log(data.storyContents);
 
 // Or, you can use the `Promise` API.
 getStoryWithContent(getStoryWithContentVars).then((response) => {
   const data = response.data;
   console.log(data.story);
+  console.log(data.storyContents);
 });
 ```
 
@@ -305,11 +315,13 @@ const ref = getStoryWithContentRef(dataConnect, getStoryWithContentVars);
 const { data } = await executeQuery(ref);
 
 console.log(data.story);
+console.log(data.storyContents);
 
 // Or, you can use the `Promise` API.
 executeQuery(ref).then((response) => {
   const data = response.data;
   console.log(data.story);
+  console.log(data.storyContents);
 });
 ```
 

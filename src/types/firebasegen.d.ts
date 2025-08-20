@@ -1,4 +1,5 @@
+// src/types/firebasegen.d.ts
 declare module '@firebasegen/default-connector/react/esm' {
-    export * from '../../../dataconnect-generated/js/default-connector/react/esm/index.esm.js';
-  }
-  
+  export * from '@firebasegen/default-connector/react';
+  export { default } from '@firebasegen/default-connector/react';
+}

@@ -11,7 +11,7 @@ import {
     getDataConnect, 
     DataConnect
 } from 'firebase/data-connect'; 
-import { connectorConfig } from '../../../dataconnect-generated/js/default-connector'; 
+import { connectorConfig } from '@firebasegen/default-connector';
 
 if (!admin.apps.length) {
   admin.initializeApp(); // Initializes default admin app

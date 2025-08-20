@@ -30,11 +30,11 @@ const CatalogPage: React.FC = () => {
 
   const { data, isLoading, error } = useListPublishedStories();
 
-  useEffect(() => {
-    const stories = data ?? [];
-    setAllStories(stories);
-    setDisplayedStories(stories);
-  }, [data]);
+    useEffect(() => {
+      const stories = data ?? [];
+      setAllStories(stories);
+      setDisplayedStories(stories);
+    }, [data]);
 
   const applyFiltersAndSearch = (stories: Story[]) => {
     let filtered = [...stories];

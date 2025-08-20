@@ -257,6 +257,14 @@ export interface GetStoryWithContentData {
     status: string;
     createdAt: TimestampString;
   } & Story_Key;
+    storyContents: ({
+      id: string;
+      pageNumber?: number | null;
+      textContent?: string | null;
+      imageUrl?: string | null;
+      audioUrl?: string | null;
+      createdAt: TimestampString;
+    } & StoryContent_Key)[];
 }
 ```
 
@@ -306,6 +314,7 @@ export default function GetStoryWithContentComponent() {
   // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
   if (query.isSuccess) {
     console.log(query.data.story);
+    console.log(query.data.storyContents);
   }
   return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
 }

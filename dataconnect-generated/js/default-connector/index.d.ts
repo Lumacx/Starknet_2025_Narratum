@@ -253,6 +253,14 @@ export interface GetStoryWithContentData {
     status: string;
     createdAt: TimestampString;
   } & Story_Key;
+    storyContents: ({
+      id: string;
+      pageNumber?: number | null;
+      textContent?: string | null;
+      imageUrl?: string | null;
+      audioUrl?: string | null;
+      createdAt: TimestampString;
+    } & StoryContent_Key)[];
 }
 
 export interface GetStoryWithContentVariables {

@@ -16,8 +16,12 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "generate:connector": "npx firebase-data-connect generate"
-  },
+
+    "dc:enable": "npx -y firebase-tools@latest experiments:enable dataconnect",
+    "dc:apply": "npx -y firebase-tools@latest dataconnect:apply",
+    "dc:codegen": "npx -y firebase-tools@latest dataconnect:codegen --language typescript --react --out dataconnect-generated/js",
+    "dc:all": "npm run dc:enable && npm run dc:apply && npm run dc:codegen"
+    },
   "dependencies": {
     "@argent/x-ui": "^1.87.0",
     "@chakra-ui/react": "^2.8.2",
