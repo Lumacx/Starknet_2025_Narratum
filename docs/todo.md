@@ -14,12 +14,28 @@ This document outlines the planned features and development tasks for the Narrat
 - [ ] User Profile Page with user's stories and stats
 - [ ] Subscription model and payment integration
 - [ ] Interactive story display with multimedia support
-    - [ ] Add `backgroundMusicUrl` to `Story` schema
-    - [ ] Add `backgroundUrl` to `StoryContent` schema
-    - [ ] Update queries to fetch `creator.avatarUrl`, `backgroundMusicUrl`, `backgroundUrl`
-    - [ ] Implement dynamic background music in `StoryReader.tsx`
-    - [ ] Implement dynamic page backgrounds in `StoryReader.tsx`
-    - [ ] Implement dynamic avatar display in `StoryReader.tsx`
+    - [ ] **Create Page (Initial Prompt Guidance & References):**
+        - [ ] Develop UI for initial story prompt input and guidance.
+        - [ ] Integrate template selection and reference material display.
+    - [ ] **Story Prompt Screen:**
+        - [ ] Implement robust text input for story prompts.
+        - [ ] Integrate AI writing prompt generation (if not already covered).
+        - [ ] Save prompt data to the backend.
+    - [ ] **Illustrate Pages Screen:**
+        - [ ] Develop UI for displaying story pages with placeholders for illustrations.
+        - [ ] Integrate AI image generation functions.
+        - [ ] Allow users to generate, select, and refine images for each page.
+        - [ ] Implement saving of image URLs to `StoryContent` schema in Firebase.
+    - [ ] **Add Narration Screen:**
+        - [ ] Design UI for adding and managing audio narrations per page.
+        - [ ] Integrate AI-powered story narration (text-to-speech) functionality.
+        - [ ] Allow manual audio uploads and linking to specific pages.
+        - [ ] Implement saving of audio URLs to `audioData` in Firebase.
+    - [ ] **View Full Storybook Pop-up:**
+        - [ ] Integrate eReader HTML with Story_Reader UI for a seamless reading experience.
+        - [ ] Dynamically load story content, images, and audio from Firebase.
+        - [ ] Implement page navigation, background music, and avatar display within the pop-up.
+        - [ ] Ensure `backgroundMusicUrl`, `backgroundUrl`, `creator.avatarUrl` are fetched and utilized.
 
 ## AI Features
 
