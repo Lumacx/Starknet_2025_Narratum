@@ -24,6 +24,7 @@ The Narratum project is organized into several key directories, each serving a s
 - **`public/`**: Stores static assets like images, fonts, and other files that are publicly accessible.
 - **`docs/`**: Contains project documentation, including this file and the project blueprint.
 - **`dataconnect/`**: This directory holds the configuration and schema for the DataConnect service, which manages the application's database.
+- **`functions/`**: This directory contains the Firebase Cloud Functions that serve as the backend for certain operations, such as image generation and authentication triggers. It is a separate Node.js project managed by `npm`.
 
 ## 3. Core Features
 
@@ -94,16 +95,26 @@ To set up and run the Narratum project locally, follow these steps:
     git clone <repository-url>
     cd narratum
     ```
-2.  **Install dependencies**:
+2.  **Install root dependencies (Next.js application)**:
     ```bash
-    npm install
+    pnpm install
     ```
-3.  **Set up environment variables**:
+3.  **Install Firebase Functions dependencies**:
+    ```bash
+    cd functions
+    npm install
+    cd ..
+    ```
+4.  **Set up environment variables**:
     - Create a `.env.local` file in the root of the project.
     - Add the necessary Firebase and other configuration details to this file.
-4.  **Run the development server**:
+5.  **Run the development server**:
     ```bash
-    npm run dev
+    pnpm run dev
     ```
-5.  **Open the application**:
+6.  **Deploy Firebase Functions (if changes are made to functions)**:
+    ```bash
+    firebase deploy --only functions
+    ```
+7.  **Open the application**:
     - Open your browser and navigate to `http://localhost:3000`.
