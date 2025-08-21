@@ -1,16 +1,19 @@
+// src/lib/firebase.ts
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getStorage, connectStorageEmulator, type FirebaseStorage } from 'firebase/storage';
 
-// Explicitly import types using 'type' keyword to avoid namespace conflicts
-import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { Auth as FirebaseAuthType } from 'firebase/auth'; // Correct: Imports 'Auth' as a type
+// If you need these later, re-add them; removing now to avoid unused warnings.
+// import { onAuthStateChanged, signOut } from 'firebase/auth';
+
+// ✅ type-only imports (no runtime cost)
+import type { Auth as FirebaseAuthType } from 'firebase/auth';
 import type { Functions } from 'firebase/functions';
 import type { Firestore } from 'firebase/firestore';
 
-// Firebase config from environment variables
+// ---- Config ----
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -21,32 +24,32 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// Initialize Firebase App
+// ---- App ----
 let app: FirebaseApp;
 if (!getApps().length) {
   if (!firebaseConfig.apiKey) {
-    console.error("Firebase API Key is missing. Check your .env.local file.");
+    console.error('Firebase API Key is missing. Check your .env.local file.');
   }
   app = initializeApp(firebaseConfig);
 } else {
   app = getApp();
 }
 
-// Firebase services
+// ---- Services ----
 const auth = getAuth(app);
 const functions = getFunctions(app);
 const db = getFirestore(app);
-const storage: FirebaseStorage = getStorage(app); // 👈 AÑADIDO
+const storage: FirebaseStorage = getStorage(app);
 
-export const firestoreAppId = firebaseConfig.appId || "default-app-id";
+export const firestoreAppId = firebaseConfig.appId || 'default-app-id';
 
-// Emulator logic (only for development)
+// ---- Emulators (dev only, browser only) ----
 const useEmulators =
-  process.env.NODE_ENV === "development" &&
-  process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS !== "false";
+  process.env.NODE_ENV === 'development' &&
+  process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS !== 'false';
 
-if (useEmulators && typeof window !== "undefined") {
-  console.log("Development mode: Attempting to connect to Firebase emulators.");
+if (useEmulators && typeof window !== 'undefined') {
+  console.log('Development mode: Attempting to connect to Firebase emulators.');
 
   const authHost = '127.0.0.1';
   const authPort = parseInt(process.env.NEXT_PUBLIC_AUTH_EMULATOR_PORT || '9099', 10);
@@ -57,15 +60,15 @@ if (useEmulators && typeof window !== "undefined") {
   const storageHost = '127.0.0.1';
   const storagePort = parseInt(process.env.NEXT_PUBLIC_STORAGE_EMULATOR_PORT || '9199', 10);
 
-  const emulatorOptions = { disableWarnings: true };
+  const emulatorOptions = { disableWarnings: true as const };
 
-  // Auth
+  // Auth (skip double-connect)
   type ExtendedAuth = FirebaseAuthType & { emulatorConfig?: unknown };
   const extendedAuth = auth as ExtendedAuth;
   if (!extendedAuth.emulatorConfig) {
     try {
       connectAuthEmulator(auth, `http://${authHost}:${authPort}`, emulatorOptions);
-      console.log(`✅ connectAuthEmulator: http://${authHost}:${authPort}`);
+      console.log(`✅ Auth emulator: http://${authHost}:${authPort}`);
     } catch (e: any) {
       console.error(`❌ Auth emulator: ${e?.message}`);
     }
@@ -87,7 +90,7 @@ if (useEmulators && typeof window !== "undefined") {
     console.warn('⚠️ Functions emulator:', e?.message || e);
   }
 
-  // Storage 👇
+  // Storage
   try {
     connectStorageEmulator(storage, storageHost, storagePort);
     console.log(`✅ Storage emulator: ${storageHost}:${storagePort}`);
@@ -98,4 +101,6 @@ if (useEmulators && typeof window !== "undefined") {
   console.log('Development mode: Firebase emulators are NOT being used (based on config).');
 }
 
-export { app, auth, db, functions, storage }; // 👈 EXPORTA storage
+export { app, auth, db, functions, storage };
+// 👇 Add default so `import firebase from "@/lib/firebase"` won’t crash
+export default app;
