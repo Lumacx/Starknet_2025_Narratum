@@ -127,6 +127,17 @@ export function updateStoryContent(dcOrVars, vars) {
   return executeMutation(updateStoryContentRef(dcOrVars, vars));
 }
 
+export const updateStoryRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateStory', inputVars);
+}
+updateStoryRef.operationName = 'UpdateStory';
+
+export function updateStory(dcOrVars, vars) {
+  return executeMutation(updateStoryRef(dcOrVars, vars));
+}
+
 export const getUserProfileRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();

@@ -29,7 +29,10 @@ The Narratum project is organized into several key directories, each serving a s
 
 Narratum offers a range of features designed to enhance the storytelling experience for both creators and readers.
 
-- **Interactive Story Display**: Stories are presented in an interactive format, allowing users to navigate through pages and chapters with ease.
+- **Interactive Story Display with Multimedia Support**: Stories are presented in an interactive format, allowing users to navigate through pages and chapters with ease. This includes dynamic loading and display of:
+    *   **Background Music**: Stories can feature background music that plays throughout the reading experience, fetched dynamically from the story data.
+    *   **Page Backgrounds**: Each story page can have a unique background image, loaded dynamically from the page content data.
+    *   **Narrator Avatars**: The story reader displays the avatar of the story's creator, fetched dynamically from user profile data, enhancing the personalized reading experience.
 - **Template-Driven Story Creation**: Creators can use predefined templates to structure their stories. The `create/page.tsx` file shows how users can select from a list of mock templates such as "Three-Act Structure", "The Hero's Journey", and "Freytag's Pyramid".
 - **Story Content Editing**: Users can create and edit the textual content of individual story pages within a dedicated editor. This includes functionality for navigating between pages and an auto-save feature to ensure content is regularly preserved.
 - **AI Writing Prompts**: The application integrates with an AI tool to provide writing prompts. The `src/ai/flows/generate-writing-prompts.ts` file defines a Genkit flow that takes a story template and user input to generate a list of compelling writing prompts.
@@ -54,7 +57,7 @@ Narratum offers a range of features designed to enhance the storytelling experie
 - **Semantic Search**: Narratum now includes a semantic search capability, allowing users to discover stories based on themes and concepts rather than just keywords. This feature leverages the Gemini API to analyze story titles and provide semantically relevant results, enhancing story discovery on the platform.
 - **Community Features**: Narratum incorporates social interaction features directly within the story viewing experience, allowing readers to engage with content and creators. These include:
     *   **Reactions**: Users can express their appreciation or emotion towards a story by adding reactions such as 'like' (👍), 'love' (❤️), and 'wow' (😮).
-    *   **Comments**: Readers can leave comments on stories, fostering discussion and feedback. Comments display the author's avatar and display name, providing context to the conversation.
+    *   **Comments**: Readers can leave comments on stories, fostering discussion and feedback. Comments display the author's avatar and display name, providing context to the cohesion.
 
 ## 4. Technical Stack
 

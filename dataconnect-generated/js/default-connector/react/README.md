@@ -41,6 +41,7 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*CreateAnalyticsEntry*](#createanalyticsentry)
   - [*LogLegalDisclaimerAcceptance*](#loglegaldisclaimeracceptance)
   - [*UpdateStoryContent*](#updatestorycontent)
+  - [*UpdateStory*](#updatestory)
 
 # TanStack Query Firebase & TanStack React Query
 This SDK provides [React](https://react.dev/) hooks generated specific to your application, for the operations found in the connector `default`. These hooks are generated using [TanStack Query Firebase](https://react-query-firebase.invertase.dev/) by our partners at Invertase, a library built on top of [TanStack React Query v5](https://tanstack.com/query/v5/docs/framework/react/overview).
@@ -257,6 +258,12 @@ export interface GetStoryWithContentData {
     coverImageUrl?: string | null;
     status: string;
     createdAt: TimestampString;
+    backgroundMusicUrl?: string | null;
+    creator: {
+      id: string;
+      displayname: string;
+      avatarUrl?: string | null;
+    } & User_Key;
   } & Story_Key;
     storyContents: ({
       id: string;
@@ -265,6 +272,7 @@ export interface GetStoryWithContentData {
       imageUrl?: string | null;
       audioUrl?: string | null;
       createdAt: TimestampString;
+      backgroundUrl?: string | null;
     } & StoryContent_Key)[];
 }
 ```
@@ -597,6 +605,7 @@ export interface GetAllTemplatesData {
   templates: ({
     id: string;
     title?: string | null;
+    structureJson?: string | null;
   } & Template_Key)[];
 }
 ```
@@ -2278,6 +2287,102 @@ export default function UpdateStoryContentComponent() {
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
     console.log(mutation.data.storyContent_update);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## UpdateStory
+You can execute the `UpdateStory` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [default-connector/react/index.d.ts](./index.d.ts)):
+```javascript
+useUpdateStory(options?: useDataConnectMutationOptions<UpdateStoryData, FirebaseError, UpdateStoryVariables>): UseDataConnectMutationResult<UpdateStoryData, UpdateStoryVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useUpdateStory(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateStoryData, FirebaseError, UpdateStoryVariables>): UseDataConnectMutationResult<UpdateStoryData, UpdateStoryVariables>;
+```
+
+### Variables
+The `UpdateStory` Mutation requires an argument of type `UpdateStoryVariables`, which is defined in [default-connector/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface UpdateStoryVariables {
+  id: string;
+  commentsCount?: number | null;
+}
+```
+### Return Type
+Recall that calling the `UpdateStory` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpdateStory` Mutation is of type `UpdateStoryData`, which is defined in [default-connector/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface UpdateStoryData {
+  story_update?: Story_Key | null;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `UpdateStory`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, UpdateStoryVariables } from '@firebasegen/default-connector';
+import { useUpdateStory } from '@firebasegen/default-connector/react'
+
+export default function UpdateStoryComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useUpdateStory();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useUpdateStory(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpdateStory(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpdateStory(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useUpdateStory` Mutation requires an argument of type `UpdateStoryVariables`:
+  const updateStoryVars: UpdateStoryVariables = {
+    id: ..., 
+    commentsCount: ..., // optional
+  };
+  mutation.mutate(updateStoryVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., commentsCount: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(updateStoryVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.story_update);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }

@@ -23,6 +23,12 @@ query GetStoryWithContent($storyId: String!) @auth(level: USER) {
     coverImageUrl
     status
     createdAt
+    backgroundMusicUrl # Fetch the new background music URL
+    creator { # Fetch creator details for avatar
+      id
+      displayname
+      avatarUrl
+    }
   }
   storyContents(
     where: { storyId: { eq: $storyId } }
@@ -34,6 +40,7 @@ query GetStoryWithContent($storyId: String!) @auth(level: USER) {
     imageUrl
     audioUrl
     createdAt
+    backgroundUrl # Fetch the new page background URL
   }
 }
 
@@ -76,6 +83,7 @@ query GetAllTemplates @auth(level: USER) {
   templates(limit: 10) {
     id
     title
+    structureJson # Fetch the template structure
   }
 }
 

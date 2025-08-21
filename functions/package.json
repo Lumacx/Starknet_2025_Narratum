@@ -1,0 +1,30 @@
+{
+    "name": "narratum-functions",
+    "private": true,
+    "version": "0.1.0",
+    "main": "lib/index.js",
+    "type": "commonjs",
+    "engines": { "node": "20" },
+    "scripts": {
+      "build": "tsc -p tsconfig.json",
+      "clean": "rimraf lib",
+      "serve": "firebase emulators:start --only functions",
+      "deploy": "firebase deploy --only functions"
+    },
+    "files": ["lib"],
+    "dependencies": {
+      "@google/generative-ai": "^0.24.1",
+      "firebase-functions": "^4.9.0",
+      "firebase-admin": "^12.4.0",
+      "cors": "^2.8.5",
+      "@firebase/data-connect": "^0.3.10",
+      "@firebasegen/default-connector": "file:../dataconnect-generated/js/default-connector"
+      },
+    "devDependencies": {
+      "@types/node": "^20.0.0",
+      "rimraf": "^5.0.5",
+      "ts-node": "^10.9.2",
+      "typescript": "^5.3.3"
+    }
+  }
+  

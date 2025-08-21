@@ -37,7 +37,7 @@
     "src/types",
     "src/types/firebase-fix.d.ts",
     "src/types/firebasegen.d.ts"
-  ],
+, "functions/src/imageGeneration.ts"  ],
   "exclude": [
     "node_modules",
     "lib",

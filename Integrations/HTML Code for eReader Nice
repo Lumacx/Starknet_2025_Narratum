@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Storybook eReader</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'navy': '#3D4F60',
+                        'pale-gold': '#F0D1B0',
+                        'pale-blue': '#D4E1EE',
+                        'burnt-sienna': '#E97451',
+                        'dark-navy': '#1A2533',
+                        'dark-gold': '#3A2B26',
+                        'light-text': '#3D4F60',
+                        'dark-text': '#F0D1B0',
+                    },
+                    fontFamily: {
+                        'sans': ['Open Sans', 'sans-serif'],
+                        'serif': ['Playfair Display', 'serif'],
+                    },
+                    keyframes: {
+                        blink: {
+                          '50%': { borderColor: '#E97451' },
+                        }
+                    },
+                    animation: {
+                        blink: 'blink 1.5s ease-in-out infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .storybook-page {
+            display: none;
+            transition: opacity 0.5s ease-in-out;
+        }
+        .storybook-page.active {
+            display: block;
+        }
+        .loader {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #F0D1B0;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Custom scrollbar for preview grid */
+        #storybook-preview-grid::-webkit-scrollbar {
+            width: 8px;
+        }
+        #storybook-preview-grid::-webkit-scrollbar-track {
+            background: #D4E1EE;
+            border-radius: 10px;
+        }
+        .dark #storybook-preview-grid::-webkit-scrollbar-track {
+            background: #1A2533;
+        }
+        #storybook-preview-grid::-webkit-scrollbar-thumb {
+            background: #3D4F60;
+            border-radius: 10px;
+        }
+        .dark #storybook-preview-grid::-webkit-scrollbar-thumb {
+            background: #F0D1B0;
+        }
+        .nav-btn.active {
+            background-color: #E97451;
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-b from-pale-blue to-pale-gold dark:from-dark-navy dark:to-dark-gold text-light-text dark:text-dark-text font-sans transition-colors duration-300">
+
+    <div id="app" class="container mx-auto p-4 md:p-8 relative">
+        <div class="absolute top-4 right-4 z-10">
+            <button id="theme-switcher" class="p-2 rounded-full bg-navy/20 dark:bg-pale-gold/20 text-navy dark:text-pale-gold">
+                <svg id="theme-icon-light" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden dark:block"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                <svg id="theme-icon-dark" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="block dark:hidden"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+            </button>
+        </div>
+
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold font-serif">AI Storybook eReader</h1>
+            <p class="text-light-text/80 dark:text-dark-text/80 mt-2">Craft your own illustrated and narrated stories with the power of AI.</p>
+        </header>
+
+        <main class="bg-white/50 dark:bg-navy/50 backdrop-blur-sm rounded-2xl shadow-lg p-6 md:p-8 border border-pale-gold/50">
+            <!-- Navigation between sections -->
+            <nav id="main-nav" class="hidden mb-6 pb-4 border-b-2 border-pale-gold/50">
+                <div class="flex justify-center gap-4">
+                    <button id="nav-prompt" class="nav-btn font-bold py-2 px-4 rounded-lg transition">1. Story Prompt</button>
+                    <button id="nav-images" class="nav-btn font-bold py-2 px-4 rounded-lg transition">2. Illustrate Pages</button>
+                    <button id="nav-narration" class="nav-btn font-bold py-2 px-4 rounded-lg transition">3. Add Narration</button>
+                </div>
+            </nav>
+
+            <!-- Initial Prompt Section -->
+            <div id="prompt-section">
+                <h2 class="text-2xl md:text-3xl font-bold font-serif mb-4">1. Start Your Story</h2>
+                <div class="space-y-4">
+                    <textarea id="user-prompt" class="w-full p-3 bg-pale-blue/50 dark:bg-dark-navy/50 border-2 border-navy/30 dark:border-pale-gold/30 rounded-lg focus:ring-2 focus:ring-burnt-sienna transition duration-200 placeholder:text-light-text/60 dark:placeholder:text-dark-text/60" rows="3" placeholder="e.g., A brave little fox who wants to travel to the moon..."></textarea>
+                    <div class="flex flex-col sm:flex-row items-center gap-4">
+                        <label for="page-count-slider" class="font-semibold whitespace-nowrap">Number of Pages: <span id="page-count-label" class="font-bold text-burnt-sienna">10</span></label>
+                        <input id="page-count-slider" type="range" min="3" max="10" value="10" class="w-full h-2 bg-pale-blue dark:bg-dark-navy rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    <button id="generate-story-btn" class="w-full bg-navy dark:bg-pale-gold text-pale-gold dark:text-navy font-bold text-lg py-3 px-6 rounded-lg hover:bg-burnt-sienna hover:text-white dark:hover:bg-burnt-sienna dark:hover:text-white transition-all duration-300 shadow-md flex items-center justify-center gap-3 transform hover:scale-105">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2v0a10 10 0 0 0-1.08 19.92v0a10 10 0 0 0-8.92-8.92v0a10 10 0 0 0 10-10z"/><path d="m22 2-2.5 2.5"/><path d="m2 22 2.5-2.5"/><path d="M12 2a10 10 0 0 0-1.08 19.92"/><path d="M2 12a10 10 0 0 0 8.92 8.92"/><path d="M12 22a10 10 0 0 0 10-10"/></svg>
+                        Create Story
+                    </button>
+                </div>
+            </div>
+
+            <!-- Creation Workspace -->
+            <div id="creation-workspace" class="hidden mt-8">
+                <div class="grid md:grid-cols-2 gap-8">
+                    <!-- Left Panel: Controls -->
+                    <div id="controls-panel">
+                        <h2 id="workspace-title" class="text-3xl font-bold font-serif mb-4"></h2>
+                        <div class="bg-pale-gold/30 dark:bg-navy/30 p-4 rounded-lg border border-navy/20 dark:border-pale-gold/20">
+                            <p class="font-semibold text-lg mb-2">Page <span id="current-page-num">1</span> of <span id="total-pages-num">10</span></p>
+                            <div class="bg-pale-blue/50 dark:bg-dark-navy/50 p-3 rounded-md shadow-inner">
+                                <div class="flex justify-between items-center">
+                                    <p class="font-semibold">Story Text (Editable):</p>
+                                    <span id="char-counter" class="text-sm text-light-text/70 dark:text-dark-text/70">0 / 500</span>
+                                </div>
+                                <textarea id="page-text-editor" class="w-full mt-1 p-2 bg-transparent border-2 border-navy/30 dark:border-pale-gold/30 rounded-lg focus:ring-2 focus:ring-burnt-sienna transition" rows="4" maxlength="500"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Image Generation Section -->
+                        <div id="image-generation-section" class="mt-6">
+                            <div class="mb-4">
+                                <label for="image-prompt-editor" class="font-semibold">Image Description (Editable):</label>
+                                <textarea id="image-prompt-editor" class="w-full mt-1 p-2 bg-pale-blue/50 dark:bg-dark-navy/50 border-2 border-navy/30 dark:border-pale-gold/30 rounded-lg focus:ring-2 focus:ring-burnt-sienna transition" rows="3"></textarea>
+                            </div>
+                            <div id="image-container" class="relative w-full aspect-square bg-pale-blue dark:bg-dark-navy rounded-lg flex items-center justify-center overflow-hidden border-2 border-navy/30 dark:border-pale-gold/30">
+                                <img id="generated-image" src="" alt="Generated story illustration" class="hidden w-full h-full object-cover">
+                                <div id="image-loader" class="hidden loader"></div>
+                                <p id="image-placeholder" class="text-light-text/70 dark:text-dark-text/70">Image will appear here...</p>
+                            </div>
+                            <div class="flex gap-4 mt-4">
+                                <button id="regenerate-image-btn" class="flex-1 bg-navy/80 dark:bg-pale-gold/80 text-pale-gold dark:text-navy font-bold py-2 px-4 rounded-lg hover:bg-burnt-sienna hover:text-white transition flex items-center justify-center gap-2">Regenerate</button>
+                                <button id="save-page-btn" class="flex-1 bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition">Save & Next</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Narration Section -->
+                        <div id="narration-section" class="hidden mt-6">
+                             <div class="bg-pale-gold/30 dark:bg-navy/30 p-4 rounded-lg border border-navy/20 dark:border-pale-gold/20 mt-4">
+                                <p class="font-semibold text-lg mb-2">Narration for Page <span id="narration-page-num">1</span></p>
+                                <textarea id="narration-text" class="w-full p-3 bg-pale-blue/50 dark:bg-dark-navy/50 border-2 border-navy/30 dark:border-pale-gold/30 rounded-lg focus:ring-2 focus:ring-burnt-sienna" rows="4" placeholder="Write the narration for this page..."></textarea>
+                                <div class="grid sm:grid-cols-2 gap-4 mt-4">
+                                    <select id="voice-select" class="w-full p-2 bg-pale-blue/50 dark:bg-dark-navy/50 border-2 border-navy/30 dark:border-pale-gold/30 rounded-lg">
+                                        <option value="Kore">Narrator 1 (Male, Firm)</option>
+                                        <option value="Puck">Narrator 2 (Male, Upbeat)</option>
+                                        <option value="Zephyr">Narrator 3 (Female, Bright)</option>
+                                        <option value="Leda">Narrator 4 (Female, Youthful)</option>
+                                        <option value="Sadachbia">Narrator 5 (Female, Lively)</option>
+                                    </select>
+                                    <select id="tone-select" class="w-full p-2 bg-pale-blue/50 dark:bg-dark-navy/50 border-2 border-navy/30 dark:border-pale-gold/30 rounded-lg">
+                                        <option value="a normal">Normal Tone</option>
+                                        <option value="a cheerful">Cheerful Tone</option>
+                                        <option value="a sad">Sad Tone</option>
+                                        <option value="an excited">Excited Tone</option>
+                                        <option value="a whispering">Whispering Tone</option>
+                                    </select>
+                                </div>
+                                <div class="flex flex-col sm:flex-row gap-2 mt-4">
+                                    <button id="preview-audio-btn" class="flex-1 bg-navy/80 dark:bg-pale-gold/80 text-pale-gold dark:text-navy font-bold py-2 px-4 rounded-lg hover:bg-burnt-sienna hover:text-white transition disabled:opacity-50" disabled>Preview</button>
+                                    <button id="regenerate-audio-btn" class="flex-1 bg-navy/80 dark:bg-pale-gold/80 text-pale-gold dark:text-navy font-bold py-2 px-4 rounded-lg hover:bg-burnt-sienna hover:text-white transition flex items-center justify-center gap-2">Generate</button>
+                                </div>
+                                <button id="save-audio-btn" class="w-full mt-2 bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition disabled:opacity-50" disabled>Save Audio</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Panel: Story Preview -->
+                    <div id="preview-panel" class="relative">
+                         <div id="next-page-popup" class="hidden absolute -top-12 right-0 bg-burnt-sienna text-white text-sm font-bold px-4 py-2 rounded-lg shadow-lg">
+                            Select the next page to continue!
+                        </div>
+                        <h2 class="text-3xl font-bold font-serif mb-4">Story Preview</h2>
+                        <div id="storybook-preview-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-4 bg-pale-blue/30 dark:bg-dark-navy/30 p-4 rounded-lg border border-navy/20 dark:border-pale-gold/20 h-[70vh] overflow-y-auto">
+                            <!-- Page thumbnails will be added here -->
+                        </div>
+                        <button id="view-storybook-btn" class="hidden w-full mt-4 bg-burnt-sienna text-white font-bold py-3 px-6 rounded-lg hover:bg-opacity-80 transition shadow-md">View Full Storybook</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Storybook Modal -->
+    <div id="storybook-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+        <div class="bg-pale-blue dark:bg-dark-navy rounded-2xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col relative border-4 border-pale-gold">
+            <button id="close-modal-btn" class="absolute -top-5 -right-5 bg-burnt-sienna rounded-full p-2 text-white hover:scale-110 transition z-10">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+            <div id="storybook-content" class="flex-grow overflow-hidden relative p-4">
+                <!-- Pages will be injected here -->
+            </div>
+            <div class="flex justify-between items-center p-4 border-t-2 border-pale-gold">
+                <button id="prev-page-btn" class="bg-navy/20 dark:bg-pale-gold/20 py-2 px-4 rounded-lg hover:bg-burnt-sienna hover:text-white transition">&larr; Previous</button>
+                <div class="flex items-center gap-4">
+                    <div id="modal-page-indicator" class="font-semibold">Page 1 / 10</div>
+                    <button id="download-pdf-btn" class="bg-navy dark:bg-pale-gold text-pale-gold dark:text-navy font-bold py-2 px-4 rounded-lg hover:bg-burnt-sienna hover:text-white dark:hover:bg-burnt-sienna dark:hover:text-white transition flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Download
+                    </button>
+                </div>
+                <button id="next-page-btn" class="bg-navy/20 dark:bg-pale-gold/20 py-2 px-4 rounded-lg hover:bg-burnt-sienna hover:text-white transition">Next &rarr;</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Message Box -->
+    <div id="message-box" class="hidden fixed top-5 right-5 bg-red-500 text-white p-4 rounded-lg shadow-lg z-50">
+        <p id="message-text"></p>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const userPrompt = document.getElementById('user-prompt');
+        const generateStoryBtn = document.getElementById('generate-story-btn');
+        const promptSection = document.getElementById('prompt-section');
+        const creationWorkspace = document.getElementById('creation-workspace');
+        const workspaceTitle = document.getElementById('workspace-title');
+        const currentPageNum = document.getElementById('current-page-num');
+        const totalPagesNum = document.getElementById('total-pages-num');
+        const pageTextEditor = document.getElementById('page-text-editor');
+        const charCounter = document.getElementById('char-counter');
+        const imagePromptEditor = document.getElementById('image-prompt-editor');
+        const imageContainer = document.getElementById('image-container');
+        const generatedImage = document.getElementById('generated-image');
+        const imageLoader = document.getElementById('image-loader');
+        const imagePlaceholder = document.getElementById('image-placeholder');
+        const regenerateImageBtn = document.getElementById('regenerate-image-btn');
+        const savePageBtn = document.getElementById('save-page-btn');
+        const storybookPreviewGrid = document.getElementById('storybook-preview-grid');
+        const viewStorybookBtn = document.getElementById('view-storybook-btn');
+        const imageGenerationSection = document.getElementById('image-generation-section');
+        const narrationSection = document.getElementById('narration-section');
+        const narrationPageNum = document.getElementById('narration-page-num');
+        const narrationText = document.getElementById('narration-text');
+        const voiceSelect = document.getElementById('voice-select');
+        const toneSelect = document.getElementById('tone-select');
+        const previewAudioBtn = document.getElementById('preview-audio-btn');
+        const regenerateAudioBtn = document.getElementById('regenerate-audio-btn');
+        const saveAudioBtn = document.getElementById('save-audio-btn');
+        const storybookModal = document.getElementById('storybook-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const storybookContent = document.getElementById('storybook-content');
+        const prevPageBtn = document.getElementById('prev-page-btn');
+        const nextPageBtn = document.getElementById('next-page-btn');
+        const modalPageIndicator = document.getElementById('modal-page-indicator');
+        const downloadPdfBtn = document.getElementById('download-pdf-btn');
+        const messageBox = document.getElementById('message-box');
+        const messageText = document.getElementById('message-text');
+        const themeSwitcher = document.getElementById('theme-switcher');
+        const pageCountSlider = document.getElementById('page-count-slider');
+        const pageCountLabel = document.getElementById('page-count-label');
+        const nextPagePopup = document.getElementById('next-page-popup');
+        const mainNav = document.getElementById('main-nav');
+        const navPromptBtn = document.getElementById('nav-prompt');
+        const navImagesBtn = document.getElementById('nav-images');
+        const navNarrationBtn = document.getElementById('nav-narration');
+
+
+        // --- App State ---
+        let story = [];
+        let currentPageIndex = 0;
+        let currentNarrationPageIndex = 0;
+        let isLoading = false;
+        let tempAudioURL = null;
+        let totalPages = 10;
+        let currentSection = 'prompt';
+
+        // --- Gemini API Configuration ---
+        const apiKey = ""; // This will be handled by the environment.
+
+        // --- Helper Functions ---
+        function showMessage(message, isError = true) {
+            messageText.textContent = message;
+            messageBox.className = `fixed top-5 right-5 text-white p-4 rounded-lg shadow-lg z-50 ${isError ? 'bg-red-500' : 'bg-green-500'}`;
+            messageBox.classList.remove('hidden');
+            setTimeout(() => {
+                messageBox.classList.add('hidden');
+            }, 5000);
+        }
+
+        async function fetchWithBackoff(url, payload) {
+            let delay = 1000;
+            for (let i = 0; i < 5; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    return await response.json();
+                } catch (error) {
+                    console.error(`Attempt ${i + 1} failed:`, error);
+                    if (i < 4) await new Promise(resolve => setTimeout(resolve, delay));
+                    else throw new Error("API request failed after multiple retries.");
+                }
+            }
+        }
+
+        // --- Core Application Logic ---
+        async function handleGenerateStory() {
+            const prompt = userPrompt.value.trim();
+            if (!prompt) {
+                showMessage("Please enter a story idea.");
+                return;
+            }
+            setLoadingState(true, "Creating your story structure...");
+            totalPages = parseInt(pageCountSlider.value);
+
+            const internalPrompt = `Based on the user's story idea: "${prompt}", generate a ${totalPages}-page children's story outline. For each page, provide a short, descriptive paragraph for the story text (storyText) and a separate, detailed visual prompt for an image generation model in a cinematic, vibrant, and whimsical style (imagePrompt). Return this as a JSON array of ${totalPages} objects.`;
+            
+            const payload = {
+                contents: [{ role: "user", parts: [{ text: internalPrompt }] }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "ARRAY",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                storyText: { type: "STRING" },
+                                imagePrompt: { type: "STRING" }
+                            }
+                        }
+                    }
+                }
+            };
+            
+            try {
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                const result = await fetchWithBackoff(apiUrl, payload);
+                const jsonText = result.candidates[0].content.parts[0].text;
+                const parsedStory = JSON.parse(jsonText);
+
+                if (Array.isArray(parsedStory) && parsedStory.length > 0) {
+                    story = parsedStory.map((page, index) => ({
+                        pageNumber: index + 1,
+                        text: page.storyText,
+                        imagePrompt: page.imagePrompt,
+                        imageUrl: null,
+                        narrationText: '',
+                        audioUrl: null
+                    }));
+                    totalPagesNum.textContent = totalPages;
+                    navigateTo('images');
+                    displayCurrentPage();
+                } else {
+                    throw new Error("Invalid story structure received.");
+                }
+            } catch (error) {
+                console.error("Error generating story:", error);
+                showMessage("Failed to create the story. Please try a different prompt.");
+            } finally {
+                setLoadingState(false);
+            }
+        }
+        
+        function displayCurrentPage() {
+            if (currentPageIndex >= story.length) return;
+            const currentPage = story[currentPageIndex];
+            currentPageNum.textContent = currentPage.pageNumber;
+            pageTextEditor.value = currentPage.text;
+            updateCharCounter();
+            imagePromptEditor.value = currentPage.imagePrompt;
+            if(!currentPage.imageUrl) {
+                generateImage(currentPage.imagePrompt);
+            } else {
+                generatedImage.src = currentPage.imageUrl;
+                setImageLoading(false);
+            }
+        }
+
+        async function generateImage(prompt) {
+            setButtonLoadingState(regenerateImageBtn, true, 'Generating...');
+            setImageLoading(true);
+            const payload = { instances: [{ prompt }], parameters: { "sampleCount": 1 } };
+            try {
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
+                const result = await fetchWithBackoff(apiUrl, payload);
+                if (result.predictions && result.predictions[0].bytesBase64Encoded) {
+                    const imageUrl = `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
+                    generatedImage.src = imageUrl;
+                    story[currentPageIndex].imageUrl = imageUrl;
+                } else {
+                    throw new Error("No image data received.");
+                }
+            } catch (error) {
+                console.error("Error generating image:", error);
+                showMessage("Failed to generate image. You can try regenerating.");
+                generatedImage.src = "https://placehold.co/512x512/E97451/ffffff?text=Error";
+            } finally {
+                setImageLoading(false);
+                setButtonLoadingState(regenerateImageBtn, false, 'Regenerate');
+            }
+        }
+
+        function handleSavePage() {
+            if (!story[currentPageIndex].imageUrl) {
+                showMessage("Please wait for the image to generate.");
+                return;
+            }
+            story[currentPageIndex].imagePrompt = imagePromptEditor.value;
+            story[currentPageIndex].text = pageTextEditor.value; // Save edited story text
+            updatePreviewThumbnail(currentPageIndex);
+            currentPageIndex++;
+
+            if (currentPageIndex < story.length) {
+                displayCurrentPage();
+            } else {
+                navigateTo('narration');
+            }
+        }
+        
+        function setupNarrationForPage(index) {
+            currentNarrationPageIndex = index;
+            const page = story[index];
+            narrationPageNum.textContent = page.pageNumber;
+            narrationText.value = page.narrationText || page.text;
+            previewAudioBtn.disabled = true;
+            saveAudioBtn.disabled = true;
+            tempAudioURL = null;
+            document.querySelectorAll('.preview-thumbnail').forEach((thumb, i) => {
+                thumb.classList.remove('animate-blink', 'border-burnt-sienna', 'border-4');
+                if (i === index) {
+                    thumb.classList.add('ring-4', 'ring-burnt-sienna');
+                } else {
+                    thumb.classList.remove('ring-4', 'ring-burnt-sienna');
+                }
+            });
+        }
+
+        async function handleGenerateAudio() {
+            const text = narrationText.value.trim();
+            if (!text) {
+                showMessage("Please enter text for narration.");
+                return;
+            }
+            setButtonLoadingState(regenerateAudioBtn, true, 'Generating...');
+            const voice = voiceSelect.value;
+            const tone = toneSelect.value;
+            const ttsPrompt = `Say in ${tone} voice: ${text}`;
+            const payload = {
+                contents: [{ parts: [{ text: ttsPrompt }] }],
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } }
+                },
+                model: "gemini-2.5-flash-preview-tts"
+            };
+            try {
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+                const result = await fetchWithBackoff(apiUrl, payload);
+                const part = result?.candidates?.[0]?.content?.parts?.[0];
+                if (part?.inlineData?.data) {
+                    const sampleRate = parseInt(part.inlineData.mimeType.match(/rate=(\d+)/)[1], 10);
+                    const pcmData = base64ToArrayBuffer(part.inlineData.data);
+                    const pcm16 = new Int16Array(pcmData);
+                    const wavBlob = pcmToWav(pcm16, 1, sampleRate);
+                    tempAudioURL = URL.createObjectURL(wavBlob);
+                    previewAudioBtn.disabled = false;
+                    saveAudioBtn.disabled = false;
+                    showMessage("Audio generated!", false);
+                } else {
+                    throw new Error("Invalid audio data received.");
+                }
+            } catch (error) {
+                console.error("Error generating audio:", error);
+                showMessage("Failed to generate audio.");
+            } finally {
+                setButtonLoadingState(regenerateAudioBtn, false, 'Generate');
+            }
+        }
+
+        function handleSaveAudio() {
+            if (!tempAudioURL) {
+                showMessage("Please generate audio before saving.");
+                return;
+            }
+            story[currentNarrationPageIndex].audioUrl = tempAudioURL;
+            story[currentNarrationPageIndex].narrationText = narrationText.value;
+            const thumbnail = document.getElementById(`thumb-${currentNarrationPageIndex}`);
+            if (thumbnail && !thumbnail.querySelector('.audio-icon')) {
+                const audioIcon = document.createElement('div');
+                audioIcon.className = 'audio-icon absolute bottom-1 right-1 bg-burnt-sienna text-white rounded-full p-1';
+                audioIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 010 7.07"/></svg>`;
+                thumbnail.appendChild(audioIcon);
+            }
+            
+            // Visual guidance for next page
+            const nextPageIndex = currentNarrationPageIndex + 1;
+            if (nextPageIndex < story.length) {
+                const nextThumbnail = document.getElementById(`thumb-${nextPageIndex}`);
+                if (nextThumbnail) {
+                    nextThumbnail.classList.add('animate-blink', 'border-burnt-sienna', 'border-4');
+                    nextPagePopup.classList.remove('hidden');
+                    setTimeout(() => nextPagePopup.classList.add('hidden'), 4000);
+                }
+            }
+
+
+            if (story.every(page => page.audioUrl !== null)) {
+                viewStorybookBtn.classList.remove('hidden');
+            }
+            showMessage(`Audio for page ${currentNarrationPageIndex + 1} saved.`, false);
+        }
+
+        function displayFinalStorybook() {
+            storybookContent.innerHTML = '';
+            story.forEach((page, index) => {
+                const pageElement = document.createElement('div');
+                pageElement.className = 'storybook-page w-full h-full absolute inset-0 opacity-0';
+                pageElement.id = `modal-page-${index}`;
+                if (index === 0) pageElement.classList.add('active', 'opacity-100');
+                pageElement.innerHTML = `
+                    <div class="grid md:grid-cols-2 gap-8 h-full p-4">
+                        <div class="flex items-center justify-center h-full"><img src="${page.imageUrl}" class="w-full h-full object-contain rounded-lg shadow-lg"></div>
+                        <div class="flex flex-col justify-center text-lg"><p>${page.text}</p>
+                            ${page.audioUrl ? `<button class="play-audio-btn mt-6 bg-navy dark:bg-pale-gold text-pale-gold dark:text-navy font-bold py-2 px-4 rounded-lg hover:bg-burnt-sienna hover:text-white dark:hover:bg-burnt-sienna dark:hover:text-white transition self-start flex items-center gap-2" data-page-index="${index}">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                                Play Narration</button>` : ''}
+                        </div>
+                    </div>`;
+                storybookContent.appendChild(pageElement);
+            });
+            storybookModal.classList.remove('hidden');
+            updateModalNav(0);
+        }
+        
+        async function handleExportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'px', format: 'a4' });
+            showMessage("Generating PDF...", false);
+            downloadPdfBtn.disabled = true;
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = 20;
+            for (let i = 0; i < story.length; i++) {
+                if (i > 0) doc.addPage();
+                const page = story[i];
+                const img = new Image();
+                img.src = page.imageUrl;
+                await new Promise(resolve => img.onload = resolve);
+                const imgProps = doc.getImageProperties(img);
+                const imgWidth = pageWidth / 2 - margin * 1.5;
+                const imgHeight = imgProps.height * imgWidth / imgProps.width;
+                doc.addImage(img, 'PNG', margin, (pageHeight - imgHeight) / 2, imgWidth, imgHeight);
+                doc.setFontSize(12);
+                const textContent = `Page ${page.pageNumber}\n\n${page.text}\n\n\nNarration:\n${page.narrationText || '(No narration text)'}`;
+                const textX = pageWidth / 2 + (pageWidth / 2) / 2; // Center in the right half
+                doc.text(textContent, textX, margin + 40, { align: 'center', maxWidth: pageWidth / 2 - margin * 1.5 });
+            }
+            doc.save('my-ai-storybook.pdf');
+            showMessage("PDF downloaded!", false);
+            downloadPdfBtn.disabled = false;
+        }
+
+        // --- UI Update and State Management Functions ---
+        function setLoadingState(loading, message = "") {
+            isLoading = loading;
+            generateStoryBtn.disabled = loading;
+            generateStoryBtn.innerHTML = loading ? `<div class="loader !w-6 !h-6 !border-2"></div><span class="ml-2">${message}</span>` : `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2v0a10 10 0 0 0-1.08 19.92v0a10 10 0 0 0-8.92-8.92v0a10 10 0 0 0 10-10z"/><path d="m22 2-2.5 2.5"/><path d="m2 22 2.5-2.5"/><path d="M12 2a10 10 0 0 0-1.08 19.92"/><path d="M2 12a10 10 0 0 0 8.92 8.92"/><path d="M12 22a10 10 0 0 0 10-10"/></svg> Create Story`;
+        }
+        
+        function setButtonLoadingState(button, loading, text) {
+            button.disabled = loading;
+            button.innerHTML = loading ? `<div class="loader"></div><span class="ml-2">${text}</span>` : text;
+        }
+
+        function setImageLoading(loading) {
+            imageLoader.classList.toggle('hidden', !loading);
+            imagePlaceholder.classList.toggle('hidden', loading || (generatedImage.src && generatedImage.src !== ""));
+            generatedImage.classList.toggle('hidden', loading);
+        }
+
+        function updatePreviewThumbnail(index) {
+            const page = story[index];
+            let thumbnail = document.getElementById(`thumb-${index}`);
+            if (!thumbnail) {
+                thumbnail = document.createElement('div');
+                thumbnail.id = `thumb-${index}`;
+                thumbnail.className = 'preview-thumbnail relative aspect-square bg-pale-blue dark:bg-dark-navy rounded-lg overflow-hidden cursor-pointer border-2 border-transparent transition-all duration-300 hover:border-burnt-sienna';
+                thumbnail.innerHTML = `<img src="${page.imageUrl}" class="w-full h-full object-cover"><div class="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-bold text-2xl">${page.pageNumber}</div>`;
+                thumbnail.addEventListener('click', () => {
+                    if (currentSection === 'narration') {
+                        setupNarrationForPage(index);
+                    } else {
+                        currentPageIndex = index;
+                        displayCurrentPage();
+                    }
+                });
+                storybookPreviewGrid.appendChild(thumbnail);
+            } else {
+                thumbnail.querySelector('img').src = page.imageUrl;
+            }
+        }
+        
+        function updateModalNav(index) {
+            document.querySelectorAll('.storybook-page').forEach((p, i) => {
+                p.classList.toggle('active', i === index);
+                p.classList.toggle('opacity-100', i === index);
+                p.classList.toggle('opacity-0', i !== index);
+            });
+            modalPageIndicator.textContent = `Page ${index + 1} / ${story.length}`;
+            prevPageBtn.disabled = index === 0;
+            nextPageBtn.disabled = index === story.length - 1;
+            nextPageBtn.textContent = index === story.length - 1 ? 'End' : 'Next →';
+        }
+
+        function updateCharCounter() {
+            const currentLength = pageTextEditor.value.length;
+            const maxLength = pageTextEditor.maxLength;
+            charCounter.textContent = `${currentLength} / ${maxLength}`;
+        }
+
+        function navigateTo(section) {
+            currentSection = section;
+            // Hide all sections first
+            promptSection.classList.add('hidden');
+            creationWorkspace.classList.add('hidden');
+            
+            // Show main nav
+            mainNav.classList.remove('hidden');
+
+            // Reset nav button styles
+            [navPromptBtn, navImagesBtn, navNarrationBtn].forEach(btn => btn.classList.remove('active'));
+
+            if (section === 'prompt') {
+                promptSection.classList.remove('hidden');
+                navPromptBtn.classList.add('active');
+            } else {
+                creationWorkspace.classList.remove('hidden');
+                if (section === 'images') {
+                    workspaceTitle.textContent = "2. Illustrate Your Pages";
+                    imageGenerationSection.classList.remove('hidden');
+                    narrationSection.classList.add('hidden');
+                    navImagesBtn.classList.add('active');
+                    displayCurrentPage();
+                } else if (section === 'narration') {
+                    workspaceTitle.textContent = "3. Add Narration";
+                    imageGenerationSection.classList.add('hidden');
+                    narrationSection.classList.remove('hidden');
+                    navNarrationBtn.classList.add('active');
+                    setupNarrationForPage(currentNarrationPageIndex);
+                }
+            }
+        }
+
+
+        // --- Audio Helper Functions ---
+        function base64ToArrayBuffer(base64) {
+            const binaryString = window.atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        function pcmToWav(pcmData, numChannels, sampleRate) {
+            const buffer = new ArrayBuffer(44 + pcmData.length * 2);
+            const view = new DataView(buffer);
+            function writeString(view, offset, string) { for (let i = 0; i < string.length; i++) view.setUint8(offset + i, string.charCodeAt(i)); }
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + pcmData.length * 2, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2 * numChannels, true);
+            view.setUint16(32, numChannels * 2, true);
+            view.setUint16(34, 16, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, pcmData.length * 2, true);
+            for (let i = 0; i < pcmData.length; i++) view.setInt16(44 + i * 2, pcmData[i], true);
+            return new Blob([view], { type: 'audio/wav' });
+        }
+
+        // --- Event Listeners ---
+        pageCountSlider.addEventListener('input', (e) => {
+            pageCountLabel.textContent = e.target.value;
+        });
+        
+        themeSwitcher.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+        });
+
+        generateStoryBtn.addEventListener('click', handleGenerateStory);
+        regenerateImageBtn.addEventListener('click', () => {
+            const editedPrompt = imagePromptEditor.value.trim();
+            if (editedPrompt) generateImage(editedPrompt);
+            else showMessage("Image description cannot be empty.");
+        });
+        savePageBtn.addEventListener('click', handleSavePage);
+        regenerateAudioBtn.addEventListener('click', handleGenerateAudio);
+        previewAudioBtn.addEventListener('click', () => { if (tempAudioURL) new Audio(tempAudioURL).play(); });
+        saveAudioBtn.addEventListener('click', handleSaveAudio);
+        viewStorybookBtn.addEventListener('click', displayFinalStorybook);
+        closeModalBtn.addEventListener('click', () => storybookModal.classList.add('hidden'));
+        downloadPdfBtn.addEventListener('click', handleExportToPDF);
+        pageTextEditor.addEventListener('input', updateCharCounter);
+
+        navPromptBtn.addEventListener('click', () => navigateTo('prompt'));
+        navImagesBtn.addEventListener('click', () => navigateTo('images'));
+        navNarrationBtn.addEventListener('click', () => navigateTo('narration'));
+
+        let modalPageIndex = 0;
+        prevPageBtn.addEventListener('click', () => { if (modalPageIndex > 0) updateModalNav(--modalPageIndex); });
+        nextPageBtn.addEventListener('click', () => { 
+            if (nextPageBtn.textContent === 'End') {
+                storybookModal.classList.add('hidden');
+            } else if (modalPageIndex < story.length - 1) {
+                updateModalNav(++modalPageIndex);
+            }
+        });
+        
+        storybookContent.addEventListener('click', (e) => {
+            const target = e.target.closest('.play-audio-btn');
+            if (target) {
+                const index = target.dataset.pageIndex;
+                if (story[index]?.audioUrl) new Audio(story[index].audioUrl).play();
+            }
+        });
+    </script>
+</body>
+</html>

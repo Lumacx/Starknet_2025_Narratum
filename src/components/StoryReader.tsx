@@ -36,7 +36,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story }) => {
   
     useEffect(() => {
       // Initialize audio elements
-      backgroundMusicRef.current = new Audio('/story_reader_audio/background-music.mp3');
+      backgroundMusicRef.current = new Audio(story.backgroundMusicUrl || '/story_reader_audio/background-music.mp3');
       backgroundMusicRef.current.loop = true;
       backgroundMusicRef.current.volume = 0.15;
   
@@ -134,7 +134,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story }) => {
           </div>
         </header>
   
-        <div id="navigation-controls-bar" style={{ alignItems: 'center', gap: '15px', marginTop: '10px', width: 'calc(100% - 40px)', padding: '5px 0', display: 'flex', justifyContent: 'space-between', boxSizing: 'border-box' }}>
+        <div id="navigation-controls-bar" style={{ alignItems: 'center', gap: '15px', marginTop: '10px', width: 'calc(100% - 40px)', padding: '5px 0', display: 'flex', justifyContent: 'space-between', boxSizing: 'border-sizing' }}>
             <button id="arrow-left" onClick={previousPage} className={`arrow nav-arrow ${currentPageIndex === 0 ? 'hidden' : ''}`} aria-label="Previous Page" title="Previous Page">
                 <FontAwesomeIcon icon={faChevronLeft} />
             </button>
@@ -154,11 +154,14 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story }) => {
   
         <main id="app-main" style={{ marginTop: '2px' }}>
           <div id="avatar-panel">
-            <img id="avatar-image" src="/story_reader_avatars/Default.png" alt="Narrator Avatar" />
+            <img id="avatar-image" src={story.creator?.avatarUrl || '/story_reader_avatars/Default.png'} alt="Narrator Avatar" />
             {currentPageIndex === 0 && <button id="start-story-button" onClick={startStory}>Start Story</button>}
           </div>
           <div id="image-panel">
-          <img id="story-image" src={currentPageContent?.imageUrl || story.coverImageUrl || ''} alt="Story Image" />
+          {/* Dynamic background for the story page */}
+          <div id="story-background" style={{ backgroundImage: `url(${currentPageContent?.backgroundUrl || '/story_reader_backgrounds/dream-background.png'})` }}>
+            <img id="story-image" src={currentPageContent?.imageUrl || story.coverImageUrl || ''} alt="Story Image" />
+          </div>
           </div>
         </main>
   

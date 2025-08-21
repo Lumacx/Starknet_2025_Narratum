@@ -53,6 +53,7 @@ type Story @table {
   genres: [String!] # Updated to array of strings
   description: String
   coverImageUrl: String
+  backgroundMusicUrl: String # New field for story-level background music
   creator: User!
   status: String! @default(value: "'draft'")
   commentsCount: Int! @default(value: 0) # Updated to camelCase
@@ -67,6 +68,8 @@ type StoryContent @table {
   pageNumber: Int
   imageUrl: String
   audioUrl: String
+  backgroundUrl: String # New field for page-specific background image
+  videoUrl: String
   createdAt: Timestamp! @default(expr: "request.time")
 }
 

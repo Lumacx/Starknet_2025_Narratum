@@ -41,6 +41,8 @@ next-env.d.ts
 .env*
 .env.local
 
+functions/.runtimeconfig.json
+
 # firebase
 public/_auth/*
 firebase-debug.log

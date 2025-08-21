@@ -1,6 +1,5 @@
-
 import * as admin from "firebase-admin";
-import { onUserCreate } from "firebase-functions/v2/auth";
+import * as functions from "firebase-functions"; // Using v1 functions import
 import { getFirestore } from "firebase-admin/firestore";
 
 // Initialize the Admin SDK only once
@@ -16,8 +15,7 @@ const db = getFirestore();
  * This is the most reliable way to handle user profile creation, as it
  * avoids client-side race conditions.
  */
-exports.createuserprofile = onUserCreate(async (event) => {
-  const user = event.data;
+exports.createuserprofile = functions.auth.user().onCreate(async (user) => {
   const { uid, email, displayName } = user;
 
   // Ensure a unique username, especially if the displayName is not available.

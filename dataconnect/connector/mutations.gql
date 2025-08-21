@@ -52,3 +52,14 @@ mutation UpdateStoryContent(
     data: { textContent: $textContent, pageNumber: $pageNumber, imageUrl: $imageUrl, audioUrl: $audioUrl }
   )
 }
+
+# Add UpdateStory mutation to support commentsCount
+mutation UpdateStory(
+  $id: String!,
+  $commentsCount: Int
+) @auth(level: USER) {
+  story_update(
+    id: $id,
+    data: { commentsCount: $commentsCount }
+  )
+}

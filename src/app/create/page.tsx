@@ -4,8 +4,8 @@ import React, { useState, useEffect, ChangeEvent, FormEvent, useRef } from 'reac
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { useCreateStory } from '@firebasegen/default-connector/react';
-import type { CreateStoryData } from '@firebasegen/default-connector';
+import { useCreateStory, useGetAllTemplates } from '@firebasegen/default-connector/react'; // Import useGetAllTemplates
+import type { CreateStoryData, GetAllTemplatesData } from '@firebasegen/default-connector'; // Import GetAllTemplatesData
 import { getUserProfile } from '@/lib/userUtils';
 import ThemeToggle from '../../components/ThemeToggle';
 import GenreMultiSelect from '@/components/GenreMultiSelect'; // Import the new component
@@ -35,12 +35,6 @@ interface NewStoryData {
   templateId: string;
 }
 
-const mockTemplates: Template[] = [
-    { id: 'three-act', title: 'Three-Act Structure', description: 'A classic model dividing a story into Setup, Confrontation, and Resolution.' },
-    { id: 'heros-journey', title: "The Hero's Journey", description: 'A common narrative archetype involving a hero who goes on an adventure.' },
-    { id: 'frettags-pyramid', title: "Freytag's Pyramid", description: 'A five-part structure focusing on Exposition, Rising Action, Climax, Falling Action, and Dénouement.' },
-  ];
-
 const GENRE_OPTIONS = [
   'Fantasy',
   'Sci-Fi',
@@ -48,7 +42,7 @@ const GENRE_OPTIONS = [
   'Horror',
   'Romance',
   'Adventure',
-  'Children',
+  'Children\'s',
   'Comedy',
   'Drama',
   'Action',
@@ -58,7 +52,8 @@ const GENRE_OPTIONS = [
 const CreateStoryPage: React.FC = () => {
   const { user, starknetAddress, loading } = useAuth();
   const router = useRouter();
-  const { mutate: createStory, isPending, error: createStoryError, reset } = useCreateStory();
+  const { mutate: createStory, isPending, error: createStoryError, reset } = useCreateStory(); // for creating a story
+  const { data: templatesData, isLoading: isLoadingTemplates, error: templatesError } = useGetAllTemplates(); // for fetching templates
   const isLoggedIn = !!user || !!starknetAddress;
 
   const [uiError, setUiError] = useState<string | null>(null);
@@ -68,7 +63,7 @@ const CreateStoryPage: React.FC = () => {
     title: '',
     description: '',
     genres: [], // Initialize as an empty array
-    templateId: mockTemplates[0].id,
+    templateId: '', // Initialize as empty, will set in useEffect
   });
   
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -79,6 +74,13 @@ const CreateStoryPage: React.FC = () => {
       router.push('/login');
     }
   }, [isLoggedIn, loading, router]);
+
+  // Set default template once templates are loaded
+  useEffect(() => {
+    if (!isLoadingTemplates && templatesData?.templates && templatesData.templates.length > 0 && !formData.templateId) {
+      setFormData(prev => ({ ...prev, templateId: templatesData.templates[0].id }));
+    }
+  }, [isLoadingTemplates, templatesData, formData.templateId]);
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -156,14 +158,22 @@ const CreateStoryPage: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (loading || isLoadingTemplates) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F0D1B0]">
-        <p className="text-xl font-semibold text-[#3D4F60]">Loading...</p>
+        <p className="text-xl font-semibold text-[#3D4F60]">Loading templates...</p>
       </div>
     );
   }
   
+  if (templatesError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F0D1B0]">
+        <p className="text-xl font-semibold text-red-600">Error loading templates: {templatesError.message}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 
       bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26] 
@@ -220,14 +230,17 @@ const CreateStoryPage: React.FC = () => {
             <div>
               <h3 className="text-sm font-bold text-[#3D4F60] mb-3 uppercase tracking-wide">Choose a Narrative Structure</h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {mockTemplates.map(template => (
+                {(templatesData?.templates || []).map(template => (
                   <div
                     key={template.id}
                     onClick={() => handleTemplateSelect(template.id)}
                     className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${formData.templateId === template.id ? 'border-[#E97451] bg-[#F0D1B0]/30 scale-105' : 'border-[#B0C4DE] hover:border-[#D4E1EE]'}`}
                   >
                     <h4 className="font-bold text-[#3D4F60]">{template.title}</h4>
-                    <p className="text-sm text-[#3D4F60]/80 mt-1">{template.description}</p>
+                    {/* Note: template.description is not fetched by GetAllTemplates, only structureJson for now */}
+                    <p className="text-sm text-[#3D4F60]/80 mt-1">
+                      {template.structureJson ? JSON.parse(template.structureJson).description : 'No description available.'}
+                    </p>
                   </div>
                 ))}
               </div>

@@ -189,6 +189,7 @@ export interface GetAllTemplatesData {
   templates: ({
     id: string;
     title?: string | null;
+    structureJson?: string | null;
   } & Template_Key)[];
 }
 
@@ -252,6 +253,12 @@ export interface GetStoryWithContentData {
     coverImageUrl?: string | null;
     status: string;
     createdAt: TimestampString;
+    backgroundMusicUrl?: string | null;
+    creator: {
+      id: string;
+      displayname: string;
+      avatarUrl?: string | null;
+    } & User_Key;
   } & Story_Key;
     storyContents: ({
       id: string;
@@ -260,6 +267,7 @@ export interface GetStoryWithContentData {
       imageUrl?: string | null;
       audioUrl?: string | null;
       createdAt: TimestampString;
+      backgroundUrl?: string | null;
     } & StoryContent_Key)[];
 }
 
@@ -338,6 +346,15 @@ export interface UpdateStoryContentVariables {
   pageNumber?: number | null;
   imageUrl?: string | null;
   audioUrl?: string | null;
+}
+
+export interface UpdateStoryData {
+  story_update?: Story_Key | null;
+}
+
+export interface UpdateStoryVariables {
+  id: string;
+  commentsCount?: number | null;
 }
 
 export interface User_Key {
@@ -476,6 +493,18 @@ export const updateStoryContentRef: UpdateStoryContentRef;
 
 export function updateStoryContent(vars: UpdateStoryContentVariables): MutationPromise<UpdateStoryContentData, UpdateStoryContentVariables>;
 export function updateStoryContent(dc: DataConnect, vars: UpdateStoryContentVariables): MutationPromise<UpdateStoryContentData, UpdateStoryContentVariables>;
+
+interface UpdateStoryRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateStoryVariables): MutationRef<UpdateStoryData, UpdateStoryVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpdateStoryVariables): MutationRef<UpdateStoryData, UpdateStoryVariables>;
+  operationName: string;
+}
+export const updateStoryRef: UpdateStoryRef;
+
+export function updateStory(vars: UpdateStoryVariables): MutationPromise<UpdateStoryData, UpdateStoryVariables>;
+export function updateStory(dc: DataConnect, vars: UpdateStoryVariables): MutationPromise<UpdateStoryData, UpdateStoryVariables>;
 
 interface GetUserProfileRef {
   /* Allow users to create refs without passing in DataConnect */

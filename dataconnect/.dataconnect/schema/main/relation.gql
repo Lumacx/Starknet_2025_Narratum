@@ -757,6 +757,15 @@ extend type Story {
   """
   _count: Int! @fdc_generated(from: "Story", purpose: QUERY_COUNT)
   """
+  ✨ Count the number of rows in the `Story` table where the `backgroundMusicUrl` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  backgroundMusicUrl_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Story.backgroundMusicUrl", purpose: QUERY_COUNT)
+  """
   ✨ Count the number of rows in the `Story` table where the `commentsCount` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
   """
   commentsCount_count(
@@ -899,6 +908,15 @@ extend type StoryContent {
     distinct: Boolean = false
   ): Int! @fdc_generated(from: "StoryContent.audioUrl", purpose: QUERY_COUNT)
   """
+  ✨ Count the number of rows in the `StoryContent` table where the `backgroundUrl` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  backgroundUrl_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "StoryContent.backgroundUrl", purpose: QUERY_COUNT)
+  """
   ✨ Count the number of rows in the `StoryContent` table where the `createdAt` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
   """
   createdAt_count(
@@ -952,6 +970,15 @@ extend type StoryContent {
     """
     distinct: Boolean = false
   ): Int! @fdc_generated(from: "StoryContent.textContent", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `StoryContent` table where the `videoUrl` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  videoUrl_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "StoryContent.videoUrl", purpose: QUERY_COUNT)
   """
   ✨ Sum the `pageNumber` field in the `StoryContent` table.
   """
