@@ -25,19 +25,20 @@
     },
     "noEmit": true,
     "plugins": [{ "name": "next" }],
-    "types": ["node","react"],
+    //"types": ["node","react"],
+    "types": ["react"],
     "allowSyntheticDefaultImports": true
   },
   "include": [
-    "next-env.d.ts",
-    "src/**/*.ts",
-    "src/**/*.tsx",
-    ".next/types/**/*.ts",
-    "dataconnect-generated/js/**/*.ts",
-    "src/types",
-    "src/types/firebase-fix.d.ts",
-    "src/types/firebasegen.d.ts"
-, "functions/src/imageGeneration.ts"  ],
+  "next-env.d.ts",
+  "src/**/*.ts",
+  "src/**/*.tsx",
+  ".next/types/**/*.ts",
+  "dataconnect-generated/js/**/*.ts",
+  "src/types",
+  "src/types/firebase-fix.d.ts",
+  "src/types/firebasegen.d.ts"
+    ],
   "exclude": [
     "node_modules",
     "lib",

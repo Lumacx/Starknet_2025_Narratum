@@ -94,7 +94,7 @@
     "react-use-gesture": "^9.1.0",
     "recharts": "^2.15.1",
     "starknet": "^6.24.1",
-    "starknetkit": "^2.10.4",
+    "starknetkit": "2.12.2",
     "swagger-ui-react": "^5.17.6",
     "tailwind-merge": "^3.0.1",
     "tailwindcss-animate": "^1.0.7",

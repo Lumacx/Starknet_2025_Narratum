@@ -3715,3 +3715,10 @@ I0821 05:17:21.120114     398 load.go:115] Finished reloading
 [debug] [2025-08-21T06:10:06.067Z] [Firebase Plugin] Received emulators shutdown notification.
 [debug] [2025-08-21T06:29:45.930Z] [Firebase Plugin] Received CLI notification.
 [debug] [2025-08-21T06:29:46.373Z] [Firebase Plugin] Received emulators shutdown notification.
+[debug] [2025-08-21T06:52:15.196Z] [Firebase Plugin] Received CLI notification.
+[debug] [2025-08-21T06:52:15.353Z] [Firebase Plugin] Received emulators shutdown notification.
+[debug] [2025-08-21T06:56:23.798Z] [Firebase Plugin] Received emulators started notification. Running detection.
+[debug] [2025-08-21T06:56:23.804Z] >>> [apiv2][query] GET http://127.0.0.1:4400/emulators [none]
+[debug] [2025-08-21T06:56:24.136Z] <<< [apiv2][status] GET http://127.0.0.1:4400/emulators 200
+[debug] [2025-08-21T06:56:24.137Z] <<< [apiv2][body] GET http://127.0.0.1:4400/emulators {"hub":{"listen":[{"address":"127.0.0.1","family":"IPv4","port":4400}],"name":"hub","host":"127.0.0.1","port":4400},"ui":{"listen":[{"address":"127.0.0.1","family":"IPv4","port":4005}],"name":"ui","host":"127.0.0.1","port":4005},"logging":{"listen":[{"address":"127.0.0.1","family":"IPv4","port":4500}],"name":"logging","host":"127.0.0.1","port":4500},"auth":{"listen":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"name":"auth","host":"127.0.0.1","port":9099},"functions":{"name":"functions","host":"127.0.0.1","port":5001},"firestore":{"listen":[{"address":"127.0.0.1","family":"IPv4","port":8080}],"name":"firestore","host":"127.0.0.1","port":8080,"pid":21889,"reservedPorts":[9150],"webSocketHost":"127.0.0.1","webSocketPort":9150},"storage":{"listen":[{"address":"127.0.0.1","family":"IPv4","port":9199}],"name":"storage","host":"127.0.0.1","port":9199},"eventarc":{"name":"eventarc","host":"127.0.0.1","port":9299},"tasks":{"name":"tasks","host":"127.0.0.1","port":9499}}
+[debug] [2025-08-21T06:59:48.391Z] [Firebase Plugin] Received emulators shutdown notification.
