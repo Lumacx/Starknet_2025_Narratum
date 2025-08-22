@@ -1,12 +1,6 @@
 'use client';
 
-import React, {
-  useState,
-  useEffect,
-  ChangeEvent,
-  FormEvent,
-  DragEvent,
-} from 'react';
+import React, { useState, useEffect, ChangeEvent, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
@@ -14,24 +8,11 @@ import { useCreateStory } from '@firebasegen/default-connector/react';
 import type { CreateStoryData } from '@firebasegen/default-connector';
 import { getUserProfile } from '@/lib/userUtils';
 import GenreMultiSelect from '@/components/GenreMultiSelect';
-
-// ✅ NEW: import the component
+import { ensureUserProfile } from '@/lib/ensureUserProfile';
+// ✅ reuse component for both tabs
 import UploadImageReference from '@/components/UploadImageReference';
 
-// Firebase Storage for the existing Location tab helpers
-import app from '@/lib/firebase';
-import {
-  getStorage,
-  ref as storageRef,
-  uploadBytes,
-  getDownloadURL,
-  updateMetadata,
-  listAll,
-  getMetadata,
-} from 'firebase/storage';
-const storage = getStorage(app);
-
-/* ---------- Small UI helpers (unchanged) ---------- */
+/* ---------- Small UI helpers ---------- */
 const InfoIcon = ({
   className = 'w-4 h-4 text-gray-500 cursor-pointer',
   onClick,
@@ -52,12 +33,12 @@ const FeatherIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-/* ---------- Types (unchanged) ---------- */
+/* ---------- Types ---------- */
 interface NewStoryData { title: string; description: string; genres: string[]; }
 type Tab = 'characterCreation' | 'locationGeneration' | 'proTips';
 const GENRE_OPTIONS = ['Fantasy','Sci-Fi','Mystery','Horror','Romance','Adventure',"Children's",'Comedy','Drama','Action','Other'];
 
-/* ---------- Modal & markdown helpers (unchanged) ---------- */
+/* ---------- Modal + markdown helpers ---------- */
 const Modal: React.FC<{ open: boolean; title: string; children: React.ReactNode; onClose: () => void; }> = ({ open, title, children, onClose }) => {
   if (!open) return null;
   return (
@@ -88,33 +69,6 @@ const renderMarkdown = (md: string) => {
   return <div dangerouslySetInnerHTML={{ __html: wrapped }} />;
 };
 
-/* ---------- Storage helpers used by Location tab (unchanged) ---------- */
-type GalleryItem = { id: string; url: string; displayName: string; };
-async function uploadImageToStorage(file: File, uid: string, displayName: string): Promise<GalleryItem> {
-  const id = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
-  const ext = file.name.split('.').pop() || 'bin';
-  const objectRef = storageRef(storage, `users/${uid}/assets/${id}.${ext}`);
-  await uploadBytes(objectRef, file, { contentType: file.type, customMetadata: { displayName } });
-  const url = await getDownloadURL(objectRef);
-  const meta = await getMetadata(objectRef);
-  const name = meta.customMetadata?.displayName || file.name.replace(/\.[^/.]+$/, '');
-  return { id: objectRef.name, url, displayName: name };
-}
-async function listGallery(uid: string): Promise<GalleryItem[]> {
-  const folder = storageRef(storage, `users/${uid}/assets/`);
-  const res = await listAll(folder);
-  const out: GalleryItem[] = [];
-  for (const item of res.items) {
-    const [url, meta] = await Promise.all([getDownloadURL(item), getMetadata(item)]);
-    out.push({ id: item.name, url, displayName: meta.customMetadata?.displayName || item.name.replace(/\.[^/.]+$/, ''), });
-  }
-  return out.sort((a, b) => (a.id < b.id ? 1 : -1));
-}
-async function renameGalleryItem(uid: string, objectName: string, newDisplayName: string) {
-  const objRef = storageRef(storage, `users/${uid}/assets/${objectName}`);
-  await updateMetadata(objRef, { customMetadata: { displayName: newDisplayName } });
-}
-
 /* ---------- Page ---------- */
 const CreateStoryPage: React.FC = () => {
   const { user, starknetAddress, loading } = useAuth();
@@ -126,237 +80,99 @@ const CreateStoryPage: React.FC = () => {
   const [isVerifying, setIsVerifying] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('characterCreation');
 
-  // markdown modal
+  // modal
   const [mdOpen, setMdOpen] = useState(false);
   const [mdTitle, setMdTitle] = useState('');
   const [mdHtml, setMdHtml] = useState<React.ReactNode>(null);
 
-  const [formData, setFormData] = useState<NewStoryData>({
-    title: '',
-    description: '',
-    genres: [],
-  });
-
-  // Location tab state (kept as-is)
-  const [locationFile, setLocationFile] = useState<File | null>(null);
-  const [locationPreview, setLocationPreview] = useState<string | null>(null);
-  const [locationName, setLocationName] = useState<string>('');
-  const [locationSuggested, setLocationSuggested] = useState('');
-  const [gallery, setGallery] = useState<GalleryItem[]>([]);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    (async () => {
-      if (user) {
-        try { setGallery(await listGallery(user.uid)); } catch {}
-      }
-    })();
-  }, [user]);
+  const [formData, setFormData] = useState<NewStoryData>({ title: '', description: '', genres: [] });
 
   useEffect(() => { if (!loading && !isLoggedIn) router.push('/login'); }, [isLoggedIn, loading, router]);
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((p) => ({ ...p, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const pollForUserProfile = async (uid: string) => {
-    const MAX = 5, DELAY = 1000;
-    for (let i = 0; i < MAX; i++) {
-      const userProfile = await getUserProfile(uid);
-      if (userProfile) return userProfile;
-      await new Promise((res) => setTimeout(res, DELAY));
+  async function openMarkdownModal(title: string, publicPath: string) {
+    try {
+      const res = await fetch(encodeURI(publicPath));
+      if (!res.ok) throw new Error(`Couldn't load ${publicPath}. Place it under /public.`);
+      const text = await res.text();
+      setMdTitle(title);
+      setMdHtml(renderMarkdown(text));
+      setMdOpen(true);
+    } catch (err: any) {
+      setMdTitle(title);
+      setMdHtml(<div className="text-[#7a2e2e]">{`Couldn't load ${publicPath}. Make sure it exists in /public.`}</div>);
+      setMdOpen(true);
     }
-    throw new Error('User profile not available after multiple attempts. Please try again in a moment.');
-  };
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!user) { setUiError('You must be logged in to create a story.'); return; }
-    setUiError(null); reset(); setIsVerifying(true);
+  
+    if (!user) {
+      setUiError('You must be logged in to create a story.');
+      return;
+    }
+  
+    setUiError(null);
+    reset();
+    setIsVerifying(true);
+  
     try {
-      const userProfile = await pollForUserProfile(user.uid);
-      if (!userProfile) return;
+      // Ensure the user profile doc exists (create minimal one if missing)
+      await ensureUserProfile(user.uid, {
+        displayName: user.displayName ?? null,
+        email: user.email ?? null,
+        lastSeen: new Date().toISOString(),
+      });
+  
+      // Proceed with story creation immediately (no polling)
       createStory(
         {
           creatorId: user.uid,
-          title: formData.title || 'Untitled Story',
-          description: formData.description || 'No description provided.',
-          genres: formData.genres.length > 0 ? formData.genres : ['Other'],
+          title: (formData.title || '').trim() || 'Untitled Story',
+          description: (formData.description || '').trim() || 'No description provided.',
+          genres: formData.genres.length ? formData.genres : ['Other'],
         },
         {
           onSuccess: (data: CreateStoryData) => {
-            const newStoryId = data.story_insert?.id;
-            if (newStoryId) router.push(`/story/edit/${newStoryId}`);
-            else setUiError('Story creation succeeded but no ID was returned.');
+            const id = data.story_insert?.id;
+            if (id) {
+              router.push(`/story/edit/${id}`);
+            } else {
+              setUiError('Story creation succeeded but no ID was returned.');
+            }
           },
-          onError: (err: Error) => setUiError(`Failed to create story: ${err.message}`),
+          onError: (err: Error) => {
+            setUiError(`Failed to create story: ${err.message}`);
+          },
         }
       );
     } catch (err: any) {
-      setUiError(err.message);
-    } finally { setIsVerifying(false); }
+      setUiError(err?.message || 'Something went wrong while creating your story.');
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
-  // simple preview util for Location tab
-  function fileToPreview(file: File, setPreview: (s: string) => void) {
-    const reader = new FileReader();
-    reader.onload = (e) => setPreview(e.target?.result as string);
-    reader.readAsDataURL(file);
-  }
-  function onPickFile(
-    e: ChangeEvent<HTMLInputElement>,
-    setFile: (f: File | null) => void,
-    setPreview: (s: string) => void,
-    setName: (s: string) => void
-  ) {
-    const f = e.target.files?.[0];
-    if (f) { setFile(f); fileToPreview(f, setPreview); setName(f.name.replace(/\.[^/.]+$/, '')); }
-  }
-  function onDropFile(
-    e: DragEvent<HTMLDivElement>,
-    setFile: (f: File | null) => void,
-    setPreview: (s: string) => void,
-    setName: (s: string) => void
-  ) {
-    e.preventDefault(); e.stopPropagation();
-    const f = e.dataTransfer.files?.[0];
-    if (f) { setFile(f); fileToPreview(f, setPreview); setName(f.name.replace(/\.[^/.]+$/, '')); }
-  }
-
-  async function saveLocationUpload() {
-    if (!user) { setUiError('Please log in to save uploads.'); return; }
-    if (!locationFile) return;
-    setSaving(true);
-    try {
-      await uploadImageToStorage(locationFile, user.uid, locationName || 'Asset');
-      setGallery(await listGallery(user.uid));
-      // optional: set suggested (left as-is)
-      setLocationSuggested(locationSuggested);
-    } catch (err: any) {
-      setUiError(err.message);
-    } finally { setSaving(false); }
-  }
-  async function handleRename(item: GalleryItem, newName: string) {
-    if (!user) return;
-    try { await renameGalleryItem(user.uid, item.id, newName); setGallery(await listGallery(user.uid)); }
-    catch (err: any) { setUiError(err.message); }
-  }
-
   /* ---------- Tabs ---------- */
+  const renderCharacterTab = () => (
+    <UploadImageReference
+      variant="character"
+      assetCategory="characters"
+      onOpenTemplate={() => openMarkdownModal('Character Creation Template', '/Character Creation template.md')}
+    />
+  );
 
-  // ✅ NEW: Character tab now delegates to the reusable component
-  const renderCharacterCreationTab = () => <UploadImageReference />;
-
-  const renderLocationGenerationTab = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4">
-      <div>
-        <label htmlFor="locationDescription" className="block text-sm font-bold text-[#3D4F60] mb-2 uppercase tracking-wide flex items-center">
-          Location Description
-          <InfoIcon
-            className="ml-2 w-5 h-5 text-[#E97451]"
-            onClick={() => openMarkdownModal('Location Generation Template', '/Location Generation Template.md')}
-          />
-        </label>
-        <textarea
-          id="locationDescription"
-          name="locationDescription"
-          rows={7}
-          className="w-full p-3 border-2 border-[#B0C4DE] rounded-md bg-white text-[#3D4F60] focus:outline-none focus:ring-2 focus:ring-[#E97451]"
-          placeholder="**[Location_Type]** in [Time_of_Day/Weather_Description]…"
-        ></textarea>
-
-        <h4 className="font-bold text-[#3D4F60] mt-6 mb-3 uppercase tracking-wide">Upload Image Reference</h4>
-        <div
-          className="border-2 border-dashed border-[#B0C4DE] rounded-md p-4 text-center hover:bg-[#F0D1B0]/20 transition-all"
-          onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          onDrop={(e) => onDropFile(e, setLocationFile, setLocationPreview, setLocationName)}
-        >
-          <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            id="uploadLocationImage"
-            onChange={(e) => onPickFile(e, setLocationFile, setLocationPreview, setLocationName)}
-          />
-          <label htmlFor="uploadLocationImage" className="cursor-pointer text-[#E97451] font-semibold">Click to Upload Image</label>
-          <p className="text-sm text-[#3D4F60]/70 mt-1">or drag and drop</p>
-
-          {locationPreview && (
-            <div className="mt-3">
-              <img src={locationPreview} alt="Location preview" className="mx-auto max-h-48 rounded-md border" />
-            </div>
-          )}
-          {locationFile && (
-            <div className="mt-3 text-sm">
-              Selected: <span className="font-medium">{locationFile.name}</span>
-            </div>
-          )}
-        </div>
-
-        {locationFile && (
-          <div className="mt-3">
-            <label className="block text-xs font-bold text-[#3D4F60] mb-1 uppercase tracking-wide">Name to save</label>
-            <input
-              value={locationName}
-              onChange={(e) => setLocationName(e.target.value)}
-              className="w-full p-2 border-2 border-[#B0C4DE] rounded-md bg-white text-[#3D4F60] focus:outline-none focus:ring-2 focus:ring-[#E97451]"
-              placeholder="e.g., Desert City Dusk"
-            />
-            <button
-              type="button"
-              onClick={saveLocationUpload}
-              disabled={saving}
-              className="mt-3 w-full px-6 py-2 bg-[#3D4F60] text-white font-semibold rounded-md shadow hover:bg-[#2c3a47] disabled:opacity-50"
-            >
-              {saving ? 'Saving…' : 'Save to My Gallery'}
-            </button>
-          </div>
-        )}
-
-        <div className="mt-4">
-          <label htmlFor="suggestedPromptLoc" className="block text-sm font-bold text-[#3D4F60] mb-2 uppercase tracking-wide">
-            Suggested Prompt Description (from AI)
-          </label>
-          <textarea
-            id="suggestedPromptLoc"
-            name="suggestedPromptLoc"
-            rows={3}
-            className="w-full p-3 border-2 border-[#B0C4DE] rounded-md bg-white text-[#3D4F60] focus:outline-none focus:ring-2 focus:ring-[#E97451]"
-            placeholder="(Optional) Your own flow for location AI description."
-            value={locationSuggested}
-            onChange={(e) => setLocationSuggested(e.target.value)}
-          ></textarea>
-        </div>
-
-        <button type="button" className="mt-4 w-full px-6 py-3 bg-[#3D4F60] text-white font-semibold rounded-md shadow-lg hover:bg-[#2c3a47]">
-          Generate Location Image (AI)
-        </button>
-      </div>
-
-      {/* Right Side: simple gallery (rename) */}
-      <div className="bg-[#E0C9A0]/20 border-2 border-[#B0C4DE] rounded-md p-4 min-h-[300px]">
-        <p className="text-[#3D4F60]/70 mb-3">Location Image Gallery (rename by editing below)</p>
-        <div className="grid grid-cols-2 gap-3">
-          {gallery.map((g) => (
-            <div key={g.id} className="rounded border bg-white p-2">
-              <img src={g.url} alt={g.displayName} className="w-full h-32 object-cover rounded" />
-              <input
-                className="mt-2 w-full text-sm border rounded px-2 py-1"
-                defaultValue={g.displayName}
-                onBlur={(e) => handleRename(g, e.target.value)}
-                title="Click to rename, blur to save"
-              />
-            </div>
-          ))}
-          {gallery.length === 0 && (
-            <div className="col-span-2 text-sm text-[#3D4F60]/70">
-              Nothing here yet — upload and save an image to see it here.
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+  const renderLocationTab = () => (
+    <UploadImageReference
+      variant="location"
+      assetCategory="locations"
+      onOpenTemplate={() => openMarkdownModal('Location Generation Template', '/Location Generation Template.md')}
+    />
   );
 
   const renderProTipsTab = () => (
@@ -367,27 +183,14 @@ const CreateStoryPage: React.FC = () => {
       </h3>
       <div className="bg-[#E0C9A0]/20 border-2 border-[#B0C4DE] rounded-md p-4">
         <p className="text-[#3D4F60]/80 mb-4">
-          Here you will find advanced tips and tricks to craft effective prompts for AI image generation.
+          Use clear subjects, style cues, lighting, mood, and composition ratios.
         </p>
         <img src="/master_prompt_guidance.PNG" alt="Master Prompt Guidance" className="w-full h-auto rounded-md shadow-md" />
       </div>
     </div>
   );
 
-  // markdown loader used by InfoIcon (unchanged)
-  async function openMarkdownModal(title: string, publicPath: string) {
-    try {
-      const res = await fetch(encodeURI(publicPath));
-      if (!res.ok) throw new Error(`Couldn't load ${publicPath}. Place it under /public.`);
-      const text = await res.text();
-      setMdTitle(title); setMdHtml(renderMarkdown(text)); setMdOpen(true);
-    } catch (err: any) {
-      setMdTitle(title);
-      setMdHtml(<div className="text-[#7a2e2e]">{`Couldn't load ${publicPath}. Make sure it exists in /public.`}</div>);
-      setMdOpen(true);
-    }
-  }
-
+  /* ---------- Render ---------- */
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center p-4
@@ -436,14 +239,12 @@ const CreateStoryPage: React.FC = () => {
               <textarea
                 id="description" name="description" value={formData.description} onChange={handleInputChange}
                 className="w-full p-3 border-2 border-[#B0C4DE] rounded-md bg-white text-[#3D4F60] focus:outline-none focus:ring-2 focus:ring-[#E97451]"
-                placeholder="A young mage discovers a hidden power..." rows={3} required
+                placeholder="A young mage discovers a hidden power that could save or shatter the kingdom..." rows={3} required
               />
             </div>
 
             <div>
-              <h3 className="text-sm font-bold text-[#3D4F60] mb-3 uppercase tracking-wide">
-                Build References and Writer's AI Support
-              </h3>
+              <h3 className="text-sm font-bold text-[#3D4F60] mb-3 uppercase tracking-wide">Build References and Writer's AI Support</h3>
 
               <div className="flex justify-center mb-6">
                 <button
@@ -469,11 +270,9 @@ const CreateStoryPage: React.FC = () => {
                 </button>
               </div>
 
-              <div>
-                {activeTab === 'characterCreation' && renderCharacterCreationTab()}
-                {activeTab === 'locationGeneration' && renderLocationGenerationTab()}
-                {activeTab === 'proTips' && renderProTipsTab()}
-              </div>
+              {activeTab === 'characterCreation' && renderCharacterTab()}
+              {activeTab === 'locationGeneration' && renderLocationTab()}
+              {activeTab === 'proTips' && renderProTipsTab()}
             </div>
 
             {(uiError || createStoryError) && (

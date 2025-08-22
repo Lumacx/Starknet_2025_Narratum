@@ -79,7 +79,7 @@ const LandingPage: React.FC = () => {
             <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase leading-tight">STORIES</span>
           </Link>
           <Link
-              href={isLoggedIn ? "/create" : "/login"} 
+              href={isLoggedIn ? "/create/begin" : "/login"} 
               className={`flex flex-col items-center justify-center p-6 md:p-8 w-48 h-60 md:w-56 md:h-72 bg-[#F3EADF] border-2 border-[#CBBBA0] rounded-2xl shadow-lg text-[#3A4B5C] transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-[#CBBBA0] ${!isLoggedIn ? 'opacity-70' : ''}`}
               aria-disabled={!isLoggedIn}
               tabIndex={!isLoggedIn ? -1 : undefined}

@@ -1,0 +1,164 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import GenreMultiSelect from '@/components/GenreMultiSelect';
+import UploadImageReference from '@/components/UploadImageReference';
+
+const GENRES = ['Fantasy','Sci-Fi','Mystery','Horror','Romance','Adventure',"Children's",'Comedy','Drama','Action','Other'] as const;
+
+const CATEGORIES = [
+  { key: 'short',    label: 'Short Story (1–10 slides)', min: 1, max: 10 },
+  { key: 'novela',   label: 'Novela (5–20 slides)',      min: 5, max: 20 },
+  { key: 'campaign', label: 'Campaign (1–20 slides)',    min: 1, max: 20 },
+] as const;
+
+type Draft = {
+  title: string;
+  genres: string[];
+  synopsis: string;
+  category: typeof CATEGORIES[number]['key'];
+  pages: number;
+  coverUrl?: string;
+};
+
+export default function BeginPage() {
+  const router = useRouter();
+  const [draft, setDraft] = useState<Draft>({
+    title: '',
+    genres: [],
+    synopsis: '',
+    category: 'short',
+    pages: 3,                 // ✅ default to 3 pages
+    coverUrl: undefined,
+  });
+
+  // Load / Save local draft
+  useEffect(() => {
+    const raw = localStorage.getItem('newStoryDraft');
+    if (raw) {
+      try { setDraft((d) => ({ ...d, ...JSON.parse(raw) })); } catch {}
+    }
+  }, []);
+  useEffect(() => {
+    localStorage.setItem('newStoryDraft', JSON.stringify(draft));
+  }, [draft]);
+
+  const cat = CATEGORIES.find(c => c.key === draft.category)!;
+
+  return (
+    <div className="min-h-screen p-6 pb-28 bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0]">
+      <div className="max-w-5xl mx-auto">
+
+        {/* ---- Card: Page Header + Back ---- */}
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-3xl font-bold text-[#3D4F60]">Begin a New Tale</h1>
+          <Link href="/" className="text-sm underline">Back</Link>
+        </div>
+
+        {/* ---- Card: Top section (Title/Genres/Synopsis/Category/Pages) ---- */}
+        <div className="mb-5 rounded-xl border-2 border-[#3D4F60]/20 bg-white/90 shadow p-6">
+          {/* Title + Genres */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <label className="block text-sm font-bold mb-2">Title</label>
+              <input
+                className="w-full p-3 border-2 rounded-md"
+                value={draft.title}
+                onChange={(e) => setDraft(d => ({ ...d, title: e.target.value }))}
+                placeholder="The Rise of the Shadow Dragon"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold mb-2">Genres</label>
+              <GenreMultiSelect
+                genresList={GENRES as any}
+                selectedGenres={draft.genres}
+                onSelectedGenresChange={(genres) => setDraft(d => ({ ...d, genres }))}
+              />
+            </div>
+          </div>
+
+          {/* Synopsis */}
+          <div className="mb-6">
+            <label className="block text-sm font-bold mb-2">Brief Synopsis</label>
+            <textarea
+              rows={4}
+              className="w-full p-3 border-2 rounded-md"
+              value={draft.synopsis}
+              onChange={(e) => setDraft(d => ({ ...d, synopsis: e.target.value }))}
+              placeholder="A young mage discovers a hidden power that could save or shatter the kingdom..."
+            />
+          </div>
+
+          {/* Category + Pages */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-bold mb-2">Category</label>
+              <select
+                className="w-full p-3 border-2 rounded-md bg-white"
+                value={draft.category}
+                onChange={(e) => {
+                  const nextKey = e.target.value as Draft['category'];
+                  const cfg = CATEGORIES.find(c => c.key === nextKey)!;
+                  setDraft(d => ({
+                    ...d,
+                    category: nextKey,
+                    pages: Math.min(Math.max(d.pages, cfg.min), cfg.max),
+                  }));
+                }}
+              >
+                {CATEGORIES.map(c => (<option key={c.key} value={c.key}>{c.label}</option>))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">Allowed pages: {cat.min}–{cat.max}</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold mb-2">Number of Pages</label>
+              <input
+                type="range"
+                min={cat.min}
+                max={cat.max}
+                value={draft.pages}
+                onChange={(e) => setDraft(d => ({ ...d, pages: Number(e.target.value) }))}
+                className="w-full"
+              />
+              <div className="text-sm mt-1">Pages: <strong>{draft.pages}</strong></div>
+            </div>
+          </div>
+        </div>
+
+        {/* ---- Card: Bottom section (Cover Image area) ---- */}
+        <div className="rounded-xl border-2 border-[#B0C4DE] bg-[#F7F3EC] shadow p-6">
+          <h2 className="text-xl font-bold mb-4 text-[#3D4F60]">Cover Image</h2>
+
+          {/* Reuse the uploader/generator; just override prompt header */}
+          <UploadImageReference
+            variant="cover"
+            nounOverride="Cover"
+            mainPromptLabel="Book Cover Generation Prompt"   // ✅ header text
+            assetCategory="covers"                         // ⬅️ show/save in “covers/”
+            onSaved={(item) => setDraft(d => ({ ...d, coverUrl: item.url }))}
+          />
+        </div>
+
+        {/* Footer actions */}
+        <div className="flex justify-end gap-3 mt-5 mb-12">
+          <button
+            className="px-5 py-2 rounded-md border"
+            onClick={() => { localStorage.removeItem('newStoryDraft'); location.reload(); }}
+          >
+            Reset
+          </button>
+          <button
+            className="px-6 py-2 rounded-md bg-[#E97451] text-white font-semibold"
+            onClick={() => router.push('/create/support')}
+          >
+            Next: Build References & AI Support →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

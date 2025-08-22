@@ -3,7 +3,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Info, Trash2 } from 'lucide-react';
 import Image from 'next/image';
-import { storage } from '@/lib/firebase'; // must export storage from your firebase.ts
+import { storage } from '@/lib/firebase'; // requires storage export
 import { useAuth } from '@/context/AuthContext';
 import {
   ref,
@@ -13,7 +13,24 @@ import {
   deleteObject,
 } from 'firebase/storage';
 
-// ---------- file-size limits ----------
+// Put this near the top, above Props:
+type GalleryItem = { name: string; url: string; fullPath: string };
+
+/** Props let us reuse this for Character and Location tabs and Cover */
+type AssetCategory =
+  | 'covers' | 'avatars' | 'characters' | 'locations' | 'backgrounds'
+  | 'audioNarrations' | 'audioEffects' | 'videos' | 'others';
+
+type Props = {
+  variant: 'character' | 'location' | 'cover';
+  nounOverride?: string;
+  onOpenTemplate?: () => void;
+  onSaved?: (item: GalleryItem) => void;
+  mainPromptLabel?: string;
+  assetCategory: AssetCategory;                 // ⬅️ NEW
+};
+
+/* ---------- file-size limits (as requested) ---------- */
 const KB = 1024;
 const MB = 1024 * KB;
 const LIMITS: Record<string, { min: number; max: number }> = {
@@ -40,41 +57,47 @@ function fileToDataUrl(file: File) {
   });
 }
 
-type GalleryItem = { name: string; url: string; fullPath: string };
-
-export default function UploadImageReference() {
+export default function UploadImageReference({
+  variant, nounOverride, onOpenTemplate, onSaved, mainPromptLabel, assetCategory
+  }: Props) {
   const { user: currentUser } = useAuth();
   const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const noun = variant === 'character' ? 'Character' : 'Location';
+  const generateCta =
+    variant === 'character' ? 'Generate Character Image (AI)' : 'Generate Location Image (AI)';
 
   // Upload/AI state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState('');
   const [nameToSave, setNameToSave] = useState('');
   const [suggestedPrompt, setSuggestedPrompt] = useState('');
-  const [characterPrompt, setCharacterPrompt] = useState('');
+  const [mainPrompt, setMainPrompt] = useState('');           // used for generation
   const [isDescribing, setIsDescribing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedDataUrl, setGeneratedDataUrl] = useState('');
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [err, setErr] = useState('');
 
-  // load gallery
-  useEffect(() => {
-    if (!currentUser) return;
-    const r = ref(storage, `users/${currentUser.uid}/assets`);
-    listAll(r)
-      .then(async (res) => {
-        const items = await Promise.all(
-          res.items.map(async (i) => ({
-            name: i.name,
-            fullPath: i.fullPath,
-            url: await getDownloadURL(i),
-          }))
-        );
-        setGallery(items);
-      })
-      .catch(() => {});
-  }, [currentUser]);
+  // load gallery for user (scoped to a single category)
+useEffect(() => {
+  if (!currentUser) return;
+  const base = ref(storage, `users/${currentUser.uid}/assets/${assetCategory}`);
+  listAll(base)
+    .then(async (res) => {
+      const items = await Promise.all(
+        res.items.map(async (i) => ({
+          name: i.name,
+          fullPath: i.fullPath,
+          url: await getDownloadURL(i),
+        }))
+      );
+      // newest-ish first by filename
+      setGallery(items.sort((a, b) => (a.name < b.name ? 1 : -1)));
+    })
+    .catch(() => {});
+}, [currentUser, assetCategory]);
+
 
   // choose file
   async function onChoose(e: React.ChangeEvent<HTMLInputElement>) {
@@ -117,26 +140,34 @@ export default function UploadImageReference() {
       if (!nameToSave.trim()) return alert('Enter a name to save.');
 
       const dataUrl = await fileToDataUrl(selectedFile);
-      const path = `users/${currentUser.uid}/assets/${nameToSave}.png`;
+      const path = `users/${currentUser.uid}/assets/${assetCategory}/${nameToSave}.png`;
       const o = ref(storage, path);
-      await uploadString(o, dataUrl, 'data_url');
+      await uploadString(o, dataUrl, 'data_url', {
+      customMetadata: { displayName: nameToSave, category: assetCategory, source: 'uploaded', createdAt: String(Date.now()) }
+      });
       const url = await getDownloadURL(o);
-      setGallery((g) => [{ name: `${nameToSave}.png`, url, fullPath: path }, ...g]);
+
+
+      // ⬇️ replace the two lines that push directly into state with this:
+        const item: GalleryItem = { name: `${nameToSave}.png`, url, fullPath: path };
+        setGallery((g) => [item, ...g]);
+        onSaved?.(item);
+
       alert('Saved to your gallery ✅');
     } catch (e: any) {
       alert(e?.message || 'Save failed');
     }
   }
 
-  // 2) Generate image using Character Description
+  // 2) Generate image using the Main Description text
   async function handleGenerate() {
     try {
-      if (!characterPrompt.trim()) return alert('Write a character description first.');
+      if (!mainPrompt.trim()) return alert(`Write a ${noun.toLowerCase()} description first.`);
       setIsGenerating(true);
       const res = await fetch('/api/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: characterPrompt }),
+        body: JSON.stringify({ prompt: mainPrompt }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Generation failed');
@@ -154,11 +185,17 @@ export default function UploadImageReference() {
       if (!currentUser) return alert('Sign in first.');
       if (!generatedDataUrl) return;
       if (!nameToSave.trim()) return alert('Enter a name to save.');
-      const path = `users/${currentUser.uid}/assets/${nameToSave}.png`;
+      const path = `users/${currentUser.uid}/assets/${assetCategory}/${nameToSave}.png`;
       const o = ref(storage, path);
-      await uploadString(o, generatedDataUrl, 'data_url');
+      await uploadString(o, generatedDataUrl, 'data_url', {
+      customMetadata: { displayName: nameToSave, category: assetCategory, source: 'generated', createdAt: String(Date.now()) }
+      });
       const url = await getDownloadURL(o);
-      setGallery((g) => [{ name: `${nameToSave}.png`, url, fullPath: path }, ...g]);
+
+      // ⬇️ same pattern here:
+        const item: GalleryItem = { name: `${nameToSave}.png`, url, fullPath: path };
+        setGallery((g) => [item, ...g]);
+        onSaved?.(item);
       alert('Generated image saved ✅');
     } catch (e: any) {
       alert(e?.message || 'Save failed');
@@ -196,10 +233,7 @@ export default function UploadImageReference() {
             className="hidden"
             onChange={onChoose}
           />
-          <button
-            className="cursor-pointer text-[#E97451] font-semibold"
-            onClick={() => inputRef.current?.click()}
-          >
+          <button className="cursor-pointer text-[#E97451] font-semibold" onClick={() => inputRef.current?.click()}>
             Click to Upload Image
           </button>
           <p className="text-sm text-[#3D4F60]/70 mt-1">or drag and drop</p>
@@ -233,10 +267,7 @@ export default function UploadImageReference() {
             value={nameToSave}
             onChange={(e) => setNameToSave(e.target.value)}
           />
-          <button
-            onClick={handleSaveOriginal}
-            className="px-4 py-2 rounded-md bg-[#3D4F60] text-white"
-          >
+          <button onClick={handleSaveOriginal} className="px-4 py-2 rounded-md bg-[#3D4F60] text-white">
             Save to My Gallery
           </button>
         </div>
@@ -245,7 +276,9 @@ export default function UploadImageReference() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <h4 className="font-semibold">Suggested Prompt Description (from AI)</h4>
-            <Info size={16} className="text-neutral-500" />
+            <button type="button" onClick={onOpenTemplate} title={`${noun} template`}>
+              <Info size={16} className="text-neutral-500" />
+            </button>
           </div>
           <div className="flex gap-2">
             <button
@@ -264,17 +297,17 @@ export default function UploadImageReference() {
           </div>
         </div>
 
-        {/* Character Description used for generation */}
+        {/* Main Description used for generation (moved below suggested) */}
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <h4 className="font-semibold">Character Description</h4>
+          <h4 className="font-semibold">{mainPromptLabel ?? `${noun} Description`}</h4>
             <Info size={16} className="text-neutral-500" />
           </div>
           <textarea
             className="w-full min-h-[120px] border rounded-md p-2"
-            placeholder="Describe the character you want the AI to generate…"
-            value={characterPrompt}
-            onChange={(e) => setCharacterPrompt(e.target.value)}
+            placeholder={`Describe the ${noun.toLowerCase()} you want the AI to generate…`}
+            value={mainPrompt}
+            onChange={(e) => setMainPrompt(e.target.value)}
           />
         </div>
 
@@ -282,7 +315,7 @@ export default function UploadImageReference() {
         {!generatedDataUrl ? (
           <button
             onClick={handleGenerate}
-            disabled={isGenerating || !characterPrompt.trim()}
+            disabled={isGenerating || !mainPrompt.trim()}
             className="w-full py-3 rounded-md bg-[#E97451] text-white font-semibold disabled:opacity-50"
           >
             {isGenerating ? (
@@ -291,7 +324,7 @@ export default function UploadImageReference() {
                 Generating…
               </span>
             ) : (
-              'Generate Character Image (AI)'
+              generateCta
             )}
           </button>
         ) : (
@@ -328,7 +361,7 @@ export default function UploadImageReference() {
           <p className="text-sm text-neutral-500">No images yet.</p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {gallery.map((it) => (
+            {gallery.map((it: GalleryItem) => (   // 👈 add : GalleryItem
               <div key={it.fullPath} className="relative group border rounded-md overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={it.url} alt={it.name} className="w-full h-32 object-cover" />
