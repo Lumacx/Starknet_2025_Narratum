@@ -8,15 +8,14 @@
     "types": ["node"],
     "strict": true,
     "skipLibCheck": true,
-
-    "outDir": "lib",
     "rootDir": "src",
-
+    "outDir": "lib",
     "sourceMap": true,
     "inlineSources": true,
     "incremental": true,
     "noEmitOnError": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "lib"]
 }

@@ -302,6 +302,42 @@ input AdminAction_Order {
   ✨ Generated from Field `AdminAction`.`targetId` of type `String`
   """
   targetId: OrderDirection
+  """
+  ✨ Generated from Field `AdminAction`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `AdminAction`.`actionDate_count` of type `Int!`
+  """
+  actionDate_count: OrderDirection
+  """
+  ✨ Generated from Field `AdminAction`.`actionType_count` of type `Int!`
+  """
+  actionType_count: OrderDirection
+  """
+  ✨ Generated from Field `AdminAction`.`adminId_count` of type `Int!`
+  """
+  adminId_count: OrderDirection
+  """
+  ✨ Generated from Field `AdminAction`.`description_count` of type `Int!`
+  """
+  description_count: OrderDirection
+  """
+  ✨ Generated from Field `AdminAction`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `AdminAction`.`targetId_count` of type `Int!`
+  """
+  targetId_count: OrderDirection
+  """
+  ✨ Generated from Field `AdminAction`.`actionDate_min` of type `Timestamp`
+  """
+  actionDate_min: OrderDirection
+  """
+  ✨ Generated from Field `AdminAction`.`actionDate_max` of type `Timestamp`
+  """
+  actionDate_max: OrderDirection
 }
 """
 ✨ Generated data input type for table 'AiGeneratedGif'. It includes all necessary fields for creating or upserting rows into table.
@@ -501,6 +537,34 @@ input AiGeneratedGif_Order {
   ✨ Generated from Field `AiGeneratedGif`.`gifUrl` of type `String`
   """
   gifUrl: OrderDirection
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`gifUrl_count` of type `Int!`
+  """
+  gifUrl_count: OrderDirection
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`imageId_count` of type `Int!`
+  """
+  imageId_count: OrderDirection
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `AiGeneratedGif`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
 }
 """
 ✨ Generated data input type for table 'AiGeneratedImage'. It includes all necessary fields for creating or upserting rows into table.
@@ -764,6 +828,46 @@ input AiGeneratedImage_Order {
   ✨ Generated from Field `AiGeneratedImage`.`status` of type `String!`
   """
   status: OrderDirection
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`generatedImageUrl_count` of type `Int!`
+  """
+  generatedImageUrl_count: OrderDirection
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`promptText_count` of type `Int!`
+  """
+  promptText_count: OrderDirection
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`sketchUrl_count` of type `Int!`
+  """
+  sketchUrl_count: OrderDirection
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`status_count` of type `Int!`
+  """
+  status_count: OrderDirection
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`userId_count` of type `Int!`
+  """
+  userId_count: OrderDirection
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `AiGeneratedImage`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
 }
 """
 ✨ Generated data input type for table 'Analytics'. It includes all necessary fields for creating or upserting rows into table.
@@ -995,6 +1099,38 @@ input Analytics_Order {
   ✨ Generated from Field `Analytics`.`actionTimestamp` of type `Timestamp!`
   """
   actionTimestamp: OrderDirection
+  """
+  ✨ Generated from Field `Analytics`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `Analytics`.`actionTimestamp_count` of type `Int!`
+  """
+  actionTimestamp_count: OrderDirection
+  """
+  ✨ Generated from Field `Analytics`.`action_count` of type `Int!`
+  """
+  action_count: OrderDirection
+  """
+  ✨ Generated from Field `Analytics`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `Analytics`.`storyId_count` of type `Int!`
+  """
+  storyId_count: OrderDirection
+  """
+  ✨ Generated from Field `Analytics`.`userId_count` of type `Int!`
+  """
+  userId_count: OrderDirection
+  """
+  ✨ Generated from Field `Analytics`.`actionTimestamp_min` of type `Timestamp`
+  """
+  actionTimestamp_min: OrderDirection
+  """
+  ✨ Generated from Field `Analytics`.`actionTimestamp_max` of type `Timestamp`
+  """
+  actionTimestamp_max: OrderDirection
 }
 """
 ✨ Generated filter input type for table 'AnalyticsAction'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
@@ -1300,6 +1436,54 @@ input AppSubscription_Order {
   ✨ Generated from Field `AppSubscription`.`price` of type `Float`
   """
   price: OrderDirection
+  """
+  ✨ Generated from Field `AppSubscription`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `AppSubscription`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `AppSubscription`.`featuresJson_count` of type `Int!`
+  """
+  featuresJson_count: OrderDirection
+  """
+  ✨ Generated from Field `AppSubscription`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `AppSubscription`.`name_count` of type `Int!`
+  """
+  name_count: OrderDirection
+  """
+  ✨ Generated from Field `AppSubscription`.`price_count` of type `Int!`
+  """
+  price_count: OrderDirection
+  """
+  ✨ Generated from Field `AppSubscription`.`price_sum` of type `Float`
+  """
+  price_sum: OrderDirection
+  """
+  ✨ Generated from Field `AppSubscription`.`price_avg` of type `Float`
+  """
+  price_avg: OrderDirection
+  """
+  ✨ Generated from Field `AppSubscription`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `AppSubscription`.`price_min` of type `Float`
+  """
+  price_min: OrderDirection
+  """
+  ✨ Generated from Field `AppSubscription`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+  """
+  ✨ Generated from Field `AppSubscription`.`price_max` of type `Float`
+  """
+  price_max: OrderDirection
 }
 """
 ✨ Generated filter input type for table 'ImageGenerationStatus'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
@@ -1605,6 +1789,46 @@ input LegalDisclaimer_Order {
   ✨ Generated from Field `LegalDisclaimer`.`createdAt` of type `Timestamp!`
   """
   createdAt: OrderDirection
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`acceptedDate_count` of type `Int!`
+  """
+  acceptedDate_count: OrderDirection
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`accepted_count` of type `Int!`
+  """
+  accepted_count: OrderDirection
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`userId_count` of type `Int!`
+  """
+  userId_count: OrderDirection
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`acceptedDate_min` of type `Timestamp`
+  """
+  acceptedDate_min: OrderDirection
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`acceptedDate_max` of type `Timestamp`
+  """
+  acceptedDate_max: OrderDirection
+  """
+  ✨ Generated from Field `LegalDisclaimer`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
 }
 """
 ✨ Generated data input type for table 'Payment'. It includes all necessary fields for creating or upserting rows into table.
@@ -1912,6 +2136,70 @@ input Payment_Order {
   ✨ Generated from Field `Payment`.`status` of type `String!`
   """
   status: OrderDirection
+  """
+  ✨ Generated from Field `Payment`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `Payment`.`amount_count` of type `Int!`
+  """
+  amount_count: OrderDirection
+  """
+  ✨ Generated from Field `Payment`.`appSubscriptionId_count` of type `Int!`
+  """
+  appSubscriptionId_count: OrderDirection
+  """
+  ✨ Generated from Field `Payment`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `Payment`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `Payment`.`paymentDate_count` of type `Int!`
+  """
+  paymentDate_count: OrderDirection
+  """
+  ✨ Generated from Field `Payment`.`status_count` of type `Int!`
+  """
+  status_count: OrderDirection
+  """
+  ✨ Generated from Field `Payment`.`userId_count` of type `Int!`
+  """
+  userId_count: OrderDirection
+  """
+  ✨ Generated from Field `Payment`.`amount_sum` of type `Float`
+  """
+  amount_sum: OrderDirection
+  """
+  ✨ Generated from Field `Payment`.`amount_avg` of type `Float`
+  """
+  amount_avg: OrderDirection
+  """
+  ✨ Generated from Field `Payment`.`amount_min` of type `Float`
+  """
+  amount_min: OrderDirection
+  """
+  ✨ Generated from Field `Payment`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `Payment`.`paymentDate_min` of type `Timestamp`
+  """
+  paymentDate_min: OrderDirection
+  """
+  ✨ Generated from Field `Payment`.`amount_max` of type `Float`
+  """
+  amount_max: OrderDirection
+  """
+  ✨ Generated from Field `Payment`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+  """
+  ✨ Generated from Field `Payment`.`paymentDate_max` of type `Timestamp`
+  """
+  paymentDate_max: OrderDirection
 }
 """
 ✨ Generated filter input type for table 'PaymentStatus'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
@@ -2361,6 +2649,82 @@ input Story_Order {
   ✨ Generated from Field `Story`.`updatedAt` of type `Timestamp!`
   """
   updatedAt: OrderDirection
+  """
+  ✨ Generated from Field `Story`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `Story`.`backgroundMusicUrl_count` of type `Int!`
+  """
+  backgroundMusicUrl_count: OrderDirection
+  """
+  ✨ Generated from Field `Story`.`commentsCount_count` of type `Int!`
+  """
+  commentsCount_count: OrderDirection
+  """
+  ✨ Generated from Field `Story`.`coverImageUrl_count` of type `Int!`
+  """
+  coverImageUrl_count: OrderDirection
+  """
+  ✨ Generated from Field `Story`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `Story`.`creatorId_count` of type `Int!`
+  """
+  creatorId_count: OrderDirection
+  """
+  ✨ Generated from Field `Story`.`description_count` of type `Int!`
+  """
+  description_count: OrderDirection
+  """
+  ✨ Generated from Field `Story`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `Story`.`status_count` of type `Int!`
+  """
+  status_count: OrderDirection
+  """
+  ✨ Generated from Field `Story`.`title_count` of type `Int!`
+  """
+  title_count: OrderDirection
+  """
+  ✨ Generated from Field `Story`.`updatedAt_count` of type `Int!`
+  """
+  updatedAt_count: OrderDirection
+  """
+  ✨ Generated from Field `Story`.`commentsCount_sum` of type `Int`
+  """
+  commentsCount_sum: OrderDirection
+  """
+  ✨ Generated from Field `Story`.`commentsCount_avg` of type `Float`
+  """
+  commentsCount_avg: OrderDirection
+  """
+  ✨ Generated from Field `Story`.`commentsCount_min` of type `Int`
+  """
+  commentsCount_min: OrderDirection
+  """
+  ✨ Generated from Field `Story`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `Story`.`updatedAt_min` of type `Timestamp`
+  """
+  updatedAt_min: OrderDirection
+  """
+  ✨ Generated from Field `Story`.`commentsCount_max` of type `Int`
+  """
+  commentsCount_max: OrderDirection
+  """
+  ✨ Generated from Field `Story`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+  """
+  ✨ Generated from Field `Story`.`updatedAt_max` of type `Timestamp`
+  """
+  updatedAt_max: OrderDirection
 }
 """
 ✨ Generated data input type for table 'StoryContent'. It includes all necessary fields for creating or upserting rows into table.
@@ -2680,6 +3044,70 @@ input StoryContent_Order {
   ✨ Generated from Field `StoryContent`.`videoUrl` of type `String`
   """
   videoUrl: OrderDirection
+  """
+  ✨ Generated from Field `StoryContent`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `StoryContent`.`audioUrl_count` of type `Int!`
+  """
+  audioUrl_count: OrderDirection
+  """
+  ✨ Generated from Field `StoryContent`.`backgroundUrl_count` of type `Int!`
+  """
+  backgroundUrl_count: OrderDirection
+  """
+  ✨ Generated from Field `StoryContent`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `StoryContent`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `StoryContent`.`imageUrl_count` of type `Int!`
+  """
+  imageUrl_count: OrderDirection
+  """
+  ✨ Generated from Field `StoryContent`.`pageNumber_count` of type `Int!`
+  """
+  pageNumber_count: OrderDirection
+  """
+  ✨ Generated from Field `StoryContent`.`storyId_count` of type `Int!`
+  """
+  storyId_count: OrderDirection
+  """
+  ✨ Generated from Field `StoryContent`.`textContent_count` of type `Int!`
+  """
+  textContent_count: OrderDirection
+  """
+  ✨ Generated from Field `StoryContent`.`videoUrl_count` of type `Int!`
+  """
+  videoUrl_count: OrderDirection
+  """
+  ✨ Generated from Field `StoryContent`.`pageNumber_sum` of type `Int`
+  """
+  pageNumber_sum: OrderDirection
+  """
+  ✨ Generated from Field `StoryContent`.`pageNumber_avg` of type `Float`
+  """
+  pageNumber_avg: OrderDirection
+  """
+  ✨ Generated from Field `StoryContent`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `StoryContent`.`pageNumber_min` of type `Int`
+  """
+  pageNumber_min: OrderDirection
+  """
+  ✨ Generated from Field `StoryContent`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+  """
+  ✨ Generated from Field `StoryContent`.`pageNumber_max` of type `Int`
+  """
+  pageNumber_max: OrderDirection
 }
 """
 ✨ Generated filter input type for table 'StoryStatus'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
@@ -2969,6 +3397,38 @@ input Template_Order {
   ✨ Generated from Field `Template`.`title` of type `String`
   """
   title: OrderDirection
+  """
+  ✨ Generated from Field `Template`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `Template`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `Template`.`exampleStoryId_count` of type `Int!`
+  """
+  exampleStoryId_count: OrderDirection
+  """
+  ✨ Generated from Field `Template`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `Template`.`structureJson_count` of type `Int!`
+  """
+  structureJson_count: OrderDirection
+  """
+  ✨ Generated from Field `Template`.`title_count` of type `Int!`
+  """
+  title_count: OrderDirection
+  """
+  ✨ Generated from Field `Template`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `Template`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
 }
 """
 ✨ Generated data input type for table 'User'. It includes all necessary fields for creating or upserting rows into table.
@@ -3308,4 +3768,60 @@ input User_Order {
   ✨ Generated from Field `User`.`username` of type `String!`
   """
   username: OrderDirection
+  """
+  ✨ Generated from Field `User`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`appSubscriptionId_count` of type `Int!`
+  """
+  appSubscriptionId_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`avatarUrl_count` of type `Int!`
+  """
+  avatarUrl_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`displayname_count` of type `Int!`
+  """
+  displayname_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`email_count` of type `Int!`
+  """
+  email_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`role_count` of type `Int!`
+  """
+  role_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`updatedAt_count` of type `Int!`
+  """
+  updatedAt_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`username_count` of type `Int!`
+  """
+  username_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `User`.`updatedAt_min` of type `Timestamp`
+  """
+  updatedAt_min: OrderDirection
+  """
+  ✨ Generated from Field `User`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+  """
+  ✨ Generated from Field `User`.`updatedAt_max` of type `Timestamp`
+  """
+  updatedAt_max: OrderDirection
 }

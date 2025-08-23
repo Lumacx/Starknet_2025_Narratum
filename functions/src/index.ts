@@ -1,3 +1,6 @@
-export { incrementCommentCount } from './commentCounter';
-export { generateNarratumImage } from './imageGeneration';
-export { createuserprofile } from './authTriggers'; // renombrado desde src/ai/functions/index.ts
+// functions/src/index.ts
+import { generateNarratumImage } from './imageGeneration';
+import { createuserprofile } from './authTriggers';
+import { incrementCommentCount } from './commentCounter';
+
+export { generateNarratumImage, createuserprofile, incrementCommentCount };

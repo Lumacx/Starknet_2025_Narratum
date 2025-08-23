@@ -34,30 +34,31 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createuserprofile = void 0;
+// functions/src/authTriggers.ts
 const admin = __importStar(require("firebase-admin"));
 const functions = __importStar(require("firebase-functions"));
-const firestore_1 = require("firebase-admin/firestore");
 if (!admin.apps.length)
     admin.initializeApp();
-const db = (0, firestore_1.getFirestore)();
+const db = admin.firestore();
 exports.createuserprofile = functions
     .region('us-central1')
     .auth.user()
     .onCreate(async (user) => {
     const { uid, email, displayName } = user;
     const username = displayName || `user_${uid.slice(0, 8)}`;
+    const now = admin.firestore.FieldValue.serverTimestamp();
     const userProfile = {
         id: uid,
-        email: email || 'no-email@example.com',
+        email: email ?? 'no-email@example.com',
         username,
-        displayname: displayName || 'Anonymous User',
+        displayname: displayName ?? 'Anonymous User',
         role: 'reader',
-        createdAt: new Date(),
-        updatedAt: new Date()
+        createdAt: now,
+        updatedAt: now,
     };
     try {
-        await db.collection('users').doc(uid).set(userProfile);
-        console.log(`Profile created for user: ${uid}`);
+        await db.collection('users').doc(uid).set(userProfile, { merge: true });
+        console.log(`Profile created for user ${uid}`);
     }
     catch (e) {
         console.error(`createuserprofile failed for ${uid}:`, e);

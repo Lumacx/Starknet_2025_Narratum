@@ -34,57 +34,37 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.incrementCommentCount = void 0;
+// functions/src/commentCounter.ts
 const admin = __importStar(require("firebase-admin"));
 const functions = __importStar(require("firebase-functions"));
-const data_connect_1 = require("@firebase/data-connect");
-const default_connector_1 = require("@firebasegen/default-connector");
 if (!admin.apps.length)
     admin.initializeApp();
-// Singleton para Data Connect usando ConnectorConfig (NO FirebaseApp)
-let dcClient = null;
-function getDcClient() {
-    if (!dcClient)
-        dcClient = (0, data_connect_1.getDataConnect)(default_connector_1.connectorConfig);
-    return dcClient;
-}
+const db = admin.firestore();
+/**
+ * On new comment, increment commentsCount on /stories/{storyId}.
+ * If your parent collection is different, change 'stories' below.
+ */
 exports.incrementCommentCount = functions
     .region('us-central1')
-    .firestore.document('comments/{commentId}')
+    .firestore
+    .document('comments/{commentId}')
     .onCreate(async (snap) => {
-    const newComment = snap.data();
-    const storyId = newComment?.storyId;
+    const data = snap.data();
+    const storyId = data?.storyId;
     if (!storyId) {
         console.log('Comment without storyId → skip');
         return null;
     }
     try {
-        const dc = getDcClient();
-        // 1) Obtener la historia actual
-        const getRes = await dc.run({
-            connector: default_connector_1.connectorConfig.connector,
-            operation: 'GetStoryWithContent',
-            variables: { storyId }
-        });
-        const currentStory = getRes?.story;
-        if (!currentStory) {
-            console.log(`Story ${storyId} not found → skip`);
-            return null;
-        }
-        // 2) Incrementar contador
-        const current = currentStory.commentsCount ?? 0;
-        const next = current + 1;
-        const vars = { id: storyId, commentsCount: next };
-        await dc.run({
-            connector: default_connector_1.connectorConfig.connector,
-            operation: 'UpdateStory',
-            variables: vars
-        });
-        console.log(`commentsCount for story ${storyId}: ${current} → ${next}`);
+        await db.collection('stories').doc(storyId).set({
+            commentsCount: admin.firestore.FieldValue.increment(1),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
         return null;
     }
-    catch (err) {
-        console.error(`incrementCommentCount failed for story ${storyId}:`, err);
-        throw err;
+    catch (e) {
+        console.error('incrementCommentCount:', e);
+        return null;
     }
 });
 //# sourceMappingURL=commentCounter.js.map

@@ -2,52 +2,61 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    function isSignedIn() {
-      return request.auth != null;
-    }
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
 
-    function isOwner(uid) {
-      return isSignedIn() && request.auth.uid == uid;
-    }
-
-    // ---- Content-type helpers ----
-    function isPng() { return request.resource.contentType == 'image/png'; }
-    function isMp3() { 
-      return request.resource.contentType == 'audio/mpeg' ||
-             request.resource.contentType == 'audio/mp3';
-    }
-    function isMp4() { return request.resource.contentType == 'video/mp4'; }
-
-    // ---- Size helper ----
+    // Types & sizes
+    function isPng()  { return request.resource.contentType == 'image/png'; }
+    function isMp3()  { return request.resource.contentType == 'audio/mpeg' || request.resource.contentType == 'audio/mp3'; }
+    function isMp4()  { return request.resource.contentType == 'video/mp4'; }
     function sizeBetween(minBytes, maxBytes) {
       return request.resource.size >= minBytes && request.resource.size <= maxBytes;
     }
 
-    // ---- Allowed assets (updated PNG max to 5 MB) ----
-    function assetIsAllowed() {
-      return
-        (isPng() && sizeBetween(100 * 1024, 5 * 1024 * 1024)) ||     // PNG: 100 KB – 5 MB
-        (isMp3() && sizeBetween(100 * 1024, 5 * 1024 * 1024)) ||     // MP3: 100 KB – 5 MB
-        (isMp4() && sizeBetween(1 * 1024 * 1024, 50 * 1024 * 1024)); // MP4: 1 MB – 50 MB
+    // Category guards
+    function isImageCategory(cat) {
+      return cat in ['covers','avatars','characters','locations','backgrounds'];
+    }
+    function isAudioCategory(cat) {
+      return cat in ['audioNarrations','audioEffects'];
+    }
+    function isVideoCategory(cat) {
+      return cat in ['videos'];
+    }
+    function isOtherCategory(cat) {
+      return cat == 'others';
     }
 
-    // Avatars: avatars/{uid}/avatar.png (public read, owner write/delete)
+    // Per-category validation
+    function assetValidForCategory(cat) {
+      return
+        (isImageCategory(cat) && isPng() && sizeBetween(100*1024, 5*1024*1024)) ||        // PNG 100KB–5MB
+        (isAudioCategory(cat) && isMp3() && sizeBetween(100*1024, 5*1024*1024)) ||         // MP3 100KB–5MB
+        (isVideoCategory(cat) && isMp4() && sizeBetween(1*1024*1024, 50*1024*1024)) ||     // MP4 1MB–50MB
+        (isOtherCategory(cat) && (
+            (isPng() && sizeBetween(100*1024, 5*1024*1024)) ||
+            (isMp3() && sizeBetween(100*1024, 5*1024*1024)) ||
+            (isMp4() && sizeBetween(1*1024*1024, 50*1024*1024))
+        ));
+    }
+
+    // Avatars (public read if you want)
     match /avatars/{uid}/{file=**} {
       allow read: if true;
       allow create, update: if isOwner(uid)
-                            && request.resource.size < 5 * 1024 * 1024
-                            && request.resource.contentType.matches('image/.*');
+        && request.resource.contentType.matches('image/.*')
+        && request.resource.size <= 5*1024*1024;
       allow delete: if isOwner(uid);
     }
 
-    // User gallery assets
-    match /users/{uid}/assets/{file=**} {
-      allow read: if isOwner(uid);                 // change to 'true' if you want public galleries
-      allow create, update: if isOwner(uid) && assetIsAllowed();
+    // Categorized user assets
+    match /users/{uid}/assets/{category}/{file=**} {
+      allow read: if isOwner(uid); // set to 'true' if you want fully public galleries
+      allow create, update: if isOwner(uid) && assetValidForCategory(category);
       allow delete: if isOwner(uid);
     }
 
-    // Public bucket area (optional)
+    // Optional public area
     match /public/{file=**} {
       allow read: if true;
       allow write: if isSignedIn();

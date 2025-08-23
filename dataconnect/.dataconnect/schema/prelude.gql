@@ -546,6 +546,9 @@ enum GeneratedPurpose @fdc_forbiddenAsVariableType @fdc_forbiddenAsFieldType {
   QUERY_MIN
   QUERY_MAX
 
+  # Generated field for full text search
+  QUERY_MULTIPLE_BY_FULL_TEXT_SEARCH
+
   # Top-level Query fields.
   QUERY_SINGLE
   QUERY_MULTIPLE

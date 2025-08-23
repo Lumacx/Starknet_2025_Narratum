@@ -1,0 +1,35 @@
+# from the project root
+cat > .firebaseignore <<'EOF'
+# Node & VCS
+**/node_modules/**
+**/.git/**
+
+# Logs & caches
+*.log
+firebase-debug.log
+ui-debug.log
+**/.DS_Store
+**/.cache/**
+**/.parcel-cache/**
+
+# Env files (keep examples)
+.env
+.env.*.local
+!.env.example
+
+# Framework build outputs (frontend)
+.next/
+out/
+coverage/
+dist/
+build/
+tmp/
+
+# Emulator artifacts (optional)
+.emulator_data/
+.firestore/
+.storage/
+
+# IMPORTANT: do NOT ignore the compiled Functions output
+!functions/lib/**
+EOF
