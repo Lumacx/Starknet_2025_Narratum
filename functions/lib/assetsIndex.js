@@ -34,83 +34,64 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.removeIndexOnDelete = exports.indexAssetOnFinalize = void 0;
-// functions/src/assetsIndex.ts
+// Gen1 Storage indexer — functions/src/assetsIndex.ts
 const admin = __importStar(require("firebase-admin"));
 const functions = __importStar(require("firebase-functions"));
+const firestore_1 = require("firebase-admin/firestore");
 if (!admin.apps.length)
     admin.initializeApp();
-const db = admin.firestore();
-function encodeId(path) {
-    // Firestore doc ids can't contain '/'; base64url is compact & safe
-    return Buffer.from(path).toString('base64url');
-}
-function parsePath(name) {
-    // Expected: users/{uid}/assets/{category}/{filename...}
-    if (!name)
-        return null;
-    const parts = name.split('/');
-    if (parts.length < 5)
-        return null;
-    if (parts[0] !== 'users' || parts[2] !== 'assets')
-        return null;
-    const uid = parts[1];
-    const category = parts[3]; // covers|characters|locations|backgrounds|audio|video|other...
-    const filename = parts.slice(4).join('/');
-    return { uid, category, filename, fullPath: name };
-}
-function mediaTypeFrom(ct) {
-    if (!ct)
-        return 'other';
-    if (ct.startsWith('image/'))
-        return 'image';
-    if (ct.startsWith('audio/'))
-        return 'audio';
-    if (ct.startsWith('video/'))
-        return 'video';
-    return 'other';
-}
-/** Index on upload */
+const db = (0, firestore_1.getFirestore)();
+// Only index files under users/{uid}/assets/**
+const USER_ASSET_RE = /^users\/([^/]+)\/assets\/(.+)$/;
 exports.indexAssetOnFinalize = functions
     .region('us-central1')
     .storage.object()
-    .onFinalize(async (object) => {
-    const parsed = parsePath(object.name || undefined);
-    if (!parsed)
+    .onFinalize(async (obj) => {
+    const path = obj.name || '';
+    const match = path.match(USER_ASSET_RE);
+    if (!match)
         return null;
-    const { uid, category, fullPath, filename } = parsed;
-    const id = encodeId(fullPath);
-    const displayName = object.metadata?.displayName ||
-        object.metadata?.['displayName'] ||
-        filename;
-    await db
-        .collection('users').doc(uid)
-        .collection('assetsIndex').doc(id)
-        .set({
-        path: fullPath,
-        displayName,
-        category,
-        mediaType: mediaTypeFrom(object.contentType || undefined),
-        size: object.size ? Number(object.size) : null,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        // url is computed client-side with getDownloadURL()
-    }, { merge: true });
+    const uid = match[1];
+    const fileName = match[2];
+    const md = obj.metadata || {};
+    const contentType = obj.contentType || '';
+    const category = md.category || 'uncategorized';
+    const mediaType = md.mediaType ||
+        (contentType ? contentType.split('/')[0] : null) ||
+        null;
+    await db.collection('assetsIndex').add({
+        uid,
+        path, // e.g. users/{uid}/assets/covers/foo.png
+        fileName, // e.g. covers/foo.png
+        displayName: md.displayName || null,
+        category, // covers|avatars|locations|characters|backgrounds|audioNarrations|audioEffects|others
+        mediaType, // image|audio|video|null
+        size: obj.size ? Number(obj.size) : null,
+        contentType: contentType || null,
+        source: md.source || 'upload',
+        createdAt: obj.timeCreated
+            ? firestore_1.Timestamp.fromDate(new Date(obj.timeCreated))
+            : firestore_1.Timestamp.now(),
+    });
     return null;
 });
-/** Remove index on delete */
 exports.removeIndexOnDelete = functions
     .region('us-central1')
     .storage.object()
-    .onDelete(async (object) => {
-    const parsed = parsePath(object.name || undefined);
-    if (!parsed)
+    .onDelete(async (obj) => {
+    const path = obj.name || '';
+    const match = path.match(USER_ASSET_RE);
+    if (!match)
         return null;
-    const { uid, fullPath } = parsed;
-    const id = encodeId(fullPath);
-    await db
-        .collection('users').doc(uid)
-        .collection('assetsIndex').doc(id)
-        .delete()
-        .catch(() => null);
+    const snap = await db
+        .collection('assetsIndex')
+        .where('path', '==', path)
+        .get();
+    if (snap.empty)
+        return null;
+    const batch = db.batch();
+    snap.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
     return null;
 });
 //# sourceMappingURL=assetsIndex.js.map

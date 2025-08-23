@@ -7,11 +7,11 @@ This document outlines the recommended development plan for Narratum, based on t
 ### Current Status Assessment
 
 Based on `docs/todo.md`, the following foundational pieces are in place:
-- **User Authentication:** Core email and wallet login is functional.
-- **Story Creation:** Basic metadata (title, genre, description) can be created.
-- **AI Integration:** A basic flow for generating writing prompts exists.
-- **Database:** An initial schema for users and stories is set up via DataConnect.
-- **UI:** Core pages (Landing, Create) have a basic structure.
+- **User Authentication:** Core email, wallet login, and automated user profile creation (via `authTriggers.ts`) are functional.
+- **Story Creation:** Basic metadata (title, genre, description) can be created, and the initial UI for content generation (including AI image generation and saving to page content) is in place through the multi-step flow in `src/app/create/`.
+- **AI Integration:** A basic flow for generating writing prompts exists, and AI image generation with saving capabilities is implemented, utilizing the `generateNarratumImage` Cloud Function and `assetsIndex.ts` for asset management.
+- **Database:** An initial schema for users, stories, and content is set up via DataConnect, with asset indexing and comment counting functionality (via `commentCounter.ts`).
+- **UI:** Core pages (Landing, Discover) and the multi-step `create` flow have a basic to advanced structure.
 
 ---
 
@@ -20,23 +20,23 @@ Based on `docs/todo.md`, the following foundational pieces are in place:
 The highest priority is to complete the core loop of the application: a creator must be able to write a full story, and a reader must be able to read it.
 
 **1. Implement the Chapter & Content Editor:**
-   - **Task:** Develop the rich text editor within the Creator Studio.
-   - **Details:** This should allow creators to write and format the text for each chapter or story section. It needs to support basic formatting (bold, italics) and a way to save content.
+   - **Task:** Develop a comprehensive rich text editor within the Creator Studio for story text content.
+   - **Details:** This should allow creators to write and format the text for each chapter or story section. It needs to support basic formatting (bold, italics) and a way to save content, complementing the existing AI image generation for pages.
    - **OG_Modules Ref:** `3. Creator Studio` -> `Chapter & Content Editor`
 
 **2. Enhance the Database Schema:**
-   - **Task:** Update the DataConnect schema to support story content.
-   - **Details:** Add a `story_content` table (or similar) that links to the `story` table. It should store the actual text, page/chapter number, and any associated assets.
+   - **Task:** Update the DataConnect schema to fully support detailed story content, including text, page structure, and integrated assets.
+   - **Details:** Ensure the `story_content` table (or similar) adequately links to the `story` table and stores all actual text, page/chapter number, and associated asset URLs (images, audio). *This is partially completed with image URL saving.*
    - **OG_Modules Ref:** `9. Technical Infrastructure & Backend` -> `Database Structure`
 
 **3. Build the Story Reader UI:**
-   - **Task:** Implement the reader interface to display the content created in the editor.
-   - **Details:** This involves fetching the `story_content` and displaying it in a clean, readable format. Implement basic navigation (next/previous chapter).
+   - **Task:** Implement the reader interface to display the content created in the editor, including dynamically loaded images and text.
+   - **Details:** This involves fetching the `story_content` and displaying it in a clean, readable format. Implement basic navigation (next/previous chapter/page). *Basic interactive story display is functional.*
    - **OG_Modules Ref:** `2. Story System: Discovery & Reading` -> `Story Reader/Viewer`
 
 **4. Develop the Story Discovery Page:**
-   - **Task:** Create a basic page where users can see a list of all published stories.
-   - **Details:** This page should display story covers, titles, and authors, and link to the story reader.
+   - **Task:** Refine the existing discovery page where users can see a list of all published stories.
+   - **Details:** This page should display story covers, titles, authors, and other metadata (like comments count), and link to the story reader. *This is largely complete with semantic search and filtering.*
    - **OG_Modules Ref:** `2. Story System: Discovery & Reading` -> `Story Discovery & Browser`
 
 ---
@@ -61,8 +61,8 @@ With the core functionality in place, the next phase focuses on monetization and
    - **OG_Modules Ref:** `6. Dashboards & Analytics` -> `Creator Dashboard`
 
 **4. Enhance AI Tools - Image Generation:**
-   - **Task:** Integrate an AI image generation service.
-   - **Details:** Add a feature in the Creator Studio for creators to generate and add illustrations to their stories.
+   - **Task:** Further refine the AI image generation service and its integration.
+   - **Details:** Improve image placement options and styling within the Creator Studio. *Initial integration is complete; this focuses on refinement.*
    - **OG_Modules Ref:** `4. AI & Machine Learning Integration` -> `AI Media Generation`
 
 ---
@@ -72,8 +72,8 @@ With the core functionality in place, the next phase focuses on monetization and
 This phase focuses on features that will help build and retain a user base.
 
 **1. Community Interaction Features:**
-   - **Task:** Implement comments, reactions, and a creator-following system.
-   - **Details:** Allow readers to comment on chapters and follow their favorite creators to receive updates.
+   - **Task:** Implement comprehensive comments, reactions, and a creator-following system.
+   - **Details:** Allow readers to comment on chapters and follow their favorite creators to receive updates. *Basic reactions and comments (with `commentCounter.ts`) are implemented.*
    - **OG_Modules Ref:** `7. Community & Notifications`
 
 **2. Notifications System:**
@@ -83,7 +83,7 @@ This phase focuses on features that will help build and retain a user base.
 
 **3. User & Profile Dashboards:**
    - **Task:** Develop the reader-facing dashboard and enhance profile pages.
-   - **Details:** Allow users to see their reading history, manage their profile, and view their subscription status.
+   - **Details:** Allow users to see their reading history, manage their profile, and view their subscription status. *Basic profile management is implemented.*
    - **OG_Modules Ref:** `6. Dashboards & Analytics` -> `Reader Dashboard`
 
 ---

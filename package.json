@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": "20" },
+  "engines": {
+    "node": "20"
+  },
   "scripts": {
     "dev": "next dev",
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
@@ -12,12 +14,10 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-
     "dc:enable": "npx -y firebase-tools@latest experiments:enable dataconnect",
     "dc:deploy": "npx -y firebase-tools@latest deploy --only dataconnect",
     "dc:sdk": "npx -y firebase-tools@latest dataconnect:sdk:generate --out dataconnect-generated/js",
     "dc:all": "npm run dc:deploy && npm run dc:sdk",
-
     "generate:connector": "npx -y firebase-tools@latest dataconnect:sdk:generate"
   },
   "dependencies": {
@@ -33,8 +33,8 @@
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "@fortawesome/react-fontawesome": "^0.2.2",
     "@genkit-ai/googleai": "^1.6.2",
-    "genkit": "^1.6.2",
     "@genkit-ai/next": "^1.6.2",
+    "@google/genai": "^1.15.0",
     "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^4.1.3",
     "@pothos/core": "^4.7.0",
@@ -74,6 +74,7 @@
     "dotenv": "^16.6.1",
     "firebase": "^11.10.0",
     "framer-motion": "^11.18.0",
+    "genkit": "^1.6.2",
     "graphql": "^16.11.0",
     "graphql-request": "^7.2.0",
     "graphql-yoga": "^5.14.0",
@@ -118,8 +119,16 @@
     "typescript": "^5.3.3"
   },
   "browserslist": {
-    "production": [">0.2%", "not dead", "not op_mini all"],
-    "development": ["last 1 chrome version", "last 1 firefox version", "last 1 safari version"]
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   },
   "packageManager": "pnpm@10.13.1+sha512.37ebf1a5c7a30d5fabe0c5af3dbab28c3a1681b70a256218d05c81c9c0dcf767ef6b8551eb5b960042b9ed4300c59242336377e01cfad"
 }

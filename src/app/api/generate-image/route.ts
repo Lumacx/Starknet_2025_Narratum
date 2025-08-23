@@ -1,36 +1,44 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 
-// NOTE: requires @google/generative-ai >= 0.24 and a key with Imagen 3 access.
+// Ensure Node runtime (SDK needs Node, not Edge)
+export const runtime = 'nodejs';
+// If you use caching, disable for dynamic generation
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
   try {
-    const { prompt } = await req.json();
-    if (!prompt) return NextResponse.json({ error: 'Missing prompt' }, { status: 400 });
+    const { prompt, count = 1, aspectRatio } = await req.json();
+    if (!prompt || typeof prompt !== 'string') {
+      return NextResponse.json({ error: 'Missing prompt' }, { status: 400 });
+    }
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-    // Use one of Imagen 3 models (availability varies by region/account)
-    const model = genAI.getGenerativeModel({ model: 'imagen-3.0-generate' });
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ error: 'Missing GEMINI_API_KEY' }, { status: 500 });
+    }
 
-    // The correct API is *generateImages* (plural)
-    // We ask for a single 1024 image.
-    // @ts-expect-error: types may lag behind; method exists at runtime for 0.24+.
-    const res = await model.generateImages({
+    const ai = new GoogleGenAI({ apiKey });
+
+    // Use Imagen 4 (fast) or swap to imagen-4.0-generate-001 for higher quality
+    const resp = await ai.models.generateImages({
+      model: 'imagen-4.0-fast-generate-001',
       prompt,
-      numberOfImages: 1,
-      size: '1024x1024',
+      config: {
+        numberOfImages: Math.min(Math.max(Number(count) || 1, 1), 4),
+        ...(aspectRatio ? { aspectRatio } : {}), // e.g. "1:1", "16:9", "9:16"
+        // includeRaiReason: true, // optional debug info
+      },
     });
 
-    // Normalize base64 extraction across SDK return shapes
-    const b64 =
-      // new shape
-      res?.images?.[0]?.b64Data ||
-      // candidates/inlineData path (older shapes)
-      res?.response?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    const b64 = resp?.generatedImages?.[0]?.image?.imageBytes;
+    if (!b64) throw new Error('No image bytes in response');
 
-    if (!b64) throw new Error('No image returned from model');
-    const dataUrl = `data:image/png;base64,${b64}`;
-    return NextResponse.json({ dataUrl });
+    return NextResponse.json({ dataUrl: `data:image/png;base64,${b64}` });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'Generate failed' }, { status: 500 });
+    console.error('Imagen generate error:', e);
+    const msg = e?.message || 'Generate failed';
+    const status = Number(e?.status) || 500;
+    return NextResponse.json({ error: msg }, { status });
   }
 }

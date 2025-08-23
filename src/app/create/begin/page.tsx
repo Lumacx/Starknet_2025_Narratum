@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import GenreMultiSelect from '@/components/GenreMultiSelect';
-import UploadImageReference from '@/components/UploadImageReference';
+import CoverImageManager from '@/components/CoverImageManager'; // Import the new component
 
 const GENRES = ['Fantasy','Sci-Fi','Mystery','Horror','Romance','Adventure',"Children's",'Comedy','Drama','Action','Other'] as const;
 
@@ -46,6 +46,10 @@ export default function BeginPage() {
   }, [draft]);
 
   const cat = CATEGORIES.find(c => c.key === draft.category)!;
+
+  const handleCoverImageSaved = (url: string) => {
+    setDraft((d) => ({ ...d, coverUrl: url }));
+  };
 
   return (
     <div className="min-h-screen p-6 pb-28 bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0]">
@@ -131,18 +135,14 @@ export default function BeginPage() {
 
         {/* ---- Card: Bottom section (Cover Image area) ---- */}
         <div className="rounded-xl border-2 border-[#B0C4DE] bg-[#F7F3EC] shadow p-6">
-          <h2 className="text-xl font-bold mb-4 text-[#3D4F60]">Cover Image</h2>
-
-          {/* Reuse the uploader/generator; just override prompt header */}
-          <UploadImageReference
-            variant="cover"
-            nounOverride="Cover"
-            mainPromptLabel="Book Cover Generation Prompt"   // ✅ header text
-            assetCategory="covers"                         // ⬅️ show/save in “covers/”
-            onSaved={(item) => setDraft(d => ({ ...d, coverUrl: item.url }))}
+          <h2 className="text-xl font-bold mb-4 text-[#3D4F60]">Book Cover Image</h2>
+          {/* Use the new CoverImageManager component */}
+          <CoverImageManager
+            initialCoverUrl={draft.coverUrl}
+            onCoverImageSaved={handleCoverImageSaved}
           />
         </div>
-
+      
         {/* Footer actions */}
         <div className="flex justify-end gap-3 mt-5 mb-12">
           <button
