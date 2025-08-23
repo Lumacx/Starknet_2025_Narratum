@@ -30,6 +30,11 @@ type StoryView = {
   title?: string | null;
   coverImageUrl?: string | null;
   backgroundMusicUrl?: string | null;
+
+  /** NEW: global Reader UI skin (not per scene) */
+  readerAvatarUrl?: string | null;
+  readerBackgroundUrl?: string | null;
+
   storyContent: ReaderPage[];
   creator?: { avatarUrl?: string | null } | null;
 };
@@ -123,11 +128,17 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story }) => {
 
   if (isLoading) return <div>Loading...</div>;
 
+  // NEW: global skin overrides
   const avatarUrl =
-    story.creator?.avatarUrl || "/story_reader_avatars/Default.png";
+    story.readerAvatarUrl ||
+    story.creator?.avatarUrl ||
+    "/story_reader_avatars/Default.png";
+
   const backgroundUrl =
+    story.readerBackgroundUrl ||
     (currentPageContent as any)?.backgroundUrl ||
     "/story_reader_backgrounds/dream-background.png";
+
   const storyImageSrc =
     currentPageContent?.imageUrl || story.coverImageUrl || "";
 

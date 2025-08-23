@@ -11,7 +11,6 @@ import {
   updateDoc,
   setDoc,
   doc as fsDoc,
-  getDoc,
 } from 'firebase/firestore';
 import {
   ref,
@@ -22,6 +21,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import type { ScenePage } from '@/lib/story-types';
 import StoryReader from '@/components/StoryReader';
+import ReaderSkinPicker from '@/components/ReaderSkinPicker';
 
 type OutlineItem = { storyText: string; imagePrompt: string };
 
@@ -32,20 +32,21 @@ function slugify(s: string) {
 }
 
 function buildPreviewStory(draft: any, pages: ScenePage[]) {
-    return {
-      id: 'preview',
-      title: draft?.title ?? 'Untitled',
-      coverImageUrl: draft?.coverUrl ?? null,
-      storyContent: (pages ?? []).map((p) => ({
-        id: `local-${p.pageNumber}`,
-        pageNumber: p.pageNumber,
-        textContent: p.text ?? '',
-        imageUrl: p.imageUrl ?? null,
-        audioUrl: p.audioUrl ?? null,
-      })),
-      // no creator/backgroundMusic fields needed for preview
-    };
-  }
+  return {
+    id: 'preview',
+    title: draft?.title ?? 'Untitled',
+    coverImageUrl: draft?.coverUrl ?? null,
+    readerAvatarUrl: draft?.readerAvatarUrl ?? null,       // NEW
+    readerBackgroundUrl: draft?.readerBackgroundUrl ?? null, // NEW
+    storyContent: (pages ?? []).map((p) => ({
+      id: `local-${p.pageNumber}`,
+      pageNumber: p.pageNumber,
+      textContent: p.text ?? '',
+      imageUrl: p.imageUrl ?? null,
+      audioUrl: p.audioUrl ?? null,
+    })),
+  };
+}
 
 export default function ScenesPage() {
   const router = useRouter();
@@ -60,6 +61,10 @@ export default function ScenesPage() {
   const [showModal, setShowModal] = useState(false);
   const [publishing, setPublishing] = useState(false);
 
+  // NEW: reader skin local state (persisted into draft)
+  const [readerAvatarUrl, setReaderAvatarUrl] = useState<string | null>(null);
+  const [readerBackgroundUrl, setReaderBackgroundUrl] = useState<string | null>(null);
+
   useEffect(() => {
     const raw = localStorage.getItem(DRAFT_KEY);
     if (raw) {
@@ -68,14 +73,23 @@ export default function ScenesPage() {
       if (Array.isArray(obj.scenes) && obj.scenes.length) {
         setPages(obj.scenes);
       }
+      setReaderAvatarUrl(obj.readerAvatarUrl ?? null);
+      setReaderBackgroundUrl(obj.readerBackgroundUrl ?? null);
     }
   }, []);
 
+  // persist draft changes (pages + skin)
   useEffect(() => {
     if (!draft) return;
-    const next = { ...draft, scenes: pages };
+    const next = {
+      ...draft,
+      scenes: pages,
+      readerAvatarUrl,
+      readerBackgroundUrl,
+    };
+    setDraft(next);
     localStorage.setItem(DRAFT_KEY, JSON.stringify(next));
-  }, [pages, draft]);
+  }, [pages, readerAvatarUrl, readerBackgroundUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const total = draft?.pages ?? 0;
   const cur = pages[currentIdx];
@@ -265,8 +279,12 @@ export default function ScenesPage() {
       if (coverUrlHttps?.startsWith('data:') || coverUrlHttps?.startsWith('blob:')) {
         coverUrlHttps = await uploadAnyToStorage(`${base}/images/cover.png`, coverUrlHttps);
       }
+
+      // 2b) save reader UI skin on the story doc
       await updateDoc(fsDoc(db, 'stories', storyId), {
         coverImageUrl: coverUrlHttps ?? draft?.coverUrl ?? null,
+        readerAvatarUrl: readerAvatarUrl ?? null,         // NEW
+        readerBackgroundUrl: readerBackgroundUrl ?? null, // NEW
         pageCount: pages.length,
         updatedAt: serverTimestamp(),
       });
@@ -348,8 +366,21 @@ export default function ScenesPage() {
           <div><span className="font-semibold">Pages:</span> {total}</div>
         </div>
 
+        {/* NEW: Reader UI Skin (global, not per scene) */}
+        <div className="mt-6">
+          <h2 className="text-lg font-bold text-[#3D4F60] mb-2">Reader UI (Avatar & Background)</h2>
+          <ReaderSkinPicker
+            initialAvatarUrl={readerAvatarUrl}
+            initialBackgroundUrl={readerBackgroundUrl}
+            onChange={({ avatarUrl, backgroundUrl }) => {
+              setReaderAvatarUrl(avatarUrl);
+              setReaderBackgroundUrl(backgroundUrl);
+            }}
+          />
+        </div>
+
         {/* main workspace */}
-        <div className="mt-6 grid md:grid-cols-2 gap-8">
+        <div className="mt-8 grid md:grid-cols-2 gap-8">
           {/* left controls */}
           <div>
             <div className="bg-[#F0D1B0]/30 p-4 rounded-lg border">
@@ -451,7 +482,7 @@ export default function ScenesPage() {
               </div>
               <div className="flex-1 overflow-auto p-0">
                 <div className="min-h-full bg-[#F9F6F0] p-4">
-                  <StoryReader story={buildPreviewStory(draft, pages)} />
+                  <StoryReader story={buildPreviewStory({ ...draft, readerAvatarUrl, readerBackgroundUrl }, pages)} />
                 </div>
               </div>
             </div>
