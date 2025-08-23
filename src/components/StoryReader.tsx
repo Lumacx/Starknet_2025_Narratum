@@ -1,8 +1,6 @@
-// src/components/StoryReader.tsx
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Story, StoryContent } from "../lib/types";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faFont,
@@ -17,21 +15,31 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import "../app/story.css";
 
-// Extiende el tipo base con los campos opcionales que usa el componente
-type StoryView = Story & {
-  storyContent: StoryContent[];
-  backgroundMusicUrl?: string | null;
+/** Minimal page shape the reader needs (works for both preview and DB). */
+type ReaderPage = {
+  id?: string | null;
+  pageNumber?: number | null;
+  textContent?: string | null;
+  imageUrl?: string | null;
+  audioUrl?: string | null;
+};
+
+/** Lightweight story shape accepted by the reader. */
+type StoryView = {
+  id?: string | null;
+  title?: string | null;
   coverImageUrl?: string | null;
+  backgroundMusicUrl?: string | null;
+  storyContent: ReaderPage[];
   creator?: { avatarUrl?: string | null } | null;
 };
 
-// Props
 interface StoryReaderProps {
   story: StoryView;
 }
 
 const StoryReader: React.FC<StoryReaderProps> = ({ story }) => {
-  // 0 = portada
+  // 0 = cover
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [musicPlaying, setMusicPlaying] = useState(false);
@@ -41,13 +49,12 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story }) => {
   const narrationRef = useRef<HTMLAudioElement | null>(null);
   const pageTurnSoundRef = useRef<HTMLAudioElement | null>(null);
 
-  // Evita mutar props: clona y ordena
-  const sortedStoryContent = [...story.storyContent].sort(
-    (a: StoryContent, b: StoryContent) => (a.pageNumber || 0) - (b.pageNumber || 0)
+  // Order pages by pageNumber safely
+  const sortedStoryContent = [...(story.storyContent || [])].sort(
+    (a, b) => (a.pageNumber ?? 0) - (b.pageNumber ?? 0)
   );
 
   useEffect(() => {
-    // Inicializa audio
     backgroundMusicRef.current = new Audio(
       story.backgroundMusicUrl || "/story_reader_audio/background-music.mp3"
     );
@@ -63,7 +70,6 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story }) => {
       backgroundMusicRef.current?.pause();
       narrationRef.current?.pause();
     };
-    // no dependencias: se configura una vez al montar
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -89,7 +95,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story }) => {
       pageTurnSoundRef.current?.play();
       const nextIndex = currentPageIndex + 1;
       setCurrentPageIndex(nextIndex);
-      const nextPageContent = sortedStoryContent[nextIndex - 1]; // página que acabamos de abrir
+      const nextPageContent = sortedStoryContent[nextIndex - 1];
       if (nextPageContent?.audioUrl) playNarration(nextPageContent.audioUrl);
     }
   };
@@ -117,19 +123,19 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story }) => {
 
   if (isLoading) return <div>Loading...</div>;
 
-  // Fallbacks seguros para campos opcionales
   const avatarUrl =
     story.creator?.avatarUrl || "/story_reader_avatars/Default.png";
   const backgroundUrl =
     (currentPageContent as any)?.backgroundUrl ||
     "/story_reader_backgrounds/dream-background.png";
-  const storyImageSrc = currentPageContent?.imageUrl || story.coverImageUrl || "";
+  const storyImageSrc =
+    currentPageContent?.imageUrl || story.coverImageUrl || "";
 
   return (
     <div id="app-container" onClick={handleUserInteraction}>
       <header id="app-header">
         <div style={{ display: "flex", alignItems: "center", gap: "15px", marginTop: "5px" }}>
-          <div id="welcome-text">{story.title}</div>
+          <div id="welcome-text">{story.title ?? "Untitled"}</div>
         </div>
         <div id="header-icons">
           <button className="header-icon-btn" aria-label="Font Settings" title="Font Settings">
@@ -163,7 +169,6 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story }) => {
           padding: "5px 0",
           display: "flex",
           justifyContent: "space-between",
-          // ❌ 'border-sizing' no existe → ✅ 'border-box'
           boxSizing: "border-box",
         }}
       >
@@ -216,7 +221,6 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story }) => {
           )}
         </div>
         <div id="image-panel">
-          {/* Fondo dinámico de la página */}
           <div id="story-background" style={{ backgroundImage: `url(${backgroundUrl})` }}>
             <img id="story-image" src={storyImageSrc} alt="Story Image" />
           </div>

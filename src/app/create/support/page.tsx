@@ -33,7 +33,7 @@ export default function SupportPage() {
         />
 
         <div className="flex justify-end gap-3 mt-8">
-          <Link className="px-6 py-2 rounded-md bg-[#E97451] text-white" href="/create/write">
+          <Link className="px-6 py-2 rounded-md bg-[#E97451] text-white" href="/create/scenes">
             Next: AI Story eReader →
           </Link>
         </div>

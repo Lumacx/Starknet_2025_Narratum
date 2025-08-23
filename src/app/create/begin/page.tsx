@@ -4,7 +4,23 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import GenreMultiSelect from '@/components/GenreMultiSelect';
-import CoverImageManager from '@/components/CoverImageManager'; // Import the new component
+import CoverImageManager from '@/components/CoverImageManager';
+
+import { useAuth } from '@/context/AuthContext';
+import { db, storage } from '@/lib/firebase';
+import {
+  addDoc,
+  collection,
+  serverTimestamp,
+  updateDoc,
+  doc as fsDoc,
+} from 'firebase/firestore';
+import {
+  ref,
+  uploadBytes,
+  uploadString,
+  getDownloadURL,
+} from 'firebase/storage';
 
 const GENRES = ['Fantasy','Sci-Fi','Mystery','Horror','Romance','Adventure',"Children's",'Comedy','Drama','Action','Other'] as const;
 
@@ -15,6 +31,7 @@ const CATEGORIES = [
 ] as const;
 
 type Draft = {
+  storyId?: string; // ✅ canonical id used across Begin/Support/Scenes
   title: string;
   genres: string[];
   synopsis: string;
@@ -23,36 +40,111 @@ type Draft = {
   coverUrl?: string;
 };
 
+const DRAFT_KEY = 'newStoryDraft';
+
 export default function BeginPage() {
   const router = useRouter();
+  const { user } = useAuth();
+
   const [draft, setDraft] = useState<Draft>({
     title: '',
     genres: [],
     synopsis: '',
     category: 'short',
-    pages: 3,                 // ✅ default to 3 pages
+    pages: 3,
     coverUrl: undefined,
+    storyId: undefined,
   });
 
   // Load / Save local draft
   useEffect(() => {
-    const raw = localStorage.getItem('newStoryDraft');
+    const raw = localStorage.getItem(DRAFT_KEY);
     if (raw) {
       try { setDraft((d) => ({ ...d, ...JSON.parse(raw) })); } catch {}
     }
   }, []);
   useEffect(() => {
-    localStorage.setItem('newStoryDraft', JSON.stringify(draft));
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
   }, [draft]);
 
   const cat = CATEGORIES.find(c => c.key === draft.category)!;
 
-  const handleCoverImageSaved = (url: string) => {
-    setDraft((d) => ({ ...d, coverUrl: url }));
+  // ---------- Canonical storyId handling ----------
+  async function ensureStoryId(): Promise<string> {
+    if (!user) throw new Error('Please sign in first.');
+    if (draft.storyId) return draft.storyId;
+
+    const docRef = await addDoc(collection(db, 'stories'), {
+      ownerUid: user.uid,
+      title: draft.title || '(untitled)',
+      synopsis: draft.synopsis || '',
+      genres: draft.genres || [],
+      pageCount: draft.pages || 0,
+      coverImageUrl: null,
+      visibility: 'private',
+      status: 'draft',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    setDraft(d => ({ ...d, storyId: docRef.id }));
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (raw) {
+      try {
+        const obj = JSON.parse(raw);
+        obj.storyId = docRef.id;
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(obj));
+      } catch {}
+    }
+    return docRef.id;
+  }
+
+  async function uploadCoverIntoStoryPath(userUid: string, storyId: string, srcUrl: string) {
+    const path = `users/${userUid}/stories/${storyId}/images/cover.png`;
+    const r = ref(storage, path);
+
+    if (srcUrl.startsWith('data:')) {
+      await uploadString(r, srcUrl, 'data_url');
+    } else {
+      const blob = await (await fetch(srcUrl)).blob();
+      await uploadBytes(r, blob);
+    }
+    return await getDownloadURL(r);
+  }
+
+  // Called by CoverImageManager after user sets a cover
+  const handleCoverImageSaved = async (url: string) => {
+    setDraft((d) => ({ ...d, coverUrl: url })); // immediate UI update
+    try {
+      if (!user) throw new Error('Please sign in first.');
+      const id = await ensureStoryId();
+
+      // copy into the canonical story path and update story doc
+      const httpsUrl = await uploadCoverIntoStoryPath(user.uid, id, url);
+      await updateDoc(fsDoc(db, 'stories', id), {
+        coverImageUrl: httpsUrl,
+        updatedAt: serverTimestamp(),
+      });
+
+      // store canonical URL back to draft/localStorage
+      setDraft(d => ({ ...d, coverUrl: httpsUrl }));
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        try {
+          const obj = JSON.parse(raw);
+          obj.coverUrl = httpsUrl;
+          obj.storyId = id;
+          localStorage.setItem(DRAFT_KEY, JSON.stringify(obj));
+        } catch {}
+      }
+    } catch (e: any) {
+      console.error('Failed to persist cover to story path:', e?.message || e);
+      // keep local cover for UX; it's not fatal
+    }
   };
 
-  // Determine if all mandatory fields are filled
-  const isNextButtonEnabled = 
+  // Determine if all mandatory fields are filled (for Next button)
+  const isNextButtonEnabled =
     draft.title.trim() !== '' &&
     draft.genres.length > 0 &&
     draft.synopsis.trim() !== '' &&
@@ -143,24 +235,26 @@ export default function BeginPage() {
         {/* ---- Card: Bottom section (Cover Image area) ---- */}
         <div className="rounded-xl border-2 border-[#B0C4DE] bg-[#F7F3EC] shadow p-6">
           <h2 className="text-xl font-bold mb-4 text-[#3D4F60]">Book Cover Image</h2>
-          {/* Use the new CoverImageManager component */}
           <CoverImageManager
             initialCoverUrl={draft.coverUrl}
             onCoverImageSaved={handleCoverImageSaved}
           />
         </div>
-      
+
         {/* Footer actions */}
         <div className="flex justify-end gap-3 mt-5 mb-12">
           <button
             className="px-5 py-2 rounded-md border"
-            onClick={() => { localStorage.removeItem('newStoryDraft'); location.reload(); }}
+            onClick={() => { localStorage.removeItem(DRAFT_KEY); location.reload(); }}
           >
             Reset
           </button>
           <button
             className="px-6 py-2 rounded-md bg-[#E97451] text-white font-semibold disabled:opacity-50 transition-colors hover:bg-[#D46342]"
-            onClick={() => router.push('/create/support')}
+            onClick={async () => {
+              try { await ensureStoryId(); } catch (e:any) { alert(e.message); return; }
+              router.push('/create/support');
+            }}
             disabled={!isNextButtonEnabled}
           >
             Next: Build References & AI Support →
