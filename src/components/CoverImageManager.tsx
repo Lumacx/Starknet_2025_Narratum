@@ -11,6 +11,7 @@ import {
   getDownloadURL,
   listAll,
   deleteObject,
+  uploadBytes, // Added for blob upload
 } from 'firebase/storage';
 import { useRouter } from 'next/navigation';
 
@@ -18,7 +19,7 @@ import { useRouter } from 'next/navigation';
 const KB = 1024;
 const MB = 1024 * KB;
 const LIMITS: Record<string, { min: number; max: number }> = {
-  'image/png': { min: 100 * KB, max: 5 * MB },
+  'image/png': { min: 100 * KB, max: 5 * MB }, // Changed max from 1MB to 5MB
   'audio/mpeg': { min: 100 * KB, max: 5 * MB }, // mp3
   'video/mp4': { min: 1 * MB, max: 50 * MB },  // mp4
 };
@@ -39,6 +40,19 @@ function fileToDataUrl(file: File) {
     r.onerror = reject;
     r.readAsDataURL(file);
   });
+}
+// Helper to convert data URL to Blob
+function dataURLtoBlob(dataurl: string) {
+  const arr = dataurl.split(',');
+  const mimeMatch = arr[0].match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : 'image/png'; // Default to image/png if not found
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new Blob([u8arr], { type: mime });
 }
 // --- End Helper Functions ---
 
@@ -64,16 +78,16 @@ export default function CoverImageManager({ onCoverImageSaved, initialCoverUrl }
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadedPreviewUrl, setUploadedPreviewUrl] = useState<string>('');
   const [uploadError, setUploadError] = useState<string>('');
-  const [uploadNameToSave, setUploadNameToSave] = useState('');
+  const [uploadNameToSave, setUploadNameToSave] = useState(''); // Name user types for uploaded file
   const [isUploading, setIsUploading] = useState(false);
 
   // --- AI Generate State ---
   const [aiPrompt, setAiPrompt] = useState('');
-  const [suggestedPrompt, setSuggestedPrompt] = useState(''); // From AI describe if an image is uploaded
+  const [suggestedPrompt, setSuggestedPrompt] = useState(''); // From AI describe if an image is uploaded or from gallery
   const [isDescribing, setIsDescribing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedImageUrl, setGeneratedImageUrl] = useState('');
-  const [aiNameToSave, setAiNameToSave] = useState('');
+  const [generatedImageUrl, setGeneratedImageUrl] = useState(''); // Data URL of the generated image
+  const [aiNameToSave, setAiNameToSave] = useState(''); // Name user types for AI generated file
 
   // --- My Gallery State ---
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
@@ -106,12 +120,21 @@ export default function CoverImageManager({ onCoverImageSaved, initialCoverUrl }
 
   useEffect(() => {
     loadGallery();
-  }, [loadGallery]);
+    // Set initial selected file name if an initial cover URL is provided
+    if (initialCoverUrl) {
+      const fileNameMatch = initialCoverUrl.match(/%2F([^%2F]+\.png)\?/);
+      if (fileNameMatch && fileNameMatch[1]) {
+        setSelectedFileName(decodeURIComponent(fileNameMatch[1].replace(/\.[^.]+$/, '')));
+      }
+    }
+  }, [loadGallery, initialCoverUrl]);
 
   // Handle selecting an image from the gallery
   const handleSelectFromGallery = (item: GalleryItem) => {
     setSelectedImageForCover(item.url);
     setSelectedFileName(item.name.replace(/\.[^.]+$/, ''));
+    setAiPrompt(''); // Clear AI prompt when selecting from gallery
+    setSuggestedPrompt('');
   };
 
   // Handle file chosen for new upload
@@ -123,31 +146,52 @@ export default function CoverImageManager({ onCoverImageSaved, initialCoverUrl }
       setUploadError(check.msg!);
       setUploadedFile(null);
       setUploadedPreviewUrl('');
+      setSelectedImageForCover(null);
+      setSelectedFileName('');
       return;
     }
     setUploadError('');
     setUploadedFile(f);
-    setUploadedPreviewUrl(URL.createObjectURL(f));
+    const dataUrl = await fileToDataUrl(f);
+    setUploadedPreviewUrl(dataUrl);
     setUploadNameToSave(f.name.replace(/\.[^.]+$/, ''));
-    setSelectedImageForCover(URL.createObjectURL(f)); // Display in main box
+    setSelectedImageForCover(dataUrl); // Display in main box
     setSelectedFileName(f.name.replace(/\.[^.]+$/, ''));
+    setAiPrompt(''); // Clear AI prompt when uploading new file
+    setSuggestedPrompt('');
   }
 
-  // Handle AI Describe for an uploaded image (for prompt suggestion)
-  async function handleDescribeImage() {
+  // Refactored handleDescribeImage to accept File or URL
+  async function handleDescribeImage(imageSource: File | string) {
     try {
-      if (!uploadedFile) return alert('Upload an image first to describe.');
       setIsDescribing(true);
-      const dataUrl = await fileToDataUrl(uploadedFile);
+      let dataUrlToDescribe: string;
+
+      if (typeof imageSource === 'string') { // It's a URL from gallery or generated
+        if (imageSource.startsWith('data:')) {
+          dataUrlToDescribe = imageSource;
+        } else {
+          // If it's a Firebase URL, we need to fetch it as a blob and convert to data URL
+          const res = await fetch(imageSource);
+          const blob = await res.blob();
+          dataUrlToDescribe = await fileToDataUrl(new File([blob], "gallery_image.png", { type: blob.type }));
+        }
+      } else { // It's a File from new upload
+        dataUrlToDescribe = await fileToDataUrl(imageSource);
+      }
+      
       const res = await fetch('/api/describe-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dataUrl }),
+        body: JSON.stringify({ dataUrl: dataUrlToDescribe }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'AI describe failed');
       setSuggestedPrompt(json.description);
-      setAiPrompt(json.description); // Auto-fill AI prompt with suggested
+      // Only auto-fill AI prompt if currently in AI Generate tab
+      if (activeTab === 'ai-generate') {
+        setAiPrompt(json.description);
+      }
     } catch (e: any) {
       alert(e?.message || 'AI error');
     } finally {
@@ -169,7 +213,8 @@ export default function CoverImageManager({ onCoverImageSaved, initialCoverUrl }
       if (!res.ok) throw new Error(json.error || 'AI image generation failed');
       setGeneratedImageUrl(json.dataUrl);
       setSelectedImageForCover(json.dataUrl); // Display in main box
-      setSelectedFileName(aiNameToSave || 'generated-cover');
+      setSelectedFileName(aiNameToSave || 'generated-cover'); // Use user's name or default
+      setSuggestedPrompt(''); // Clear suggested prompt once generated
     } catch (e: any) {
       alert(e?.message || 'Image generation error');
     } finally {
@@ -177,66 +222,108 @@ export default function CoverImageManager({ onCoverImageSaved, initialCoverUrl }
     }
   }
 
-  // Handle saving the currently displayed image (uploaded or generated)
-  async function handleSaveCoverImage() {
+  // NEW: Handle Uploading a new file and saving it to the gallery
+  async function handleUploadNewFileToGallery() {
     try {
       if (!currentUser) {
-        alert('You must be signed in to save an image.');
-        router.push('/login'); // Redirect to login
+        alert('You must be signed in to upload an image.');
+        router.push('/login');
         return;
       }
-      if (!selectedImageForCover) {
-        alert('No image selected to save.');
+      if (!uploadedFile) {
+        alert('No file selected for upload.');
         return;
       }
-      if (!selectedFileName.trim()) {
-        alert('Please enter a name for the cover image.');
+      if (!uploadNameToSave.trim()) {
+        alert('Please enter a name for the image before saving to gallery.');
         return;
       }
 
-      const isGenerated = generatedImageUrl === selectedImageForCover;
-      const isUploaded = uploadedPreviewUrl === selectedImageForCover;
-      const isFromGallery = gallery.some(item => item.url === selectedImageForCover);
+      setIsUploading(true);
+      const path = `users/${currentUser.uid}/assets/${assetCategory}/${uploadNameToSave}.png`;
+      const storageRef = ref(storage, path);
 
-      let dataUrlToSave = selectedImageForCover;
-      let source = 'unknown';
-
-      if (isGenerated) {
-        // Already a data URL
-        source = 'generated';
-      } else if (isUploaded && uploadedFile) {
-        // Need to convert file to data URL
-        dataUrlToSave = await fileToDataUrl(uploadedFile);
-        source = 'uploaded';
-      } else if (isFromGallery) {
-        // If from gallery, it's already in Firebase, just pass the URL.
-        // The parent component (begin/page.tsx) will handle updating its state.
-        onCoverImageSaved(selectedImageForCover);
-        alert('Cover image updated successfully!');
-        return; // Exit early as it's already in storage
-      } else {
-          // This case should ideally not happen if logic is tight
-          throw new Error("Could not determine source of image to save.");
-      }
-
-      const path = `users/${currentUser.uid}/assets/${assetCategory}/${selectedFileName}.png`;
-      const o = ref(storage, path);
-      await uploadString(o, dataUrlToSave, 'data_url', {
-        customMetadata: { displayName: selectedFileName, category: assetCategory, source: source, createdAt: String(Date.now()) },
+      await uploadString(storageRef, uploadedPreviewUrl, 'data_url', {
+        customMetadata: { displayName: uploadNameToSave, category: assetCategory, source: 'uploaded', createdAt: String(Date.now()) },
       });
-      const downloadUrl = await getDownloadURL(o);
+      const downloadUrl = await getDownloadURL(storageRef);
 
-      const newItem: GalleryItem = { name: `${selectedFileName}.png`, url: downloadUrl, fullPath: path };
+      const newItem: GalleryItem = { name: `${uploadNameToSave}.png`, url: downloadUrl, fullPath: path };
       setGallery((g) => [newItem, ...g]); // Add to gallery
-      onCoverImageSaved(downloadUrl); // Notify parent component
 
-      alert('Cover image saved successfully!');
+      // Automatically switch to My Gallery and select the new image
+      setActiveTab('my-gallery');
+      setSelectedImageForCover(downloadUrl);
+      setSelectedFileName(uploadNameToSave);
+      setUploadedFile(null); // Clear uploaded file state
+      setUploadedPreviewUrl('');
+      setUploadNameToSave('');
+
+      alert('Image uploaded and saved to gallery!');
     } catch (e: any) {
-      console.error('Save Cover Image Error:', e);
-      alert(e?.message || 'Failed to save cover image.');
+      console.error('Upload to Gallery Error:', e);
+      alert(e?.message || 'Failed to upload image to gallery.');
     } finally {
       setIsUploading(false);
     }
+  }
+
+  // NEW: Handle Saving a generated image to the gallery
+  async function handleSaveGeneratedToGallery() {
+    try {
+      if (!currentUser) {
+        alert('You must be signed in to save an image.');
+        router.push('/login');
+        return;
+      }
+      if (!generatedImageUrl) {
+        alert('No AI image generated to save.');
+        return;
+      }
+      if (!aiNameToSave.trim()) {
+        alert('Please enter a name for the AI generated image before saving to gallery.');
+        return;
+      }
+
+      setIsUploading(true); // Reusing isUploading for this operation
+      const path = `users/${currentUser.uid}/assets/${assetCategory}/${aiNameToSave}.png`;
+      const storageRef = ref(storage, path);
+
+      const blob = dataURLtoBlob(generatedImageUrl);
+      await uploadBytes(storageRef, blob, {
+        customMetadata: { displayName: aiNameToSave, category: assetCategory, source: 'ai-generated', createdAt: String(Date.now()) },
+      });
+      const downloadUrl = await getDownloadURL(storageRef);
+
+      const newItem: GalleryItem = { name: `${aiNameToSave}.png`, url: downloadUrl, fullPath: path };
+      setGallery((g) => [newItem, ...g]); // Add to gallery
+
+      // Automatically switch to My Gallery and select the new image
+      setActiveTab('my-gallery');
+      setSelectedImageForCover(downloadUrl);
+      setSelectedFileName(aiNameToSave);
+      setGeneratedImageUrl(''); // Clear generated image state
+      setAiNameToSave('');
+
+      alert('AI Generated image saved to gallery!');
+    } catch (e: any) {
+      console.error('Save Generated to Gallery Error:', e);
+      alert(e?.message || 'Failed to save generated image to gallery.');
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  // Refactored handleSaveCoverImage: Now only confirms the currently selected image
+  async function handleSaveCoverImage() {
+    if (!selectedImageForCover) {
+      alert('No image selected to set as cover.');
+      return;
+    }
+    // The selectedImageForCover should already be a Firebase Storage URL
+    // since new uploads/generated images are first saved to the gallery.
+    onCoverImageSaved(selectedImageForCover);
+    alert('Book Cover image updated successfully!');
   }
 
   // Delete image from gallery
@@ -257,24 +344,26 @@ export default function CoverImageManager({ onCoverImageSaved, initialCoverUrl }
 
   // Determine guidance message
   const getGuidanceMessage = () => {
-    switch (activeTab) {
-      case 'my-gallery':
-        return selectedImageForCover ? "Click 'Save as Book Cover' to confirm this selection." : "Select an image from your gallery to set as Book Cover.";
-      case 'ai-generate':
-        return generatedImageUrl ? "Click 'Save as Book Cover' to use this AI-generated image." : "Describe the design you want AI to generate as your Book Cover.";
-      case 'new-upload':
-        return uploadedPreviewUrl ? "Click 'Save as Book Cover' to use this uploaded image." : "Select an image from your drive to set as Book Cover.";
-      default:
-        return "";
+    const isImageSelectedInMainBox = selectedImageForCover !== null;
+    const isCurrentCover = initialCoverUrl === selectedImageForCover;
+
+    if (!isImageSelectedInMainBox) {
+      return "Select or generate an image to set as your Book Cover.";
     }
+
+    if (isCurrentCover) {
+      return "This is your current Book Cover. No changes needed unless you select a new one.";
+    }
+    
+    return "Click 'Set as Book Cover' to save this image as your story's cover.";
   };
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 p-4">
       {/* LEFT: Unified Image Display Box + Save Control */}
       <div className="lg:w-1/2 space-y-4 flex flex-col items-center">
-        <h3 className="text-xl font-bold text-[#3D4F60]">Image Display Box</h3>
-        <div className="w-full max-w-md h-80 border-2 border-[#B0C4DE] rounded-lg flex items-center justify-center bg-gray-100 overflow-hidden">
+        <h3 className="text-xl font-bold text-[#3D4F60]">Current Cover Candidate</h3>
+        <div className="w-full max-w-md h-80 border-2 border-[#B0C4DE] rounded-lg flex items-center justify-center bg-gray-100 overflow-hidden relative">
           {selectedImageForCover ? (
             <Image
               src={selectedImageForCover}
@@ -286,20 +375,28 @@ export default function CoverImageManager({ onCoverImageSaved, initialCoverUrl }
           ) : (
             <span className="text-gray-500">No image selected</span>
           )}
+           {selectedImageForCover && initialCoverUrl === selectedImageForCover && (
+              <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
+                CURRENT COVER
+              </div>
+            )}
         </div>
-        <input
-            className="w-full max-w-md p-2 border-2 border-[#B0C4DE] rounded-md"
-            placeholder="Name for image (e.g., 'Fantasy Cover Art')"
-            value={selectedFileName}
-            onChange={(e) => setSelectedFileName(e.target.value)}
-        />
+        {/* The filename input is now tied to what's selected, not what's being uploaded/generated */}
+        {selectedImageForCover && (
+            <input
+                className="w-full max-w-md p-2 border-2 border-[#B0C4DE] rounded-md"
+                placeholder="Name for image (e.g., 'Fantasy Cover Art')"
+                value={selectedFileName}
+                onChange={(e) => setSelectedFileName(e.target.value)}
+                disabled={true} // This input will now be read-only, showing the selected item's name
+            />
+        )}
         <button
           onClick={handleSaveCoverImage}
-          disabled={!selectedImageForCover || !selectedFileName.trim() || isUploading}
+          disabled={!selectedImageForCover || initialCoverUrl === selectedImageForCover}
           className="w-full max-w-md py-3 rounded-md bg-[#E97451] text-white font-semibold disabled:opacity-50 transition-colors hover:bg-[#D46342]"
         >
-          {isUploading ? <Loader2 className="animate-spin inline mr-2" size={20} /> : null}
-          Save as Book Cover
+          Set as Book Cover
         </button>
         <p className="text-sm text-gray-600 italic mt-2">{getGuidanceMessage()}</p>
       </div>
@@ -316,6 +413,7 @@ export default function CoverImageManager({ onCoverImageSaved, initialCoverUrl }
               onClick={() => {
                 setActiveTab(tab);
                 setUploadError(''); // Clear errors on tab switch
+                setSuggestedPrompt(''); // Clear suggested prompt on tab switch
               }}
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors
                 ${activeTab === tab
@@ -345,17 +443,32 @@ export default function CoverImageManager({ onCoverImageSaved, initialCoverUrl }
                       onClick={() => handleSelectFromGallery(it)}
                       className={`relative group border-2 rounded-md overflow-hidden cursor-pointer
                         ${selectedImageForCover === it.url ? 'border-[#E97451] shadow-lg' : 'border-[#B0C4DE]'}
+                        ${initialCoverUrl === it.url ? 'ring-2 ring-blue-500' : ''} /* Highlight current cover */
                         hover:border-[#E97451] transition-all duration-200`}
                     >
                       <Image src={it.url} alt={it.name} width={150} height={100} className="w-full h-32 object-cover" />
+                      {initialCoverUrl === it.url && (
+                          <div className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full z-10">
+                              Current
+                          </div>
+                      )}
                       <button
                         title="Delete"
                         onClick={(e) => { e.stopPropagation(); handleDeleteFromGallery(it); }}
-                        className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition bg-white/90 rounded-full p-1 shadow"
+                        className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition bg-white/90 rounded-full p-1 shadow z-10"
                       >
                         <Trash2 size={16} className="text-red-600" />
                       </button>
                       <div className="px-2 py-1 text-xs truncate text-[#3D4F60]">{it.name}</div>
+                      {selectedImageForCover === it.url && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDescribeImage(it.url); }}
+                          disabled={isDescribing}
+                          className="absolute bottom-1 left-1 opacity-0 group-hover:opacity-100 transition bg-blue-500/90 text-white text-xs px-2 py-0.5 rounded-md shadow z-10"
+                        >
+                          {isDescribing ? <Loader2 className="animate-spin inline mr-1" size={12} /> : null} AI Describe
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -366,13 +479,31 @@ export default function CoverImageManager({ onCoverImageSaved, initialCoverUrl }
           {activeTab === 'ai-generate' && (
             <div className="space-y-4">
               <h4 className="font-semibold text-[#3D4F60]">AI Image Generation</h4>
-              <p className="text-sm text-gray-700">Describe the cover image you want to generate.</p>
+              <p className="text-sm text-gray-700">Describe the cover image you want to generate. Use "AI Describe" on an existing image to get ideas.</p>
               
-              <textarea
-                className="w-full min-h-[120px] border rounded-md p-2 border-[#B0C4DE] text-[#3D4F60] bg-white"
-                placeholder="e.g., A fantastical forest with ancient trees and glowing flora at twilight..."
-                value={aiPrompt}
-                onChange={(e) => setAiPrompt(e.target.value)}
+              <div className="flex items-center gap-2">
+                <textarea
+                  className="w-full min-h-[120px] border rounded-md p-2 border-[#B0C4DE] text-[#3D4F60] bg-white"
+                  placeholder="e.g., A fantastical forest with ancient trees and glowing flora at twilight..."
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                />
+                {suggestedPrompt && aiPrompt !== suggestedPrompt && (
+                  <button
+                    onClick={() => setAiPrompt(suggestedPrompt)}
+                    className="shrink-0 px-3 py-2 text-xs bg-blue-100 text-blue-800 rounded-md hover:bg-blue-200"
+                    title="Use suggested prompt"
+                  >
+                    Use Suggestion
+                  </button>
+                )}
+              </div>
+
+              <input
+                className="w-full p-2 border-2 border-[#B0C4DE] rounded-md"
+                placeholder="Name for generated image (e.g., 'Fantasy Cover Art')"
+                value={aiNameToSave}
+                onChange={(e) => setAiNameToSave(e.target.value)}
               />
               
               <button
@@ -383,13 +514,23 @@ export default function CoverImageManager({ onCoverImageSaved, initialCoverUrl }
                 {isGenerating ? <Loader2 className="animate-spin" size={20} /> : null}
                 Generate Cover Image (AI)
               </button>
+              {generatedImageUrl && (
+                <button
+                  onClick={handleSaveGeneratedToGallery}
+                  disabled={isUploading || !aiNameToSave.trim()}
+                  className="w-full py-3 rounded-md bg-green-600 text-white font-semibold disabled:opacity-50 transition-colors hover:bg-green-700 flex items-center justify-center gap-2 mt-2"
+                >
+                  {isUploading ? <Loader2 className="animate-spin inline mr-2" size={20} /> : null}
+                  Save Generated to Gallery
+                </button>
+              )}
             </div>
           )}
 
           {activeTab === 'new-upload' && (
             <div className="space-y-4">
               <h4 className="font-semibold text-[#3D4F60]">Upload New Image</h4>
-              <p className="text-sm text-gray-700">Upload a PNG image (100KB - 1MB).</p>
+              <p className="text-sm text-gray-700">Upload a PNG image (100KB - 5MB).</p>
               
               <div className="border-2 border-dashed border-[#B0C4DE] rounded-md p-4 text-center bg-white">
                 <input
@@ -414,7 +555,7 @@ export default function CoverImageManager({ onCoverImageSaved, initialCoverUrl }
               </div>
               {uploadError && <div className="text-red-600 text-sm mt-2">{uploadError}</div>}
               {uploadedPreviewUrl && (
-                <div className="mt-3 border rounded-xl p-3 bg-gray-50">
+                <div className="mt-3 border rounded-xl p-3 bg-gray-50 flex flex-col items-center gap-2">
                   <p className="text-sm mb-2 text-[#3D4F60]">Preview of Uploaded Image</p>
                   <Image
                     src={uploadedPreviewUrl}
@@ -423,6 +564,43 @@ export default function CoverImageManager({ onCoverImageSaved, initialCoverUrl }
                     height={150}
                     className="max-w-full rounded-md object-contain mx-auto"
                   />
+                  <input
+                    className="w-full p-2 border-2 border-[#B0C4DE] rounded-md mt-2"
+                    placeholder="Name for uploaded image (e.g., 'My Custom Cover')"
+                    value={uploadNameToSave}
+                    onChange={(e) => setUploadNameToSave(e.target.value)}
+                  />
+                   <button
+                    onClick={() => handleDescribeImage(uploadedFile!)}
+                    disabled={isDescribing || !uploadedFile}
+                    className="w-full py-2 rounded-md bg-blue-500 text-white text-sm font-semibold disabled:opacity-50 transition-colors hover:bg-blue-600 flex items-center justify-center gap-2 mt-2"
+                  >
+                    {isDescribing ? <Loader2 className="animate-spin inline mr-2" size={16} /> : null}
+                    AI Describe Uploaded Image
+                  </button>
+                  {suggestedPrompt && (
+                    <div className="w-full mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-800">
+                      <p className="font-semibold">AI Suggestion:</p>
+                      <p>{suggestedPrompt}</p>
+                      <button
+                        onClick={() => {
+                          setActiveTab('ai-generate');
+                          setAiPrompt(suggestedPrompt);
+                        }}
+                        className="mt-2 px-3 py-1 text-xs bg-blue-200 text-blue-900 rounded-md hover:bg-blue-300"
+                      >
+                        Use as AI Prompt
+                      </button>
+                    </div>
+                  )}
+                  <button
+                    onClick={handleUploadNewFileToGallery}
+                    disabled={isUploading || !uploadedFile || !uploadNameToSave.trim()}
+                    className="w-full py-3 rounded-md bg-green-600 text-white font-semibold disabled:opacity-50 transition-colors hover:bg-green-700 flex items-center justify-center gap-2 mt-2"
+                  >
+                    {isUploading ? <Loader2 className="animate-spin inline mr-2" size={20} /> : null}
+                    Upload and Save to Gallery
+                  </button>
                 </div>
               )}
             </div>

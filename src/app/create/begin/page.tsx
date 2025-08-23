@@ -51,6 +51,13 @@ export default function BeginPage() {
     setDraft((d) => ({ ...d, coverUrl: url }));
   };
 
+  // Determine if all mandatory fields are filled
+  const isNextButtonEnabled = 
+    draft.title.trim() !== '' &&
+    draft.genres.length > 0 &&
+    draft.synopsis.trim() !== '' &&
+    draft.coverUrl !== undefined && draft.coverUrl !== null;
+
   return (
     <div className="min-h-screen p-6 pb-28 bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0]">
       <div className="max-w-5xl mx-auto">
@@ -152,8 +159,9 @@ export default function BeginPage() {
             Reset
           </button>
           <button
-            className="px-6 py-2 rounded-md bg-[#E97451] text-white font-semibold"
+            className="px-6 py-2 rounded-md bg-[#E97451] text-white font-semibold disabled:opacity-50 transition-colors hover:bg-[#D46342]"
             onClick={() => router.push('/create/support')}
+            disabled={!isNextButtonEnabled}
           >
             Next: Build References & AI Support →
           </button>
