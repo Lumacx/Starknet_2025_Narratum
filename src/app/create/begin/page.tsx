@@ -106,10 +106,11 @@ export default function BeginPage() {
     if (srcUrl.startsWith('data:')) {
       await uploadString(r, srcUrl, 'data_url');
     } else {
-      const blob = await (await fetch(srcUrl)).blob();
-      await uploadBytes(r, blob);
-    }
-    return await getDownloadURL(r);
+      const resp = await fetch(srcUrl);
+    const blob = await resp.blob();
+   await uploadBytes(r, blob, { contentType: blob.type || 'image/png' });
+  }
+  return await getDownloadURL(r);
   }
 
   // Called by CoverImageManager after user sets a cover

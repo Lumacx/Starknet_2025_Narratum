@@ -34,7 +34,7 @@ type Props = {
 const KB = 1024;
 const MB = 1024 * KB;
 const LIMITS: Record<string, { min: number; max: number }> = {
-  'image/png': { min: 100 * KB, max: 1 * MB },
+  'image/png': { min: 100 * KB, max: 5 * MB },
   'audio/mpeg': { min: 100 * KB, max: 5 * MB }, // mp3
   'video/mp4': { min: 1 * MB, max: 50 * MB },  // mp4
 };
@@ -140,16 +140,19 @@ useEffect(() => {
       if (!nameToSave.trim()) return alert('Enter a name to save.');
 
       const dataUrl = await fileToDataUrl(selectedFile);
-      const path = `users/${currentUser.uid}/assets/${assetCategory}/${nameToSave}.png`;
+      const ext = selectedFile.type === 'image/png' ? 'png'
+                : selectedFile.type === 'audio/mpeg' ? 'mp3'
+                : selectedFile.type === 'video/mp4' ? 'mp4' : 'dat';
+      const path = `users/${currentUser.uid}/assets/${assetCategory}/${nameToSave}.${ext}`;
       const o = ref(storage, path);
       await uploadString(o, dataUrl, 'data_url', {
-      customMetadata: { displayName: nameToSave, category: assetCategory, source: 'uploaded', createdAt: String(Date.now()) }
+        customMetadata: { displayName: nameToSave, category: assetCategory, source: 'uploaded', createdAt: String(Date.now()) }
       });
       const url = await getDownloadURL(o);
 
 
       // ⬇️ replace the two lines that push directly into state with this:
-        const item: GalleryItem = { name: `${nameToSave}.png`, url, fullPath: path };
+      const item: GalleryItem = { name: `${nameToSave}.${ext}`, url, fullPath: path };
         setGallery((g) => [item, ...g]);
         onSaved?.(item);
 

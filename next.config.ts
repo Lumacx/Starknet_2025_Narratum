@@ -20,6 +20,7 @@ const nextConfig: NextConfig = {
     allowedDevOrigins: [
       'https://3000-idx-studio-1746560064210.cluster-f4iwdviaqvc2ct6pgytzw4xqy4.cloudworkstations.dev',
       'https://9003-idx-studio-1746560064210.cluster-f4iwdviaqvc2ct6pgytzw4xqy4.cloudworkstations.dev',
+      'http://localhost:3000', // Added for completeness
     ],
   },
 };

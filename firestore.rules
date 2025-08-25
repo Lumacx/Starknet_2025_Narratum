@@ -3,22 +3,86 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // This rule allows anyone with your Firestore database reference to view, edit,
-    // and delete all data in your Firestore database. It is useful for getting
-    // started, but it is configured to expire after 30 days because it
-    // leaves your app open to attackers. At that time, all client
-    // requests to your Firestore database will be denied.
-    //
-    // Make sure to write security rules for your app before that time, or else
-    // all client requests to your Firestore database will be denied until you Update
-    // your rules
-    // Allow users to read and write their own user document
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    /* ---------- Helpers ---------- */
+    function isSignedIn() {
+      return request.auth != null;
     }
 
+    // For an existing doc (resource)
+    function isOwnerDoc() {
+      return isSignedIn() && resource.data.ownerUid == request.auth.uid;
+    }
+
+    // For a create/update where we validate the incoming payload
+    function isOwnerCreate() {
+      return isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
+    }
+
+    function isPublicStory() {
+      return resource.data.status == "published" && resource.data.visibility == "public";
+    }
+
+    // When we only have a storyId (e.g., validating storyContents writes)
+    function isStoryOwner(storyId) {
+      return isSignedIn() &&
+             get(/databases/$(database)/documents/stories/$(storyId)).data.ownerUid == request.auth.uid;
+    }
+
+    function storyIsPublic(storyId) {
+      let s = get(/databases/$(database)/documents/stories/$(storyId)).data;
+      return s.status == "published" && s.visibility == "public";
+    }
+
+    /* ---------- users/{uid} (author profile) ---------- */
+    match /users/{uid} {
+      // Keep profile private to the owner by default
+      allow read, write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    /* ---------- stories/{storyId} ---------- */
+    // Example schema: { ownerUid, title, synopsis, genres, coverImageUrl, pageCount, visibility, status, createdAt, updatedAt, publishedAt? }
+    match /stories/{storyId} {
+
+      // Create: must set ownerUid = caller uid
+      allow create: if isOwnerCreate();
+
+      // Read:
+      // - Public can read only when published + public
+      // - Owner can always read their own story
+      allow read: if isPublicStory() || isOwnerDoc();
+
+      // Update/Delete: only the owner
+      allow update, delete: if isOwnerDoc();
+    }
+
+    /* ---------- storyContents/{storyId_pageNumber} ---------- */
+    // Example schema: { storyId, pageNumber, textContent, imageUrl, audioUrl, createdAt, updatedAt }
+    match /storyContents/{id} {
+      // Parse the storyId from either existing doc or incoming payload
+      function storyIdFromExisting() {
+        return resource != null ? resource.data.storyId : null;
+      }
+      function storyIdFromRequest() {
+        return request.resource != null ? request.resource.data.storyId : null;
+      }
+      function effectiveStoryId() {
+        return storyIdFromExisting() != null ? storyIdFromExisting() : storyIdFromRequest();
+      }
+
+      // Read:
+      // - Public can read only when parent story is published + public
+      // - Owner can always read
+      allow read: if (effectiveStoryId() != null && storyIsPublic(effectiveStoryId()))
+                  || (effectiveStoryId() != null && isStoryOwner(effectiveStoryId()));
+
+      // Create/Update/Delete:
+      // - Only the owner of the parent story can write pages
+      allow create, update, delete: if (effectiveStoryId() != null && isStoryOwner(effectiveStoryId()));
+    }
+
+    /* ---------- Default deny ---------- */
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
     }
   }
 }

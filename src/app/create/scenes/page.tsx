@@ -236,7 +236,11 @@ export default function ScenesPage() {
     const resp = await fetch(sourceUrl);
     if (!resp.ok) throw new Error(`Fetch failed for ${sourceUrl}`);
     const blob = await resp.blob();
-    await uploadBytes(storageRef, blob);
+    const guessed =
+    path.endsWith('.png') ? 'image/png' :
+    path.endsWith('.mp3') ? 'audio/mpeg' :
+    path.endsWith('.wav') ? 'audio/wav' : blob.type || 'application/octet-stream';
+    await uploadBytes(storageRef, blob, { contentType: blob.type || guessed });
     return await getDownloadURL(storageRef);
   }
 
@@ -306,7 +310,7 @@ export default function ScenesPage() {
           const mime = blob.type || 'audio/wav';
           const ext = mime.includes('wav') ? 'wav' : mime.includes('mpeg') ? 'mp3' : 'webm';
           const path = `${base}/audio/narration_${p.pageNumber}.${ext}`;
-          await uploadBytes(ref(storage, path), blob);
+          await uploadBytes(ref(storage, path), blob, { contentType: mime });
           audioUrlHttps = await getDownloadURL(ref(storage, path));
         }
 
