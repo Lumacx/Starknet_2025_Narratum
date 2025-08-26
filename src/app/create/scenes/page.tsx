@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { db, storage } from '@/lib/firebase';
 import {
-  addDoc,
   collection,
   serverTimestamp,
   updateDoc,
@@ -22,6 +21,7 @@ import { useAuth } from '@/context/AuthContext';
 import type { ScenePage } from '@/lib/story-types';
 import StoryReader from '@/components/StoryReader';
 import ReaderSkinPicker from '@/components/ReaderSkinPicker';
+import { useCreateStory } from '@/hooks/useCreateStory';
 
 type OutlineItem = { storyText: string; imagePrompt: string };
 
@@ -36,8 +36,8 @@ function buildPreviewStory(draft: any, pages: ScenePage[]) {
     id: 'preview',
     title: draft?.title ?? 'Untitled',
     coverImageUrl: draft?.coverUrl ?? null,
-    readerAvatarUrl: draft?.readerAvatarUrl ?? null,       // NEW
-    readerBackgroundUrl: draft?.readerBackgroundUrl ?? null, // NEW
+    readerAvatarUrl: draft?.readerAvatarUrl ?? null,
+    readerBackgroundUrl: draft?.readerBackgroundUrl ?? null,
     storyContent: (pages ?? []).map((p) => ({
       id: `local-${p.pageNumber}`,
       pageNumber: p.pageNumber,
@@ -51,6 +51,7 @@ function buildPreviewStory(draft: any, pages: ScenePage[]) {
 export default function ScenesPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const createStory = useCreateStory();
 
   const [draft, setDraft] = useState<any>(null);
   const [pages, setPages] = useState<ScenePage[]>([]);
@@ -61,7 +62,7 @@ export default function ScenesPage() {
   const [showModal, setShowModal] = useState(false);
   const [publishing, setPublishing] = useState(false);
 
-  // NEW: reader skin local state (persisted into draft)
+  // Reader skin
   const [readerAvatarUrl, setReaderAvatarUrl] = useState<string | null>(null);
   const [readerBackgroundUrl, setReaderBackgroundUrl] = useState<string | null>(null);
 
@@ -237,9 +238,9 @@ export default function ScenesPage() {
     if (!resp.ok) throw new Error(`Fetch failed for ${sourceUrl}`);
     const blob = await resp.blob();
     const guessed =
-    path.endsWith('.png') ? 'image/png' :
-    path.endsWith('.mp3') ? 'audio/mpeg' :
-    path.endsWith('.wav') ? 'audio/wav' : blob.type || 'application/octet-stream';
+      path.endsWith('.png') ? 'image/png' :
+      path.endsWith('.mp3') ? 'audio/mpeg' :
+      path.endsWith('.wav') ? 'audio/wav' : blob.type || 'application/octet-stream';
     await uploadBytes(storageRef, blob, { contentType: blob.type || guessed });
     return await getDownloadURL(storageRef);
   }
@@ -254,18 +255,16 @@ export default function ScenesPage() {
       // 1) Get or create story document (single canonical ID)
       let storyId: string | undefined = draft?.storyId;
       if (!storyId) {
-        const storyRef = await addDoc(collection(db, 'stories'), {
-          ownerUid: user.uid,
-          title: draft.title,
+        storyId = await createStory({
+          title: draft.title || '(untitled)',
           synopsis: draft.synopsis ?? '',
           genres: draft.genres ?? [],
+          category: draft.category ?? 'short',
           pageCount: pages.length,
+          coverImageUrl: null,
           visibility: 'private',
           status: 'draft',
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
         });
-        storyId = storyRef.id;
 
         // persist storyId back into local draft so future steps reuse it
         setDraft((d: any) => ({ ...d, storyId }));
@@ -287,8 +286,8 @@ export default function ScenesPage() {
       // 2b) save reader UI skin on the story doc
       await updateDoc(fsDoc(db, 'stories', storyId), {
         coverImageUrl: coverUrlHttps ?? draft?.coverUrl ?? null,
-        readerAvatarUrl: readerAvatarUrl ?? null,         // NEW
-        readerBackgroundUrl: readerBackgroundUrl ?? null, // NEW
+        readerAvatarUrl: readerAvatarUrl ?? null,
+        readerBackgroundUrl: readerBackgroundUrl ?? null,
         pageCount: pages.length,
         updatedAt: serverTimestamp(),
       });
@@ -370,7 +369,7 @@ export default function ScenesPage() {
           <div><span className="font-semibold">Pages:</span> {total}</div>
         </div>
 
-        {/* NEW: Reader UI Skin (global, not per scene) */}
+        {/* Reader UI Skin */}
         <div className="mt-6">
           <h2 className="text-lg font-bold text-[#3D4F60] mb-2">Reader UI (Avatar & Background)</h2>
           <ReaderSkinPicker

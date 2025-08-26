@@ -8,12 +8,12 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // For an existing doc (resource)
+    // Existing doc -> owner
     function isOwnerDoc() {
       return isSignedIn() && resource.data.ownerUid == request.auth.uid;
     }
 
-    // For a create/update where we validate the incoming payload
+    // Incoming payload -> owner
     function isOwnerCreate() {
       return isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
     }
@@ -22,10 +22,10 @@ service cloud.firestore {
       return resource.data.status == "published" && resource.data.visibility == "public";
     }
 
-    // When we only have a storyId (e.g., validating storyContents writes)
+    // Resolve story ownership/public from a storyId
     function isStoryOwner(storyId) {
       return isSignedIn() &&
-             get(/databases/$(database)/documents/stories/$(storyId)).data.ownerUid == request.auth.uid;
+        get(/databases/$(database)/documents/stories/$(storyId)).data.ownerUid == request.auth.uid;
     }
 
     function storyIsPublic(storyId) {
@@ -33,32 +33,28 @@ service cloud.firestore {
       return s.status == "published" && s.visibility == "public";
     }
 
-    /* ---------- users/{uid} (author profile) ---------- */
+    /* ---------- users/{uid} ---------- */
+    // Private profiles (owner-only)
     match /users/{uid} {
-      // Keep profile private to the owner by default
       allow read, write: if isSignedIn() && request.auth.uid == uid;
     }
 
     /* ---------- stories/{storyId} ---------- */
-    // Example schema: { ownerUid, title, synopsis, genres, coverImageUrl, pageCount, visibility, status, createdAt, updatedAt, publishedAt? }
+    // Example: { ownerUid, title, synopsis, genres, coverImageUrl, pageCount, visibility, status, createdAt, updatedAt, publishedAt? }
     match /stories/{storyId} {
-
-      // Create: must set ownerUid = caller uid
+      // Create must include ownerUid == caller
       allow create: if isOwnerCreate();
 
-      // Read:
-      // - Public can read only when published + public
-      // - Owner can always read their own story
+      // Reads: public published stories OR owner reads anything
       allow read: if isPublicStory() || isOwnerDoc();
 
-      // Update/Delete: only the owner
+      // Only owner may update/delete
       allow update, delete: if isOwnerDoc();
     }
 
     /* ---------- storyContents/{storyId_pageNumber} ---------- */
-    // Example schema: { storyId, pageNumber, textContent, imageUrl, audioUrl, createdAt, updatedAt }
+    // Example: { storyId, pageNumber, textContent, imageUrl, audioUrl, createdAt, updatedAt }
     match /storyContents/{id} {
-      // Parse the storyId from either existing doc or incoming payload
       function storyIdFromExisting() {
         return resource != null ? resource.data.storyId : null;
       }
@@ -69,14 +65,11 @@ service cloud.firestore {
         return storyIdFromExisting() != null ? storyIdFromExisting() : storyIdFromRequest();
       }
 
-      // Read:
-      // - Public can read only when parent story is published + public
-      // - Owner can always read
+      // Read if parent story is public+published, or caller is the story owner
       allow read: if (effectiveStoryId() != null && storyIsPublic(effectiveStoryId()))
-                  || (effectiveStoryId() != null && isStoryOwner(effectiveStoryId()));
+               || (effectiveStoryId() != null && isStoryOwner(effectiveStoryId()));
 
-      // Create/Update/Delete:
-      // - Only the owner of the parent story can write pages
+      // Only the parent story owner can write pages
       allow create, update, delete: if (effectiveStoryId() != null && isStoryOwner(effectiveStoryId()));
     }
 

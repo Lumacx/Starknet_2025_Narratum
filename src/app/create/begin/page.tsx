@@ -9,8 +9,6 @@ import CoverImageManager from '@/components/CoverImageManager';
 import { useAuth } from '@/context/AuthContext';
 import { db, storage } from '@/lib/firebase';
 import {
-  addDoc,
-  collection,
   serverTimestamp,
   updateDoc,
   doc as fsDoc,
@@ -21,8 +19,24 @@ import {
   uploadString,
   getDownloadURL,
 } from 'firebase/storage';
+import { useCreateStory } from '@/hooks/useCreateStory';
 
-const GENRES = ['Fantasy','Sci-Fi','Mystery','Horror','Romance','Adventure',"Children's",'Comedy','Drama','Action','Other'] as const;
+/* ------------------------------------------------------------------ */
+/* Page constants & types                                              */
+/* ------------------------------------------------------------------ */
+const GENRES = [
+  'Fantasy',
+  'Sci-Fi',
+  'Mystery',
+  'Horror',
+  'Romance',
+  'Adventure',
+  "Children's",
+  'Comedy',
+  'Drama',
+  'Action',
+  'Other',
+] as const;
 
 const CATEGORIES = [
   { key: 'short',    label: 'Short Story (1–10 slides)', min: 1, max: 10 },
@@ -31,20 +45,24 @@ const CATEGORIES = [
 ] as const;
 
 type Draft = {
-  storyId?: string; // ✅ canonical id used across Begin/Support/Scenes
+  storyId?: string; // canonical id used across Begin/Support/Scenes
   title: string;
   genres: string[];
   synopsis: string;
   category: typeof CATEGORIES[number]['key'];
   pages: number;
-  coverUrl?: string;
+  coverUrl?: string | null;
 };
 
 const DRAFT_KEY = 'newStoryDraft';
 
+/* ------------------------------------------------------------------ */
+/* Component                                                           */
+/* ------------------------------------------------------------------ */
 export default function BeginPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const createStory = useCreateStory();
 
   const [draft, setDraft] = useState<Draft>({
     title: '',
@@ -60,87 +78,126 @@ export default function BeginPage() {
   useEffect(() => {
     const raw = localStorage.getItem(DRAFT_KEY);
     if (raw) {
-      try { setDraft((d) => ({ ...d, ...JSON.parse(raw) })); } catch {}
+      try {
+        setDraft((d) => ({ ...d, ...JSON.parse(raw) }));
+      } catch {
+        // ignore corrupt local storage
+      }
     }
   }, []);
   useEffect(() => {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch {
+      // ignore quota or serialization errors
+    }
   }, [draft]);
 
-  const cat = CATEGORIES.find(c => c.key === draft.category)!;
+  const cat = CATEGORIES.find((c) => c.key === draft.category)!;
 
-  // ---------- Canonical storyId handling ----------
+  /* -------------------------------------------------------------- */
+  /* Ensure canonical story doc exists (uses useCreateStory)         */
+  /* -------------------------------------------------------------- */
   async function ensureStoryId(): Promise<string> {
     if (!user) throw new Error('Please sign in first.');
     if (draft.storyId) return draft.storyId;
 
-    const docRef = await addDoc(collection(db, 'stories'), {
-      ownerUid: user.uid,
-      title: draft.title || '(untitled)',
-      synopsis: draft.synopsis || '',
-      genres: draft.genres || [],
-      pageCount: draft.pages || 0,
-      coverImageUrl: null,
-      visibility: 'private',
-      status: 'draft',
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
+    try {
+      const id = await createStory({
+        title: draft.title || '(untitled)',
+        synopsis: draft.synopsis || '',
+        genres: draft.genres || [],
+        category: draft.category,
+        pageCount: draft.pages || 0,
+        coverImageUrl: null,
+        visibility: 'private',
+        status: 'draft',
+      });
 
-    setDraft(d => ({ ...d, storyId: docRef.id }));
-    const raw = localStorage.getItem(DRAFT_KEY);
-    if (raw) {
+      // persist the new id into state and localStorage
+      setDraft((d) => ({ ...d, storyId: id }));
       try {
-        const obj = JSON.parse(raw);
-        obj.storyId = docRef.id;
-        localStorage.setItem(DRAFT_KEY, JSON.stringify(obj));
-      } catch {}
+        const raw = localStorage.getItem(DRAFT_KEY);
+        if (raw) {
+          const obj = JSON.parse(raw);
+          obj.storyId = id;
+          localStorage.setItem(DRAFT_KEY, JSON.stringify(obj));
+        }
+      } catch {
+        // ignore localStorage issues
+      }
+
+      return id;
+    } catch (e: any) {
+      console.error('createStory() failed:', e?.code || '(no code)', e?.message || e);
+      throw e;
     }
-    return docRef.id;
   }
 
-  async function uploadCoverIntoStoryPath(userUid: string, storyId: string, srcUrl: string) {
+  /* -------------------------------------------------------------- */
+  /* Upload cover into canonical path                                */
+  /* -------------------------------------------------------------- */
+  async function uploadCoverIntoStoryPath(
+    userUid: string,
+    storyId: string,
+    srcUrl: string
+  ) {
     const path = `users/${userUid}/stories/${storyId}/images/cover.png`;
     const r = ref(storage, path);
 
-    if (srcUrl.startsWith('data:')) {
-      await uploadString(r, srcUrl, 'data_url');
-    } else {
-      const resp = await fetch(srcUrl);
-    const blob = await resp.blob();
-   await uploadBytes(r, blob, { contentType: blob.type || 'image/png' });
-  }
-  return await getDownloadURL(r);
+    try {
+      if (srcUrl.startsWith('data:')) {
+        await uploadString(r, srcUrl, 'data_url');
+      } else {
+        const resp = await fetch(srcUrl);
+        const blob = await resp.blob();
+        await uploadBytes(r, blob, { contentType: blob.type || 'image/png' });
+      }
+      return await getDownloadURL(r);
+    } catch (e: any) {
+      console.error('Upload cover into story path failed:', path, e?.code, e?.message || e);
+      throw e;
+    }
   }
 
   // Called by CoverImageManager after user sets a cover
   const handleCoverImageSaved = async (url: string) => {
-    setDraft((d) => ({ ...d, coverUrl: url })); // immediate UI update
+    // Optimistic UI (may be data: or blob: temporarily)
+    setDraft((d) => ({ ...d, coverUrl: url }));
+
     try {
       if (!user) throw new Error('Please sign in first.');
       const id = await ensureStoryId();
 
       // copy into the canonical story path and update story doc
       const httpsUrl = await uploadCoverIntoStoryPath(user.uid, id, url);
-      await updateDoc(fsDoc(db, 'stories', id), {
-        coverImageUrl: httpsUrl,
-        updatedAt: serverTimestamp(),
-      });
+
+      try {
+        await updateDoc(fsDoc(db, 'stories', id), {
+          coverImageUrl: httpsUrl,
+          updatedAt: serverTimestamp(),
+        });
+      } catch (e: any) {
+        console.error('Firestore updateDoc(stories, coverImageUrl) failed:', e?.code, e?.message || e);
+        throw e;
+      }
 
       // store canonical URL back to draft/localStorage
-      setDraft(d => ({ ...d, coverUrl: httpsUrl }));
-      const raw = localStorage.getItem(DRAFT_KEY);
-      if (raw) {
-        try {
+      setDraft((d) => ({ ...d, coverUrl: httpsUrl }));
+      try {
+        const raw = localStorage.getItem(DRAFT_KEY);
+        if (raw) {
           const obj = JSON.parse(raw);
           obj.coverUrl = httpsUrl;
           obj.storyId = id;
           localStorage.setItem(DRAFT_KEY, JSON.stringify(obj));
-        } catch {}
+        }
+      } catch {
+        // ignore localStorage issues
       }
     } catch (e: any) {
       console.error('Failed to persist cover to story path:', e?.message || e);
-      // keep local cover for UX; it's not fatal
+      // keep the local (pre-canonical) cover for UX continuity
     }
   };
 
@@ -149,16 +206,18 @@ export default function BeginPage() {
     draft.title.trim() !== '' &&
     draft.genres.length > 0 &&
     draft.synopsis.trim() !== '' &&
-    draft.coverUrl !== undefined && draft.coverUrl !== null;
+    draft.coverUrl !== undefined &&
+    draft.coverUrl !== null;
 
   return (
     <div className="min-h-screen p-6 pb-28 bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0]">
       <div className="max-w-5xl mx-auto">
-
         {/* ---- Card: Page Header + Back ---- */}
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-3xl font-bold text-[#3D4F60]">Begin a New Tale</h1>
-          <Link href="/" className="text-sm underline">Back</Link>
+          <Link href="/" className="text-sm underline">
+            Back
+          </Link>
         </div>
 
         {/* ---- Card: Top section (Title/Genres/Synopsis/Category/Pages) ---- */}
@@ -170,7 +229,9 @@ export default function BeginPage() {
               <input
                 className="w-full p-3 border-2 rounded-md"
                 value={draft.title}
-                onChange={(e) => setDraft(d => ({ ...d, title: e.target.value }))}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, title: e.target.value }))
+                }
                 placeholder="The Rise of the Shadow Dragon"
               />
             </div>
@@ -179,7 +240,9 @@ export default function BeginPage() {
               <GenreMultiSelect
                 genresList={GENRES as any}
                 selectedGenres={draft.genres}
-                onSelectedGenresChange={(genres) => setDraft(d => ({ ...d, genres }))}
+                onSelectedGenresChange={(genres) =>
+                  setDraft((d) => ({ ...d, genres }))
+                }
               />
             </div>
           </div>
@@ -191,7 +254,9 @@ export default function BeginPage() {
               rows={4}
               className="w-full p-3 border-2 rounded-md"
               value={draft.synopsis}
-              onChange={(e) => setDraft(d => ({ ...d, synopsis: e.target.value }))}
+              onChange={(e) =>
+                setDraft((d) => ({ ...d, synopsis: e.target.value }))
+              }
               placeholder="A young mage discovers a hidden power that could save or shatter the kingdom..."
             />
           </div>
@@ -205,30 +270,42 @@ export default function BeginPage() {
                 value={draft.category}
                 onChange={(e) => {
                   const nextKey = e.target.value as Draft['category'];
-                  const cfg = CATEGORIES.find(c => c.key === nextKey)!;
-                  setDraft(d => ({
+                  const cfg = CATEGORIES.find((c) => c.key === nextKey)!;
+                  setDraft((d) => ({
                     ...d,
                     category: nextKey,
                     pages: Math.min(Math.max(d.pages, cfg.min), cfg.max),
                   }));
                 }}
               >
-                {CATEGORIES.map(c => (<option key={c.key} value={c.key}>{c.label}</option>))}
+                {CATEGORIES.map((c) => (
+                  <option key={c.key} value={c.key}>
+                    {c.label}
+                  </option>
+                ))}
               </select>
-              <p className="text-xs text-gray-500 mt-1">Allowed pages: {cat.min}–{cat.max}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Allowed pages: {cat.min}–{cat.max}
+              </p>
             </div>
 
             <div>
-              <label className="block text-sm font-bold mb-2">Number of Pages</label>
+              <label className="block text-sm font-bold mb-2">
+                Number of Pages
+              </label>
               <input
                 type="range"
                 min={cat.min}
                 max={cat.max}
                 value={draft.pages}
-                onChange={(e) => setDraft(d => ({ ...d, pages: Number(e.target.value) }))}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, pages: Number(e.target.value) }))
+                }
                 className="w-full"
               />
-              <div className="text-sm mt-1">Pages: <strong>{draft.pages}</strong></div>
+              <div className="text-sm mt-1">
+                Pages: <strong>{draft.pages}</strong>
+              </div>
             </div>
           </div>
         </div>
@@ -237,7 +314,7 @@ export default function BeginPage() {
         <div className="rounded-xl border-2 border-[#B0C4DE] bg-[#F7F3EC] shadow p-6">
           <h2 className="text-xl font-bold mb-4 text-[#3D4F60]">Book Cover Image</h2>
           <CoverImageManager
-            initialCoverUrl={draft.coverUrl}
+            initialCoverUrl={draft.coverUrl ?? undefined}
             onCoverImageSaved={handleCoverImageSaved}
           />
         </div>
@@ -246,14 +323,24 @@ export default function BeginPage() {
         <div className="flex justify-end gap-3 mt-5 mb-12">
           <button
             className="px-5 py-2 rounded-md border"
-            onClick={() => { localStorage.removeItem(DRAFT_KEY); location.reload(); }}
+            onClick={() => {
+              try {
+                localStorage.removeItem(DRAFT_KEY);
+              } catch {}
+              location.reload();
+            }}
           >
             Reset
           </button>
           <button
             className="px-6 py-2 rounded-md bg-[#E97451] text-white font-semibold disabled:opacity-50 transition-colors hover:bg-[#D46342]"
             onClick={async () => {
-              try { await ensureStoryId(); } catch (e:any) { alert(e.message); return; }
+              try {
+                await ensureStoryId();
+              } catch (e: any) {
+                alert(e?.message || 'Failed to create story. See console.');
+                return;
+              }
               router.push('/create/support');
             }}
             disabled={!isNextButtonEnabled}
