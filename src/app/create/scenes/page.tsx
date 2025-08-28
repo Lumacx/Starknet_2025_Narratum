@@ -48,6 +48,15 @@ function buildPreviewStory(draft: any, pages: ScenePage[]) {
   };
 }
 
+/** --- Helpers de compatibilidad con /api/generate-image --- */
+function pickFirstImageFromApi(json: any): string | null {
+  // Soporta nuevo contrato { images: [...] } y contratos previos
+  if (Array.isArray(json?.images) && json.images[0]) return String(json.images[0]);
+  if (typeof json?.dataUrl === 'string') return json.dataUrl;
+  if (typeof json?.image === 'string') return json.image;
+  return null;
+}
+
 export default function ScenesPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -140,14 +149,26 @@ export default function ScenesPage() {
       const res = await fetch('/api/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        // Puedes ajustar aspectRatio si quieres consistencia (ej. '3:4'):
+        // body: JSON.stringify({ prompt: cur.imagePrompt, aspectRatio: '3:4' }),
         body: JSON.stringify({ prompt: cur.imagePrompt }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'image gen failed');
-      const dataUrl = json.dataUrl as string;
+
+      const dataUrl = pickFirstImageFromApi(json);
+      if (!dataUrl) throw new Error('No image returned by API');
+
       setPages((ps) => {
         const copy = [...ps];
-        copy[currentIdx] = { ...copy[currentIdx], imageUrl: dataUrl };
+        copy[currentIdx] = {
+          ...copy[currentIdx],
+          imageUrl: dataUrl,
+          // Si Gemini devolvió caption y el prompt actual está vacío, úsalo:
+          imagePrompt: copy[currentIdx].imagePrompt?.trim()
+            ? copy[currentIdx].imagePrompt
+            : (json.text || copy[currentIdx].imagePrompt || ''),
+        };
         return copy;
       });
     } catch (e: any) {
