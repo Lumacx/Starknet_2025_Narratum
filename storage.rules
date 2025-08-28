@@ -6,24 +6,30 @@ service firebase.storage {
     function isSignedIn() { return request.auth != null; }
     function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
 
-    // File type checks
+    // Tipos MIME
     function isPng()  { return request.resource.contentType == 'image/png'; }
     function isJpg()  { return request.resource.contentType == 'image/jpeg'; }
-    function isImg()  { return isPng() || isJpg(); }
-    function isMp3()  { return request.resource.contentType == 'audio/mpeg' || request.resource.contentType == 'audio/mp3'; }
+    function isWebp() { return request.resource.contentType == 'image/webp'; }
+    function isImg()  { return isPng() || isJpg() || isWebp(); }
+
+    function isMp3()  {
+      return request.resource.contentType == 'audio/mpeg' ||
+             request.resource.contentType == 'audio/mp3';
+    }
     function isWav()  {
       return request.resource.contentType == 'audio/wav' ||
              request.resource.contentType == 'audio/x-wav' ||
              request.resource.contentType == 'audio/wave';
     }
+
     function isMp4()  { return request.resource.contentType == 'video/mp4'; }
 
-    // Size guard
+    // Límites de tamaño
     function sizeBetween(minBytes, maxBytes) {
       return request.resource.size >= minBytes && request.resource.size <= maxBytes;
     }
 
-    /* ---------- Category guards for /assets ---------- */
+    /* ---------- Categorías para /users/{uid}/assets ---------- */
     function isImageCategory(cat) {
       return cat in ['covers','avatars','characters','locations','backgrounds'];
     }
@@ -37,19 +43,19 @@ service firebase.storage {
       return cat == 'others';
     }
 
-    // Per-category validation used by /assets uploads
+    // Validación por categoría para uploads en /assets
     function assetValidForCategory(cat) {
       return
-        // Images: PNG/JPG 50 KB – 10 MB
+        // Imágenes: PNG/JPG/WEBP (50 KB – 10 MB)
         (isImageCategory(cat) && isImg() && sizeBetween(50*1024, 10*1024*1024)) ||
 
-        // Audio: MP3/WAV 50 KB – 15 MB
+        // Audio: MP3/WAV (50 KB – 15 MB)
         (isAudioCategory(cat) && (isMp3() || isWav()) && sizeBetween(50*1024, 15*1024*1024)) ||
 
-        // Video: MP4 1 MB – 50 MB
+        // Video: MP4 (1 MB – 50 MB)
         (isVideoCategory(cat) && isMp4() && sizeBetween(1*1024*1024, 50*1024*1024)) ||
 
-        // Others (very limited: allow PNG/JPG/MP3/MP4 with same limits)
+        // Otros (opcional y limitado)
         (isOtherCategory(cat) && (
           (isImg()  && sizeBetween(50*1024, 10*1024*1024)) ||
           (isMp3()  && sizeBetween(50*1024, 15*1024*1024)) ||
@@ -58,52 +64,55 @@ service firebase.storage {
         ));
     }
 
-    /* ---------- Core paths ---------- */
+    /* ---------- Rutas principales ---------- */
 
-    // Avatars (public read if you want profile pics visible)
+    // Avatares de perfil (lectura pública opcional)
     match /avatars/{uid}/{file=**} {
-      allow read: if true;
+      allow read: if true; // hazlo isOwner(uid) si quieres privacidad
       allow create, update: if isOwner(uid)
-        && request.resource.contentType.matches('image/.*')
-        && request.resource.size <= 5*1024*1024;
+        && isImg()
+        && sizeBetween(10*1024, 5*1024*1024); // 10 KB – 5 MB
       allow delete: if isOwner(uid);
     }
 
-    // User galleries / references used by the Support page
+    // Galería / referencias del usuario (Support page)
+    // /users/{uid}/assets/{category}/{file...}
     match /users/{uid}/assets/{category}/{file=**} {
-      // set to `true` if you want public galleries; owner-only read keeps them private
+      // Si deseas galerías públicas, cambia a: allow read: if true;
       allow read: if isOwner(uid);
       allow create, update: if isOwner(uid) && assetValidForCategory(category);
       allow delete: if isOwner(uid);
     }
 
-    // Canonical per-story assets (used by Begin/Scenes/Publish)
+    // Assets por historia (Begin / Scenes / Publish)
+    // /users/{uid}/stories/{storyId}/{folder}/{file...}
     match /users/{uid}/stories/{storyId}/{folder}/{file=**} {
-      // Public read for consumption (Discover/Reader). If you prefer draft privacy,
-      // make this `isOwner(uid)` and copy assets to /public/ on publish instead.
+      // ⚠️ Lectura pública para consumo en el Reader/Discover.
+      // Si manejas drafts privados, pon isOwner(uid) y copia a /public/ al publicar.
       allow read: if true;
 
       allow create, update: if isOwner(uid) && (
-        // Images (covers, per-page): PNG/JPG 50 KB – 10 MB
+        // Imágenes (covers, páginas): PNG/JPG/WEBP (50 KB – 10 MB)
         ((folder == 'images') && isImg() && sizeBetween(50*1024, 10*1024*1024)) ||
 
-        // Audio narrations: MP3/WAV 50 KB – 15 MB
+        // Narraciones (MP3/WAV): 50 KB – 15 MB
         ((folder == 'audio') && (isMp3() || isWav()) && sizeBetween(50*1024, 15*1024*1024)) ||
 
-        // Videos (optional): MP4 1 MB – 50 MB
+        // Videos: MP4 (1 MB – 50 MB)
         ((folder == 'videos') && isMp4() && sizeBetween(1*1024*1024, 50*1024*1024))
       );
 
       allow delete: if isOwner(uid);
     }
 
-    // Optional public area (shared UI assets, defaults, etc.)
+    // Zona pública opcional (assets compartidos por la app)
     match /public/{file=**} {
       allow read: if true;
+      // Si quieres que sólo un rol admin suba aquí, cambia esta regla
       allow write: if isSignedIn();
     }
 
-    // Default deny (safety net)
+    // Seguridad por defecto
     match /{path=**} {
       allow read, write: if false;
     }

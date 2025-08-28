@@ -1,17 +1,11 @@
 'use client';
 
-import React, { useRef, useState, useEffect } from 'react';
-import { Info, Trash2, Music, Film, ImageIcon } from 'lucide-react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { Info, Trash2, Music, Film, ImageIcon, Copy } from 'lucide-react';
 import Image from 'next/image';
 import { storage } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
-import {
-  ref,
-  uploadString,
-  getDownloadURL,
-  listAll,
-  deleteObject,
-} from 'firebase/storage';
+import { ref, uploadString, getDownloadURL, listAll, deleteObject } from 'firebase/storage';
 
 /* ---------- Types ---------- */
 type GalleryItem = { name: string; url: string; fullPath: string; contentType?: string };
@@ -21,16 +15,25 @@ type AssetCategory =
   | 'audioNarrations' | 'audioEffects'
   | 'videos' | 'others';
 
+type Mode = 'full' | 'uploaderOnly' | 'galleryOnly';
+
 type Props = {
   variant: 'character' | 'location' | 'cover';
   nounOverride?: string;
   onOpenTemplate?: () => void;
-  onSaved?: (item: GalleryItem) => void;
+  onSaved?: (item: GalleryItem) => void; // notifica al padre para el Display Box
   mainPromptLabel?: string;
   assetCategory: AssetCategory;
+  /** Permitir forzar el accept desde la página */
+  accept?: string;
+  /** Render mode: full (uploader+gallery), uploaderOnly, or galleryOnly */
+  mode?: Mode;
+  /** Mostrar el bloque interno de "Suggested Prompt Description" (solo imágenes).
+   * Por defecto TRUE para otras páginas; en Support se pasa a FALSE. */
+  showInnerDescribe?: boolean;
 };
 
-/* ---------- Helpers: categories ---------- */
+/* ---------- Helpers ---------- */
 const imageCats = new Set<AssetCategory>(['covers','avatars','characters','locations','backgrounds']);
 const audioCats = new Set<AssetCategory>(['audioNarrations','audioEffects']);
 const videoCats = new Set<AssetCategory>(['videos']);
@@ -38,10 +41,7 @@ const isImageCategory = (c: AssetCategory) => imageCats.has(c);
 const isAudioCategory = (c: AssetCategory) => audioCats.has(c);
 const isVideoCategory = (c: AssetCategory) => videoCats.has(c);
 
-/* ---------- Limits aligned to Storage.rules ---------- */
-// Images: PNG/JPG 50 KB – 10 MB
-// Audio: MP3 50 KB – 15 MB
-// Video: MP4 1 MB – 50 MB
+/* ---------- Limits alineados con Storage.rules ---------- */
 const KB = 1024;
 const MB = 1024 * KB;
 const LIMITS: Record<string, { min: number; max: number }> = {
@@ -72,21 +72,33 @@ function fileToDataUrl(file: File) {
 
 /* ---------- Component ---------- */
 export default function UploadImageReference({
-  variant, nounOverride, onOpenTemplate, onSaved, mainPromptLabel, assetCategory
+  variant,
+  nounOverride,
+  onOpenTemplate,
+  onSaved,
+  mainPromptLabel,
+  assetCategory,
+  accept,
+  mode = 'full',
+  showInnerDescribe = true,
 }: Props) {
   const { user: currentUser } = useAuth();
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const noun = nounOverride ?? (variant === 'character' ? 'Character' : variant === 'location' ? 'Location' : 'Cover');
-  const generateCta = variant === 'character'
-    ? 'Generate Character Image (AI)'
-    : variant === 'location'
+  const noun =
+    nounOverride ??
+    (variant === 'character' ? 'Character' : variant === 'location' ? 'Location' : 'Cover');
+
+  const generateCta =
+    variant === 'character'
+      ? 'Generate Character Image (AI)'
+      : variant === 'location'
       ? 'Generate Location Image (AI)'
       : 'Generate Cover Image (AI)';
 
   // Upload/AI state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState('');
+  const [previewUrl, setPreviewUrl] = useState(''); // objectURL o dataURL
   const [nameToSave, setNameToSave] = useState('');
   const [suggestedPrompt, setSuggestedPrompt] = useState('');
   const [mainPrompt, setMainPrompt] = useState('');
@@ -96,62 +108,107 @@ export default function UploadImageReference({
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [err, setErr] = useState('');
 
-  /* ---------- Load gallery (only after user exists) ---------- */
+  // Revocar objectURL anterior
   useEffect(() => {
-    if (!currentUser) {
-      console.warn('UploadImageReference: No current user, skipping gallery load.');
-      return;
+    return () => {
+      if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  /* ---------- Cargar galería ---------- */
+  const loadGallery = useCallback(async () => {
+    if (!currentUser) return;
+    const base = ref(storage, `users/${currentUser.uid}/assets/${assetCategory}/`);
+    try {
+      const res = await listAll(base);
+      const items = await Promise.all(
+        res.items.map(async (i) => ({
+          name: i.name,
+          fullPath: i.fullPath,
+          url: await getDownloadURL(i),
+        }))
+      );
+      setGallery(items.sort((a, b) => (a.name < b.name ? 1 : -1)));
+      setErr('');
+    } catch (e: any) {
+      if (e?.code === 'storage/unauthorized') {
+        setErr('Not authorized to read this folder. Ensure you are signed in and rules allow read.');
+      } else {
+        setErr(e?.message ?? 'Failed to load gallery.');
+      }
     }
+  }, [assetCategory, currentUser]);
 
-    console.log('UploadImageReference: Attempting to load gallery for UID:', currentUser.uid, 'and category:', assetCategory);
+  useEffect(() => { loadGallery(); }, [loadGallery]);
 
-    const base = ref(storage, `users/${currentUser.uid}/assets/${assetCategory}/`); // trailing slash
-    listAll(base)
-      .then(async (res) => {
-        console.log('UploadImageReference: Gallery loaded successfully for UID:', currentUser.uid, 'items:', res.items.length);
-        const items = await Promise.all(
-          res.items.map(async (i) => ({
-            name: i.name,
-            fullPath: i.fullPath,
-            url: await getDownloadURL(i),
-          }))
-        );
-        setGallery(items.sort((a, b) => (a.name < b.name ? 1 : -1)));
-        setErr(''); // Clear any previous errors
-      })
-      .catch((e: any) => {
-        console.error('UploadImageReference: Error loading gallery:', e); // Log the full error object
-        if (e?.code === 'storage/unauthorized') {
-          setErr('Not authorized to read this folder. Ensure you are signed in and rules allow read.');
-        } else {
-          setErr(e?.message ?? 'Failed to load gallery.');
-        }
-      });
-  }, [currentUser, assetCategory]);
+  // Sincronizar si otra instancia guarda/borra
+  useEffect(() => {
+    function onRefresh(e: Event) {
+      const ce = e as CustomEvent<AssetCategory>;
+      if (ce.detail === assetCategory) loadGallery();
+    }
+    window.addEventListener('refresh-gallery', onRefresh as EventListener);
+    return () => window.removeEventListener('refresh-gallery', onRefresh as EventListener);
+  }, [assetCategory, loadGallery]);
 
-  /* ---------- Accept string per category ---------- */
+  /* ---------- Accept por categoría (se puede overridar) ---------- */
   const acceptForCategory =
-    isImageCategory(assetCategory)
+    accept ??
+    (isImageCategory(assetCategory)
       ? 'image/png,image/jpeg'
       : isAudioCategory(assetCategory)
-        ? 'audio/mpeg,audio/mp3'
-        : isVideoCategory(assetCategory)
-          ? 'video/mp4'
-          : 'image/png,image/jpeg,audio/mpeg,audio/mp3,video/mp4'; // "others"
+      ? 'audio/mpeg,audio/mp3'
+      : isVideoCategory(assetCategory)
+      ? 'video/mp4'
+      : 'image/png,image/jpeg,audio/mpeg,audio/mp3,video/mp4');
 
-  /* ---------- Choose file ---------- */
+  /* ---------- Elegir archivo ---------- */
   async function onChoose(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
+
     const check = validate(f);
     if (!check.ok) { setErr(check.msg!); return; }
     setErr('');
     setSelectedFile(f);
-    setPreviewUrl(URL.createObjectURL(f));
+
+    // Preview rápido (objectURL)
+    const objectUrl = URL.createObjectURL(f);
+    setPreviewUrl(objectUrl);
     setNameToSave(f.name.replace(/\.[^.]+$/, ''));
+
+    if (isImageCategory(assetCategory)) {
+      // 🔑 Para imágenes, enviar Data URL al padre (sirve para mostrar y describir)
+      try {
+        const dataUrl = await fileToDataUrl(f); // data:image/...;base64,...
+        onSaved?.({
+          name: f.name,
+          url: dataUrl,
+          fullPath: 'local://selected',
+          contentType: f.type,
+        });
+      } catch (err) {
+        console.error('Failed to read file as data URL', err);
+        // Fallback: al menos manda el objectURL
+        onSaved?.({
+          name: f.name,
+          url: objectUrl,
+          fullPath: 'local://selected',
+          contentType: f.type,
+        });
+      }
+    } else {
+      // Audio/Video
+      onSaved?.({
+        name: f.name,
+        url: objectUrl,
+        fullPath: 'local://selected',
+        contentType: f.type,
+      });
+    }
   }
 
-  /* ---------- AI Describe (images only) ---------- */
+  /* ---------- AI Describe (solo imágenes) ---------- */
   async function handleDescribe() {
     try {
       if (!isImageCategory(assetCategory)) return alert('AI Describe is available for images only.');
@@ -173,7 +230,7 @@ export default function UploadImageReference({
     }
   }
 
-  /* ---------- Save original upload ---------- */
+  /* ---------- Guardar original ---------- */
   async function handleSaveOriginal() {
     try {
       if (!currentUser) return alert('Sign in first.');
@@ -182,7 +239,6 @@ export default function UploadImageReference({
       const check = validate(selectedFile);
       if (!check.ok) return alert(check.msg);
 
-      // Extension by content type
       const ext =
         selectedFile.type === 'image/png'  ? 'png' :
         selectedFile.type === 'image/jpeg' ? 'jpg' :
@@ -192,7 +248,6 @@ export default function UploadImageReference({
       const path = `users/${currentUser.uid}/assets/${assetCategory}/${nameToSave}.${ext}`;
       const o = ref(storage, path);
 
-      // Upload as data_url for simplicity (works for img/audio/video)
       const dataUrl = await fileToDataUrl(selectedFile);
       await uploadString(o, dataUrl, 'data_url', {
         customMetadata: {
@@ -207,13 +262,14 @@ export default function UploadImageReference({
       const item: GalleryItem = { name: `${nameToSave}.${ext}`, url, fullPath: path, contentType: selectedFile.type };
       setGallery((g) => [item, ...g]);
       onSaved?.(item);
+      window.dispatchEvent(new CustomEvent<AssetCategory>('refresh-gallery', { detail: assetCategory }));
       alert('Saved to your gallery ✅');
     } catch (e: any) {
       alert(e?.message || 'Save failed');
     }
   }
 
-  /* ---------- Generate via prompt (images only) ---------- */
+  /* ---------- Generar por prompt (solo imágenes) ---------- */
   async function handleGenerate() {
     try {
       if (!isImageCategory(assetCategory)) return alert('Generation is available for images only.');
@@ -226,7 +282,16 @@ export default function UploadImageReference({
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Generation failed');
-      setGeneratedDataUrl(json.dataUrl); // should be PNG data URL
+
+      setGeneratedDataUrl(json.dataUrl); // PNG data URL
+
+      // ✅ seleccionar inmediatamente en el Display Box del padre
+      onSaved?.({
+        name: 'generated.png',
+        url: json.dataUrl,
+        fullPath: 'local://generated',
+        contentType: 'image/png',
+      });
     } catch (e: any) {
       alert(e?.message || 'Generation error');
     } finally {
@@ -234,7 +299,7 @@ export default function UploadImageReference({
     }
   }
 
-  /* ---------- Save generated (images only) ---------- */
+  /* ---------- Guardar generada (solo imágenes) ---------- */
   async function handleSaveGenerated() {
     try {
       if (!currentUser) return alert('Sign in first.');
@@ -256,6 +321,7 @@ export default function UploadImageReference({
       const item: GalleryItem = { name: `${nameToSave}.png`, url, fullPath: path, contentType: 'image/png' };
       setGallery((g) => [item, ...g]);
       onSaved?.(item);
+      window.dispatchEvent(new CustomEvent<AssetCategory>('refresh-gallery', { detail: assetCategory }));
       alert('Generated image saved ✅');
     } catch (e: any) {
       alert(e?.message || 'Save failed');
@@ -266,18 +332,31 @@ export default function UploadImageReference({
     setGeneratedDataUrl('');
   }
 
+  // 🛟 Fallback: si cambia generatedDataUrl, notifícalo al padre
+  useEffect(() => {
+    if (generatedDataUrl) {
+      onSaved?.({
+        name: 'generated.png',
+        url: generatedDataUrl,
+        fullPath: 'local://generated',
+        contentType: 'image/png',
+      });
+    }
+  }, [generatedDataUrl, onSaved]);
+
   /* ---------- Delete ---------- */
   async function handleDelete(item: GalleryItem) {
     if (!confirm(`Delete "${item.name}"?`)) return;
     try {
       await deleteObject(ref(storage, item.fullPath));
       setGallery((g) => g.filter((x) => x.fullPath !== item.fullPath));
+      window.dispatchEvent(new CustomEvent<AssetCategory>('refresh-gallery', { detail: assetCategory }));
     } catch (e: any) {
       alert(e?.message || 'Delete failed');
     }
   }
 
-  /* ---------- Render preview based on type ---------- */
+  /* ---------- Render helpers ---------- */
   function PreviewBlock() {
     if (!previewUrl || !selectedFile) return null;
     if (selectedFile.type.startsWith('image/')) {
@@ -310,12 +389,17 @@ export default function UploadImageReference({
     return null;
   }
 
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4">
-      {/* LEFT: uploader + AI */}
+  function UploaderUI() {
+    return (
       <div className="space-y-4">
         <label className="block text-sm font-bold text-[#3D4F60] mb-2 uppercase tracking-wide">
-          {isImageCategory(assetCategory) ? 'Upload Image' : isAudioCategory(assetCategory) ? 'Upload Audio (MP3)' : isVideoCategory(assetCategory) ? 'Upload Video (MP4)' : 'Upload File'}
+          {isImageCategory(assetCategory)
+            ? 'Upload Image'
+            : isAudioCategory(assetCategory)
+            ? 'Upload Audio (MP3)'
+            : isVideoCategory(assetCategory)
+            ? 'Upload Video (MP4)'
+            : 'Upload File'}
         </label>
 
         <div className="border-2 border-dashed border-[#B0C4DE] rounded-md p-4 text-center">
@@ -358,35 +442,47 @@ export default function UploadImageReference({
           </button>
         </div>
 
-        {/* AI tools only for image categories */}
+        {/* Herramientas de IA (solo imágenes) */}
         {isImageCategory(assetCategory) && (
           <>
-            {/* Suggested prompt */}
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <h4 className="font-semibold">Suggested Prompt Description (from AI)</h4>
-                <button type="button" onClick={onOpenTemplate} title={`${noun} template`}>
-                  <Info size={16} className="text-neutral-500" />
-                </button>
+            {/* Bloque interno (ocultable) */}
+            {showInnerDescribe && (
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <h4 className="font-semibold">Suggested Prompt Description (from AI)</h4>
+                  <button type="button" onClick={onOpenTemplate} title={`${noun} template`}>
+                    <Info size={16} className="text-neutral-500" />
+                  </button>
+                  {!!suggestedPrompt && (
+                    <button
+                      type="button"
+                      title="Copy"
+                      className="ml-auto inline-flex items-center gap-1 text-sm px-2 py-1 rounded border"
+                      onClick={() => navigator.clipboard.writeText(suggestedPrompt)}
+                    >
+                      <Copy size={14} /> Copy
+                    </button>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleDescribe}
+                    disabled={!selectedFile || isDescribing}
+                    className="px-3 py-2 rounded-md border bg-white hover:bg-neutral-50 disabled:opacity-50"
+                  >
+                    {isDescribing ? 'Describing…' : 'AI Describe'}
+                  </button>
+                  <textarea
+                    className="flex-1 min-h-[90px] border rounded-md p-2"
+                    placeholder="AI will place the description here…"
+                    value={suggestedPrompt}
+                    onChange={(e) => setSuggestedPrompt(e.target.value)}
+                  />
+                </div>
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleDescribe}
-                  disabled={!selectedFile || isDescribing}
-                  className="px-3 py-2 rounded-md border bg-white hover:bg-neutral-50 disabled:opacity-50"
-                >
-                  {isDescribing ? 'Describing…' : 'AI Describe'}
-                </button>
-                <textarea
-                  className="flex-1 min-h-[90px] border rounded-md p-2"
-                  placeholder="AI will place the description here…"
-                  value={suggestedPrompt}
-                  onChange={(e) => setSuggestedPrompt(e.target.value)}
-                />
-              </div>
-            </div>
+            )}
 
-            {/* Main Description used for generation */}
+            {/* Prompt principal */}
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <h4 className="font-semibold">{mainPromptLabel ?? `${noun} Description`}</h4>
@@ -400,7 +496,7 @@ export default function UploadImageReference({
               />
             </div>
 
-            {/* Generate OR post-generate controls */}
+            {/* Generate o Post-generate */}
             {!generatedDataUrl ? (
               <button
                 onClick={handleGenerate}
@@ -433,7 +529,7 @@ export default function UploadImageReference({
               </div>
             )}
 
-            {/* Generated image preview */}
+            {/* Preview generado */}
             {generatedDataUrl && (
               <div className="mt-3 border rounded-xl p-3">
                 <p className="text-sm mb-2">Generated Image</p>
@@ -444,10 +540,13 @@ export default function UploadImageReference({
           </>
         )}
       </div>
+    );
+  }
 
-      {/* RIGHT: gallery with delete & lightweight type hints */}
+  function GalleryUI() {
+    return (
       <div className="border rounded-xl p-3">
-        <h4 className="font-semibold mb-3">My Gallery</h4>
+        <h4 className="font-semibold mb-3">Select a saved asset?</h4>
         {gallery.length === 0 ? (
           <p className="text-sm text-neutral-500">No files yet.</p>
         ) : (
@@ -458,7 +557,12 @@ export default function UploadImageReference({
               const isAud = ext === 'mp3';
               const isVid = ext === 'mp4';
               return (
-                <div key={it.fullPath} className="relative group border rounded-md overflow-hidden p-1">
+                <div
+                  key={it.fullPath}
+                  className="relative group border rounded-md overflow-hidden p-1 cursor-pointer"
+                  title="Select"
+                  onClick={() => onSaved?.(it)} // seleccionar actualiza el Display Box
+                >
                   {isImg ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={it.url} alt={it.name} className="w-full h-32 object-cover rounded" />
@@ -479,7 +583,7 @@ export default function UploadImageReference({
 
                   <button
                     title="Delete"
-                    onClick={() => handleDelete(it)}
+                    onClick={(e) => { e.stopPropagation(); handleDelete(it); }}
                     className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition bg-white/90 rounded-full p-1 shadow"
                   >
                     <Trash2 size={16} className="text-red-600" />
@@ -491,6 +595,25 @@ export default function UploadImageReference({
           </div>
         )}
       </div>
+    );
+  }
+
+  // Render según modo
+  if (mode === 'uploaderOnly') {
+    return (
+      <div className="p-4 bg-white border border-[#3D4F60]/15 rounded-xl dark:bg-[#1A2533] dark:border-[#4B5A6B]/15">
+        {UploaderUI()}
+      </div>
+    );
+  }
+  if (mode === 'galleryOnly') {
+    return <div>{GalleryUI()}</div>;
+  }
+  // full
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4">
+      {UploaderUI()}
+      {GalleryUI()}
     </div>
   );
 }

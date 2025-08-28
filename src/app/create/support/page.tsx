@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -17,17 +16,16 @@ const TABS: Array<{
   icon: React.ComponentType<any>;
   variant: 'character' | 'location' | 'cover';
 }> = [
-  { key: 'characters',      label: 'Characters',      blurb: 'Reference images for your cast.', icon: User,      variant: 'character' },
-  { key: 'locations',       label: 'Locations',       blurb: 'Places, worlds, scenes.',         icon: MapPin,    variant: 'location' },
-  { key: 'audioNarrations', label: 'Narrations (MP3)',blurb: 'Voice lines or narration.',       icon: Music,     variant: 'cover'    },
-  { key: 'audioEffects',    label: 'Sound FX (MP3)',  blurb: 'Ambient or effect sounds.',       icon: Wand2,     variant: 'cover'    },
-  { key: 'videos',          label: 'Videos (MP4)',    blurb: 'Clips or motion shots.',          icon: Film,      variant: 'cover'    },
+  { key: 'characters',      label: 'Characters',       blurb: 'Reference images for your cast.', icon: User,   variant: 'character' },
+  { key: 'locations',       label: 'Locations',        blurb: 'Places, worlds, scenes.',         icon: MapPin, variant: 'location' },
+  { key: 'audioNarrations', label: 'Narrations (MP3)', blurb: 'Voice lines or narration.',       icon: Music,  variant: 'cover'    },
+  { key: 'audioEffects',    label: 'Sound FX (MP3)',   blurb: 'Ambient or effect sounds.',       icon: Wand2,  variant: 'cover'    },
+  { key: 'videos',          label: 'Videos (MP4)',     blurb: 'Clips or motion shots.',          icon: Film,   variant: 'cover'    },
 ];
 
 function classNames(...xs: (string | false | null | undefined)[]) {
   return xs.filter(Boolean).join(' ');
 }
-
 function isImageCategory(k: TabKey) {
   return k === 'characters' || k === 'locations';
 }
@@ -37,7 +35,6 @@ export default function SupportPage() {
   const search = useSearchParams();
   const router = useRouter();
 
-  // 1) initial tab from ?tab=, localStorage, or default
   const initialKey =
     (search.get('tab') as TabKey) ||
     (typeof window !== 'undefined' ? (localStorage.getItem('supportTab') as TabKey) : undefined) ||
@@ -45,22 +42,36 @@ export default function SupportPage() {
 
   const [active, setActive] = useState<TabKey>(initialKey);
 
-  // 2) state for AI Describe panel
-  const [targetUrl, setTargetUrl] = useState<string>(''); // URL to describe
-  const [desc, setDesc] = useState<string>('');           // output description
+  // Unified Display + AI Describe state
+  const [displayUrl, setDisplayUrl] = useState<string>('');
+  const [desc, setDesc] = useState<string>('');
   const [descLoading, setDescLoading] = useState<boolean>(false);
   const [descError, setDescError] = useState<string>('');
+  const [copied, setCopied] = useState(false);
 
-  // keep URL + localStorage in sync when active changes
+  const acceptByTab: Record<TabKey, string | undefined> = {
+    characters: 'image/png,image/jpeg',
+    locations:  'image/png,image/jpeg',
+    audioNarrations: 'audio/mpeg,audio/mp3',
+    audioEffects:    'audio/mpeg,audio/mp3',
+    videos:          'video/mp4',
+  };
+
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     params.set('tab', active);
-    const next = `${window.location.pathname}?${params.toString()}`;
-    window.history.replaceState(null, '', next);
+    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
     localStorage.setItem('supportTab', active);
+
+    // clear selection and describe state on tab change
+    setDisplayUrl('');
+    setDesc('');
+    setDescError('');
+    setDescLoading(false);
+    setCopied(false);
   }, [active]);
 
-  // ensure active is valid
   useEffect(() => {
     if (!TABS.some((t) => t.key === active)) setActive('characters');
   }, [active]);
@@ -102,12 +113,22 @@ export default function SupportPage() {
     );
   }
 
+  // 🔒 handler seguro para onSaved
+  const handleSaved = (item: { url?: string } | undefined) => {
+    const u = item?.url;
+    if (!u) return;
+    setDisplayUrl(u);
+    setDesc('');
+    setDescError('');
+    setCopied(false);
+  };
+
   async function handleDescribe() {
-    setDescError(''); setDesc(''); 
-    if (!targetUrl) { setDescError('Paste or select an image URL first.'); return; }
+    setDescError(''); setDesc('');
+    if (!displayUrl) { setDescError('Select or paste an image first.'); return; }
     setDescLoading(true);
     try {
-      const body = targetUrl.startsWith('data:') ? { dataUrl: targetUrl } : { imageUrl: targetUrl };
+      const body = displayUrl.startsWith('data:') ? { dataUrl: displayUrl } : { imageUrl: displayUrl };
       const res = await fetch('/api/describe-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -123,9 +144,26 @@ export default function SupportPage() {
     }
   }
 
+  const handleCopy = async () => {
+    if (!desc) return;
+    await navigator.clipboard.writeText(desc);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1200);
+  };
+
   return (
     <div className="min-h-screen p-6 bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26] text-[#3A4B5C] dark:text-[#E0C9A0] font-sans">
       <div className="max-w-6xl mx-auto bg-[#F3EADF] border-2 border-[#CBBBA0] text-[#3A4B5C] dark:bg-[#2A3645] dark:border-[#4B5A6B] dark:text-[#E0C9A0] rounded-xl shadow-2xl">
+
+        {/* Overrides: texto azul en inputs/textarea blancos del uploader en dark mode */}
+        <style jsx global>{`
+          .dark .uploader-scope input[type="text"],
+          .dark .uploader-scope textarea {
+            color: #3D4F60 !important;
+            background: #ffffff !important;
+          }
+        `}</style>
+
         {/* Header */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-6 border-b-2 border-[#3D4F60]/10 dark:border-[#4B5A6B]/20">
           <div>
@@ -135,8 +173,8 @@ export default function SupportPage() {
             </p>
           </div>
           <div className="flex gap-3">
-            <Link className="underline text-sm text-[#3A4B5C] dark:text-[#E0C9A0]" href="/create/begin">← Back</Link>
-            <Link className="underline text-sm text-[#3A4B5C] dark:text-[#E0C9A0]" href="/create/scenes">Next: AI Story eReader →</Link>
+            <Link className="underline text-sm text-[#3D4F5C] dark:text-[#E0C9A0]" href="/create/begin">← Back</Link>
+            <Link className="underline text-sm text-[#3D4F5C] dark:text-[#E0C9A0]" href="/create/scenes">Next: AI Story eReader →</Link>
           </div>
         </div>
 
@@ -169,6 +207,7 @@ export default function SupportPage() {
 
         {/* Active panel */}
         <section id={`panel-${activeTab.key}`} role="tabpanel" aria-labelledby={activeTab.key} className="p-4 sm:p-6">
+
           <div className="flex items-start gap-3 mb-4">
             <div className="shrink-0 mt-1">
               {activeTab.key === 'videos' ? (
@@ -185,66 +224,100 @@ export default function SupportPage() {
             </div>
           </div>
 
-          {/* Two-column layout: Uploader left, AI Describe right (only for images) */}
-          <div className={`grid ${isImageCategory(activeTab.key) ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'} gap-6`}>
-            {/* Left: your existing uploader/gallery */}
-            <div className="bg-white border border-[#3D4F60]/15 rounded-xl dark:bg-[#1A2533] dark:border-[#4B5A6B]/15">
-              <UploadImageReference
-                variant={activeTab.variant}
-                assetCategory={activeTab.key}
-                onOpenTemplate={() => {}}
-                onSaved={(item) => {
-                  // item: { name: string; url: string; fullPath: string; contentType?: string }
-                  setTargetUrl(item.url);  // <- usamos la URL del item guardado/seleccionado
-                }}
-              />
+          {/* Siempre dos columnas: izquierda uploader (y, si aplica, Display+Describe); derecha My Gallery */}
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* LEFT column */}
+            <div className="space-y-4">
+              {isImageCategory(activeTab.key) && (
+                <>
+                  {/* Display 1:1 */}
+                  <div>
+                    <h3 className="text-sm font-semibold mb-2">Image Display</h3>
+                    <div className="relative w-full bg-white dark:bg-[#0f1620] border rounded-lg overflow-hidden aspect-square">
+                      {displayUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={displayUrl}
+                          alt="Selected"
+                          className="absolute inset-0 w-full h-full object-contain"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 grid place-items-center text-xs opacity-70">
+                          No image selected
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* AI Describe (única sección) */}
+                  <div className="rounded-xl border-2 border-[#3D4F60] dark:border-[#4B5A6B] bg-[#F3EADF] dark:bg-[#2A3645] p-4">
+                    <h3 className="font-semibold mb-2">AI Describe (Image → Prompt)</h3>
+                    <div className="flex gap-2 items-center mb-2">
+                      <button
+                        onClick={handleDescribe}
+                        disabled={descLoading || !displayUrl}
+                        className="px-4 py-2 rounded bg-[#E97451] text-white disabled:opacity-50"
+                      >
+                        {descLoading ? 'Describing…' : 'Describe Image'}
+                      </button>
+                      {descError && <span className="text-red-600 text-sm">{descError}</span>}
+                    </div>
+                    {!!desc && (
+                      <>
+                        <label className="block text-sm font-bold mb-1">Description (prompt-ready)</label>
+                        <textarea
+                          className="w-full p-2 border rounded dark:bg-white dark:text-[#3D4F60]"
+                          rows={5}
+                          value={desc}
+                          onChange={(e) => setDesc(e.target.value)}
+                        />
+                        <div className="mt-2">
+                          <button
+                            onClick={handleCopy}
+                            className={classNames(
+                              'px-3 py-1 rounded border-2 transition select-none',
+                              'border-[#3D4F60] text-[#3D4F60] bg-white',
+                              'hover:bg-[#EAF1F7] active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#3D4F60]',
+                              'dark:border-[#4B5A6B] dark:text-[#E0C9A0] dark:bg-[#2A3645] dark:hover:bg-[#334154]/60 dark:focus:ring-[#4B5A6B]'
+                            )}
+                          >
+                            {copied ? 'Copied!' : 'Copy'}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* Uploader (siempre) */}
+              <div className="uploader-scope">
+                <UploadImageReference
+                  mode="uploaderOnly"
+                  variant={activeTab.variant}
+                  assetCategory={activeTab.key}
+                  accept={acceptByTab[activeTab.key]}
+                  showInnerDescribe={false} // oculto aquí
+                  onOpenTemplate={() => {}}
+                  onSaved={handleSaved}
+                />
+              </div>
             </div>
 
-            {/* Right: AI Describe (solo imágenes) */}
-            {isImageCategory(activeTab.key) && (
-              <div className="rounded-xl border-2 border-[#CBBBA0] bg-[#F3EADF] dark:bg-[#2A3645] p-4">
-                <h3 className="font-semibold mb-2">AI Describe (Image → Prompt)</h3>
-                <input
-                  className="w-full p-2 border rounded mb-2 dark:bg-[#1A2533]"
-                  placeholder="Paste or use an uploaded image URL…"
-                  value={targetUrl}
-                  onChange={(e) => setTargetUrl(e.target.value)}
-                />
-                <div className="flex gap-2 items-center mb-2">
-                  <button
-                    onClick={handleDescribe}
-                    disabled={descLoading || !targetUrl}
-                    className="px-4 py-2 rounded bg-[#E97451] text-white disabled:opacity-50"
-                  >
-                    {descLoading ? 'Describing…' : 'Describe Image'}
-                  </button>
-                  {descError && <span className="text-red-600 text-sm">{descError}</span>}
-                </div>
-                {!!desc && (
-                  <>
-                    <label className="block text-sm font-bold mb-1">Description (prompt-ready)</label>
-                    <textarea
-                      className="w-full p-2 border rounded dark:bg-[#1A2533]"
-                      rows={5}
-                      value={desc}
-                      onChange={(e) => setDesc(e.target.value)}
-                    />
-                    <div className="mt-2 flex gap-2">
-                      <button
-                        className="px-3 py-1 rounded border"
-                        onClick={() => navigator.clipboard.writeText(desc)}
-                      >
-                        Copy
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
+            {/* RIGHT column: Gallery (siempre) */}
+            <div className="border-2 border-[#3D4F60] dark:border-[#4B5A6B] rounded-xl p-3 bg-white/60 dark:bg-transparent">
+              <h4 className="font-semibold mb-3">My Gallery — <span className="opacity-80">{activeTab.label}</span></h4>
+              <UploadImageReference
+                mode="galleryOnly"
+                variant={activeTab.variant}
+                assetCategory={activeTab.key}
+                onSaved={handleSaved}
+              />
+            </div>
           </div>
         </section>
 
-        {/* Footer CTAs */}
+        {/* Footer */}
         <div className="flex justify-end gap-3 p-6 border-t-2 border-[#3D4F5]/10 dark:border-[#4B5A6B]/20">
           <Link
             className="px-4 py-2 rounded-md border border-[#3D4F60] text-[#3D4F60] bg-white dark:border-[#4B5A6B] dark:text-[#E0C9A0] dark:bg-[#2A3645]"
