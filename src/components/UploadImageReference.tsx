@@ -561,7 +561,16 @@ export default function UploadImageReference({
                   key={it.fullPath}
                   className="relative group border rounded-md overflow-hidden p-1 cursor-pointer"
                   title="Select"
-                  onClick={() => onSaved?.(it)} // seleccionar actualiza el Display Box
+                  onClick={() => {
+                    const ext = it.name.split('.').pop()?.toLowerCase();
+                    const guess =
+                      ext === 'mp3' ? 'audio/mpeg' :
+                      ext === 'mp4' ? 'video/mp4' :
+                      ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' :
+                      ext === 'png' ? 'image/png' :
+                      undefined;
+                    onSaved?.({ ...it, contentType: guess });
+                  }}// seleccionar actualiza el Display Box
                 >
                   {isImg ? (
                     // eslint-disable-next-line @next/next/no-img-element

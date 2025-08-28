@@ -4,14 +4,6 @@ const nextConfig: NextConfig = {
   typescript: { ignoreBuildErrors: true },
   eslint: { ignoreDuringBuilds: true },
 
-  // ✅ Allow cross-origin dev requests (Cloud Workstations, localhost, etc.)
-  // Use hostnames/wildcards, no protocol or port.
-  allowedDevOrigins: [
-    '*.cloudworkstations.dev',
-    'localhost',
-    '10.88.0.3', // if you access via the LAN IP shown in Next logs
-  ],
-
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'picsum.photos', pathname: '/**' },
@@ -25,8 +17,16 @@ const nextConfig: NextConfig = {
   },
 
   experimental: {
-    // Only if you call Server Actions from a different origin:
-    // serverActions: { allowedOrigins: ['*.cloudworkstations.dev'] },
+    // ✅ Must live under `experimental`
+    allowedDevOrigins: [
+      'localhost',              // local dev
+      '10.88.0.3',              // LAN IP shown in Next logs
+      // paste the EXACT hostname shown in the console warning (no protocol/port)
+      '3000-idx-studio-1746560064210.cluster-f4iwdviaqvc2ct6pgytzw4xqy4.cloudworkstations.dev',
+      // wildcards are okay to keep if you bounce hosts often:
+      '*.cloudworkstations.dev',
+    ],
+    // serverActions: { allowedOrigins: ['*.cloudworkstations.dev'] }, // only if you use SA cross-origin
   },
 };
 

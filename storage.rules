@@ -2,16 +2,17 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    /* ---------- Helpers ---------- */
+    /* ----------------- Helpers ----------------- */
     function isSignedIn() { return request.auth != null; }
     function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
 
-    // Tipos MIME
+    // Image types
     function isPng()  { return request.resource.contentType == 'image/png'; }
     function isJpg()  { return request.resource.contentType == 'image/jpeg'; }
     function isWebp() { return request.resource.contentType == 'image/webp'; }
     function isImg()  { return isPng() || isJpg() || isWebp(); }
 
+    // Audio types
     function isMp3()  {
       return request.resource.contentType == 'audio/mpeg' ||
              request.resource.contentType == 'audio/mp3';
@@ -22,14 +23,15 @@ service firebase.storage {
              request.resource.contentType == 'audio/wave';
     }
 
+    // Video
     function isMp4()  { return request.resource.contentType == 'video/mp4'; }
 
-    // Límites de tamaño
+    // Size guard
     function sizeBetween(minBytes, maxBytes) {
       return request.resource.size >= minBytes && request.resource.size <= maxBytes;
     }
 
-    /* ---------- Categorías para /users/{uid}/assets ---------- */
+    /* ----------------- /users/{uid}/assets categories ----------------- */
     function isImageCategory(cat) {
       return cat in ['covers','avatars','characters','locations','backgrounds'];
     }
@@ -43,76 +45,76 @@ service firebase.storage {
       return cat == 'others';
     }
 
-    // Validación por categoría para uploads en /assets
     function assetValidForCategory(cat) {
       return
-        // Imágenes: PNG/JPG/WEBP (50 KB – 10 MB)
-        (isImageCategory(cat) && isImg() && sizeBetween(50*1024, 10*1024*1024)) ||
+        // IMAGES: PNG/JPG/WEBP (50 KB – 12 MB)
+        (isImageCategory(cat) && isImg() && sizeBetween(50*1024, 12*1024*1024)) ||
 
-        // Audio: MP3/WAV (50 KB – 15 MB)
-        (isAudioCategory(cat) && (isMp3() || isWav()) && sizeBetween(50*1024, 15*1024*1024)) ||
+        // AUDIO: MP3/WAV (50 KB – 16 MB)
+        (isAudioCategory(cat) && (isMp3() || isWav()) && sizeBetween(50*1024, 16*1024*1024)) ||
 
-        // Video: MP4 (1 MB – 50 MB)
-        (isVideoCategory(cat) && isMp4() && sizeBetween(1*1024*1024, 50*1024*1024)) ||
+        // VIDEO: MP4 (1 MB – 64 MB)
+        (isVideoCategory(cat) && isMp4() && sizeBetween(1*1024*1024, 64*1024*1024)) ||
 
-        // Otros (opcional y limitado)
+        // OTHERS (conservador)
         (isOtherCategory(cat) && (
-          (isImg()  && sizeBetween(50*1024, 10*1024*1024)) ||
-          (isMp3()  && sizeBetween(50*1024, 15*1024*1024)) ||
-          (isWav()  && sizeBetween(50*1024, 15*1024*1024)) ||
-          (isMp4()  && sizeBetween(1*1024*1024, 50*1024*1024))
+          (isImg()  && sizeBetween(50*1024, 12*1024*1024)) ||
+          (isMp3()  && sizeBetween(50*1024, 16*1024*1024)) ||
+          (isWav()  && sizeBetween(50*1024, 16*1024*1024)) ||
+          (isMp4()  && sizeBetween(1*1024*1024, 64*1024*1024))
         ));
     }
 
-    /* ---------- Rutas principales ---------- */
+    /* ----------------- Rutas principales ----------------- */
 
-    // Avatares de perfil (lectura pública opcional)
+    // Avatares de perfil
     match /avatars/{uid}/{file=**} {
-      allow read: if true; // hazlo isOwner(uid) si quieres privacidad
+      // pública para perfiles; si quieres privacidad cambia a isOwner(uid)
+      allow read: if true;
       allow create, update: if isOwner(uid)
         && isImg()
-        && sizeBetween(10*1024, 5*1024*1024); // 10 KB – 5 MB
+        && sizeBetween(10*1024, 5*1024*1024);
       allow delete: if isOwner(uid);
     }
 
-    // Galería / referencias del usuario (Support page)
-    // /users/{uid}/assets/{category}/{file...}
+    // Galería personal (Support page): /users/{uid}/assets/{category}/{file...}
     match /users/{uid}/assets/{category}/{file=**} {
-      // Si deseas galerías públicas, cambia a: allow read: if true;
+      // Si quieres galerías públicas, cambia read a true
       allow read: if isOwner(uid);
       allow create, update: if isOwner(uid) && assetValidForCategory(category);
       allow delete: if isOwner(uid);
     }
 
-    // Assets por historia (Begin / Scenes / Publish)
-    // /users/{uid}/stories/{storyId}/{folder}/{file...}
+    // Assets de historias (Begin/Scenes/Publish)
+    // Estructura: /users/{uid}/stories/{storyId}/{folder}/{file...}
     match /users/{uid}/stories/{storyId}/{folder}/{file=**} {
-      // ⚠️ Lectura pública para consumo en el Reader/Discover.
-      // Si manejas drafts privados, pon isOwner(uid) y copia a /public/ al publicar.
+      // ⚠️ Tu flujo de Reader/Discover consume público; mantenemos read:true.
+      // Si más adelante quieres ocultar borradores, publica a /public/ o cambia esta regla.
       allow read: if true;
 
+      // Validación por folder
       allow create, update: if isOwner(uid) && (
-        // Imágenes (covers, páginas): PNG/JPG/WEBP (50 KB – 10 MB)
-        ((folder == 'images') && isImg() && sizeBetween(50*1024, 10*1024*1024)) ||
+        // Covers y páginas → images
+        ((folder == 'images') && isImg() && sizeBetween(30*1024, 12*1024*1024)) ||
 
-        // Narraciones (MP3/WAV): 50 KB – 15 MB
-        ((folder == 'audio') && (isMp3() || isWav()) && sizeBetween(50*1024, 15*1024*1024)) ||
+        // Narraciones → audio
+        ((folder == 'audio') && (isMp3() || isWav()) && sizeBetween(50*1024, 16*1024*1024)) ||
 
-        // Videos: MP4 (1 MB – 50 MB)
-        ((folder == 'videos') && isMp4() && sizeBetween(1*1024*1024, 50*1024*1024))
+        // Videos
+        ((folder == 'videos') && isMp4() && sizeBetween(1*1024*1024, 64*1024*1024))
       );
 
       allow delete: if isOwner(uid);
     }
 
-    // Zona pública opcional (assets compartidos por la app)
+    // Zona pública opcional de la app
     match /public/{file=**} {
       allow read: if true;
-      // Si quieres que sólo un rol admin suba aquí, cambia esta regla
+      // Restringe si deseas sólo admins
       allow write: if isSignedIn();
     }
 
-    // Seguridad por defecto
+    // Deny by default
     match /{path=**} {
       allow read, write: if false;
     }

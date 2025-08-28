@@ -26,8 +26,26 @@ const TABS: Array<{
 function classNames(...xs: (string | false | null | undefined)[]) {
   return xs.filter(Boolean).join(' ');
 }
-function isImageCategory(k: TabKey) {
-  return k === 'characters' || k === 'locations';
+const isImageTab = (k: TabKey) => k === 'characters' || k === 'locations';
+
+function inferKind(url?: string, contentType?: string): 'image' | 'audio' | 'video' | 'unknown' {
+  const ct = (contentType || '').toLowerCase();
+  if (ct.startsWith('image/')) return 'image';
+  if (ct.startsWith('audio/')) return 'audio';
+  if (ct.startsWith('video/')) return 'video';
+
+  const u = url || '';
+  try {
+    const pathname = new URL(u).pathname.toLowerCase();
+    if (/\.(png|jpe?g|gif|webp)$/.test(pathname)) return 'image';
+    if (/\.(mp3)$/.test(pathname)) return 'audio';
+    if (/\.(mp4)$/.test(pathname)) return 'video';
+  } catch {
+    if (u.startsWith('data:image/')) return 'image';
+    if (u.startsWith('data:audio/')) return 'audio';
+    if (u.startsWith('data:video/')) return 'video';
+  }
+  return 'unknown';
 }
 
 export default function SupportPage() {
@@ -42,12 +60,14 @@ export default function SupportPage() {
 
   const [active, setActive] = useState<TabKey>(initialKey);
 
-  // Unified Display + AI Describe state
+  // Single Display Box state
   const [displayUrl, setDisplayUrl] = useState<string>('');
-  const [desc, setDesc] = useState<string>('');
-  const [descLoading, setDescLoading] = useState<boolean>(false);
-  const [descError, setDescError] = useState<string>('');
-  const [copied, setCopied] = useState(false);
+  const [displayContentType, setDisplayContentType] = useState<string | undefined>(undefined);
+
+  // Describe-selected panel state
+  const [desc, setDesc] = useState('');
+  const [descLoading, setDescLoading] = useState(false);
+  const [descError, setDescError] = useState('');
 
   const acceptByTab: Record<TabKey, string | undefined> = {
     characters: 'image/png,image/jpeg',
@@ -64,12 +84,12 @@ export default function SupportPage() {
     window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
     localStorage.setItem('supportTab', active);
 
-    // clear selection and describe state on tab change
+    // clear selection/describe on tab change to avoid cross-media confusion
     setDisplayUrl('');
+    setDisplayContentType(undefined);
     setDesc('');
     setDescError('');
     setDescLoading(false);
-    setCopied(false);
   }, [active]);
 
   useEffect(() => {
@@ -77,6 +97,8 @@ export default function SupportPage() {
   }, [active]);
 
   const activeTab = useMemo(() => TABS.find((t) => t.key === active)!, [active]);
+  const kind = inferKind(displayUrl, displayContentType);
+  const canDescribeSelected = isImageTab(activeTab.key) && kind === 'image' && !!displayUrl;
 
   if (loading) {
     return (
@@ -113,22 +135,22 @@ export default function SupportPage() {
     );
   }
 
-  // 🔒 handler seguro para onSaved
-  const handleSaved = (item: { url?: string } | undefined) => {
+  // Single handler fed by: Upload (original), Generate (PNG data URL), or Gallery pick
+  const handleSaved = (item: { url?: string; contentType?: string } | undefined) => {
     const u = item?.url;
     if (!u) return;
     setDisplayUrl(u);
-    setDesc('');
-    setDescError('');
-    setCopied(false);
+    setDisplayContentType(item?.contentType);
+    setDesc(''); setDescError('');
   };
 
-  async function handleDescribe() {
-    setDescError(''); setDesc('');
-    if (!displayUrl) { setDescError('Select or paste an image first.'); return; }
-    setDescLoading(true);
+  async function handleDescribeSelected() {
+    if (!canDescribeSelected) return;
+    setDescError(''); setDesc(''); setDescLoading(true);
     try {
-      const body = displayUrl.startsWith('data:') ? { dataUrl: displayUrl } : { imageUrl: displayUrl };
+      const body = displayUrl.startsWith('data:')
+        ? { dataUrl: displayUrl }
+        : { imageUrl: displayUrl };
       const res = await fetch('/api/describe-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -144,18 +166,11 @@ export default function SupportPage() {
     }
   }
 
-  const handleCopy = async () => {
-    if (!desc) return;
-    await navigator.clipboard.writeText(desc);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1200);
-  };
-
   return (
     <div className="min-h-screen p-6 bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26] text-[#3A4B5C] dark:text-[#E0C9A0] font-sans">
       <div className="max-w-6xl mx-auto bg-[#F3EADF] border-2 border-[#CBBBA0] text-[#3A4B5C] dark:bg-[#2A3645] dark:border-[#4B5A6B] dark:text-[#E0C9A0] rounded-xl shadow-2xl">
 
-        {/* Overrides: texto azul en inputs/textarea blancos del uploader en dark mode */}
+        {/* Dark override for white inputs in uploader */}
         <style jsx global>{`
           .dark .uploader-scope input[type="text"],
           .dark .uploader-scope textarea {
@@ -207,7 +222,6 @@ export default function SupportPage() {
 
         {/* Active panel */}
         <section id={`panel-${activeTab.key}`} role="tabpanel" aria-labelledby={activeTab.key} className="p-4 sm:p-6">
-
           <div className="flex items-start gap-3 mb-4">
             <div className="shrink-0 mt-1">
               {activeTab.key === 'videos' ? (
@@ -224,87 +238,81 @@ export default function SupportPage() {
             </div>
           </div>
 
-          {/* Siempre dos columnas: izquierda uploader (y, si aplica, Display+Describe); derecha My Gallery */}
+          {/* Two columns: LEFT = Display + Describe Selected + Uploader(AI) / RIGHT = Gallery */}
           <div className="grid md:grid-cols-2 gap-6">
             {/* LEFT column */}
             <div className="space-y-4">
-              {isImageCategory(activeTab.key) && (
-                <>
-                  {/* Display 1:1 */}
-                  <div>
-                    <h3 className="text-sm font-semibold mb-2">Image Display</h3>
-                    <div className="relative w-full bg-white dark:bg-[#0f1620] border rounded-lg overflow-hidden aspect-square">
-                      {displayUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={displayUrl}
-                          alt="Selected"
-                          className="absolute inset-0 w-full h-full object-contain"
-                        />
-                      ) : (
-                        <div className="absolute inset-0 grid place-items-center text-xs opacity-70">
-                          No image selected
-                        </div>
-                      )}
-                    </div>
-                  </div>
+              {/* Display */}
+              <div>
+                <h3 className="text-sm font-semibold mb-2">Display</h3>
+                <div className="relative w-full bg-white dark:bg-[#0f1620] border rounded-lg overflow-hidden aspect-square grid place-items-center">
+                  {!displayUrl ? (
+                    <div className="text-xs opacity-70">Nothing selected</div>
+                  ) : kind === 'image' ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={displayUrl} alt="Selected" className="absolute inset-0 w-full h-full object-contain" />
+                  ) : kind === 'audio' ? (
+                    <audio controls src={displayUrl} className="w-11/12" />
+                  ) : kind === 'video' ? (
+                    <video controls src={displayUrl} className="absolute inset-0 w-full h-full object-contain" />
+                  ) : (
+                    <div className="text-xs opacity-70">Unsupported media</div>
+                  )}
+                </div>
+              </div>
 
-                  {/* AI Describe (única sección) */}
-                  <div className="rounded-xl border-2 border-[#3D4F60] dark:border-[#4B5A6B] bg-[#F3EADF] dark:bg-[#2A3645] p-4">
-                    <h3 className="font-semibold mb-2">AI Describe (Image → Prompt)</h3>
-                    <div className="flex gap-2 items-center mb-2">
-                      <button
-                        onClick={handleDescribe}
-                        disabled={descLoading || !displayUrl}
-                        className="px-4 py-2 rounded bg-[#E97451] text-white disabled:opacity-50"
-                      >
-                        {descLoading ? 'Describing…' : 'Describe Image'}
-                      </button>
-                      {descError && <span className="text-red-600 text-sm">{descError}</span>}
-                    </div>
-                    {!!desc && (
-                      <>
-                        <label className="block text-sm font-bold mb-1">Description (prompt-ready)</label>
-                        <textarea
-                          className="w-full p-2 border rounded dark:bg-white dark:text-[#3D4F60]"
-                          rows={5}
-                          value={desc}
-                          onChange={(e) => setDesc(e.target.value)}
-                        />
-                        <div className="mt-2">
-                          <button
-                            onClick={handleCopy}
-                            className={classNames(
-                              'px-3 py-1 rounded border-2 transition select-none',
-                              'border-[#3D4F60] text-[#3D4F60] bg-white',
-                              'hover:bg-[#EAF1F7] active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#3D4F60]',
-                              'dark:border-[#4B5A6B] dark:text-[#E0C9A0] dark:bg-[#2A3645] dark:hover:bg-[#334154]/60 dark:focus:ring-[#4B5A6B]'
-                            )}
-                          >
-                            {copied ? 'Copied!' : 'Copy'}
-                          </button>
-                        </div>
-                      </>
-                    )}
+              {/* Describe Selected (works for image tabs on whatever is in Display) */}
+              {isImageTab(activeTab.key) && (
+                <div className="rounded-xl border-2 border-[#3D4F60] dark:border-[#4B5A6B] bg-[#F3EADF] dark:bg-[#2A3645] p-4">
+                  <h3 className="font-semibold mb-2">AI Describe — Selected Image</h3>
+                  <div className="flex gap-2 items-center mb-2">
+                    <button
+                      onClick={handleDescribeSelected}
+                      disabled={!canDescribeSelected || descLoading}
+                      className="px-4 py-2 rounded bg-[#E97451] text-white disabled:opacity-50"
+                    >
+                      {descLoading ? 'Describing…' : 'Describe Selected'}
+                    </button>
+                    {descError && <span className="text-red-600 text-sm">{descError}</span>}
+                    {!displayUrl && <span className="text-sm opacity-70">Pick from gallery, upload, or generate first.</span>}
                   </div>
-                </>
+                  {!!desc && (
+                    <>
+                      <label className="block text-sm font-bold mb-1">Description</label>
+                      <textarea
+                        className="w-full p-2 border rounded dark:bg-white dark:text-[#3D4F60]"
+                        rows={5}
+                        value={desc}
+                        onChange={(e) => setDesc(e.target.value)}
+                      />
+                      <div className="mt-2">
+                        <button
+                          onClick={() => navigator.clipboard.writeText(desc)}
+                          className="px-3 py-1 rounded border-2 border-[#3D4F60] text-[#3D4F60] bg-white hover:bg-[#EAF1F7] active:scale-95 dark:border-[#4B5A6B] dark:text-[#E0C9A0] dark:bg-[#2A3645] dark:hover:bg-[#334154]/60"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
 
-              {/* Uploader (siempre) */}
+              {/* Uploader + AI (Upload, Describe, Generate; Save to Gallery lives inside) */}
               <div className="uploader-scope">
                 <UploadImageReference
                   mode="uploaderOnly"
                   variant={activeTab.variant}
                   assetCategory={activeTab.key}
                   accept={acceptByTab[activeTab.key]}
-                  showInnerDescribe={false} // oculto aquí
+                  showInnerDescribe={true}
                   onOpenTemplate={() => {}}
                   onSaved={handleSaved}
                 />
               </div>
             </div>
 
-            {/* RIGHT column: Gallery (siempre) */}
+            {/* RIGHT column: Gallery (select feeds Display) */}
             <div className="border-2 border-[#3D4F60] dark:border-[#4B5A6B] rounded-xl p-3 bg-white/60 dark:bg-transparent">
               <h4 className="font-semibold mb-3">My Gallery — <span className="opacity-80">{activeTab.label}</span></h4>
               <UploadImageReference
