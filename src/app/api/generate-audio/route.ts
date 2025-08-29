@@ -1,92 +1,108 @@
-// src/app/api/generate-audio/route.ts
 import { NextResponse } from 'next/server';
-import { GoogleGenAI } from '@google/genai';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-type Body = {
-  text: string;                 // narration text
-  voiceName?: string;           // "Kore" | "Puck" | "Zephyr" | "Leda" | "Sadachbia" | ...
-  language?: string;            // 'en' | 'es' | ...
-  tone?: string;                // optional: "a cheerful", "a sad", etc — we’ll weave this in
-};
+function base64ToArrayBuffer(b64: string) {
+  const bin = Buffer.from(b64, 'base64');
+  return new Uint8Array(bin).buffer;
+}
 
-function pcm16ToWav(pcm: Buffer, sampleRate: number, numChannels = 1): Buffer {
-  const byteRate = sampleRate * numChannels * 2;
-  const blockAlign = numChannels * 2;
-  const wav = Buffer.alloc(44 + pcm.length);
+function pcm16ToWav(pcm16: Int16Array, sampleRate: number, channels = 1) {
+  const bytesPerSample = 2;
+  const blockAlign = channels * bytesPerSample;
+  const buffer = new ArrayBuffer(44 + pcm16.length * bytesPerSample);
+  const view = new DataView(buffer);
 
-  let offset = 0;
-  wav.write('RIFF', offset); offset += 4;
-  wav.writeUInt32LE(36 + pcm.length, offset); offset += 4;
-  wav.write('WAVE', offset); offset += 4;
-
-  // fmt chunk
-  wav.write('fmt ', offset); offset += 4;
-  wav.writeUInt32LE(16, offset); offset += 4;          // PCM
-  wav.writeUInt16LE(1, offset); offset += 2;           // PCM format
-  wav.writeUInt16LE(numChannels, offset); offset += 2; // channels
-  wav.writeUInt32LE(sampleRate, offset); offset += 4;  // sample rate
-  wav.writeUInt32LE(byteRate, offset); offset += 4;    // byte rate
-  wav.writeUInt16LE(blockAlign, offset); offset += 2;  // block align
-  wav.writeUInt16LE(16, offset); offset += 2;          // bits per sample
-
-  // data chunk
-  wav.write('data', offset); offset += 4;
-  wav.writeUInt32LE(pcm.length, offset); offset += 4;
-
-  pcm.copy(wav, offset);
-  return wav;
+  const write = (o: number, s: string) => [...s].forEach((c, i) => view.setUint8(o + i, c.charCodeAt(0)));
+  write(0, 'RIFF');
+  view.setUint32(4, 36 + pcm16.length * bytesPerSample, true);
+  write(8, 'WAVE');
+  write(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, channels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * blockAlign, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, 16, true);
+  write(36, 'data');
+  view.setUint32(40, pcm16.length * bytesPerSample, true);
+  for (let i = 0; i < pcm16.length; i++) view.setInt16(44 + i * 2, pcm16[i], true);
+  return new Blob([view], { type: 'audio/wav' });
 }
 
 export async function POST(req: Request) {
   try {
-    const { text, voiceName = 'Kore', language = 'en', tone } = (await req.json()) as Body;
-    if (!text) return NextResponse.json({ error: 'Missing text' }, { status: 400 });
+    const { text, voice = 'Kore', tone = 'a normal', language = 'en' } = await req.json();
+    if (!text || !text.trim()) {
+      return NextResponse.json({ error: 'Missing text' }, { status: 400 });
+    }
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) return NextResponse.json({ error: 'Missing GEMINI_API_KEY' }, { status: 500 });
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY!, apiVersion: 'v1' });
+    const ttsPrompt =
+      language === 'es'
+        ? `Di con ${tone} voz: ${text}`
+        : `Say in ${tone} voice: ${text}`;
 
-    const voiceList = new Set(['Kore','Puck','Zephyr','Leda','Sadachbia']); // keep in sync with UI
-    const chosenVoice = voiceList.has(voiceName) ? voiceName : 'Kore';
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${key}`;
 
-    const ttsPrompt = [
-      language ? `Respond in ${language}.` : '',
-      tone ? `Read in ${tone} tone.` : '',
-      text,
-    ].filter(Boolean).join('\n');
+    // Use the REST payload shape from your HTML eReader reference
+    const body = {
+      contents: [{ role: 'user', parts: [{ text: ttsPrompt }] }],
+      responseModalities: ['AUDIO'],
+      speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
+      // optional tuning; can be omitted
+      generationConfig: { temperature: 0.4 },
+    };
 
-    const res = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-preview-tts',
-      contents: [{ parts: [{ text: ttsPrompt }] }],
-      generationConfig: {
-        responseModalities: ['AUDIO'],
-        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: chosenVoice } } },
-      } as any,
+    const r = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
     });
 
-    // The API returns inlineData with PCM; mimeType like "audio/pcm;rate=24000"
-    const part = res?.candidates?.[0]?.content?.parts?.find((p: any) => p?.inlineData?.data);
-    const b64 = part?.inlineData?.data as string | undefined;
-    const mime = part?.inlineData?.mimeType as string | undefined;
+    if (!r.ok) {
+      const msg = await r.text();
+      return NextResponse.json({ error: `TTS HTTP ${r.status}: ${msg.slice(0, 300)}` }, { status: 502 });
+    }
 
-    if (!b64 || !mime) throw new Error('No audio bytes returned');
-    const rateMatch = mime.match(/rate=(\d+)/);
-    const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000;
+    const json = await r.json();
 
-    const pcmBuffer = Buffer.from(b64, 'base64');
-    const wav = pcm16ToWav(pcmBuffer, sampleRate);
-    const wavB64 = wav.toString('base64');
-    const dataUrl = `data:audio/wav;base64,${wavB64}`;
+    const part =
+      json?.candidates?.[0]?.content?.parts?.find(
+        (p: any) => p?.inlineData?.data && typeof p?.inlineData?.mimeType === 'string'
+      ) ?? null;
 
+    if (!part) return NextResponse.json({ error: 'No audio part returned' }, { status: 500 });
+
+    const mime: string = String(part.inlineData.mimeType);
+    const b64: string = String(part.inlineData.data);
+
+    // If PCM, wrap in WAV so browsers can play it easily
+    if (mime.startsWith('audio/pcm')) {
+      const rateMatch = mime.match(/rate=(\d+)/);
+      const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000;
+      const pcm = new Int16Array(base64ToArrayBuffer(b64));
+      const wavBlob = pcm16ToWav(pcm, sampleRate, 1);
+      const buf = new Uint8Array(await wavBlob.arrayBuffer());
+      const wavB64 = Buffer.from(buf).toString('base64');
+      return NextResponse.json({
+        audioUrl: `data:audio/wav;base64,${wavB64}`,
+        mimeType: 'audio/wav',
+        modelUsed: 'gemini-2.5-flash-preview-tts',
+      });
+    }
+
+    // If already playable (e.g., audio/wav or audio/mp3)
     return NextResponse.json({
-      voice: chosenVoice,
-      sampleRate,
-      format: 'wav',
-      dataUrl,
+      audioUrl: `data:${mime};base64,${b64}`,
+      mimeType: mime,
+      modelUsed: 'gemini-2.5-flash-preview-tts',
     });
   } catch (e: any) {
     console.error('generate-audio error:', e);
-    return NextResponse.json({ error: e?.message || 'Audio generation failed' }, { status: 500 });
+    return NextResponse.json({ error: e?.message || 'Generate audio failed' }, { status: 500 });
   }
 }
