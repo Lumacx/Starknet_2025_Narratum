@@ -368,8 +368,13 @@ export default function CoverImageManager({
       const res = await fetch('/api/describe-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+        body: JSON.stringify({
+          ...payload,
+          language: promptContext?.language || 'en',
+          targetLanguage: promptContext?.language || 'en',
+        }),
+      });      
+
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'AI describe failed');
       setSuggestedPrompt(json.description || '');

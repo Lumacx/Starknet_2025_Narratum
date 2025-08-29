@@ -4,7 +4,13 @@ import { GoogleGenAI } from '@google/genai';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-type ReqBody = { dataUrl?: string; imageUrl?: string; prompt?: string };
+type ReqBody = {
+  dataUrl?: string;
+  imageUrl?: string;
+  prompt?: string;
+  language?: string;        // NEW: honor language
+  targetLanguage?: string;  // alias accepted too
+};
 
 function parseDataUrl(dataUrl: string) {
   const m = dataUrl.match(/^data:(.*?);base64,(.*)$/);
@@ -12,6 +18,20 @@ function parseDataUrl(dataUrl: string) {
   const mimeType = m[1], b64 = m[2];
   if (!mimeType.startsWith('image/')) throw new Error('Provided dataUrl is not an image.');
   return { mimeType, b64 };
+}
+
+const LANG_LABELS: Record<string, string> = {
+  en: 'English', es: 'Spanish', pt: 'Portuguese', fr: 'French', de: 'German',
+  it: 'Italian', ja: 'Japanese', ko: 'Korean', zh: 'Chinese', hi: 'Hindi', ar: 'Arabic',
+};
+
+function withLanguageHint(basePrompt: string, langCode?: string) {
+  const label = LANG_LABELS[langCode || 'en'] || 'English';
+  const header =
+    langCode === 'es'
+      ? 'Responde únicamente en español.\n'
+      : `Respond only in ${label}.\n`;
+  return `${header}${basePrompt || ''}`.trim();
 }
 
 async function fetchImageAsBase64(imageUrl: string) {
@@ -37,28 +57,42 @@ async function pickFirstAvailableModel(ai: GoogleGenAI, candidates: string[]) {
 
 export async function POST(req: Request) {
   try {
-    const { dataUrl, imageUrl, prompt } = (await req.json()) as ReqBody;
-    if (!dataUrl && !imageUrl) {
+    const body = (await req.json()) as ReqBody;
+
+    if (!body.dataUrl && !body.imageUrl) {
       return NextResponse.json({ error: 'Missing dataUrl or imageUrl' }, { status: 400 });
     }
 
-    const { mimeType, b64 } = dataUrl
+    const lang = body.language || body.targetLanguage || 'en';
+    const userPrompt = (body.prompt || '').trim();
+
+    // If caller didn’t send a custom prompt, default to a single-paragraph description request
+    const defaultPrompt =
+      lang === 'es'
+        ? 'Describe esta imagen en un solo párrafo claro y conciso (sin viñetas). Concéntrate en el sujeto, el entorno, la iluminación y el estado de ánimo.'
+        : 'Describe this image in one clear, concise paragraph (no bullets). Focus on subject, setting, lighting, and mood.';
+
+    const finalPrompt = withLanguageHint(userPrompt || defaultPrompt, lang);
+
+    const { mimeType, b64 } = body.dataUrl
       ? (() => {
-          if (dataUrl.length > 7_000_000) throw new Error('Image too large; use imageUrl instead.');
-          return parseDataUrl(dataUrl);
+          if (body.dataUrl!.length > 7_000_000) throw new Error('Image too large; use imageUrl instead.');
+          return parseDataUrl(body.dataUrl!);
         })()
-      : await fetchImageAsBase64(imageUrl!);
+      : await fetchImageAsBase64(body.imageUrl!);
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY!, apiVersion: 'v1' });
+    const ai = new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY!,
+      apiVersion: 'v1',
+    });
 
-    // 🔎 Autodetectar modelo multimodal disponible
     const model =
       (await pickFirstAvailableModel(ai, [
         'gemini-2.5-flash-image-preview',
         'gemini-2.0-flash',
         'gemini-1.5-flash',
         'gemini-1.5-pro',
-      ])) || 'gemini-1.5-flash'; // fallback conservador
+      ])) || 'gemini-1.5-flash';
 
     const res = await ai.models.generateContent({
       model,
@@ -67,7 +101,7 @@ export async function POST(req: Request) {
           role: 'user',
           parts: [
             { inlineData: { mimeType, data: b64 } } as any,
-            { text: prompt || 'Describe this image in one concise paragraph suitable for a prompt field.' },
+            { text: finalPrompt },
           ],
         },
       ],

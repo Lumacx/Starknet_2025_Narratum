@@ -331,17 +331,34 @@ export default function BeginPage() {
       const payload = isHttpUrl(draft.coverUrl)
         ? { imageUrl: draft.coverUrl }
         : { dataUrl: draft.coverUrl };
-
+  
+      // Human label for UX + prompt wording
+      const LANG_LABELS: Record<string, string> = {
+        en: 'English', es: 'Spanish', pt: 'Portuguese', fr: 'French', de: 'German',
+        it: 'Italian', ja: 'Japanese', ko: 'Korean', zh: 'Chinese', hi: 'Hindi', ar: 'Arabic',
+      };
+      const lang = draft.language || 'en';
+      const langLabel = LANG_LABELS[lang] || 'English';
+  
+      // Force the model to answer in the selected language
+      const promptText =
+        lang === 'es'
+          ? 'Describe esta imagen en un solo párrafo claro y conciso (sin viñetas). Concéntrate en el sujeto, el entorno, la iluminación y el estado de ánimo. Responde únicamente en español.'
+          : `Describe this image in one clear, concise paragraph (no bullets). Focus on subject, setting, lighting, and mood. Respond only in ${langLabel}.`;
+  
       const res = await fetch('/api/describe-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...payload,
-          prompt: 'Describe this image in one concise paragraph suitable for a story cover prompt.',
+          prompt: promptText,
+          // Send both keys to be compatible with any handler
+          language: lang,
+          targetLanguage: lang,
           responseModalities: ['TEXT'],
-          language: draft.language,
         }),
       });
+  
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Describe failed');
       setDescText(json.description || '');
