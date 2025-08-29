@@ -262,6 +262,7 @@ export default function BeginPage() {
       coverImageUrl: null,
       visibility: 'private',
       status: 'draft',
+      language: draft.language,              // ← NUEVO
     });
 
     setDraft((d) => ({ ...d, storyId: id }));
@@ -398,6 +399,21 @@ export default function BeginPage() {
     })();
   }, [user, existingStoryId, storyMode]);
 
+  // debajo de otras useEffect
+  useEffect(() => {
+    (async () => {
+    try {
+      if (!draft.storyId || !user) return;
+      await updateDoc(fsDoc(db, 'stories', draft.storyId), {
+        language: draft.language,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (e) {
+      console.warn('Could not persist language change', e);
+    }
+      })();
+    }, [draft.language, draft.storyId, user]);
+
   /* ---------------- Buttons ---------------- */
   const canStartNew =
     draft.title.trim() !== '' &&
@@ -424,6 +440,7 @@ export default function BeginPage() {
         coverImageUrl: null,
         visibility: 'private',
         status: 'draft',
+        language: draft.language,              // ← NUEVO
       });
 
       setDraft((d) => ({ ...d, storyId: id }));
@@ -464,6 +481,7 @@ export default function BeginPage() {
           pageCount: draft.pages,
           visibility: 'private',
           status: 'draft',
+          language: draft.language,              // ← NUEVO
         }));
 
       setDraft(d => ({ ...d, storyId: id }));

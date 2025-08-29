@@ -1,3 +1,4 @@
+// src/hooks/useCreateStory.ts
 'use client';
 
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
@@ -5,8 +6,13 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 
 export type StoryCategory = 'short' | 'novela' | 'campaign';
-export type StoryVisibility = 'public' | 'private' | 'unlisted'; // 'unlisted' acts like private with current rules
+export type StoryVisibility = 'public' | 'private' | 'unlisted';
 export type StoryStatus = 'draft' | 'published';
+
+// mismos códigos que usas en Begin/page
+export type LangCode =
+  | 'en' | 'es' | 'pt' | 'fr' | 'de'
+  | 'it' | 'ja' | 'ko' | 'zh' | 'hi' | 'ar';
 
 export type CreateStoryInput = {
   title: string;
@@ -17,6 +23,8 @@ export type CreateStoryInput = {
   coverImageUrl?: string | null;
   visibility?: StoryVisibility;   // default -> 'private'
   status?: StoryStatus;           // default -> 'draft'
+  /** ✅ NUEVO: idioma coherente con Begin/Support */
+  language?: LangCode;            // default -> 'en'
 };
 
 /**
@@ -39,6 +47,9 @@ export function useCreateStory() {
       category: data.category,
       pageCount: Number.isFinite(data.pageCount) ? data.pageCount : 1,
       coverImageUrl: data.coverImageUrl ?? null,
+
+      // ✅ idioma persistido
+      language: data.language ?? 'en',
 
       // ✅ required by your rules
       ownerUid: user.uid,
