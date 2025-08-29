@@ -47,8 +47,8 @@ service firebase.storage {
 
     function assetValidForCategory(cat) {
       return
-        // IMAGES: PNG/JPG/WEBP (50 KB – 12 MB)
-        (isImageCategory(cat) && isImg() && sizeBetween(50*1024, 12*1024*1024)) ||
+        // IMAGES: PNG/JPG/WEBP (10 KB – 12 MB)
+        (isImageCategory(cat) && isImg() && sizeBetween(10*1024, 12*1024*1024)) ||
 
         // AUDIO: MP3/WAV (50 KB – 16 MB)
         (isAudioCategory(cat) && (isMp3() || isWav()) && sizeBetween(50*1024, 16*1024*1024)) ||
@@ -95,7 +95,7 @@ service firebase.storage {
       // Validación por folder
       allow create, update: if isOwner(uid) && (
         // Covers y páginas → images
-        ((folder == 'images') && isImg() && sizeBetween(30*1024, 12*1024*1024)) ||
+        ((folder == 'images') && isImg() && sizeBetween(10*1024, 12*1024*1024)) ||
 
         // Narraciones → audio
         ((folder == 'audio') && (isMp3() || isWav()) && sizeBetween(50*1024, 16*1024*1024)) ||

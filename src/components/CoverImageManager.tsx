@@ -96,6 +96,7 @@ type GalleryMeta = {
   provider?: string | null;
   location?: string | null;
   prompt?: string | null;
+  language?: string | null;      // NEW
   source?: string | null;
   displayName?: string | null;
   category?: string | null;
@@ -106,6 +107,14 @@ type GalleryMeta = {
 type GalleryItem = { name: string; url: string; fullPath: string; meta?: GalleryMeta };
 type Tab = 'my-gallery' | 'ai-generate' | 'new-upload';
 
+/** Context from Begin page to ground the prompt */
+type PromptContext = {
+  title?: string;
+  genres?: string[];
+  synopsis?: string;
+  language?: string;     // NEW
+};
+
 interface CoverImageManagerProps {
   onCoverImageSaved: (url: string) => void;
   initialCoverUrl?: string;
@@ -113,6 +122,103 @@ interface CoverImageManagerProps {
   /** Optional: tag files so Support/Scenes can filter */
   storyId?: string;
   assetRole?: 'cover' | 'reference' | 'character' | 'location' | 'scene' | string;
+
+  /** Grounding context for AI prompt (Title/Genres/Synopsis/Language) */
+  promptContext?: PromptContext;
+}
+
+/* ---------------- Imagen-oriented Prompt Composer ---------------- */
+function genreDescriptors(genres: string[] = []): string[] {
+  const g = genres.map(s => s.toLowerCase().trim());
+  const out: string[] = [];
+  if (g.includes('fantasy')) out.push('mythic, magical realism, ornate details, ethereal glow');
+  if (g.includes('sci-fi') || g.includes('science fiction')) out.push('futuristic, sleek materials, volumetric light, high contrast');
+  if (g.includes('mystery')) out.push('moody, chiaroscuro, suspenseful framing');
+  if (g.includes('horror')) out.push('ominous, high shadow depth, desaturated tones');
+  if (g.includes('romance')) out.push('warm palette, soft bokeh, intimate framing');
+  if (g.includes('adventure')) out.push('dynamic angle, epic scale, dramatic skies');
+  if (g.includes("children's")) out.push('whimsical, friendly shapes, bright but harmonious colors');
+  if (g.includes('comedy')) out.push('playful, lighthearted expressions, lively composition');
+  if (g.includes('drama')) out.push('cinematic lighting, emotive atmosphere');
+  if (g.includes('action')) out.push('kinetic energy, sense of motion, bold contrasts');
+  if (g.includes('other')) out.push('cohesive palette, professional cover illustration');
+  return out;
+}
+
+function composePromptForImagen(
+  userPrompt: string,
+  ctx?: { title?: string; genres?: string[]; synopsis?: string; language?: string },
+  weights?: { synopsis?: number; genres?: number; user?: number; title?: number }
+) {
+  const w = {
+    synopsis: Math.max(0.5, Math.min(weights?.synopsis ?? 1.0, 3)),
+    genres:   Math.max(0.5, Math.min(weights?.genres   ?? 0.85, 3)),
+    user:     Math.max(0.5, Math.min(weights?.user     ?? 0.7, 3)),
+    title:    Math.max(0.5, Math.min(weights?.title    ?? 0.55, 3)),
+  };
+
+  const title    = (ctx?.title || '').trim();
+  const genres   = (ctx?.genres || []).filter(Boolean);
+  const synopsis = (ctx?.synopsis || '').trim();
+  const language = (ctx?.language || 'English').trim();
+  const userDir  = (userPrompt || '').trim();
+
+  const lowerSyn = synopsis.toLowerCase();
+  const isAnimalStory =
+    /\bdog\b|\bcanine\b|\bperro\b|\bzaguate\b|\bcat\b|\bfeline\b/.test(lowerSyn);
+
+  const lines: string[] = [];
+
+  lines.push(`Use ${language} to interpret all descriptive concepts. Do not render any textual characters in the image.`);
+  lines.push('Create a professional, illustration-style book cover image (no text). Use a single striking composition with a clear focal subject, cinematic lighting, and a cohesive palette.');
+
+  if (synopsis) {
+    lines.push(
+      `PRIMARY GUIDANCE (Story Synopsis — highest priority): ${synopsis}${
+        w.synopsis > 1.2 ? ' Focus on accurately reflecting this narrative context.' : ''
+      }`
+    );
+  }
+
+  if (genres.length) {
+    const desc = genreDescriptors(genres);
+    lines.push(
+      `SECONDARY GUIDANCE (Genre atmosphere): ${genres.join(', ')}.` +
+      (desc.length ? ` Visual tone cues: ${desc.join('; ')}.` : '')
+    );
+  }
+
+  if (userDir) {
+    lines.push(
+      `TERTIARY GUIDANCE (Additional creative direction): ${userDir}${
+        w.user > 0.9 ? ' Use this to add tasteful detail while staying faithful to the synopsis.' : ''
+      }`
+    );
+  }
+
+  if (title) {
+    lines.push(
+      `LIGHT INFLUENCE (Title motif — do NOT add text): ${title}. Use it only as thematic inspiration; do not place typography.`
+    );
+  }
+
+  if (isAnimalStory) {
+    lines.push(
+      'SUBJECT SHEET: If the story references “Billy”, render Billy as a dog (zaguate / mixed-breed street canine) — four-legged, muzzle, fur, tail. Never a human.'
+    );
+  }
+
+  lines.push('Art Direction: painterly illustration, professional cover quality, detailed but not cluttered, readable negative space for future title placement.');
+  lines.push('Framing & Composition: portrait orientation, strong silhouette, depth via atmosphere, tasteful rim lighting.');
+  lines.push('Do NOT include text, logos, watermarks, or UI elements.');
+  if (isAnimalStory) lines.push('Avoid depicting humans unless explicitly required by the synopsis.');
+
+  const negativesBase =
+    'text, watermark, logo, low-res, blurry, jpeg artifacts, malformed anatomy, extra limbs, cropped face';
+  const negativesHuman = 'human, person, people, man, woman, boy, girl, humanoid, biped, human hands';
+  const negativePrompt = isAnimalStory ? `${negativesBase}, ${negativesHuman}` : negativesBase;
+
+  return { prompt: lines.join('\n'), negativePrompt };
 }
 
 /* ======================== Component ======================== */
@@ -121,6 +227,7 @@ export default function CoverImageManager({
   initialCoverUrl,
   storyId,
   assetRole = 'cover',
+  promptContext,
 }: CoverImageManagerProps) {
   const { user: currentUser } = useAuth();
   const router = useRouter();
@@ -145,12 +252,16 @@ export default function CoverImageManager({
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState('');
   const [aiNameToSave, setAiNameToSave] = useState('');
-  const [aiModelUsed, setAiModelUsed] = useState<string | null>(null); // persists via metadata
+  const [aiModelUsed, setAiModelUsed] = useState<string | null>(null);
+
+  // Persist last gen meta across renders
+  const lastGenMetaRef = useRef<Required<Pick<GalleryMeta, 'modelUsed' | 'provider' | 'location' | 'prompt'>> | null>(null);
 
   // Gallery
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [isLoadingGallery, setIsLoadingGallery] = useState(false);
 
+  // ✅ Declare ONCE
   const assetCategory: 'covers' = 'covers';
 
   /* ------------------------ Gallery load ------------------------ */
@@ -162,10 +273,7 @@ export default function CoverImageManager({
       const res = await listAll(base);
       const items = await Promise.all(
         res.items.map(async (i) => {
-          const [url, meta] = await Promise.all([
-            getDownloadURL(i),
-            getMetadata(i).catch(() => null),
-          ]);
+          const [url, meta] = await Promise.all([getDownloadURL(i), getMetadata(i).catch(() => null)]);
           const cm = meta?.customMetadata || {};
           const obj: GalleryItem = {
             name: i.name,
@@ -176,6 +284,7 @@ export default function CoverImageManager({
               provider: (cm['narratum:provider'] || cm['provider'] || null) as string | null,
               location: (cm['narratum:location'] || cm['location'] || null) as string | null,
               prompt: (cm['narratum:prompt'] || cm['prompt'] || null) as string | null,
+              language: (cm['narratum:language'] || null) as string | null,
               source: (cm['source'] || null) as string | null,
               displayName: (cm['displayName'] || null) as string | null,
               category: (cm['category'] || null) as string | null,
@@ -241,7 +350,9 @@ export default function CoverImageManager({
   async function handleDescribeImage(imageSource: File | string) {
     try {
       setIsDescribing(true);
-      let payload: { dataUrl?: string; imageUrl?: string };
+      let payload: { dataUrl?: string; imageUrl?: string; prompt?: string; responseModalities?: string[]; language?: string };
+      const lang = promptContext?.language || 'English';
+
       if (typeof imageSource !== 'string') {
         payload = { dataUrl: await fileToDataUrl(imageSource) };
       } else if (imageSource.startsWith('data:')) {
@@ -249,6 +360,10 @@ export default function CoverImageManager({
       } else {
         payload = { imageUrl: imageSource };
       }
+
+      payload.prompt = `Respond in ${lang}. Describe this image in one concise paragraph suitable for a story cover prompt.`;
+      payload.responseModalities = ['TEXT'];
+      payload.language = lang;
 
       const res = await fetch('/api/describe-image', {
         method: 'POST',
@@ -268,23 +383,44 @@ export default function CoverImageManager({
 
   async function handleGenerateImage() {
     try {
-      if (!aiPrompt.trim()) {
-        alert('Please enter a prompt for AI image generation.');
+      const hasContext =
+        Boolean(promptContext?.synopsis) ||
+        Boolean(promptContext?.genres?.length) ||
+        Boolean(promptContext?.title);
+
+      if (!aiPrompt.trim() && !hasContext) {
+        alert('Please enter a prompt or fill in the story details.');
         return;
       }
+
       setIsGenerating(true);
       setAiModelUsed(null);
+
+      const { prompt, negativePrompt } = composePromptForImagen(aiPrompt, promptContext, {
+        synopsis: 1.0,
+        genres:   0.85,
+        user:     0.7,
+        title:    0.55,
+      });
 
       const res = await fetch('/api/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: aiPrompt, count: 1, promptEcho: aiPrompt }),
+        body: JSON.stringify({
+          prompt,
+          negativePrompt,
+          count: 1,
+          promptEcho: prompt,
+          role: assetRole,
+          storyId,
+          language: promptContext?.language || 'English',
+        }),
       });
 
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'AI image generation failed');
 
-      const { dataUrl, modelUsed, provider, location, prompt } = extractImageAndModel(json);
+      const { dataUrl, modelUsed, provider, location, prompt: providerEcho } = extractImageAndModel(json);
       if (!dataUrl) throw new Error('No image returned by generator.');
 
       setGeneratedImageUrl(dataUrl);
@@ -293,12 +429,11 @@ export default function CoverImageManager({
       setSuggestedPrompt('');
       setAiModelUsed(modelUsed || null);
 
-      // Stash prompt/provider/location in memory too (we’ll save it in Storage metadata if user saves to gallery)
-      _lastGenMeta = {
+      lastGenMetaRef.current = {
         modelUsed: modelUsed || 'unknown',
         provider: provider || 'vertex-ai',
         location: location || 'us-central1',
-        prompt: prompt || aiPrompt,
+        prompt: providerEcho || prompt,
       };
     } catch (e: any) {
       alert(e?.message || 'Image generation error');
@@ -306,9 +441,6 @@ export default function CoverImageManager({
       setIsGenerating(false);
     }
   }
-
-  // Keep last generation meta until user saves to gallery
-  let _lastGenMeta: Required<Pick<GalleryMeta, 'modelUsed' | 'provider' | 'location' | 'prompt'>> | null = null;
 
   async function handleUploadNewFileToGallery() {
     try {
@@ -332,11 +464,11 @@ export default function CoverImageManager({
           createdAt: String(Date.now()),
           'narratum:storyId': storyId || '',
           'narratum:role': assetRole,
+          'narratum:language': promptContext?.language || '',
         },
       });
       const downloadUrl = await getDownloadURL(storageRef);
 
-      // Optimistic add
       setGallery(g => [{ name: `${uploadNameToSave}.png`, url: downloadUrl, fullPath: path }, ...g]);
 
       setActiveTab('my-gallery');
@@ -378,11 +510,12 @@ export default function CoverImageManager({
           source: 'ai-generated',
           createdAt: String(Date.now()),
           'narratum:model': aiModelUsed || 'unknown',
-          'narratum:provider': _lastGenMeta?.provider || 'vertex-ai',
-          'narratum:location': _lastGenMeta?.location || 'us-central1',
-          'narratum:prompt': _lastGenMeta?.prompt || aiPrompt,
+          'narratum:provider': lastGenMetaRef.current?.provider || 'vertex-ai',
+          'narratum:location': lastGenMetaRef.current?.location || 'us-central1',
+          'narratum:prompt': lastGenMetaRef.current?.prompt || aiPrompt,
           'narratum:storyId': storyId || '',
           'narratum:role': assetRole,
+          'narratum:language': promptContext?.language || '',
         },
       });
       const downloadUrl = await getDownloadURL(storageRef);
@@ -394,7 +527,7 @@ export default function CoverImageManager({
       setSelectedFileName(aiNameToSave);
       setGeneratedImageUrl('');
       setAiNameToSave('');
-      // keep aiModelUsed; it will be reloaded from metadata next mount/refresh
+      // keep aiModelUsed; metadata reload will refresh on next mount/refresh
       alert('AI Generated image saved to gallery!');
     } catch (e: any) {
       console.error('Save Generated to Gallery Error:', e);
@@ -463,6 +596,11 @@ export default function CoverImageManager({
               {aiModelUsed && (
                 <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded-md">
                   AI • {aiModelUsed}
+                </div>
+              )}
+              {promptContext?.language && (
+                <div className="absolute bottom-2 right-2 bg-black/70 text-white text-[10px] px-2 py-0.5 rounded-md">
+                  {promptContext.language}
                 </div>
               )}
             </>
@@ -536,10 +674,14 @@ export default function CoverImageManager({
                         {initialCoverUrl === it.url && (
                           <div className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full z-10">Current</div>
                         )}
-                        {/* Badge if asset has model metadata */}
                         {it.meta?.modelUsed && (
                           <div className="absolute top-1 right-1 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded">
                             AI • {it.meta.modelUsed}
+                          </div>
+                        )}
+                        {it.meta?.language && (
+                          <div className="absolute bottom-1 right-1 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded">
+                            {it.meta.language}
                           </div>
                         )}
 
@@ -587,12 +729,15 @@ export default function CoverImageManager({
           {activeTab === 'ai-generate' && (
             <div className="space-y-4">
               <h4 className="font-semibold text-[#3D4F60]">AI Image Generation</h4>
-              <p className="text-sm text-gray-700">Describe the cover image you want to generate. Use "AI Describe" on an existing image to get ideas.</p>
+              <p className="text-sm text-gray-700">
+                We’ll rewrite your prompt using the story’s <em>Synopsis</em> (primary), <em>Genres</em> (secondary),
+                your <em>Creative Direction</em> (tertiary), the <em>Title motif</em> (light), and the selected <em>Language</em>.
+              </p>
 
               <div className="flex items-center gap-2">
                 <textarea
                   className="w-full min-h-[120px] border rounded-md p-2 border-[#B0C4DE] text-[#3D4F60] bg-white"
-                  placeholder="e.g., A fantastical forest with ancient trees and glowing flora at twilight..."
+                  placeholder="Add any extra creative direction (optional)…"
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
                 />
@@ -616,7 +761,7 @@ export default function CoverImageManager({
 
               <button
                 onClick={handleGenerateImage}
-                disabled={Boolean(isGenerating || !aiPrompt.trim())}
+                disabled={Boolean(isGenerating || (!aiPrompt.trim() && !(promptContext?.synopsis || promptContext?.genres?.length || promptContext?.title)))}
                 className="w-full py-3 rounded-md bg-[#E97451] text-white font-semibold disabled:opacity-50 transition-colors hover:bg-[#D46342] flex items-center justify-center gap-2"
               >
                 {isGenerating ? <Loader2 className="animate-spin" size={20} /> : null}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -9,17 +9,7 @@ import CoverImageManager from '@/components/CoverImageManager';
 
 import { useAuth } from '@/context/AuthContext';
 import { db, storage } from '@/lib/firebase';
-import {
-  serverTimestamp,
-  updateDoc,
-  doc as fsDoc,
-  getDocs,
-  collection,
-  query,
-  where,
-  orderBy,
-  limit,
-} from 'firebase/firestore';
+import { serverTimestamp, updateDoc, doc as fsDoc } from 'firebase/firestore';
 import { ref, uploadBytes, uploadString, getDownloadURL } from 'firebase/storage';
 import { useCreateStory } from '@/hooks/useCreateStory';
 
@@ -27,8 +17,22 @@ import { useCreateStory } from '@/hooks/useCreateStory';
 /* Page constants & types                                              */
 /* ------------------------------------------------------------------ */
 const GENRES = [
-  'Fantasy', 'Sci-Fi', 'Mystery', 'Horror', 'Romance', 'Adventure', "Children's",
-  'Comedy', 'Drama', 'Action', 'Other',
+  'Fantasy','Sci-Fi','Mystery','Horror','Romance','Adventure',"Children's",
+  'Comedy','Drama','Action','Other',
+] as const;
+
+// Language options (add/remove freely)
+const LANGUAGES = [
+  'English',
+  'Español',
+  'Português',
+  'Français',
+  'Deutsch',
+  'Italiano',
+  '한국어',
+  '日本語',
+  '中文 (简体)',
+  '中文 (繁體)',
 ] as const;
 
 const CATEGORIES = [
@@ -42,9 +46,11 @@ type Draft = {
   title: string;
   genres: string[];
   synopsis: string;
+  language: typeof LANGUAGES[number];               // NEW
   category: typeof CATEGORIES[number]['key'];
   pages: number;
   coverUrl?: string | null;
+
   scenes?: Array<{
     text: string;
     imagePrompt: string;
@@ -52,25 +58,14 @@ type Draft = {
     imageUrl?: string | null;
     audioUrl?: string | null;
   }>;
+
   reader?: {
     avatarUrl?: string;
     backgroundUrl?: string;
   };
 };
 
-type StorySummary = {
-  id: string;
-  title: string;
-  synopsis?: string;
-  genres?: string[];
-  category?: Draft['category'];
-  pageCount?: number;
-  coverImageUrl?: string | null;
-  updatedAt?: any;
-};
-
-const DRAFT_KEY   = 'newStoryDraft';
-const STARTED_KEY = 'newStoryStarted';
+const DRAFT_KEY = 'newStoryDraft';
 const DEFAULTS = {
   avatarUrl: '/avatars/Default.png',
   backgroundUrl: '/story_reader_backgrounds/dream-background.png',
@@ -79,9 +74,6 @@ const DEFAULTS = {
 /* Helpers */
 function isHttpUrl(u?: string | null) {
   return !!u && (u.startsWith('http://') || u.startsWith('https://'));
-}
-function catConfig(key: Draft['category']) {
-  return CATEGORIES.find((c) => c.key === key)!;
 }
 
 /* ------------------------------------------------------------------ */
@@ -92,15 +84,11 @@ export default function BeginPage() {
   const { user } = useAuth();
   const createStory = useCreateStory();
 
-  type Mode = 'new' | 'continue';
-  const [mode, setMode] = useState<Mode>('new');
-  const [stories, setStories] = useState<StorySummary[]>([]);
-  const [selectedStoryId, setSelectedStoryId] = useState<string>('');
-
   const [draft, setDraft] = useState<Draft>({
     title: '',
     genres: [],
     synopsis: '',
+    language: 'English',                  // NEW default
     category: 'short',
     pages: 3,
     coverUrl: undefined,
@@ -108,68 +96,30 @@ export default function BeginPage() {
     reader: { avatarUrl: DEFAULTS.avatarUrl, backgroundUrl: DEFAULTS.backgroundUrl },
   });
 
-  // Gate for revealing the Book Cover section
-  const [started, setStarted] = useState<boolean>(false);
-  const [startLoading, setStartLoading] = useState<boolean>(false);
-  const [startError, setStartError] = useState<string>('');
-  const coverSectionRef = useRef<HTMLDivElement | null>(null);
+  // whether the Cover section is visible (after Start Story)
+  const [coverVisible, setCoverVisible] = useState<boolean>(false);
 
   // AI Describe state
   const [descLoading, setDescLoading] = useState(false);
   const [descText, setDescText] = useState<string>('');
   const [descError, setDescError] = useState<string>('');
 
-  /* ---------------- Load user stories when logged in ---------------- */
-  useEffect(() => {
-    async function loadStories() {
-      if (!user) return setStories([]);
-      try {
-        const q = query(
-          collection(db, 'stories'),
-          where('ownerUid', '==', user.uid),
-          orderBy('updatedAt', 'desc'),
-          orderBy('__name__', 'desc'), // future-proof with your index
-          limit(50)
-        );
-        const snap = await getDocs(q);
-        const rows: StorySummary[] = [];
-        snap.forEach((doc) => {
-          const d = doc.data() as any;
-          rows.push({
-            id: doc.id,
-            title: d?.title || '(untitled)',
-            synopsis: d?.synopsis || '',
-            genres: d?.genres || [],
-            category: (d?.category || 'short') as Draft['category'],
-            pageCount: d?.pageCount || 1,
-            coverImageUrl: d?.coverImageUrl ?? null,
-            updatedAt: d?.updatedAt,
-          });
-        });
-        setStories(rows);
-      } catch (e) {
-        console.error('Failed to load stories for user', e);
-      }
-    }
-    loadStories();
-  }, [user]);
-
-  /* ---------------- Load / Save local draft ---------------- */
+  // Load / Save local draft
   useEffect(() => {
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
-      const rawStarted = localStorage.getItem(STARTED_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
         setDraft((d) => ({
           ...d,
           ...parsed,
+          language: parsed?.language || 'English',   // NEW
           reader: {
             avatarUrl: parsed?.reader?.avatarUrl || DEFAULTS.avatarUrl,
             backgroundUrl: parsed?.reader?.backgroundUrl || DEFAULTS.backgroundUrl,
           },
         }));
-        setStarted(rawStarted === '1' || !!parsed.storyId);
+        setCoverVisible(Boolean(parsed?.storyId));   // show cover if story already started
       } else {
         // seed empty scenes with page count
         setDraft((d) => ({
@@ -210,10 +160,10 @@ export default function BeginPage() {
     try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch {}
   }, [draft]);
 
-  const cat = useMemo(() => catConfig(draft.category), [draft.category]);
+  const cat = CATEGORIES.find((c) => c.key === draft.category)!;
 
-  /* Create the story on-demand when user presses "Start Story" */
-  async function createStoryNow(): Promise<string> {
+  /* Ensure canonical story doc exists WHEN user clicks Start Story */
+  async function ensureStoryId(): Promise<string> {
     if (!user) throw new Error('Please sign in first.');
     if (draft.storyId) return draft.storyId;
 
@@ -226,7 +176,10 @@ export default function BeginPage() {
       coverImageUrl: null,
       visibility: 'private',
       status: 'draft',
-    });
+      // NEW: persist language in the story document
+      // (Your useCreateStory hook will accept & pass through extra fields)
+      language: draft.language as any,
+    } as any);
 
     setDraft((d) => ({ ...d, storyId: id }));
     try {
@@ -234,64 +187,40 @@ export default function BeginPage() {
       const obj = raw ? JSON.parse(raw) : {};
       obj.storyId = id;
       localStorage.setItem(DRAFT_KEY, JSON.stringify(obj));
-      localStorage.setItem(STARTED_KEY, '1');
     } catch {}
     return id;
   }
 
-  /* Optimistic Start Story handler with animation feedback */
-  async function onStartStory() {
-    setStartError('');
-    if (!canStart) return;
-
-    // Optimistic reveal
-    setStarted(true);
-    setStartLoading(true);
-
-    try {
-      await createStoryNow();
-      // scroll the cover section into view
-      setTimeout(() => {
-        coverSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 60);
-    } catch (e: any) {
-      // revert on failure
-      setStarted(false);
-      setStartError(e?.message || 'Failed to start story.');
-    } finally {
-      setStartLoading(false);
-    }
-  }
-
-  /* Upload cover into canonical path (robust) */
+  /* Upload cover into canonical path */
   async function uploadCoverIntoStoryPath(userUid: string, storyId: string, srcUrl: string) {
     const path = `users/${userUid}/stories/${storyId}/images/cover.png`;
     const r = ref(storage, path);
-
     try {
       if (srcUrl.startsWith('data:')) {
         await uploadString(r, srcUrl, 'data_url');
-        return await getDownloadURL(r);
+      } else {
+        // Try direct fetch; if CORS blocks, proxy server-side (see /api/image-proxy)
+        let blob: Blob | null = null;
+        try {
+          const resp = await fetch(srcUrl, { cache: 'no-store' });
+          if (!resp.ok) throw new Error(`Source fetch failed (${resp.status})`);
+          blob = await resp.blob();
+        } catch {
+          const proxied = await fetch('/api/image-proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: srcUrl }),
+          });
+          const json = await proxied.json();
+          if (!proxied.ok || !json?.dataUrl) throw new Error(json?.error || 'Image proxy failed');
+          await uploadString(r, json.dataUrl as string, 'data_url');
+          return await getDownloadURL(r);
+        }
+        await uploadBytes(r, blob!, { contentType: blob!.type || 'image/png' });
       }
-
-      if (srcUrl.startsWith('gs://')) {
-        const httpsSrc = await getDownloadURL(ref(storage, srcUrl));
-        const blob = await (await fetch(httpsSrc, { cache: 'no-store' })).blob();
-        await uploadBytes(r, blob, { contentType: blob.type || 'image/png' });
-        return await getDownloadURL(r);
-      }
-
-      if (srcUrl.startsWith('blob:') || srcUrl.startsWith('http')) {
-        const resp = await fetch(srcUrl, { cache: 'no-store' });
-        if (!resp.ok) throw new Error(`Source fetch failed (${resp.status})`);
-        const blob = await resp.blob();
-        await uploadBytes(r, blob, { contentType: blob.type || 'image/png' });
-        return await getDownloadURL(r);
-      }
-
-      throw new Error(`Unsupported cover source: ${srcUrl.slice(0, 32)}…`);
+      return await getDownloadURL(r);
     } catch (e: any) {
-      console.error('Upload cover into story path failed:', path, e?.message || e);
+      console.error('Upload cover into story path failed:', path, e?.code, e?.message || e);
       throw e;
     }
   }
@@ -301,7 +230,7 @@ export default function BeginPage() {
     setDraft((d) => ({ ...d, coverUrl: url })); // optimistic
     try {
       if (!user) throw new Error('Please sign in first.');
-      const id = draft.storyId || (await createStoryNow());
+      const id = await ensureStoryId();
       const httpsUrl = await uploadCoverIntoStoryPath(user.uid, id, url);
 
       await updateDoc(fsDoc(db, 'stories', id), {
@@ -322,7 +251,7 @@ export default function BeginPage() {
     }
   };
 
-  /* -------- AI Describe for current cover -------- */
+  /* -------- AI Describe for current cover (obeys Language) -------- */
   async function describeCurrentCover() {
     setDescError('');
     setDescText('');
@@ -341,9 +270,11 @@ export default function BeginPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...payload,
+          // Guide the model to respond in the selected UI language
           prompt:
-            'Describe this image in one concise paragraph suitable for a story cover prompt.',
+            `Respond in ${draft.language}. Describe this image in one concise paragraph suitable for a story cover prompt.`,
           responseModalities: ['TEXT'],
+          language: draft.language, // extra hint for your backend if supported
         }),
       });
       const json = await res.json();
@@ -356,90 +287,14 @@ export default function BeginPage() {
     }
   }
 
-  /* -------------------- Mode handlers -------------------- */
-
-  function resetToNew() {
-    setSelectedStoryId('');
-    try {
-      localStorage.removeItem(DRAFT_KEY);
-      localStorage.removeItem(STARTED_KEY);
-    } catch {}
-    setDraft({
-      title: '',
-      genres: [],
-      synopsis: '',
-      category: 'short',
-      pages: 3,
-      coverUrl: undefined,
-      storyId: undefined,
-      scenes: Array.from({ length: 3 }, () => ({
-        text: '',
-        imagePrompt: '',
-        imageDescription: '',
-        imageUrl: null,
-        audioUrl: null,
-      })),
-      reader: { avatarUrl: DEFAULTS.avatarUrl, backgroundUrl: DEFAULTS.backgroundUrl },
-    });
-    setDescText('');
-    setDescError('');
-    setStartError('');
-    setStarted(false);
-  }
-
-  function hydrateFromStory(s: StorySummary) {
-    const catKey = (s.category || 'short') as Draft['category'];
-    const cfg = catConfig(catKey);
-    const pages = Math.min(Math.max(s.pageCount || cfg.min, cfg.min), cfg.max);
-
-    setDraft((d) => ({
-      ...d,
-      storyId: s.id,
-      title: s.title || '',
-      synopsis: s.synopsis || '',
-      genres: s.genres || [],
-      category: catKey,
-      pages,
-      coverUrl: s.coverImageUrl ?? undefined,
-      reader: d.reader ?? { avatarUrl: DEFAULTS.avatarUrl, backgroundUrl: DEFAULTS.backgroundUrl },
-      scenes: Array.from({ length: pages }, () => ({
-        text: '',
-        imagePrompt: '',
-        imageDescription: '',
-        imageUrl: null,
-        audioUrl: null,
-      })),
-    }));
-
-    try {
-      const obj = {
-        storyId: s.id,
-        title: s.title || '',
-        synopsis: s.synopsis || '',
-        genres: s.genres || [],
-        category: catKey,
-        pages,
-        coverUrl: s.coverImageUrl ?? undefined,
-        reader: { avatarUrl: DEFAULTS.avatarUrl, backgroundUrl: DEFAULTS.backgroundUrl },
-      };
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(obj));
-      localStorage.setItem(STARTED_KEY, '1');
-    } catch {}
-    setStarted(true);
-    setTimeout(() => coverSectionRef.current?.scrollIntoView({ behavior: 'smooth' }), 60);
-  }
-
-  const canStart =
+  /* Buttons state */
+  const canStartStory =
     draft.title.trim() !== '' &&
     draft.genres.length > 0 &&
     draft.synopsis.trim() !== '';
 
-  const isNextButtonEnabled =
-    started &&
-    draft.title.trim() !== '' &&
-    draft.genres.length > 0 &&
-    draft.synopsis.trim() !== '' &&
-    draft.coverUrl != null;
+  const isNextEnabled =
+    (draft.coverUrl != null) && Boolean(draft.storyId);
 
   return (
     <div className="min-h-screen p-6 pb-28 
@@ -455,9 +310,9 @@ export default function BeginPage() {
 
         {/* Top Form */}
         <div className="mb-5 rounded-xl border-2 border-[#CBBBA0] bg-[#F3EADF] text-[#3A4B5C] dark:bg-[#2A3645] dark:border-[#4B5A6B] dark:text-[#E0C9A0] shadow p-6">
-          {/* Title + Genres + Mode */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <div className="md:col-span-1">
+          {/* Title + Genres */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
               <label className="block text-sm font-bold mb-2">Title</label>
               <input
                 className="w-full p-3 border-2 rounded-md bg-white dark:bg-[#1A2533] text-[#3A4B5C] dark:text-[#E0C9A0]"
@@ -466,8 +321,7 @@ export default function BeginPage() {
                 placeholder="The Rise of the Shadow Dragon"
               />
             </div>
-
-            <div className="md:col-span-1">
+            <div>
               <label className="block text-sm font-bold mb-2">Genres</label>
               <GenreMultiSelect
                 genresList={GENRES as any}
@@ -475,48 +329,21 @@ export default function BeginPage() {
                 onSelectedGenresChange={(genres) => setDraft((d) => ({ ...d, genres }))}
               />
             </div>
+          </div>
 
-            <div className="md:col-span-1">
-              <label className="block text-sm font-bold mb-2">Story Mode</label>
-              <div className="flex gap-3">
-                <select
-                  className="w-1/2 p-3 border-2 rounded-md bg-white dark:bg-[#1A2533] text-[#3A4B5C] dark:text-[#E0C9A0]"
-                  value={mode}
-                  onChange={(e) => {
-                    const m = e.target.value as Mode;
-                    setMode(m);
-                    if (m === 'new') resetToNew();
-                  }}
-                >
-                  <option value="new">Create New</option>
-                  <option value="continue">Continue</option>
-                </select>
-
-                <select
-                  disabled={mode !== 'continue'}
-                  className="w-1/2 p-3 border-2 rounded-md bg-white disabled:opacity-50 dark:bg-[#1A2533] text-[#3A4B5C] dark:text-[#E0C9A0]"
-                  value={selectedStoryId}
-                  onChange={(e) => {
-                    const id = e.target.value;
-                    setSelectedStoryId(id);
-                    const s = stories.find((x) => x.id === id);
-                    if (s) hydrateFromStory(s);
-                  }}
-                >
-                  <option value="" disabled>
-                    {mode === 'continue' ? 'Pick a story…' : 'Select a story'}
-                  </option>
-                  {stories.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {mode === 'continue' && stories.length === 0 && (
-                <p className="text-xs mt-2 opacity-80">No stories found for your account.</p>
-              )}
-            </div>
+          {/* Language (NEW) */}
+          <div className="mb-6">
+            <label className="block text-sm font-bold mb-2">Language</label>
+            <select
+              className="w-full p-3 border-2 rounded-md bg-white dark:bg-[#1A2533] text-[#3A4B5C] dark:text-[#E0C9A0]"
+              value={draft.language}
+              onChange={(e) => setDraft((d) => ({ ...d, language: e.target.value as Draft['language'] }))}
+            >
+              {LANGUAGES.map((lang) => (
+                <option key={lang} value={lang}>{lang}</option>
+              ))}
+            </select>
+            <p className="text-xs mt-1">AI prompts and descriptions will use this language.</p>
           </div>
 
           {/* Synopsis */}
@@ -534,13 +361,13 @@ export default function BeginPage() {
           {/* Category + Pages */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-bold mb-2">Category</label>
+              <label className="block text-sm font-bold mb-2">Story Mode</label>
               <select
                 className="w-full p-3 border-2 rounded-md bg-white dark:bg-[#1A2533] text-[#3A4B5C] dark:text-[#E0C9A0]"
                 value={draft.category}
                 onChange={(e) => {
                   const nextKey = e.target.value as Draft['category'];
-                  const cfg = catConfig(nextKey);
+                  const cfg = CATEGORIES.find((c) => c.key === nextKey)!;
                   setDraft((d) => ({
                     ...d,
                     category: nextKey,
@@ -569,41 +396,31 @@ export default function BeginPage() {
             </div>
           </div>
 
-          {/* Start Story gate (only when creating new) */}
-          {mode === 'new' && !started && (
-            <div className="mt-6 flex items-center justify-between gap-4">
-              {startError && <span className="text-red-600 text-sm">{startError}</span>}
-              <div className="grow" />
-              <button
-                onClick={onStartStory}
-                disabled={!canStart || startLoading}
-                className={[
-                  'px-6 py-2 rounded-md text-white font-semibold',
-                  'bg-[#E97451] hover:bg-[#D46342] disabled:opacity-50',
-                  'transition transform hover:-translate-y-0.5 active:scale-95',
-                  startLoading ? 'cursor-wait' : 'cursor-pointer',
-                ].join(' ')}
-              >
-                {startLoading ? (
-                  <span className="inline-flex items-center gap-2">
-                    <span className="h-4 w-4 border-2 border-white/60 border-t-transparent rounded-full animate-spin" />
-                    Starting…
-                  </span>
-                ) : (
-                  'Start Story'
-                )}
-              </button>
-            </div>
-          )}
+          {/* Start Story (creates storyId & reveals Cover section) */}
+          <div className="mt-6 flex justify-end">
+            <button
+              onClick={async () => {
+                try {
+                  if (!canStartStory) return;
+                  await ensureStoryId();
+                  setCoverVisible(true);
+                } catch (e: any) {
+                  alert(e?.message || 'Failed to start story.');
+                }
+              }}
+              disabled={!canStartStory}
+              className="px-5 py-2 rounded-md bg-[#2f855a] text-white font-semibold disabled:opacity-50
+                         transition transform hover:bg-[#276749] active:scale-95"
+              title={canStartStory ? 'Create your story and open the cover section' : 'Fill Title, Genres and Synopsis first'}
+            >
+              Start Story
+            </button>
+          </div>
         </div>
 
-        {/* Book Cover + AI Describe — only after Start Story, or when continuing */}
-        {started && (
-          <div
-            ref={coverSectionRef}
-            className="rounded-xl border-2 border-[#CBBBA0] bg-[#F3EADF] text-[#3A4B5C] dark:bg-[#2A3645] dark:border-[#4B5A6B] dark:text-[#E0C9A0] shadow p-6
-                       transition-all duration-300 ease-out animate-[fadeIn_.25s_ease-out]"
-          >
+        {/* Bottom: Cover + AI Describe (hidden until Start Story) */}
+        {coverVisible && (
+          <div className="rounded-xl border-2 border-[#CBBBA0] bg-[#F3EADF] text-[#3A4B5C] dark:bg-[#2A3645] dark:border-[#4B5A6B] dark:text-[#E0C9A0] shadow p-6 animate-[fadeIn_250ms_ease-out]">
             <h2 className="text-xl font-bold mb-4">Book Cover Image</h2>
 
             <CoverImageManager
@@ -611,21 +428,24 @@ export default function BeginPage() {
               onCoverImageSaved={handleCoverImageSaved}
               storyId={draft.storyId}
               assetRole="cover"
+              // NEW: include language so Imagen prompts follow it
+              promptContext={{
+                title: draft.title,
+                genres: draft.genres,
+                synopsis: draft.synopsis,
+                language: draft.language,   // <-- add this field in CoverImageManager PromptContext
+              }}
             />
 
-            {/* AI Describe */}
+            {/* AI Describe panel */}
             <div className="mt-4 p-3 rounded-lg border border-[#CBBBA0] dark:border-[#4B5A6B] bg-white/50 dark:bg-black/20">
               <div className="flex flex-col md:flex-row md:items-center gap-3">
                 <button
                   onClick={describeCurrentCover}
                   disabled={descLoading || !draft.coverUrl}
-                  className={[
-                    'px-4 py-2 rounded-md text-white font-semibold',
-                    'bg-[#E97451] hover:bg-[#D46342] disabled:opacity-50',
-                    'transition transform hover:-translate-y-0.5 active:scale-95',
-                  ].join(' ')}
+                  className="px-4 py-2 rounded-md bg-[#E97451] text-white font-semibold disabled:opacity-50 hover:bg-[#D46342] transition active:scale-[0.98]"
                 >
-                  {descLoading ? 'Describing…' : 'AI Describe Cover'}
+                  {descLoading ? 'Describing…' : `AI Describe Cover (${draft.language})`}
                 </button>
                 {descError && <span className="text-red-600 text-sm">{descError}</span>}
               </div>
@@ -642,13 +462,13 @@ export default function BeginPage() {
                   <div className="flex gap-2 mt-2">
                     <button
                       onClick={() => setDraft((d) => ({ ...d, synopsis: descText }))}
-                      className="px-3 py-1 rounded-md border bg-gray-100 dark:bg-gray-700"
+                      className="px-3 py-1 rounded-md border bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 transition"
                     >
                       Use as Synopsis
                     </button>
                     <button
                       onClick={() => navigator.clipboard.writeText(descText)}
-                      className="px-3 py-1 rounded-md border bg-gray-100 dark:bg-gray-700"
+                      className="px-3 py-1 rounded-md border bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 transition"
                     >
                       Copy
                     </button>
@@ -662,40 +482,39 @@ export default function BeginPage() {
         {/* Footer actions */}
         <div className="flex justify-end flex-wrap gap-3 mt-5 mb-12">
           <button
-            className="px-5 py-2 rounded-md border bg-gray-200 dark:bg-gray-700 transition hover:-translate-y-0.5 active:scale-95"
-            onClick={resetToNew}
+            className="px-5 py-2 rounded-md border bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition active:scale-95"
+            onClick={() => { try { localStorage.removeItem(DRAFT_KEY); } catch {} location.reload(); }}
           >
             Reset
           </button>
 
           <button
-            className="px-6 py-2 rounded-md bg-[#E97451] text-white font-semibold disabled:opacity-50 hover:bg-[#D46342] transition transform hover:-translate-y-0.5 active:scale-95"
+            className="px-6 py-2 rounded-md bg-[#E97451] text-white font-semibold disabled:opacity-50 hover:bg-[#D46342] transition active:scale-95"
             onClick={async () => {
               try {
-                if (!started) await onStartStory();
-                const id = draft.storyId!;
+                const id = await ensureStoryId();
                 router.push(`/create/support?storyId=${id}`);
               } catch (e: any) {
                 alert(e?.message || 'Failed to continue.');
               }
             }}
-            disabled={!isNextButtonEnabled}
+            disabled={!isNextEnabled}
           >
             Next: Build References & AI Support →
           </button>
 
+          {/* optional fast-path straight to Scenes */}
           <button
-            className="px-6 py-2 rounded-md border-2 border-[#3D4F60] text-[#3D4F60] bg-white dark:border-[#4B5A6B] dark:text-[#E0C9A0] dark:bg-[#2A3645] transition transform hover:-translate-y-0.5 active:scale-95"
+            className="px-6 py-2 rounded-md border-2 border-[#3D4F60] text-[#3D4F60] bg-white dark:border-[#4B5A6B] dark:text-[#E0C9A0] dark:bg-[#2A3645] hover:bg-gray-50 transition active:scale-95"
             onClick={async () => {
               try {
-                if (!started) await onStartStory();
-                const id = draft.storyId!;
+                const id = await ensureStoryId();
                 router.push(`/create/scenes?storyId=${id}`);
               } catch (e: any) {
                 alert(e?.message || 'Failed to continue.');
               }
             }}
-            disabled={!isNextButtonEnabled}
+            disabled={!draft.storyId}
           >
             Skip to Scenes →
           </button>
@@ -704,7 +523,3 @@ export default function BeginPage() {
     </div>
   );
 }
-
-/* Tailwind keyframes (optional; add to globals.css if you want a true fadeIn):
-@keyframes fadeIn { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: translateY(0) } }
-*/
