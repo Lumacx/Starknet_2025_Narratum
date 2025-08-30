@@ -5,11 +5,32 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { signOut, signInAnonymously, updateProfile, reload } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import {
+  doc,
+  setDoc,
+  collection,
+  onSnapshot,
+  orderBy,
+  getDoc,
+} from 'firebase/firestore';
 
 import { useAuth } from '@/context/AuthContext';
 import { auth, db } from '@/lib/firebase';
 import AvatarUploader from '@/components/AvatarUploader';
+
+type FavoriteItem = {
+  storyId: string;
+  createdAt?: any;
+};
+
+type StoryLite = {
+  id: string;
+  title?: string;
+  coverImageUrl?: string;
+  genres?: string[];
+  averageRating?: number;
+  ratingCount?: number;
+};
 
 const ProfilePage: React.FC = () => {
   const { user, starknetAddress, loading, logout } = useAuth();
@@ -17,6 +38,11 @@ const ProfilePage: React.FC = () => {
   const [message, setMessage] = useState('');
   const [avatarOverride, setAvatarOverride] = useState<string | null>(null);
   const isLoggedIn = !!user || !!starknetAddress;
+
+  // NEW: Favorites state
+  const [favs, setFavs] = useState<FavoriteItem[]>([]);
+  const [favStories, setFavStories] = useState<StoryLite[]>([]);
+  const [favLoading, setFavLoading] = useState(true);
 
   // If the user connected ONLY via Starknet, ensure we have an anonymous Firebase user
   useEffect(() => {
@@ -106,14 +132,73 @@ const ProfilePage: React.FC = () => {
     setMessage('Avatar updated successfully.');
   };
 
-  const contentImages = [
-    'https://placehold.co/160x160/A88F72/FFFFFF?text=Story+1',
-    'https://placehold.co/160x160/8B6F4E/FFFFFF?text=Story+2',
-    'https://placehold.co/160x160/CBBBA0/FFFFFF?text=Story+3',
-    'https://placehold.co/160x160/F0E6D2/4A3B31?text=Story+4',
-    'https://placehold.co/160x160/D4E1EE/4A3B31?text=Story+5',
-    'https://placehold.co/160x160/F3E4D7/4A3B31?text=Story+6',
-  ];
+  /* =========================
+     FAVORITES: live subscribe
+     ========================= */
+  useEffect(() => {
+    if (!user) {
+      setFavs([]);
+      setFavStories([]);
+      setFavLoading(false);
+      return;
+    }
+    setFavLoading(true);
+    const q = orderBy('createdAt', 'desc');
+    const unsub = onSnapshot(
+      // users/{uid}/favorites ordered by createdAt
+      collection(db, 'users', user.uid, 'favorites'),
+      (snap) => {
+        const items: FavoriteItem[] = [];
+        snap.forEach((d) => items.push({ storyId: d.id, ...(d.data() as any) }));
+        // NOTE: orderBy requires composite index; if not set, we just rely on client sort
+        items.sort((a, b) => {
+          const at = (a.createdAt?.toMillis?.() ?? 0);
+          const bt = (b.createdAt?.toMillis?.() ?? 0);
+          return bt - at;
+        });
+        setFavs(items);
+      }
+    );
+
+    return () => unsub();
+  }, [user]);
+
+  // Fetch the story docs for the current favorites
+  useEffect(() => {
+    const loadStories = async () => {
+      if (!favs.length) {
+        setFavStories([]);
+        setFavLoading(false);
+        return;
+      }
+      const fetched: StoryLite[] = [];
+      await Promise.all(
+        favs.map(async (f) => {
+          const sRef = doc(db, 'stories', f.storyId);
+          const sSnap = await getDoc(sRef);
+          if (sSnap.exists()) {
+            const d = sSnap.data() as any;
+            fetched.push({
+              id: sSnap.id,
+              title: d.title,
+              coverImageUrl: d.coverImageUrl,
+              genres: d.genres ?? [],
+              averageRating:
+                typeof d.averageRating === 'number'
+                  ? d.averageRating
+                  : d.ratingCount
+                    ? (d.ratingSum ?? 0) / d.ratingCount
+                    : undefined,
+              ratingCount: d.ratingCount ?? 0,
+            });
+          }
+        })
+      );
+      setFavStories(fetched);
+      setFavLoading(false);
+    };
+    loadStories();
+  }, [favs]);
 
   if (loading || !isLoggedIn) {
     return (
@@ -181,18 +266,72 @@ const ProfilePage: React.FC = () => {
         <hr className="separator border-0 h-0.5 bg-[#B09A7A] my-8" />
 
         <nav className="profile-navigation flex justify-around items-center mb-8 px-2 md:px-4 flex-wrap gap-y-4">
-          <button onClick={() => setMessage('My Stories clicked!')} className="nav-link text-lg font-bold uppercase tracking-wide px-3 py-1.5 text-[#3A4B5C] dark:text-[#E0C9A0] hover:text-[#8B6F4E] dark:hover:text-[#3A4B5C]">MY STORIES</button>
-          <button onClick={() => setMessage('Drafts clicked!')} className="nav-link text-lg font-bold uppercase tracking-wide px-3 py-1.5 text-[#3A4B5C] dark:text-[#E0C9A0] hover:text-[#8B6F4E] dark:hover:text-[#3A4B5C]">DRAFTS</button>
-          <button onClick={() => setMessage('Favorites clicked!')} className="nav-link text-lg font-bold uppercase tracking-wide px-3 py-1.5 text-[#3A4B5C] dark:text-[#E0C9A0] hover:text-[#8B6F4E] dark:hover:text-[#3A4B5C]">FAVORITES</button>
+          <button
+            onClick={() => setMessage('My Stories clicked!')}
+            className="nav-link text-lg font-bold uppercase tracking-wide px-3 py-1.5 text-[#3A4B5C] dark:text-[#E0C9A0] hover:text-[#8B6F4E] dark:hover:text-[#3A4B5C]"
+          >
+            MY STORIES
+          </button>
+          <button
+            onClick={() => setMessage('Drafts clicked!')}
+            className="nav-link text-lg font-bold uppercase tracking-wide px-3 py-1.5 text-[#3A4B5C] dark:text-[#E0C9A0] hover:text-[#8B6F4E] dark:hover:text-[#3A4B5C]"
+          >
+            DRAFTS
+          </button>
+          <button
+            onClick={() => {
+              setMessage('Favorites clicked!');
+              // easy anchor jump
+              const el = document.getElementById('favorites-section');
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
+            className="nav-link text-lg font-bold uppercase tracking-wide px-3 py-1.5 text-[#3A4B5C] dark:text-[#E0C9A0] hover:text-[#8B6F4E] dark:hover:text-[#3A4B5C]"
+          >
+            FAVORITES
+          </button>
         </nav>
 
-        <main className="content-grid flex justify-center gap-5 flex-wrap">
-          {contentImages.map((src, index) => (
-            <a key={index} href={`#story${index + 1}`} onClick={(e) => { e.preventDefault(); setMessage('Story clicked!'); }} className="content-card w-40 bg-[#F0E6D2] border-3 border-[#A88F72] rounded-lg p-1.5 block shadow-sm transition-transform duration-200 ease-in-out hover:-translate-y-1 hover:shadow-md">
-              <img src={src} alt={`Story ${index + 1}`} className="w-full h-auto block rounded-sm" />
-            </a>
-          ))}
-        </main>
+        {/* =============== FAVORITES GRID =============== */}
+        <section id="favorites-section" className="w-full mt-2">
+          <h2 className="text-2xl md:text-3xl font-bold mb-4">My Favorites</h2>
+
+          {favLoading ? (
+            <p className="text-sm text-[#8FA0AF]">Loading favorites…</p>
+          ) : favStories.length === 0 ? (
+            <p className="text-sm text-[#8FA0AF]">You haven’t added any favorites yet.</p>
+          ) : (
+            <div className="content-grid flex justify-center gap-5 flex-wrap">
+              {favStories.map((s) => (
+                <Link
+                  key={s.id}
+                  href={`/story/${s.id}`}
+                  className="content-card w-40 bg-[#F0E6D2] border-3 border-[#A88F72] rounded-lg p-1.5 block shadow-sm transition-transform duration-200 ease-in-out hover:-translate-y-1 hover:shadow-md"
+                >
+                  <div className="w-full h-40 mb-2 rounded-sm overflow-hidden">
+                    <img
+                      src={s.coverImageUrl || 'https://placehold.co/300x200/BFA071/1A2533?text=Image+Not+Found'}
+                      alt={s.title || 'Story'}
+                      className="w-full h-full object-cover block"
+                    />
+                  </div>
+                  <div className="px-0.5">
+                    <h3 className="text-base font-bold leading-tight min-h-[2.4rem] text-[#3A4B5C]">
+                      {s.title || 'Untitled Story'}
+                    </h3>
+                    {s.genres?.length ? (
+                      <p className="text-[11px] text-[#6B7280]">{s.genres.join(', ')}</p>
+                    ) : null}
+                    {typeof s.averageRating === 'number' ? (
+                      <p className="text-[11px] text-[#6B7280] mt-0.5">⭐ {s.averageRating.toFixed(1)} ({s.ratingCount})</p>
+                    ) : (
+                      <p className="text-[11px] text-[#6B7280] mt-0.5">No ratings yet</p>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );
