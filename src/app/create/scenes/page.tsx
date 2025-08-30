@@ -1,3 +1,4 @@
+// src/app/create/scenes/page.tsx
 'use client';
 
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
@@ -21,8 +22,6 @@ import {
   listAll,
   getDownloadURL,
   getMetadata,
-  uploadBytes,
-  uploadString,
 } from 'firebase/storage';
 
 /* ------------------------------------------------------------------ */
@@ -61,14 +60,6 @@ type GalleryItem = {
   meta?: GalleryMeta;
 };
 
-type SceneData = {
-  index: number;
-  text: string;
-  image?: { url: string; name?: string };
-  audio?: { url: string; name?: string };
-  references?: Array<{ url: string; name?: string; category?: AssetCategory }>;
-};
-
 type LangCode =
   | 'en' | 'es' | 'pt' | 'fr' | 'de'
   | 'it' | 'ja' | 'ko' | 'zh' | 'hi' | 'ar';
@@ -95,6 +86,35 @@ const GALLERY_TABS: Array<{
   { key: 'audioEffects',    label: 'Sound FX (MP3)',   kind: 'audio' },
   { key: 'videos',          label: 'Videos (MP4)',     kind: 'video' },
 ];
+
+/* ----- Scene/Story types for merged flow ----- */
+
+type Scene = {
+  id: string;
+  index: number;
+  title?: string;
+  text?: string;
+  imageUrl?: string;
+  imageName?: string;
+  audioUrl?: string;
+  audioName?: string;
+  voiceId?: string;              // per-scene override (optional)
+  durationMs?: number;
+};
+
+type StoryDoc = {
+  title?: string;
+  synopsis?: string;
+  genres?: string[];
+  language?: LangCode;
+  voiceId?: string;              // story-level default voice (optional)
+  reader?: { avatarUrl?: string; backgroundUrl?: string };
+  scenes?: Scene[];
+  status?: 'draft' | 'published';
+  isPublic?: boolean;
+  publishedAt?: any;
+  updatedAt?: any;
+};
 
 /* ----- UI helpers ----- */
 function classNames(...xs: (string | false | null | undefined)[]) {
@@ -175,16 +195,6 @@ function extractImageAndModel(json: any): { dataUrl?: string; modelUsed?: string
   return {};
 }
 
-function dataURLtoBlob(dataurl: string) {
-  const arr = dataurl.split(',');
-  const mimeMatch = arr[0].match(/:(.*?);/);
-  const mime = mimeMatch ? mimeMatch[1] : 'image/png';
-  const bstr = atob(arr[1]);
-  const u8arr = new Uint8Array(bstr.length);
-  for (let i = 0; i < bstr.length; i++) u8arr[i] = bstr.charCodeAt(i);
-  return new Blob([u8arr], { type: mime });
-}
-
 /* ------------------------------------------------------------------ */
 /* Component                                                           */
 /* ------------------------------------------------------------------ */
@@ -195,73 +205,27 @@ export default function ScenesPage() {
   const searchParams = useSearchParams();
   const storyId = searchParams.get('storyId') || undefined;
 
-  /* -------- Load story context (title/genres/synopsis/language) -------- */
-  const [context, setContext] = useState<{ title?: string; genres?: string[]; synopsis?: string; language: LangCode }>({
-    title: '',
-    genres: [],
-    synopsis: '',
-    language: 'en',
-  });
-  const langLabel = LANG_LABELS[context.language] || 'English';
-
-  useEffect(() => {
-    (async () => {
-      // Prefer Firestore story doc
-      let langFromDoc: LangCode | undefined;
-      try {
-        if (user && storyId) {
-          const ref = fsDoc(db, 'stories', storyId);
-          const snap = await getDoc(ref);
-          if (snap.exists()) {
-            const s = snap.data() as any;
-            langFromDoc = (s?.language as LangCode) || undefined;
-            setContext(prev => ({
-              ...prev,
-              title: s?.title || prev.title,
-              genres: Array.isArray(s?.genres) ? s.genres : prev.genres,
-              synopsis: s?.synopsis || prev.synopsis,
-              language: (langFromDoc || prev.language) as LangCode,
-            }));
-            return;
-          }
-        }
-      } catch (e) {
-        console.error('Failed loading story doc for context', e);
-      }
-      // Fallback to localStorage draft
-      try {
-        const raw = localStorage.getItem(DRAFT_KEY);
-        const parsed = raw ? JSON.parse(raw) : {};
-        const fallbackLang = (parsed?.language as LangCode) || 'en';
-        setContext(prev => ({
-          ...prev,
-          title: parsed?.title || prev.title,
-          genres: Array.isArray(parsed?.genres) ? parsed.genres : prev.genres,
-          synopsis: parsed?.synopsis || prev.synopsis,
-          language: fallbackLang,
-        }));
-      } catch {}
-    })();
-  }, [user, storyId]);
-
-  /* -------- Reader UI + scene state -------- */
+  /* -------- Story context (title/genres/synopsis/language/voice) -------- */
+  const [story, setStory] = useState<StoryDoc | null>(null);
   const [readerUI, setReaderUI] = useState({
     avatarUrl: DEFAULTS.avatarUrl,
     backgroundUrl: DEFAULTS.backgroundUrl,
   });
-  const [scene, setScene] = useState<SceneData>({
-    index: 1,
-    text: '',
-    references: [],
-  });
-  const [pageCount, setPageCount] = useState<number>(3);
+  const [scenes, setScenes] = useState<Scene[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Prompts / descriptions / audio settings
+  const langLabel = useMemo(
+    () => LANG_LABELS[(story?.language || 'en') as LangCode] || 'English',
+    [story?.language]
+  );
+
+  // Local per-scene UI helpers (kept from your file)
   const [imagePrompt, setImagePrompt] = useState('');
   const [imageDesc, setImageDesc] = useState('');
   const [narrationText, setNarrationText] = useState('');
-  const [voice, setVoice] = useState('Kore'); // same set as integration demo
+  const [voice, setVoice] = useState('Kore');
   const [tone, setTone] = useState<'a normal' | 'a cheerful' | 'a sad' | 'an excited' | 'a whispering'>('a normal');
+
   const [isGenImage, setIsGenImage] = useState(false);
   const [isGenAudio, setIsGenAudio] = useState(false);
   const [isSuggesting, setIsSuggesting] = useState(false);
@@ -271,77 +235,79 @@ export default function ScenesPage() {
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [loadingGallery, setLoadingGallery] = useState(false);
 
-  /* -------- Hydrate initial scene from story or draft -------- */
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      // Firestore first
-      try {
-        if (user && storyId) {
-          const ref = fsDoc(db, 'stories', storyId);
-          const snap = await getDoc(ref);
-          if (snap.exists()) {
-            const data = snap.data() as any;
-            setReaderUI({
-              avatarUrl: data?.reader?.avatarUrl || DEFAULTS.avatarUrl,
-              backgroundUrl: data?.reader?.backgroundUrl || DEFAULTS.backgroundUrl,
-            });
-            const scenes = data?.scenes || [];
-            if (Array.isArray(scenes) && scenes.length) {
-              setPageCount(scenes.length);
-              const s1 = scenes[0];
-              setScene({
-                index: 1,
-                text: s1?.text || '',
-                image: s1?.imageUrl ? { url: s1.imageUrl, name: s1.imageName || '' } : undefined,
-                audio: s1?.audioUrl ? { url: s1.audioUrl, name: s1.audioName || '' } : undefined,
-                references: [],
-              });
-              setImagePrompt(s1?.imagePrompt || '');
-              setImageDesc(s1?.imageDescription || '');
-              setNarrationText(s1?.narrationText || s1?.text || '');
-              return;
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('Could not load scenes from story', e);
-      }
+  // AI Scene-Outline ideas
+  const [ideasLoading, setIdeasLoading] = useState(false);
+  const [ideas, setIdeas] = useState<Array<{ title: string; outline: string }>>([]);
 
-      // Draft fallback
+  // Derived current scene
+  const currentScene = scenes[currentIndex] || null;
+
+  /* -------- Load story + scenes from Firestore -------- */
+  useEffect(() => {
+    (async () => {
+      if (!storyId) return;
+
       try {
-        const raw = localStorage.getItem(DRAFT_KEY);
-        if (raw) {
-          const draft = JSON.parse(raw);
-          if (draft?.reader) {
-            setReaderUI({
-              avatarUrl: draft.reader.avatarUrl || DEFAULTS.avatarUrl,
-              backgroundUrl: draft.reader.backgroundUrl || DEFAULTS.backgroundUrl,
-            });
-          }
-          const scenes = draft?.scenes || (draft?.pages ? Array.from({ length: draft.pages }, () => ({})) : []);
-          if (scenes?.length) {
-            setPageCount(scenes.length);
-            const s1 = scenes[0];
-            setScene(s => ({
-              ...s,
-              index: 1,
-              text: s1?.text || '',
-              image: s1?.imageUrl ? { url: s1.imageUrl, name: s1.imageName || '' } : undefined,
-              audio: s1?.audioUrl ? { url: s1.audioUrl, name: s1.audioName || '' } : undefined,
-              references: [],
-            }));
-            setImagePrompt(s1?.imagePrompt || '');
-            setImageDesc(s1?.imageDescription || '');
-            setNarrationText(s1?.narrationText || s1?.text || '');
-            return;
-          }
-        }
-      } catch {}
-      // Defaults already set
+        const storyRef = fsDoc(db, 'stories', storyId);
+        const snap = await getDoc(storyRef);
+        let doc: StoryDoc = {};
+        if (snap.exists()) doc = (snap.data() as StoryDoc) || {};
+
+        // normalize scenes
+        const fixedScenes: Scene[] = (doc.scenes || []).map((s, i) => ({
+          id: s.id || crypto.randomUUID(),
+          index: Number.isFinite(s.index) ? s.index : i,
+          title: s.title ?? `Scene ${i + 1}`,
+          text: s.text || '',
+          imageUrl: s.imageUrl || undefined,
+          imageName: s.imageName || undefined,
+          audioUrl: s.audioUrl || undefined,
+          audioName: s.audioName || undefined,
+          voiceId: s.voiceId || undefined,
+          durationMs: s.durationMs || undefined,
+        })).sort((a, b) => a.index - b.index);
+
+        setStory({
+          title: doc.title || '',
+          synopsis: doc.synopsis || '',
+          genres: doc.genres || [],
+          language: (doc.language as LangCode) || 'en',
+          voiceId: doc.voiceId || undefined,
+          reader: {
+            avatarUrl: doc.reader?.avatarUrl || DEFAULTS.avatarUrl,
+            backgroundUrl: doc.reader?.backgroundUrl || DEFAULTS.backgroundUrl,
+          },
+          status: doc.status || 'draft',
+          isPublic: !!doc.isPublic,
+          scenes: fixedScenes,
+        });
+
+        setReaderUI({
+          avatarUrl: doc.reader?.avatarUrl || DEFAULTS.avatarUrl,
+          backgroundUrl: doc.reader?.backgroundUrl || DEFAULTS.backgroundUrl,
+        });
+        setScenes(fixedScenes);
+
+        // init scene index from URL or localStorage
+        const fromUrl = Number.parseInt(searchParams.get('scene') || '', 10);
+        const fromLs  = Number.parseInt(localStorage.getItem('reader:lastScene') || '', 10);
+        const initial = Number.isFinite(fromUrl) ? fromUrl : (Number.isFinite(fromLs) ? fromLs : 0);
+        setCurrentIndex(Math.max(0, Math.min(initial, Math.max(fixedScenes.length - 1, 0))));
+      } catch (e) {
+        console.error('Failed to load story', e);
+      }
     })();
-    return () => { cancelled = true; };
-  }, [user, storyId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storyId]);
+
+  // keep URL and localStorage in sync
+  useEffect(() => {
+    const sp2 = new URLSearchParams(window.location.search);
+    if (storyId) sp2.set('storyId', storyId);
+    sp2.set('scene', String(currentIndex));
+    window.history.replaceState({}, '', `?${sp2.toString()}`);
+    localStorage.setItem('reader:lastScene', String(currentIndex));
+  }, [currentIndex, storyId]);
 
   /* -------- Gallery loader (Storage-based, consistent with Support) -------- */
   const loadGallery = useCallback(async (category: AssetCategory) => {
@@ -391,7 +357,21 @@ export default function ScenesPage() {
     void loadGallery(tab);
   }, [user, activeTab, loadGallery]);
 
-  /* -------- Actions: select for scene / reference / describe -------- */
+  /* -------- Helpers to update story/scenes in state -------- */
+  function updateCurrentScene(patch: Partial<Scene>) {
+    setScenes(prev => {
+      const cur = prev[currentIndex];
+      if (!cur) return prev;
+      const next = [...prev];
+      next[currentIndex] = { ...cur, ...patch };
+      return next;
+    });
+  }
+  function updateStoryPatch(patch: Partial<StoryDoc>) {
+    setStory(prev => (prev ? { ...prev, ...patch } : prev));
+  }
+
+  /* -------- Actions: select from gallery / describe / reference -------- */
   const canDescribeSelected = (item: GalleryItem) => {
     const k = inferKindFromPath(item.fullPath, item.contentType);
     return k === 'image';
@@ -400,7 +380,7 @@ export default function ScenesPage() {
   async function handleDescribe(item: GalleryItem) {
     try {
       if (!canDescribeSelected(item)) return;
-      const lang = (context.language || 'en') as LangCode;
+      const lang = (story?.language || 'en') as LangCode;
       const langLabel = LANG_LABELS[lang] || 'English';
       const promptText =
         lang === 'es'
@@ -419,41 +399,38 @@ export default function ScenesPage() {
   function handleSelectForScene(item: GalleryItem) {
     const kind = inferKindFromPath(item.fullPath, item.contentType);
     if (kind === 'image') {
-      setScene(s => ({ ...s, image: { url: item.url, name: item.name } }));
+      updateCurrentScene({ imageUrl: item.url, imageName: item.name });
     } else if (kind === 'audio') {
-      setScene(s => ({ ...s, audio: { url: item.url, name: item.name } }));
+      updateCurrentScene({ audioUrl: item.url, audioName: item.name });
     } else {
       alert('Only image or audio can be selected directly for a scene.');
     }
   }
 
+  // Soft references list (kept in component only for now)
+  const [references, setReferences] = useState<Array<{ url: string; name?: string; category?: AssetCategory }>>([]);
   function handleUseAsReference(item: GalleryItem) {
-    setScene(s => ({
-      ...s,
-      references: [
-        ...(s.references || []),
-        { url: item.url, name: item.name, category: (activeTab as AssetCategory) },
-      ],
-    }));
+    setReferences((prev) => [...prev, { url: item.url, name: item.name, category: activeTab as AssetCategory }]);
   }
 
   /* -------- AI: Generate Image (Imagen 4 via /api/generate-image) -------- */
-  async function handleGenerateImage() {
-    if (!imagePrompt.trim() && !context.synopsis && !(context.genres?.length)) {
+  const handleGenerateImage = useCallback(async () => {
+    if (!story) return;
+    if (!imagePrompt.trim() && !story.synopsis && !(story.genres?.length)) {
       alert('Please write an image description or fill the story synopsis/genres on the Begin page.');
       return;
     }
     setIsGenImage(true);
     try {
       const { prompt, negativePrompt } = composePromptForImagen(imagePrompt, {
-        title: context.title,
-        genres: context.genres,
-        synopsis: context.synopsis,
-        language: context.language,
+        title: story.title,
+        genres: story.genres,
+        synopsis: story.synopsis,
+        language: story.language,
       });
 
-      // Optionally blend "references" names into prompt (soft hint)
-      const refNames = (scene.references || []).map(r => r.name).filter(Boolean);
+      // Optionally blend soft reference names
+      const refNames = (references || []).map(r => r.name).filter(Boolean);
       const promptWithRefs = refNames.length
         ? `${prompt}\nVISUAL REFERENCES (soft influence): ${refNames.join(', ')}.`
         : prompt;
@@ -467,24 +444,25 @@ export default function ScenesPage() {
       if (!r.ok) throw new Error(json?.error || 'Image generation failed');
       const { dataUrl } = extractImageAndModel(json);
       if (!dataUrl) throw new Error('No image returned by generator.');
-      setScene(s => ({ ...s, image: { url: dataUrl, name: `scene-${scene.index}-ai.png` } }));
+      updateCurrentScene({ imageUrl: dataUrl, imageName: `scene-${currentIndex + 1}-ai.png` });
     } catch (e: any) {
       alert(e?.message || 'Image generation error');
     } finally {
       setIsGenImage(false);
     }
-  }
+  }, [story, imagePrompt, references, currentIndex]);
 
-  /* -------- Auto-suggest scene text + image prompt (expects backend) ----- */
+  /* -------- Auto-suggest scene text + image prompt (kept from your flow) ----- */
   async function handleSuggestForScene() {
+    if (!story) return;
     setIsSuggesting(true);
     try {
       const payload = {
-        title: context.title,
-        genres: context.genres,
-        synopsis: context.synopsis,
-        language: context.language,
-        sceneIndex: scene.index,
+        title: story.title,
+        genres: story.genres,
+        synopsis: story.synopsis,
+        language: story.language,
+        sceneIndex: currentIndex + 1,
       };
       const res = await fetch('/api/suggest-scene', {
         method: 'POST',
@@ -493,7 +471,7 @@ export default function ScenesPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Suggestion failed');
-      if (json?.storyText) setScene(s => ({ ...s, text: json.storyText }));
+      if (json?.storyText) updateCurrentScene({ text: json.storyText });
       if (json?.imagePrompt) setImagePrompt(json.imagePrompt);
       if (!json?.storyText && !json?.imagePrompt) throw new Error('No suggestions returned.');
     } catch (e: any) {
@@ -506,91 +484,202 @@ export default function ScenesPage() {
     }
   }
 
-  /* -------- TTS (Gemini AUDIO via /api/generate-audio) ------------------- */
-  async function handleGenerateAudio() {
-    const text = (narrationText || scene.text || '').trim();
-    if (!text) {
-      alert('Please enter narration text (or use scene text).');
+  /* -------- AI Scene-Outline Ideas (new optional panel) ------------------ */
+  async function handleGenerateIdeas() {
+    if (!story) return;
+    setIdeasLoading(true);
+    setIdeas([]);
+    try {
+      // intenta primero tu ruta
+      let res = await fetch('/api/scene-outline', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idea: story.synopsis || story.title || 'Story', pages: 5, language: story.language || 'en' }),
+      });
+  
+      let data = await res.json();
+      if (!res.ok) {
+        // fallback a la otra ruta si existiese
+        res = await fetch('/api/generate-scene-outline', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            story: { id: storyId, title: story.title, synopsis: story.synopsis, genres: story.genres },
+            scenes: scenes.map((s) => ({ title: s.title, text: s.text })),
+            request: { count: 5, mode: 'continue-or-branch' },
+          }),
+        });
+        data = await res.json();
+        if (!res.ok) throw new Error(data?.error || 'AI outline endpoint failed');
+      }
+  
+      const ideasData = Array.isArray(data.outline)
+        ? data.outline.map((p: any, i: number) => ({
+            title: `Beat ${i + 1}`,
+            outline: String(p?.storyText || '').trim(),
+            imagePrompt: String(p?.imagePrompt || '').trim(),
+          }))
+        : (Array.isArray(data.ideas) ? data.ideas : []);
+  
+      setIdeas(ideasData.map((x: any, i: number) => ({
+        title: x.title || `Beat ${i + 1}`,
+        outline: x.outline || x.storyText || '',
+      })));
+    } catch (e: any) {
+      alert(e?.message || 'Could not generate ideas.');
+    } finally {
+      setIdeasLoading(false);
+    }
+  } 
+
+  function applyIdeaToCurrent(idea: { title: string; outline: string }) {
+    if (!currentScene) return;
+    const mergedText = currentScene.text?.trim()
+      ? `${currentScene.text.trim()}\n\n${idea.outline.trim()}`
+      : idea.outline.trim();
+    updateCurrentScene({ title: idea.title || currentScene.title, text: mergedText });
+  }
+
+  function addIdeaAsNewScene(idea: { title: string; outline: string }) {
+    setScenes(prev => ([
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        index: prev.length,
+        title: idea.title || `Scene ${prev.length + 1}`,
+        text: idea.outline,
+      }
+    ]));
+  }
+
+  /* -------- AUDIO: Single player with autoplay gating + preload next ---- */
+  const audioRef = React.useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const autoplayUnlockedRef = React.useRef(false);
+
+  // bind to current scene audio
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    const src = currentScene?.audioUrl || '';
+    if (!src) {
+      setIsPlaying(false);
+      setDuration(0);
+      setCurrentTime(0);
+      el.removeAttribute('src');
+      el.load();
       return;
     }
-    setIsGenAudio(true);
-    try {
-      const body = {
-        text,
-        voice,
-        tone, // e.g., "a cheerful"
-        language: context.language,
-        model: 'gemini-2.5-flash-preview-tts',
-      };
-      const r = await fetch('/api/generate-audio', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const json = await r.json();
-      if (!r.ok) throw new Error(json?.error || 'TTS failed');
-      if (!json?.audioUrl) throw new Error('No audioUrl returned by TTS route.');
-      setScene(s => ({ ...s, audio: { url: json.audioUrl, name: `scene-${scene.index}-narration.mp3` } }));
-    } catch (e: any) {
-      alert(
-        (e?.message || 'TTS failed') +
-        '\n\nTip: add /api/generate-audio that proxies Gemini “AUDIO” modality and returns { audioUrl } (data: URL or signed Storage URL).'
-      );
-    } finally {
-      setIsGenAudio(false);
+    el.src = src;
+    el.load();
+    if (autoplayUnlockedRef.current) {
+      el.play().then(() => setIsPlaying(true)).catch(() => {});
     }
+  }, [currentScene?.audioUrl, currentIndex]);
+
+  // preload next scene
+  useEffect(() => {
+    const next = scenes[currentIndex + 1];
+    if (!next?.audioUrl) return; // devolver void está bien
+  
+    const link = document.createElement('link');
+    link.rel = 'prefetch';         // o 'preload' si prefieres
+    link.as = 'audio';
+    link.href = next.audioUrl;
+    document.head.appendChild(link);
+  
+    return () => {
+      // asegúrate de devolver una FUNCIÓN que haga el cleanup
+      if (link.parentNode) link.parentNode.removeChild(link);
+    };
+  }, [currentIndex, scenes]);
+  
+
+  // audio events
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    const onLoaded = () => setDuration(el.duration || 0);
+    const onTime = () => setCurrentTime(el.currentTime || 0);
+    const onWaiting = () => setIsBuffering(true);
+    const onPlaying = () => setIsBuffering(false);
+    const onEnded = () => { setIsPlaying(false); if (currentIndex < scenes.length - 1) setCurrentIndex(i => i + 1); };
+    el.addEventListener('loadedmetadata', onLoaded);
+    el.addEventListener('timeupdate', onTime);
+    el.addEventListener('waiting', onWaiting);
+    el.addEventListener('playing', onPlaying);
+    el.addEventListener('ended', onEnded);
+    return () => {
+      el.removeEventListener('loadedmetadata', onLoaded);
+      el.removeEventListener('timeupdate', onTime);
+      el.removeEventListener('waiting', onWaiting);
+      el.removeEventListener('playing', onPlaying);
+      el.removeEventListener('ended', onEnded);
+    };
+  }, [currentIndex, scenes.length]);
+
+  function onUserGesturePlay() {
+    autoplayUnlockedRef.current = true;
+    audioRef.current?.play().then(() => setIsPlaying(true)).catch(() => {});
+  }
+  function onPause() {
+    audioRef.current?.pause();
+    setIsPlaying(false);
   }
 
-  /* -------- Save scene to Firestore ------------------------------------- */
-  const canSave =
-    !!user && (scene.text.trim().length > 0 || scene.image?.url || scene.audio?.url);
+  /* -------- NAV + SAVE/PUBLISH/READER ---------------------------------- */
+  function goPrev() { setCurrentIndex(i => Math.max(0, i - 1)); }
+  function goNext() { setCurrentIndex(i => Math.min(scenes.length - 1, i + 1)); }
 
-  async function handleSave() {
-    if (!user) return;
+  const readerHref = storyId ? `/ereader?storyId=${encodeURIComponent(storyId)}` : '#';
+
+  async function handleSaveStory() {
+    if (!storyId) return;
     try {
-      const scenesCol = collection(db, 'users', user.uid, 'draftScenes');
-      const docRef = fsDoc(scenesCol, `scene-${scene.index || 1}`);
-      await setDoc(docRef, {
-        ...scene,
-        imagePrompt,
-        imageDescription: imageDesc || null,
-        narrationText: narrationText || null,
+      const storyRef = fsDoc(db, 'stories', storyId);
+      const nextDoc: Partial<StoryDoc> = {
+        title: story?.title || '',
+        synopsis: story?.synopsis || '',
+        genres: story?.genres || [],
+        language: (story?.language as LangCode) || 'en',
+        voiceId: story?.voiceId, // default voice if you add a selector
+        reader: readerUI,
+        scenes: scenes.map((s, i) => ({ ...s, index: i })),
         updatedAt: serverTimestamp(),
-        createdAt: serverTimestamp(),
-      }, { merge: true });
-
-      if (storyId) {
-        const storyRef = fsDoc(db, 'stories', storyId);
-        const snap = await getDoc(storyRef);
-        const existing = (snap.exists() && (snap.data() as any)?.scenes) || [];
-        const idx = (scene.index || 1) - 1;
-        const nextScenes = [...existing];
-        nextScenes[idx] = {
-          text: scene.text || '',
-          imageUrl: scene.image?.url || null,
-          imageName: scene.image?.name || null,
-          audioUrl: scene.audio?.url || null,
-          audioName: scene.audio?.name || null,
-          imagePrompt: imagePrompt || '',
-          imageDescription: imageDesc || '',
-          narrationText: narrationText || '',
-        };
-        await updateDoc(storyRef, {
-          scenes: nextScenes,
-          reader: {
-            avatarUrl: readerUI.avatarUrl,
-            backgroundUrl: readerUI.backgroundUrl,
-          },
-          updatedAt: serverTimestamp(),
-          language: context.language,
-        });
-      }
-
-      alert('Scene saved!');
-    } catch (e: any) {
-      alert(e?.message || 'Failed to save scene.');
+      };
+      await updateDoc(storyRef, nextDoc);
+      alert('Story saved.');
+    } catch (e) {
+      console.error(e);
+      alert('Failed to save story.');
     }
   }
+
+  async function handlePublishStory() {
+    if (!storyId) return;
+    try {
+      const storyRef = fsDoc(db, 'stories', storyId);
+      await updateDoc(storyRef, {
+        status: 'published',
+        isPublic: true,
+        publishedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      alert('Story published! It will now appear in Discovery and your Profile.');
+    } catch (e) {
+      console.error(e);
+      alert('Failed to publish story.');
+    }
+  }
+
+  /* -------- Keyboard nav (optional) ------------------------------------ */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight' && currentIndex < scenes.length - 1) goNext();
+      if (e.key === 'ArrowLeft' && currentIndex > 0) goPrev();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [currentIndex, scenes.length]);
 
   /* -------- UI ---------------------------------------------------------- */
   if (loading) {
@@ -642,9 +731,35 @@ export default function ScenesPage() {
         </div>
       </header>
 
-      {/* Scrollable workspace — add bottom padding so global App footer won't cover local footer */}
+      {/* Workspace */}
       <main className="mx-auto max-w-6xl px-4 pb-40">
         <div className="min-h-[calc(100vh-140px)] overflow-y-auto py-6">
+          {/* Top actions */}
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-[#3D4F60]/10 dark:border-[#4B5A6B]/20 bg-white/60 dark:bg-[#0f1620]/60 p-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <input
+                className="min-w-0 flex-1 rounded-lg border border-[#3D4F60]/30 dark:border-[#4B5A6B]/30 bg-white dark:bg-[#0e1520] px-3 py-2 text-sm"
+                placeholder="Story title"
+                value={story?.title || ''}
+                onChange={(e) => updateStoryPatch({ title: e.target.value })}
+              />
+              {/* optional: story default voice selector can go here later */}
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={goPrev} disabled={currentIndex <= 0} className="rounded-lg border px-3 py-2 text-sm bg-white/70 dark:bg-[#1A2533] disabled:opacity-50">← Previous scene</button>
+              <button onClick={goNext} disabled={currentIndex >= Math.max(0, scenes.length - 1)} className="rounded-lg border px-3 py-2 text-sm bg-white/70 dark:bg-[#1A2533] disabled:opacity-50">Next scene →</button>
+              <button onClick={handleSaveStory} className="rounded-lg border border-teal-600/60 bg-teal-600/20 px-3 py-2 text-sm text-teal-900 dark:text-teal-200 hover:bg-teal-600/30">
+                Save Story
+              </button>
+              <Link href={storyId ? `/ereader?storyId=${encodeURIComponent(storyId)}` : '#'} className="rounded-lg border border-indigo-600/60 bg-indigo-600/20 px-3 py-2 text-sm text-indigo-900 dark:text-indigo-200 hover:bg-indigo-600/30">
+                Preview Story
+              </Link>
+              <button onClick={handlePublishStory} className="rounded-lg border border-amber-600/60 bg-amber-600/20 px-3 py-2 text-sm text-amber-900 dark:text-amber-200 hover:bg-amber-600/30">
+                Publish Story
+              </button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* LEFT – Preview & Scene text & AI panels */}
             <section className="space-y-4">
@@ -662,14 +777,14 @@ export default function ScenesPage() {
                     <h2 className="text-sm font-semibold flex items-center gap-2">
                       <ImageIcon className="w-4 h-4" /> Story Preview
                     </h2>
-                    <div className="text-xs opacity-70">Scene #{scene.index || 1}</div>
+                    <div className="text-xs opacity-70">Scene #{currentIndex + 1}</div>
                   </div>
 
                   <div className="aspect-[4/3] w-full rounded-xl overflow-hidden bg-white/60 dark:bg-[#0f1620]/60 grid place-items-center">
-                    {scene.image?.url ? (
+                    {currentScene?.imageUrl ? (
                       <Image
-                        src={scene.image.url}
-                        alt={scene.image?.name ?? 'scene image'}
+                        src={currentScene.imageUrl}
+                        alt={currentScene?.imageName ?? 'scene image'}
                         width={1024}
                         height={768}
                         className="w-full h-full object-cover"
@@ -681,10 +796,23 @@ export default function ScenesPage() {
                   </div>
 
                   <div className="mt-3">
-                    <audio className="w-full" controls src={scene.audio?.url || undefined} />
-                    {!scene.audio?.url && (
-                      <div className="text-xs opacity-70 mt-1">No narration selected</div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {currentScene?.audioUrl ? (
+                        <>
+                          {!isPlaying ? (
+                            <button onClick={onUserGesturePlay} className="px-3 py-1.5 rounded bg-[#3D4F60] text-white">▶ Play</button>
+                          ) : (
+                            <button onClick={onPause} className="px-3 py-1.5 rounded bg-[#3D4F60] text-white">❚❚ Pause</button>
+                          )}
+                          <div className="text-xs opacity-70">
+                            {isBuffering ? 'Buffering… ' : ''}{formatTime(currentTime)} / {formatTime(duration)}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-xs opacity-70">No narration selected</div>
+                      )}
+                    </div>
+                    <audio ref={audioRef} preload="metadata" className="hidden" />
                   </div>
                 </div>
               </div>
@@ -692,7 +820,13 @@ export default function ScenesPage() {
               {/* Scene text + helpers */}
               <div className="rounded-2xl border-2 border-[#3D4F60]/10 dark:border-[#4B5A6B]/20 bg-white/70 dark:bg-[#0f1620]/70 shadow-sm p-3 space-y-3">
                 <div className="flex items-center gap-2">
-                  <label className="text-xs font-semibold">Scene Text</label>
+                  <label className="text-xs font-semibold">Scene Title</label>
+                  <input
+                    value={currentScene?.title || ''}
+                    onChange={(e) => updateCurrentScene({ title: e.target.value })}
+                    className="ml-2 flex-1 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm"
+                    placeholder={`Scene ${currentIndex + 1} title`}
+                  />
                   <button
                     type="button"
                     onClick={handleSuggestForScene}
@@ -702,9 +836,11 @@ export default function ScenesPage() {
                     Auto-Suggest (text + image)
                   </button>
                 </div>
+
+                <label className="text-xs font-semibold">Scene Text</label>
                 <textarea
-                  value={scene.text}
-                  onChange={e => setScene(s => ({ ...s, text: e.target.value }))}
+                  value={currentScene?.text || ''}
+                  onChange={e => updateCurrentScene({ text: e.target.value })}
                   rows={6}
                   className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-2 text-sm"
                   placeholder="Write the story text for this scene…"
@@ -779,24 +915,89 @@ export default function ScenesPage() {
                   </div>
                   <div className="flex gap-2 mt-2">
                     <button
-                      onClick={handleGenerateAudio}
+                      onClick={async () => {
+                        const text = (narrationText || currentScene?.text || '').trim();
+                        if (!text || !currentScene) { alert('Enter narration text first.'); return; }
+                        setIsGenAudio(true);
+                        try {
+                          const r = await fetch('/api/generate-audio', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              text,
+                              voice,
+                              tone,
+                              language: (story?.language || 'en'),
+                              model: 'gemini-2.5-flash-preview-tts',
+                            }),
+                          });
+                          const json = await r.json();
+                          if (!r.ok) throw new Error(json?.error || 'TTS failed');
+                          if (!json?.audioUrl) throw new Error('No audioUrl returned by TTS route.');
+                          updateCurrentScene({
+                            audioUrl: json.audioUrl,
+                            audioName: `scene-${currentIndex + 1}-narration.mp3`,
+                          });
+                        } catch (e: any) {
+                          alert((e?.message || 'TTS failed') + '\n\nTip: ensure /api/generate-audio returns { audioUrl }.');
+                        } finally {
+                          setIsGenAudio(false);
+                        }
+                      }}
                       disabled={isGenAudio}
                       className="px-4 py-2 rounded-md bg-[#3D4F60] text-white disabled:opacity-60"
                     >
                       {isGenAudio ? <Loader2 className="w-4 h-4 animate-spin inline mr-2" /> : null}
-                      Generate Narration (AI)
+                      {currentScene?.audioUrl ? 'Re-generate Narration (AI)' : 'Generate Narration (AI)'}
                     </button>
-                    {scene.audio?.url && (
-                      <a
-                        href={scene.audio.url}
-                        className="px-4 py-2 rounded-md border"
-                        download
-                      >
+                    {currentScene?.audioUrl && (
+                      <a href={currentScene.audioUrl} className="px-4 py-2 rounded-md border" download>
                         Download MP3
                       </a>
                     )}
                   </div>
                 </div>
+              </div>
+
+              {/* Scene-Outline Ideas (AI) */}
+              <div className="rounded-2xl border-2 border-[#3D4F60]/10 dark:border-[#4B5A6B]/20 bg-white/70 dark:bg-[#0f1620]/70 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold">Scene-Outline Ideas (AI)</h3>
+                  <button
+                    onClick={handleGenerateIdeas}
+                    disabled={ideasLoading}
+                    className="rounded-lg border border-fuchsia-600/60 bg-fuchsia-600/20 px-3 py-2 text-xs text-fuchsia-900 dark:text-fuchsia-200 hover:bg-fuchsia-600/30 disabled:opacity-50"
+                  >
+                    {ideasLoading ? 'Generating…' : 'Generate ideas'}
+                  </button>
+                </div>
+                {ideas.length === 0 && !ideasLoading && (
+                  <p className="text-xs opacity-70">Click “Generate ideas” to get 3–5 scene beats you can insert or add as new scenes.</p>
+                )}
+                <ul className="space-y-3">
+                  {ideas.map((idea, idx) => (
+                    <li key={`${idea.title}-${idx}`} className="rounded-xl border border-slate-700/30 bg-white/60 dark:bg-slate-900/50 p-3">
+                      <div className="mb-1 text-[13px] font-medium">{idea.title || `Idea ${idx + 1}`}</div>
+                      <div className="whitespace-pre-wrap text-[12px] leading-relaxed opacity-90">
+                        {idea.outline}
+                      </div>
+                      <div className="mt-2 flex gap-2">
+                        <button
+                          onClick={() => applyIdeaToCurrent(idea)}
+                          className="rounded-md border border-emerald-500/50 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-700 dark:text-emerald-200 hover:bg-emerald-500/20"
+                        >
+                          Insert into current
+                        </button>
+                        <button
+                          onClick={() => addIdeaAsNewScene(idea)}
+                          className="rounded-md border border-indigo-500/50 bg-indigo-500/10 px-2 py-1 text-xs text-indigo-700 dark:text-indigo-200 hover:bg-indigo-500/20"
+                        >
+                          Add as new scene
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               </div>
             </section>
 
@@ -908,11 +1109,11 @@ export default function ScenesPage() {
               </div>
 
               {/* References quick list */}
-              {scene.references && scene.references.length > 0 && (
+              {references.length > 0 && (
                 <div className="rounded-xl border-2 border-[#3D4F60]/40 dark:border-[#4B5A6B]/40 p-3 bg-white/50 dark:bg-[#0f1620]/50">
                   <div className="text-xs font-semibold mb-2">Scene References</div>
                   <ul className="flex flex-wrap gap-2">
-                    {scene.references.map((r, i) => (
+                    {references.map((r, i) => (
                       <li key={i} className="px-2 py-1 text-xs rounded bg-zinc-100 dark:bg-zinc-800">
                         {r.name || r.url.split('/').pop()}
                       </li>
@@ -925,7 +1126,7 @@ export default function ScenesPage() {
         </div>
       </main>
 
-      {/* Local footer for scene nav & save */}
+      {/* Local footer for scene nav (kept; now index-based) */}
       <footer className="sticky bottom-0 z-30 border-t border-[#3D4F60]/10 dark:border-[#4B5A6B]/20 bg-white/80 dark:bg-[#0d1520]/80 backdrop-blur">
         <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
           <div className="text-xs opacity-70">
@@ -933,29 +1134,52 @@ export default function ScenesPage() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setScene(s => ({ ...s, index: Math.max(1, (s.index ?? 1) - 1) }))}
-              className="text-xs px-3 py-1.5 rounded-lg bg-white border-2 border-[#3D4F60]/20 dark:bg-[#1A2533] dark:border-[#4B5A6B]/20"
+              onClick={goPrev}
+              className="text-xs px-3 py-1.5 rounded-lg bg-white border-2 border-[#3D4F60]/20 dark:bg-[#1A2533] dark:border-[#4B5A6B]/20 disabled:opacity-50"
+              disabled={currentIndex <= 0}
             >
               Prev Scene
             </button>
             <button
-              onClick={() => setScene(s => ({ ...s, index: (s.index ?? 1) + 1 }))}
-              className="text-xs px-3 py-1.5 rounded-lg bg-white border-2 border-[#3D4F60]/20 dark:bg-[#1A2533] dark:border-[#4B5A6B]/20"
+              onClick={goNext}
+              className="text-xs px-3 py-1.5 rounded-lg bg-white border-2 border-[#3D4F60]/20 dark:bg-[#1A2533] dark:border-[#4B5A6B]/20 disabled:opacity-50"
+              disabled={currentIndex >= Math.max(0, scenes.length - 1)}
             >
               Next Scene
             </button>
             <button
-              onClick={handleSave}
-              disabled={!canSave}
-              className="inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-[#E97451] text-white disabled:opacity-60"
-              title={user ? '' : 'Sign in to save'}
+              onClick={handleSaveStory}
+              className="inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-[#E97451] text-white"
+              title="Save entire story"
             >
-              {canSave ? <Check className="w-4 h-4" /> : <Loader2 className="w-4 h-4 animate-spin" />}
-              Save Scene
+              <Check className="w-4 h-4" />
+              Save Story
+            </button>
+            <Link
+              href={readerHref}
+              className="text-xs px-3 py-1.5 rounded-lg bg-white border-2 border-[#3D4F60]/20 dark:bg-[#1A2533] dark:border-[#4B5A6B]/20"
+            >
+              Preview Story
+            </Link>
+            <button
+              onClick={handlePublishStory}
+              className="text-xs px-3 py-1.5 rounded-lg bg-amber-600/20 border-2 border-amber-600/40 text-amber-900 dark:text-amber-200"
+            >
+              Publish Story
             </button>
           </div>
         </div>
       </footer>
     </div>
   );
+}
+
+/* ------------------------------------------------------------------ */
+/* Utils                                                               */
+/* ------------------------------------------------------------------ */
+function formatTime(sec: number) {
+  if (!Number.isFinite(sec)) return '0:00';
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
 }
