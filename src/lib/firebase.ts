@@ -4,7 +4,8 @@ import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getStorage, connectStorageEmulator, type FirebaseStorage } from 'firebase/storage';
-
+// ✅ NEW: Realtime Database
+import { getDatabase, connectDatabaseEmulator, type Database } from 'firebase/database';
 // If you need these later, re-add them; removing now to avoid unused warnings.
 // import { onAuthStateChanged, signOut } from 'firebase/auth';
 
@@ -40,6 +41,8 @@ const auth = getAuth(app);
 const functions = getFunctions(app);
 const db = getFirestore(app);
 const storage: FirebaseStorage = getStorage(app);
+// ✅ NEW: RTDB instance
+const rtdb = getDatabase(app);   // ✅ make sure you defined this
 
 export const firestoreAppId = firebaseConfig.appId || 'default-app-id';
 
@@ -59,6 +62,9 @@ if (useEmulators && typeof window !== 'undefined') {
   const functionsPort = parseInt(process.env.NEXT_PUBLIC_FUNCTIONS_EMULATOR_PORT || '5001', 10);
   const storageHost = '127.0.0.1';
   const storagePort = parseInt(process.env.NEXT_PUBLIC_STORAGE_EMULATOR_PORT || '9199', 10);
+// ✅ NEW: RTDB emulator defaults to 9000
+const rtdbHost = '127.0.0.1';
+const rtdbPort = parseInt(process.env.NEXT_PUBLIC_RTDB_EMULATOR_PORT || '9000', 10);
 
   const emulatorOptions = { disableWarnings: true as const };
 
@@ -97,10 +103,16 @@ if (useEmulators && typeof window !== 'undefined') {
   } catch (e: any) {
     console.warn('⚠️ Storage emulator:', e?.message || e);
   }
+  // ✅ NEW: RTDB
+  try {
+    connectDatabaseEmulator(rtdb, rtdbHost, rtdbPort);
+    console.log(`✅ RTDB emulator: ${rtdbHost}:${rtdbPort}`);
+  } catch (e: any) {
+    console.warn('⚠️ RTDB emulator:', e?.message || e);
+  }
 } else if (process.env.NODE_ENV === 'development') {
   console.log('Development mode: Firebase emulators are NOT being used (based on config).');
 }
 
-export { app, auth, db, functions, storage };
-// 👇 Add default so `import firebase from "@/lib/firebase"` won’t crash
+export { app, auth, db, functions, storage, rtdb }; // ✅ named export
 export default app;

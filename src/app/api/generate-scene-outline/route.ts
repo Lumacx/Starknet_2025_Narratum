@@ -1,15 +1,10 @@
-// src/app/api/generate-scene-outline/route.ts
 import { NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-type Body = {
-  idea: string;
-  pages?: number;
-  language?: string; // 'en', 'es', ...
-};
+type Body = { idea: string; pages?: number; language?: string };
 
 function buildPrompt({ idea, pages = 8, language = 'en' }: Body) {
   return `
@@ -20,7 +15,7 @@ Return JSON ONLY as an array of ${pages} objects with:
 `.trim();
 }
 
-function safeParseJsonArray(s: string) {
+function parseArrayJson(s: string) {
   const cleaned = s.replace(/```json|```/g, '');
   try {
     const parsed = JSON.parse(cleaned);
@@ -39,17 +34,12 @@ export async function POST(req: Request) {
   try {
     const body = (await req.json()) as Body;
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: 'Missing GEMINI_API_KEY / GOOGLE_API_KEY' },
-        { status: 500 }
-      );
-    }
+    if (!apiKey) return NextResponse.json({ error: 'Missing GEMINI_API_KEY / GOOGLE_API_KEY' }, { status: 500 });
 
     const ai = new GoogleGenAI({ apiKey, apiVersion: 'v1' });
     const prompt = buildPrompt(body);
 
-    // ✅ Use `config` to match your installed typings
+    // ✅ use `config` (NOT generationConfig)
     const resp = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
@@ -59,24 +49,15 @@ export async function POST(req: Request) {
       },
     });
 
-    // ✅ Read from legacy response shape
     const raw =
       (resp as any)?.candidates?.[0]?.content?.parts?.[0]?.text?.trim?.() ??
       (typeof (resp as any)?.text === 'function' ? (resp as any).text().trim() : '');
 
-    if (!raw) {
-      return NextResponse.json(
-        { error: 'Model returned no content' },
-        { status: 502 }
-      );
-    }
+    if (!raw) return NextResponse.json({ error: 'Model returned no content' }, { status: 502 });
 
-    const ideas = safeParseJsonArray(raw);
+    const ideas = parseArrayJson(raw);
     return NextResponse.json(ideas);
   } catch (err: any) {
-    return NextResponse.json(
-      { error: err?.message ?? 'Unknown error in generate-scene-outline' },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: err?.message ?? 'Unknown error in generate-scene-outline' }, { status: 400 });
   }
 }

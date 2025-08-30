@@ -24,6 +24,13 @@ import {
   getMetadata,
 } from 'firebase/storage';
 
+const makeDefaultScene = (index = 0): Scene => ({
+  id: crypto.randomUUID(),
+  index,
+  title: `Scene ${index + 1}`,
+  text: '',
+});
+
 /* ------------------------------------------------------------------ */
 /* Types & constants                                                   */
 /* ------------------------------------------------------------------ */
@@ -211,7 +218,8 @@ export default function ScenesPage() {
     avatarUrl: DEFAULTS.avatarUrl,
     backgroundUrl: DEFAULTS.backgroundUrl,
   });
-  const [scenes, setScenes] = useState<Scene[]>([]);
+  const [scenes, setScenes] = useState<Scene[]>([makeDefaultScene(0)]);
+
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const langLabel = useMemo(
@@ -246,59 +254,72 @@ export default function ScenesPage() {
   useEffect(() => {
     (async () => {
       if (!storyId) return;
-
+  
       try {
         const storyRef = fsDoc(db, 'stories', storyId);
         const snap = await getDoc(storyRef);
-        let doc: StoryDoc = {};
-        if (snap.exists()) doc = (snap.data() as StoryDoc) || {};
-
-        // normalize scenes
-        const fixedScenes: Scene[] = (doc.scenes || []).map((s, i) => ({
-          id: s.id || crypto.randomUUID(),
-          index: Number.isFinite(s.index) ? s.index : i,
-          title: s.title ?? `Scene ${i + 1}`,
-          text: s.text || '',
-          imageUrl: s.imageUrl || undefined,
-          imageName: s.imageName || undefined,
-          audioUrl: s.audioUrl || undefined,
-          audioName: s.audioName || undefined,
-          voiceId: s.voiceId || undefined,
-          durationMs: s.durationMs || undefined,
-        })).sort((a, b) => a.index - b.index);
-
+        let docData: StoryDoc = {};
+        if (snap.exists()) docData = (snap.data() as StoryDoc) || {};
+  
+        // 1) Normalize scenes from Firestore
+        const fixedScenes: Scene[] = (docData.scenes || [])
+          .map((s, i) => ({
+            id: s.id || crypto.randomUUID(),
+            index: Number.isFinite(s.index) ? s.index : i,
+            title: s.title ?? `Scene ${i + 1}`,
+            text: s.text || '',
+            imageUrl: s.imageUrl || undefined,
+            imageName: s.imageName || undefined,
+            audioUrl: s.audioUrl || undefined,
+            audioName: s.audioName || undefined,
+            voiceId: s.voiceId || undefined,
+            durationMs: s.durationMs || undefined,
+          }))
+          .sort((a, b) => a.index - b.index);
+  
+        // 2) ✅ Ensure at least ONE scene exists
+        const ensured = fixedScenes.length > 0 ? fixedScenes : [makeDefaultScene(0)];
+  
+        // 3) Write story + scenes into state
         setStory({
-          title: doc.title || '',
-          synopsis: doc.synopsis || '',
-          genres: doc.genres || [],
-          language: (doc.language as LangCode) || 'en',
-          voiceId: doc.voiceId || undefined,
+          title: docData.title || '',
+          synopsis: docData.synopsis || '',
+          genres: docData.genres || [],
+          language: (docData.language as LangCode) || 'en',
+          voiceId: docData.voiceId || undefined,
           reader: {
-            avatarUrl: doc.reader?.avatarUrl || DEFAULTS.avatarUrl,
-            backgroundUrl: doc.reader?.backgroundUrl || DEFAULTS.backgroundUrl,
+            avatarUrl: docData.reader?.avatarUrl || DEFAULTS.avatarUrl,
+            backgroundUrl: docData.reader?.backgroundUrl || DEFAULTS.backgroundUrl,
           },
-          status: doc.status || 'draft',
-          isPublic: !!doc.isPublic,
-          scenes: fixedScenes,
+          status: docData.status || 'draft',
+          isPublic: !!docData.isPublic,
+          scenes: ensured,                // ✅ use ensured here
         });
-
+  
         setReaderUI({
-          avatarUrl: doc.reader?.avatarUrl || DEFAULTS.avatarUrl,
-          backgroundUrl: doc.reader?.backgroundUrl || DEFAULTS.backgroundUrl,
+          avatarUrl: docData.reader?.avatarUrl || DEFAULTS.avatarUrl,
+          backgroundUrl: docData.reader?.backgroundUrl || DEFAULTS.backgroundUrl,
         });
-        setScenes(fixedScenes);
-
-        // init scene index from URL or localStorage
+  
+        setScenes(ensured);               // ✅ and here
+  
+        // 4) Initialize currentIndex from URL/localStorage, clamped to ensured length
         const fromUrl = Number.parseInt(searchParams.get('scene') || '', 10);
         const fromLs  = Number.parseInt(localStorage.getItem('reader:lastScene') || '', 10);
         const initial = Number.isFinite(fromUrl) ? fromUrl : (Number.isFinite(fromLs) ? fromLs : 0);
-        setCurrentIndex(Math.max(0, Math.min(initial, Math.max(fixedScenes.length - 1, 0))));
+        setCurrentIndex(Math.max(0, Math.min(initial, Math.max(ensured.length - 1, 0))));
       } catch (e) {
         console.error('Failed to load story', e);
+        // As a safety net, make sure at least one scene exists even if read fails
+        setScenes(prev => prev.length ? prev : [makeDefaultScene(0)]);
+        setStory(prev =>
+          prev ? prev : { title: '', synopsis: '', genres: [], language: 'en' as LangCode, scenes: [makeDefaultScene(0)] }
+        );
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storyId]);
+  
 
   // keep URL and localStorage in sync
   useEffect(() => {
@@ -360,13 +381,13 @@ export default function ScenesPage() {
   /* -------- Helpers to update story/scenes in state -------- */
   function updateCurrentScene(patch: Partial<Scene>) {
     setScenes(prev => {
-      const cur = prev[currentIndex];
-      if (!cur) return prev;
       const next = [...prev];
-      next[currentIndex] = { ...cur, ...patch };
+      if (!next[currentIndex]) next[currentIndex] = makeDefaultScene(currentIndex);
+      next[currentIndex] = { ...next[currentIndex], ...patch };
       return next;
     });
   }
+  
   function updateStoryPatch(patch: Partial<StoryDoc>) {
     setStory(prev => (prev ? { ...prev, ...patch } : prev));
   }

@@ -1,4 +1,3 @@
-// src/app/api/suggest-scene/route.ts
 import { NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 
@@ -9,8 +8,8 @@ type Body = {
   title?: string;
   genres?: string[];
   synopsis?: string;
-  language?: string;   // 'en', 'es', ...
-  sceneIndex?: number; // 1-based
+  language?: string;
+  sceneIndex?: number;
 };
 
 function buildPrompt(b: Body) {
@@ -42,9 +41,7 @@ Return JSON ONLY with exactly:
 
 function safeParseJson(s: string) {
   const cleaned = s.replace(/```json|```/g, '');
-  try {
-    return JSON.parse(cleaned);
-  } catch {
+  try { return JSON.parse(cleaned); } catch {
     const m = cleaned.match(/\{[\s\S]*\}/);
     if (!m) throw new Error('Invalid JSON from model');
     return JSON.parse(m[0]);
@@ -54,19 +51,13 @@ function safeParseJson(s: string) {
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as Body;
-
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: 'Missing GEMINI_API_KEY / GOOGLE_API_KEY' },
-        { status: 500 }
-      );
-    }
+    if (!apiKey) return NextResponse.json({ error: 'Missing GEMINI_API_KEY / GOOGLE_API_KEY' }, { status: 500 });
 
     const ai = new GoogleGenAI({ apiKey, apiVersion: 'v1' });
     const prompt = buildPrompt(body);
 
-    // ✅ Use `config` (legacy) — matches your current typings
+    // ✅ use `config` with this SDK version
     const resp = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
@@ -76,35 +67,20 @@ export async function POST(req: Request) {
       },
     });
 
-    // ✅ Legacy response shape: candidates at top-level, no `.response`
+    // ✅ legacy response shape (no `.response`)
     const raw =
       (resp as any)?.candidates?.[0]?.content?.parts?.[0]?.text?.trim?.() ??
       (typeof (resp as any)?.text === 'function' ? (resp as any).text().trim() : '');
 
-    if (!raw) {
-      return NextResponse.json(
-        { error: 'Model returned no content' },
-        { status: 502 }
-      );
-    }
+    if (!raw) return NextResponse.json({ error: 'Model returned no content' }, { status: 502 });
 
     const json = safeParseJson(raw);
-
     if (typeof json?.storyText !== 'string' || typeof json?.imagePrompt !== 'string') {
-      return NextResponse.json(
-        { error: 'Unexpected JSON shape', raw },
-        { status: 502 }
-      );
+      return NextResponse.json({ error: 'Unexpected JSON shape', raw }, { status: 502 });
     }
 
-    return NextResponse.json({
-      storyText: json.storyText,
-      imagePrompt: json.imagePrompt,
-    });
+    return NextResponse.json({ storyText: json.storyText, imagePrompt: json.imagePrompt });
   } catch (e: any) {
-    return NextResponse.json(
-      { error: e?.message || 'Suggest failed' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: e?.message || 'Suggest failed' }, { status: 500 });
   }
 }
