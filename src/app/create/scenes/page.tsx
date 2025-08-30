@@ -453,88 +453,88 @@ export default function ScenesPage() {
   }, [story, imagePrompt, references, currentIndex]);
 
   /* -------- Auto-suggest scene text + image prompt (kept from your flow) ----- */
-  async function handleSuggestForScene() {
-    if (!story) return;
-    setIsSuggesting(true);
-    try {
-      const payload = {
-        title: story.title,
-        genres: story.genres,
-        synopsis: story.synopsis,
-        language: story.language,
-        sceneIndex: currentIndex + 1,
-      };
-      const res = await fetch('/api/suggest-scene', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || 'Suggestion failed');
-      if (json?.storyText) updateCurrentScene({ text: json.storyText });
-      if (json?.imagePrompt) setImagePrompt(json.imagePrompt);
-      if (!json?.storyText && !json?.imagePrompt) throw new Error('No suggestions returned.');
-    } catch (e: any) {
-      alert(
-        (e?.message || 'Suggest failed') +
-        '\n\nTip: implement /api/suggest-scene to call a Gemini text model that returns {storyText, imagePrompt} for this scene.'
-      );
-    } finally {
-      setIsSuggesting(false);
+  /* -------- Auto-suggest scene text + image prompt -------- */
+async function handleSuggestForScene() {
+  if (!story) return;
+  setIsSuggesting(true);
+  try {
+    const payload = {
+      title: story.title,
+      genres: story.genres,
+      synopsis: story.synopsis,
+      language: story.language,
+      sceneIndex: currentIndex + 1,
+    };
+
+    const res = await fetch('/api/suggest-scene', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    const json = await res.json();
+    if (!res.ok) throw new Error(json?.error || 'Suggestion failed');
+
+    if (json?.storyText) updateCurrentScene({ text: json.storyText });
+    if (json?.imagePrompt) setImagePrompt(json.imagePrompt);
+
+    if (!json?.storyText && !json?.imagePrompt) {
+      throw new Error('No suggestions returned.');
     }
+  } catch (e: any) {
+    alert(e?.message || 'Suggest failed');
+  } finally {
+    setIsSuggesting(false);
   }
+}
 
   /* -------- AI Scene-Outline Ideas (new optional panel) ------------------ */
-  async function handleGenerateIdeas() {
-    if (!story) return;
-    setIdeasLoading(true);
-    setIdeas([]);
-    try {
-      // intenta primero tu ruta
-      let res = await fetch('/api/scene-outline', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idea: story.synopsis || story.title || 'Story', pages: 5, language: story.language || 'en' }),
-      });
-  
-      let data = await res.json();
-      if (!res.ok) {
-        // fallback a la otra ruta si existiese
-        res = await fetch('/api/generate-scene-outline', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            story: { id: storyId, title: story.title, synopsis: story.synopsis, genres: story.genres },
-            scenes: scenes.map((s) => ({ title: s.title, text: s.text })),
-            request: { count: 5, mode: 'continue-or-branch' },
-          }),
-        });
-        data = await res.json();
-        if (!res.ok) throw new Error(data?.error || 'AI outline endpoint failed');
-      }
-  
-      const ideasData = Array.isArray(data.outline)
-        ? data.outline.map((p: any, i: number) => ({
-            title: `Beat ${i + 1}`,
-            outline: String(p?.storyText || '').trim(),
-            imagePrompt: String(p?.imagePrompt || '').trim(),
-          }))
-        : (Array.isArray(data.ideas) ? data.ideas : []);
-  
-      setIdeas(ideasData.map((x: any, i: number) => ({
-        title: x.title || `Beat ${i + 1}`,
-        outline: x.outline || x.storyText || '',
-      })));
-    } catch (e: any) {
-      alert(e?.message || 'Could not generate ideas.');
-    } finally {
-      setIdeasLoading(false);
-    }
-  } 
+  /* -------- AI Scene-Outline Ideas (array from /api/generate-scene-outline) -------- */
+async function handleGenerateIdeas() {
+  if (!story) return;
+  setIdeasLoading(true);
+  setIdeas([]);
+  try {
+    const res = await fetch('/api/generate-scene-outline', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        idea: story.synopsis || story.title || 'Story',
+        pages: 5,
+        language: story.language || 'en',
+      }),
+    });
 
-  function applyIdeaToCurrent(idea: { title: string; outline: string }) {
-    if (!currentScene) return;
-    const mergedText = currentScene.text?.trim()
-      ? `${currentScene.text.trim()}\n\n${idea.outline.trim()}`
-      : idea.outline.trim();
-    updateCurrentScene({ title: idea.title || currentScene.title, text: mergedText });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || 'AI outline endpoint failed');
+
+    // Expecting an array: [{ storyText, imagePrompt }, ...]
+    const arr = Array.isArray(data) ? data : [];
+    const mapped = arr.map((p: any, i: number) => ({
+      title: `Beat ${i + 1}`,
+      outline: String(p?.storyText || '').trim(),
+      imagePrompt: String(p?.imagePrompt || '').trim(),
+    }));
+
+    setIdeas(mapped);
+  } catch (e: any) {
+    alert(e?.message || 'Could not generate ideas.');
+  } finally {
+    setIdeasLoading(false);
   }
+}
+
+function applyIdeaToCurrent(idea: { title: string; outline: string; imagePrompt?: string }) {
+  if (!currentScene) return;
+  const mergedText = currentScene.text?.trim()
+    ? `${currentScene.text.trim()}\n\n${idea.outline.trim()}`
+    : idea.outline.trim();
+
+  updateCurrentScene({ title: idea.title || currentScene.title, text: mergedText });
+  if (idea.imagePrompt && idea.imagePrompt.trim()) {
+    setImagePrompt(idea.imagePrompt.trim());
+  }
+}
 
   function addIdeaAsNewScene(idea: { title: string; outline: string }) {
     setScenes(prev => ([

@@ -40,6 +40,17 @@ Return JSON ONLY with exactly:
 `.trim();
 }
 
+function safeParseJson(s: string) {
+  const cleaned = s.replace(/```json|```/g, '');
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const m = cleaned.match(/\{[\s\S]*\}/);
+    if (!m) throw new Error('Invalid JSON from model');
+    return JSON.parse(m[0]);
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as Body;
@@ -55,49 +66,37 @@ export async function POST(req: Request) {
     const ai = new GoogleGenAI({ apiKey, apiVersion: 'v1' });
     const prompt = buildPrompt(body);
 
+    // ✅ Use `config` (legacy) — matches your current typings
     const resp = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      // NOTE: with @google/genai use "config", not "generationConfig"
       config: {
         temperature: 0.6,
         responseMimeType: 'application/json',
-        responseSchema: {
-          type: 'OBJECT',
-          properties: {
-            storyText: { type: 'STRING' },
-            imagePrompt: { type: 'STRING' },
-          },
-          required: ['storyText', 'imagePrompt'],
-        },
       },
     });
 
-    const text =
-      resp?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '';
+    // ✅ Legacy response shape: candidates at top-level, no `.response`
+    const raw =
+      (resp as any)?.candidates?.[0]?.content?.parts?.[0]?.text?.trim?.() ??
+      (typeof (resp as any)?.text === 'function' ? (resp as any).text().trim() : '');
 
-    if (!text) {
+    if (!raw) {
       return NextResponse.json(
         { error: 'Model returned no content' },
         { status: 502 }
       );
     }
 
-    // Be tolerant of fenced JSON, just in case
-    const cleaned = text.replace(/```json|```/g, '');
-    const json = JSON.parse(cleaned);
+    const json = safeParseJson(raw);
 
-    if (
-      typeof json?.storyText !== 'string' ||
-      typeof json?.imagePrompt !== 'string'
-    ) {
+    if (typeof json?.storyText !== 'string' || typeof json?.imagePrompt !== 'string') {
       return NextResponse.json(
-        { error: 'Unexpected JSON shape', raw: text },
+        { error: 'Unexpected JSON shape', raw },
         { status: 502 }
       );
     }
 
-    // Match ScenesPage expectations exactly:
     return NextResponse.json({
       storyText: json.storyText,
       imagePrompt: json.imagePrompt,

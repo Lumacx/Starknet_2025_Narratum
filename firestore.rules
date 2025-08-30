@@ -8,12 +8,12 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Existing doc -> owner
+    // Existing doc -> owner (expects { ownerUid } on the doc)
     function isOwnerDoc() {
       return isSignedIn() && resource.data.ownerUid == request.auth.uid;
     }
 
-    // Incoming payload -> owner
+    // Incoming payload -> owner (expects { ownerUid } in request body)
     function isOwnerCreate() {
       return isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
     }
@@ -22,7 +22,7 @@ service cloud.firestore {
       return resource.data.status == "published" && resource.data.visibility == "public";
     }
 
-    // Resolve story ownership/public from a storyId
+    // Resolve story ownership/public from a top-level storyId
     function isStoryOwner(storyId) {
       return isSignedIn() &&
         get(/databases/$(database)/documents/stories/$(storyId)).data.ownerUid == request.auth.uid;
@@ -33,14 +33,44 @@ service cloud.firestore {
       return s.status == "published" && s.visibility == "public";
     }
 
-    /* ---------- users/{uid} ---------- */
-    // Private profiles (owner-only)
+    /* ============================================================
+       USERS TREE  (used by the new Scenes page)
+       - users/{uid}               -> private profile (already had)
+       - users/{uid}/assets/{id}   -> user's gallery items
+       - users/{uid}/stories/{id}  -> user's WIP stories (no ownerUid required)
+         - scenes/{sceneId}        -> optional per-scene docs (if you use them)
+         - assets/{assetId}        -> optional story-scoped assets
+       All owner-gated by path uid, so we don't require {ownerUid} here.
+       ============================================================ */
     match /users/{uid} {
+      // Profile doc (unchanged)
       allow read, write: if isSignedIn() && request.auth.uid == uid;
+
+      // User gallery (characters, locations, narrations, sfx, videos)
+      match /assets/{assetId} {
+        allow read, write: if isSignedIn() && request.auth.uid == uid;
+      }
+
+      // User-scoped stories (the Scenes page writes here)
+      match /stories/{storyId} {
+        allow read, write: if isSignedIn() && request.auth.uid == uid;
+
+        // OPTIONAL: if you break scenes into subcollection docs
+        match /scenes/{sceneId} {
+          allow read, write: if isSignedIn() && request.auth.uid == uid;
+        }
+
+        // OPTIONAL: story-scoped assets (e.g., renders attached to a story)
+        match /assets/{assetId} {
+          allow read, write: if isSignedIn() && request.auth.uid == uid;
+        }
+      }
     }
 
-    /* ---------- stories/{storyId} ---------- */
-    // Example: { ownerUid, title, synopsis, genres, coverImageUrl, pageCount, visibility, status, createdAt, updatedAt, publishedAt? }
+    /* ============================================================
+       TOP-LEVEL STORIES (public/published + owner rules)
+       Keeps your original model for public discovery/publishing.
+       ============================================================ */
     match /stories/{storyId} {
       // Create must include ownerUid == caller
       allow create: if isOwnerCreate();
@@ -52,8 +82,11 @@ service cloud.firestore {
       allow update, delete: if isOwnerDoc();
     }
 
-    /* ---------- storyContents/{storyId_pageNumber} ---------- */
-    // Example: { storyId, pageNumber, textContent, imageUrl, audioUrl, createdAt, updatedAt }
+    /* ============================================================
+       TOP-LEVEL storyContents (page documents)
+       Read if parent story is public+published OR caller owns it.
+       Only the parent story owner can write.
+       ============================================================ */
     match /storyContents/{id} {
       function storyIdFromExisting() {
         return resource != null ? resource.data.storyId : null;
@@ -65,11 +98,9 @@ service cloud.firestore {
         return storyIdFromExisting() != null ? storyIdFromExisting() : storyIdFromRequest();
       }
 
-      // Read if parent story is public+published, or caller is the story owner
       allow read: if (effectiveStoryId() != null && storyIsPublic(effectiveStoryId()))
                || (effectiveStoryId() != null && isStoryOwner(effectiveStoryId()));
 
-      // Only the parent story owner can write pages
       allow create, update, delete: if (effectiveStoryId() != null && isStoryOwner(effectiveStoryId()));
     }
 
