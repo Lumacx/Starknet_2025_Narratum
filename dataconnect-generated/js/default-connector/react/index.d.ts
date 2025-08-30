@@ -1,45 +1,9 @@
-import { GetUserProfileData, GetUserProfileVariables, GetStoryWithContentData, GetStoryWithContentVariables, GetAllStoriesData, GetAppSubscriptionData, GetAppSubscriptionVariables, GetTemplateData, GetTemplateVariables, GetAllTemplatesData, GetAiGeneratedImageData, GetAiGeneratedImageVariables, GetAiGeneratedGifData, GetAiGeneratedGifVariables, GetPaymentData, GetPaymentVariables, GetAdminActionData, GetAdminActionVariables, GetAnalyticsEntryData, GetAnalyticsEntryVariables, GetLegalDisclaimerData, GetLegalDisclaimerVariables, CreateUserProfileData, CreateUserProfileVariables, CreateStoryData, CreateStoryVariables, CreateStoryContentData, CreateStoryContentVariables, CreateTemplateData, CreateTemplateVariables, CreateAiGeneratedImageData, CreateAiGeneratedImageVariables, CreateAiGeneratedGifData, CreateAiGeneratedGifVariables, CreatePaymentData, CreatePaymentVariables, CreateAdminActionData, CreateAdminActionVariables, CreateAnalyticsEntryData, CreateAnalyticsEntryVariables, LogLegalDisclaimerAcceptanceData, LogLegalDisclaimerAcceptanceVariables, UpdateStoryContentData, UpdateStoryContentVariables, UpdateStoryData, UpdateStoryVariables } from '../';
+import { CreateUserProfileData, CreateUserProfileVariables, CreateStoryData, CreateStoryVariables, CreateStoryContentData, CreateStoryContentVariables, CreateTemplateData, CreateTemplateVariables, CreateAiGeneratedImageData, CreateAiGeneratedImageVariables, CreateAiGeneratedGifData, CreateAiGeneratedGifVariables, CreatePaymentData, CreatePaymentVariables, CreateAdminActionData, CreateAdminActionVariables, CreateAnalyticsEntryData, CreateAnalyticsEntryVariables, LogLegalDisclaimerAcceptanceData, LogLegalDisclaimerAcceptanceVariables, UpdateStoryContentData, UpdateStoryContentVariables, UpdateStoryData, UpdateStoryVariables, GetUserProfileData, GetUserProfileVariables, GetStoryWithContentData, GetStoryWithContentVariables, GetAllStoriesData, GetAppSubscriptionData, GetAppSubscriptionVariables, GetTemplateData, GetTemplateVariables, GetAllTemplatesData, GetAiGeneratedImageData, GetAiGeneratedImageVariables, GetAiGeneratedGifData, GetAiGeneratedGifVariables, GetPaymentData, GetPaymentVariables, GetAdminActionData, GetAdminActionVariables, GetAnalyticsEntryData, GetAnalyticsEntryVariables, GetLegalDisclaimerData, GetLegalDisclaimerVariables } from '../';
 import { UseDataConnectQueryResult, useDataConnectQueryOptions, UseDataConnectMutationResult, useDataConnectMutationOptions} from '@tanstack-query-firebase/react/data-connect';
 import { UseQueryResult, UseMutationResult} from '@tanstack/react-query';
 import { DataConnect } from 'firebase/data-connect';
 import { FirebaseError } from 'firebase/app';
 
-
-export function useGetUserProfile(vars: GetUserProfileVariables, options?: useDataConnectQueryOptions<GetUserProfileData>): UseDataConnectQueryResult<GetUserProfileData, GetUserProfileVariables>;
-export function useGetUserProfile(dc: DataConnect, vars: GetUserProfileVariables, options?: useDataConnectQueryOptions<GetUserProfileData>): UseDataConnectQueryResult<GetUserProfileData, GetUserProfileVariables>;
-
-export function useGetStoryWithContent(vars: GetStoryWithContentVariables, options?: useDataConnectQueryOptions<GetStoryWithContentData>): UseDataConnectQueryResult<GetStoryWithContentData, GetStoryWithContentVariables>;
-export function useGetStoryWithContent(dc: DataConnect, vars: GetStoryWithContentVariables, options?: useDataConnectQueryOptions<GetStoryWithContentData>): UseDataConnectQueryResult<GetStoryWithContentData, GetStoryWithContentVariables>;
-
-export function useGetAllStories(options?: useDataConnectQueryOptions<GetAllStoriesData>): UseDataConnectQueryResult<GetAllStoriesData, undefined>;
-export function useGetAllStories(dc: DataConnect, options?: useDataConnectQueryOptions<GetAllStoriesData>): UseDataConnectQueryResult<GetAllStoriesData, undefined>;
-
-export function useGetAppSubscription(vars: GetAppSubscriptionVariables, options?: useDataConnectQueryOptions<GetAppSubscriptionData>): UseDataConnectQueryResult<GetAppSubscriptionData, GetAppSubscriptionVariables>;
-export function useGetAppSubscription(dc: DataConnect, vars: GetAppSubscriptionVariables, options?: useDataConnectQueryOptions<GetAppSubscriptionData>): UseDataConnectQueryResult<GetAppSubscriptionData, GetAppSubscriptionVariables>;
-
-export function useGetTemplate(vars: GetTemplateVariables, options?: useDataConnectQueryOptions<GetTemplateData>): UseDataConnectQueryResult<GetTemplateData, GetTemplateVariables>;
-export function useGetTemplate(dc: DataConnect, vars: GetTemplateVariables, options?: useDataConnectQueryOptions<GetTemplateData>): UseDataConnectQueryResult<GetTemplateData, GetTemplateVariables>;
-
-export function useGetAllTemplates(options?: useDataConnectQueryOptions<GetAllTemplatesData>): UseDataConnectQueryResult<GetAllTemplatesData, undefined>;
-export function useGetAllTemplates(dc: DataConnect, options?: useDataConnectQueryOptions<GetAllTemplatesData>): UseDataConnectQueryResult<GetAllTemplatesData, undefined>;
-
-export function useGetAiGeneratedImage(vars: GetAiGeneratedImageVariables, options?: useDataConnectQueryOptions<GetAiGeneratedImageData>): UseDataConnectQueryResult<GetAiGeneratedImageData, GetAiGeneratedImageVariables>;
-export function useGetAiGeneratedImage(dc: DataConnect, vars: GetAiGeneratedImageVariables, options?: useDataConnectQueryOptions<GetAiGeneratedImageData>): UseDataConnectQueryResult<GetAiGeneratedImageData, GetAiGeneratedImageVariables>;
-
-export function useGetAiGeneratedGif(vars: GetAiGeneratedGifVariables, options?: useDataConnectQueryOptions<GetAiGeneratedGifData>): UseDataConnectQueryResult<GetAiGeneratedGifData, GetAiGeneratedGifVariables>;
-export function useGetAiGeneratedGif(dc: DataConnect, vars: GetAiGeneratedGifVariables, options?: useDataConnectQueryOptions<GetAiGeneratedGifData>): UseDataConnectQueryResult<GetAiGeneratedGifData, GetAiGeneratedGifVariables>;
-
-export function useGetPayment(vars: GetPaymentVariables, options?: useDataConnectQueryOptions<GetPaymentData>): UseDataConnectQueryResult<GetPaymentData, GetPaymentVariables>;
-export function useGetPayment(dc: DataConnect, vars: GetPaymentVariables, options?: useDataConnectQueryOptions<GetPaymentData>): UseDataConnectQueryResult<GetPaymentData, GetPaymentVariables>;
-
-export function useGetAdminAction(vars: GetAdminActionVariables, options?: useDataConnectQueryOptions<GetAdminActionData>): UseDataConnectQueryResult<GetAdminActionData, GetAdminActionVariables>;
-export function useGetAdminAction(dc: DataConnect, vars: GetAdminActionVariables, options?: useDataConnectQueryOptions<GetAdminActionData>): UseDataConnectQueryResult<GetAdminActionData, GetAdminActionVariables>;
-
-export function useGetAnalyticsEntry(vars: GetAnalyticsEntryVariables, options?: useDataConnectQueryOptions<GetAnalyticsEntryData>): UseDataConnectQueryResult<GetAnalyticsEntryData, GetAnalyticsEntryVariables>;
-export function useGetAnalyticsEntry(dc: DataConnect, vars: GetAnalyticsEntryVariables, options?: useDataConnectQueryOptions<GetAnalyticsEntryData>): UseDataConnectQueryResult<GetAnalyticsEntryData, GetAnalyticsEntryVariables>;
-
-export function useGetLegalDisclaimer(vars: GetLegalDisclaimerVariables, options?: useDataConnectQueryOptions<GetLegalDisclaimerData>): UseDataConnectQueryResult<GetLegalDisclaimerData, GetLegalDisclaimerVariables>;
-export function useGetLegalDisclaimer(dc: DataConnect, vars: GetLegalDisclaimerVariables, options?: useDataConnectQueryOptions<GetLegalDisclaimerData>): UseDataConnectQueryResult<GetLegalDisclaimerData, GetLegalDisclaimerVariables>;
 
 export function useCreateUserProfile(options?: useDataConnectMutationOptions<CreateUserProfileData, FirebaseError, CreateUserProfileVariables>): UseDataConnectMutationResult<CreateUserProfileData, CreateUserProfileVariables>;
 export function useCreateUserProfile(dc: DataConnect, options?: useDataConnectMutationOptions<CreateUserProfileData, FirebaseError, CreateUserProfileVariables>): UseDataConnectMutationResult<CreateUserProfileData, CreateUserProfileVariables>;
@@ -76,3 +40,39 @@ export function useUpdateStoryContent(dc: DataConnect, options?: useDataConnectM
 
 export function useUpdateStory(options?: useDataConnectMutationOptions<UpdateStoryData, FirebaseError, UpdateStoryVariables>): UseDataConnectMutationResult<UpdateStoryData, UpdateStoryVariables>;
 export function useUpdateStory(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateStoryData, FirebaseError, UpdateStoryVariables>): UseDataConnectMutationResult<UpdateStoryData, UpdateStoryVariables>;
+
+export function useGetUserProfile(vars: GetUserProfileVariables, options?: useDataConnectQueryOptions<GetUserProfileData>): UseDataConnectQueryResult<GetUserProfileData, GetUserProfileVariables>;
+export function useGetUserProfile(dc: DataConnect, vars: GetUserProfileVariables, options?: useDataConnectQueryOptions<GetUserProfileData>): UseDataConnectQueryResult<GetUserProfileData, GetUserProfileVariables>;
+
+export function useGetStoryWithContent(vars: GetStoryWithContentVariables, options?: useDataConnectQueryOptions<GetStoryWithContentData>): UseDataConnectQueryResult<GetStoryWithContentData, GetStoryWithContentVariables>;
+export function useGetStoryWithContent(dc: DataConnect, vars: GetStoryWithContentVariables, options?: useDataConnectQueryOptions<GetStoryWithContentData>): UseDataConnectQueryResult<GetStoryWithContentData, GetStoryWithContentVariables>;
+
+export function useGetAllStories(options?: useDataConnectQueryOptions<GetAllStoriesData>): UseDataConnectQueryResult<GetAllStoriesData, undefined>;
+export function useGetAllStories(dc: DataConnect, options?: useDataConnectQueryOptions<GetAllStoriesData>): UseDataConnectQueryResult<GetAllStoriesData, undefined>;
+
+export function useGetAppSubscription(vars: GetAppSubscriptionVariables, options?: useDataConnectQueryOptions<GetAppSubscriptionData>): UseDataConnectQueryResult<GetAppSubscriptionData, GetAppSubscriptionVariables>;
+export function useGetAppSubscription(dc: DataConnect, vars: GetAppSubscriptionVariables, options?: useDataConnectQueryOptions<GetAppSubscriptionData>): UseDataConnectQueryResult<GetAppSubscriptionData, GetAppSubscriptionVariables>;
+
+export function useGetTemplate(vars: GetTemplateVariables, options?: useDataConnectQueryOptions<GetTemplateData>): UseDataConnectQueryResult<GetTemplateData, GetTemplateVariables>;
+export function useGetTemplate(dc: DataConnect, vars: GetTemplateVariables, options?: useDataConnectQueryOptions<GetTemplateData>): UseDataConnectQueryResult<GetTemplateData, GetTemplateVariables>;
+
+export function useGetAllTemplates(options?: useDataConnectQueryOptions<GetAllTemplatesData>): UseDataConnectQueryResult<GetAllTemplatesData, undefined>;
+export function useGetAllTemplates(dc: DataConnect, options?: useDataConnectQueryOptions<GetAllTemplatesData>): UseDataConnectQueryResult<GetAllTemplatesData, undefined>;
+
+export function useGetAiGeneratedImage(vars: GetAiGeneratedImageVariables, options?: useDataConnectQueryOptions<GetAiGeneratedImageData>): UseDataConnectQueryResult<GetAiGeneratedImageData, GetAiGeneratedImageVariables>;
+export function useGetAiGeneratedImage(dc: DataConnect, vars: GetAiGeneratedImageVariables, options?: useDataConnectQueryOptions<GetAiGeneratedImageData>): UseDataConnectQueryResult<GetAiGeneratedImageData, GetAiGeneratedImageVariables>;
+
+export function useGetAiGeneratedGif(vars: GetAiGeneratedGifVariables, options?: useDataConnectQueryOptions<GetAiGeneratedGifData>): UseDataConnectQueryResult<GetAiGeneratedGifData, GetAiGeneratedGifVariables>;
+export function useGetAiGeneratedGif(dc: DataConnect, vars: GetAiGeneratedGifVariables, options?: useDataConnectQueryOptions<GetAiGeneratedGifData>): UseDataConnectQueryResult<GetAiGeneratedGifData, GetAiGeneratedGifVariables>;
+
+export function useGetPayment(vars: GetPaymentVariables, options?: useDataConnectQueryOptions<GetPaymentData>): UseDataConnectQueryResult<GetPaymentData, GetPaymentVariables>;
+export function useGetPayment(dc: DataConnect, vars: GetPaymentVariables, options?: useDataConnectQueryOptions<GetPaymentData>): UseDataConnectQueryResult<GetPaymentData, GetPaymentVariables>;
+
+export function useGetAdminAction(vars: GetAdminActionVariables, options?: useDataConnectQueryOptions<GetAdminActionData>): UseDataConnectQueryResult<GetAdminActionData, GetAdminActionVariables>;
+export function useGetAdminAction(dc: DataConnect, vars: GetAdminActionVariables, options?: useDataConnectQueryOptions<GetAdminActionData>): UseDataConnectQueryResult<GetAdminActionData, GetAdminActionVariables>;
+
+export function useGetAnalyticsEntry(vars: GetAnalyticsEntryVariables, options?: useDataConnectQueryOptions<GetAnalyticsEntryData>): UseDataConnectQueryResult<GetAnalyticsEntryData, GetAnalyticsEntryVariables>;
+export function useGetAnalyticsEntry(dc: DataConnect, vars: GetAnalyticsEntryVariables, options?: useDataConnectQueryOptions<GetAnalyticsEntryData>): UseDataConnectQueryResult<GetAnalyticsEntryData, GetAnalyticsEntryVariables>;
+
+export function useGetLegalDisclaimer(vars: GetLegalDisclaimerVariables, options?: useDataConnectQueryOptions<GetLegalDisclaimerData>): UseDataConnectQueryResult<GetLegalDisclaimerData, GetLegalDisclaimerVariables>;
+export function useGetLegalDisclaimer(dc: DataConnect, vars: GetLegalDisclaimerVariables, options?: useDataConnectQueryOptions<GetLegalDisclaimerData>): UseDataConnectQueryResult<GetLegalDisclaimerData, GetLegalDisclaimerVariables>;

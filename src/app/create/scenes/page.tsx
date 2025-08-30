@@ -759,11 +759,11 @@ export default function ScenesPage() {
                       value={voice}
                       onChange={e => setVoice(e.target.value)}
                     >
-                      <option value="Kore">Narrator 1 (Male, Firm)</option>
-                      <option value="Puck">Narrator 2 (Male, Upbeat)</option>
-                      <option value="Zephyr">Narrator 3 (Female, Bright)</option>
-                      <option value="Leda">Narrator 4 (Female, Youthful)</option>
-                      <option value="Sadachbia">Narrator 5 (Female, Lively)</option>
+                      <option value="Kore">Kore (Male, Firm)</option>
+                      <option value="Puck">Puck (Male, Upbeat)</option>
+                      <option value="Zephyr">Zephyr (Female, Bright)</option>
+                      <option value="Leda">Leda (Female, Youthful)</option>
+                      <option value="Sadachbia">Sadachbia (Female, Lively)</option>
                     </select>
                     <select
                       className="w-full p-2 rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-white text-[#3D4F60]"

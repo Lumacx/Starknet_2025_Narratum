@@ -65,6 +65,7 @@ type Draft = {
   pages: number;
   coverUrl?: string | null;
   language: LangCode;
+  campaignName?: string; // ← NUEVO
 
   scenes?: Array<{
     text: string;
@@ -120,6 +121,7 @@ export default function BeginPage() {
     coverUrl: undefined,
     storyId: undefined,
     language: 'en',
+    campaignName: '',
     reader: { avatarUrl: DEFAULTS.avatarUrl, backgroundUrl: DEFAULTS.backgroundUrl },
   });
 
@@ -158,6 +160,7 @@ export default function BeginPage() {
             backgroundUrl: parsed?.reader?.backgroundUrl || DEFAULTS.backgroundUrl,
           },
           language: parsed?.language || 'en',
+          campaignName: parsed?.campaignName || '',
         }));
         setShowCover(Boolean(parsed?.storyId)); // if user already started
       } else {
@@ -252,7 +255,6 @@ export default function BeginPage() {
     if (!user) throw new Error('Please sign in first.');
     if (draft.storyId) return draft.storyId;
 
-    // Only create if user pressed Start or we truly need it
     const id = await createStory({
       title: draft.title || '(untitled)',
       synopsis: draft.synopsis || '',
@@ -262,8 +264,9 @@ export default function BeginPage() {
       coverImageUrl: null,
       visibility: 'private',
       status: 'draft',
-      language: draft.language,              // ← NUEVO
-    });
+      language: draft.language,
+      metadata: draft.campaignName ? { campaignName: draft.campaignName } : {}, // ← NUEVO
+    } as any);
 
     setDraft((d) => ({ ...d, storyId: id }));
     try {
@@ -332,34 +335,31 @@ export default function BeginPage() {
       const payload = isHttpUrl(draft.coverUrl)
         ? { imageUrl: draft.coverUrl }
         : { dataUrl: draft.coverUrl };
-  
-      // Human label for UX + prompt wording
+
       const LANG_LABELS: Record<string, string> = {
         en: 'English', es: 'Spanish', pt: 'Portuguese', fr: 'French', de: 'German',
         it: 'Italian', ja: 'Japanese', ko: 'Korean', zh: 'Chinese', hi: 'Hindi', ar: 'Arabic',
       };
       const lang = draft.language || 'en';
       const langLabel = LANG_LABELS[lang] || 'English';
-  
-      // Force the model to answer in the selected language
+
       const promptText =
         lang === 'es'
           ? 'Describe esta imagen en un solo párrafo claro y conciso (sin viñetas). Concéntrate en el sujeto, el entorno, la iluminación y el estado de ánimo. Responde únicamente en español.'
           : `Describe this image in one clear, concise paragraph (no bullets). Focus on subject, setting, lighting, and mood. Respond only in ${langLabel}.`;
-  
+
       const res = await fetch('/api/describe-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...payload,
           prompt: promptText,
-          // Send both keys to be compatible with any handler
           language: lang,
           targetLanguage: lang,
           responseModalities: ['TEXT'],
         }),
       });
-  
+
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Describe failed');
       setDescText(json.description || '');
@@ -391,44 +391,62 @@ export default function BeginPage() {
           pages: typeof s.pageCount === 'number' ? s.pageCount : d.pages,
           coverUrl: s.coverImageUrl ?? d.coverUrl ?? null,
           language: (s.language as LangCode) || d.language,
+          campaignName: s?.metadata?.campaignName || d.campaignName || '',
         }));
-        setShowCover(true); // allow editing cover of existing story
+        setShowCover(true);
       } catch (e) {
         console.error('Failed to load story details', e);
       }
     })();
   }, [user, existingStoryId, storyMode]);
 
-  // debajo de otras useEffect
+  /* Persist language changes if story already existe */
   useEffect(() => {
     (async () => {
-    try {
-      if (!draft.storyId || !user) return;
-      await updateDoc(fsDoc(db, 'stories', draft.storyId), {
-        language: draft.language,
-        updatedAt: serverTimestamp(),
-      });
-    } catch (e) {
-      console.warn('Could not persist language change', e);
-    }
-      })();
-    }, [draft.language, draft.storyId, user]);
+      try {
+        if (!draft.storyId || !user) return;
+        await updateDoc(fsDoc(db, 'stories', draft.storyId), {
+          language: draft.language,
+          updatedAt: serverTimestamp(),
+        });
+      } catch (e) {
+        console.warn('Could not persist language change', e);
+      }
+    })();
+  }, [draft.language, draft.storyId, user]);
+
+  /* Persist campaignName when available and story exists */
+  useEffect(() => {
+    (async () => {
+      try {
+        if (!draft.storyId || !user) return;
+        if (typeof draft.campaignName === 'undefined') return;
+        await updateDoc(fsDoc(db, 'stories', draft.storyId), {
+          metadata: { campaignName: draft.campaignName || '' },
+          updatedAt: serverTimestamp(),
+        });
+      } catch (e) {
+        console.warn('Could not persist campaignName change', e);
+      }
+    })();
+  }, [draft.campaignName, draft.storyId, user]);
 
   /* ---------------- Buttons ---------------- */
   const canStartNew =
     draft.title.trim() !== '' &&
     draft.genres.length > 0 &&
-    draft.synopsis.trim() !== '';
+    draft.synopsis.trim() !== '' &&
+    (draft.category !== 'campaign' || (draft.campaignName || '').trim() !== '');
 
   async function onStartStory() {
     try {
       setStarting(true);
       if (storyMode === 'continue') {
-        if (!existingStoryId) throw new Error('Please select a story to continue.');
+        if (!existingStoryId) throw new Error('Please select a story to load.');
         setShowCover(true);
         return;
       }
-      if (!canStartNew) throw new Error('Fill Title, Genres and Synopsis first.');
+      if (!canStartNew) throw new Error('Fill Title, Genres, Synopsis (and Campaign Name if Campaign).');
 
       // Create only now
       const id = await createStory({
@@ -440,8 +458,9 @@ export default function BeginPage() {
         coverImageUrl: null,
         visibility: 'private',
         status: 'draft',
-        language: draft.language,              // ← NUEVO
-      });
+        language: draft.language,
+        metadata: draft.campaignName ? { campaignName: draft.campaignName } : {},
+      } as any);
 
       setDraft((d) => ({ ...d, storyId: id }));
       try {
@@ -451,7 +470,7 @@ export default function BeginPage() {
         localStorage.setItem(DRAFT_KEY, JSON.stringify(obj));
       } catch {}
 
-      setShowCover(true); // reveal the Book Cover block
+      setShowCover(true);
     } catch (e: any) {
       alert(e?.message || 'Failed to start story.');
     } finally {
@@ -469,7 +488,7 @@ export default function BeginPage() {
         return;
       }
 
-      if (!canStartNew) throw new Error('Fill Title, Genres and Synopsis first.');
+      if (!canStartNew) throw new Error('Fill Title, Genres, Synopsis (and Campaign Name if Campaign).');
 
       const id =
         draft.storyId ||
@@ -481,8 +500,9 @@ export default function BeginPage() {
           pageCount: draft.pages,
           visibility: 'private',
           status: 'draft',
-          language: draft.language,              // ← NUEVO
-        }));
+          language: draft.language,
+          metadata: draft.campaignName ? { campaignName: draft.campaignName } : {},
+        } as any));
 
       setDraft(d => ({ ...d, storyId: id }));
       try {
@@ -504,30 +524,45 @@ export default function BeginPage() {
     draft.title.trim() !== '' &&
     draft.genres.length > 0 &&
     draft.synopsis.trim() !== '' &&
-    draft.coverUrl != null;
+    draft.coverUrl != null &&
+    (draft.category !== 'campaign' || (draft.campaignName || '').trim() !== '');
 
   /* ---------------- UI ---------------- */
   return (
-    <div className="min-h-screen p-6 pb-28 
-      bg-gradient-to-b from-[#0d1b2a] to-[#1b263b] 
-      text-[#E0C9A0] font-sans">
+    <div
+      className="
+        min-h-screen p-6 pb-28
+        text-slate-800 bg-gradient-to-b from-slate-50 to-slate-200
+        dark:text-[#E0C9A0] dark:bg-gradient-to-b dark:from-[#0d1b2a] dark:to-[#1b263b]
+        font-sans
+      "
+    >
       <div className="max-w-5xl mx-auto">
 
         {/* Header */}
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-3xl font-bold">Begin a New Tale</h1>
-          <Link href="/" className="text-sm underline text-[#C8D6E5]">Back</Link>
+          <Link href="/" className="text-sm underline text-slate-700 dark:text-[#C8D6E5]">Back</Link>
         </div>
 
         {/* Top Form */}
-        <div className="mb-5 rounded-xl border-2 border-[#344b63] bg-[#142436] text-[#E0C9A0] shadow p-6">
+        <div className="
+          mb-5 rounded-xl border-2 shadow p-6
+          border-slate-300 bg-white text-slate-800
+          dark:border-[#344b63] dark:bg-[#142436] dark:text-[#E0C9A0]
+        ">
           {/* Title + Genres + Story Mode */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             {/* Title */}
             <div className="md:col-span-2">
               <label className="block text-sm font-bold mb-2">Title</label>
               <input
-                className="w-full p-3 border-2 rounded-md bg-[#0f2334] text-white border-[#2c3f55]"
+                className="
+                  w-full p-3 border-2 rounded-md
+                  bg-white text-slate-900 border-slate-300
+                  focus:outline-none focus:ring-2 focus:ring-slate-300
+                  dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55] dark:focus:ring-[#2c3f55]
+                "
                 value={draft.title}
                 onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
                 placeholder="The Rise of the Shadow Dragon"
@@ -554,7 +589,7 @@ export default function BeginPage() {
                   className={`px-3 py-2 rounded-md text-sm font-medium transition
                     ${storyMode === 'new'
                       ? 'bg-[#E97451] text-white shadow-md'
-                      : 'bg-[#0f2334] text-[#C8D6E5] hover:bg-[#152b42] active:scale-[.98]'}`}
+                      : 'bg-slate-200 text-slate-800 hover:bg-slate-300 active:scale-[.98] dark:bg-[#0f2334] dark:text-[#C8D6E5] dark:hover:bg-[#152b42]'}`}
                   aria-pressed={storyMode === 'new'}
                 >
                   New
@@ -565,7 +600,7 @@ export default function BeginPage() {
                   className={`px-3 py-2 rounded-md text-sm font-medium transition
                     ${storyMode === 'continue'
                       ? 'bg-[#E97451] text-white shadow-md'
-                      : 'bg-[#0f2334] text-[#C8D6E5] hover:bg-[#152b42] active:scale-[.98]'}`}
+                      : 'bg-slate-200 text-slate-800 hover:bg-slate-300 active:scale-[.98] dark:bg-[#0f2334] dark:text-[#C8D6E5] dark:hover:bg-[#152b42]'}`}
                   aria-pressed={storyMode === 'continue'}
                 >
                   Continue
@@ -574,7 +609,11 @@ export default function BeginPage() {
 
               {storyMode === 'continue' && (
                 <select
-                  className="w-full p-3 border-2 rounded-md bg-[#0f2334] text-white border-[#2c3f55]"
+                  className="
+                    w-full p-3 border-2 rounded-md
+                    bg-white text-slate-900 border-slate-300
+                    dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]
+                  "
                   value={existingStoryId}
                   onChange={(e) => setExistingStoryId(e.target.value)}
                 >
@@ -585,7 +624,7 @@ export default function BeginPage() {
                 </select>
               )}
               {storyMode === 'continue' && storiesLoading && (
-                <p className="text-xs mt-1 text-[#C8D6E5]/70">Loading your stories…</p>
+                <p className="text-xs mt-1 text-slate-600 dark:text-[#C8D6E5]/70">Loading your stories…</p>
               )}
             </div>
 
@@ -593,7 +632,11 @@ export default function BeginPage() {
             <div className="md:col-span-2">
               <label className="block text-sm font-bold mb-2">Language</label>
               <select
-                className="w-full p-3 border-2 rounded-md bg-[#0f2334] text-white border-[#2c3f55]"
+                className="
+                  w-full p-3 border-2 rounded-md
+                  bg-white text-slate-900 border-slate-300
+                  dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]
+                "
                 value={draft.language}
                 onChange={(e) => setDraft((d) => ({ ...d, language: e.target.value as LangCode }))}
               >
@@ -601,7 +644,9 @@ export default function BeginPage() {
                   <option key={l.code} value={l.code}>{l.label}</option>
                 ))}
               </select>
-              <p className="text-xs mt-1 text-[#C8D6E5]/70">AI prompts and descriptions will use this language.</p>
+              <p className="text-xs mt-1 text-slate-600 dark:text-[#C8D6E5]/70">
+                AI prompts and descriptions will use this language.
+              </p>
             </div>
 
             {/* empty spacer to balance grid */}
@@ -613,19 +658,27 @@ export default function BeginPage() {
             <label className="block text-sm font-bold mb-2">Brief Synopsis</label>
             <textarea
               rows={4}
-              className="w-full p-3 border-2 rounded-md bg-[#0f2334] text-white border-[#2c3f55]"
+              className="
+                w-full p-3 border-2 rounded-md
+                bg-white text-slate-900 border-slate-300
+                dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]
+              "
               value={draft.synopsis}
               onChange={(e) => setDraft((d) => ({ ...d, synopsis: e.target.value }))}
               placeholder="A young mage discovers a hidden power that could save or shatter the kingdom..."
             />
           </div>
 
-          {/* Category + Pages */}
+          {/* Current Story (Category + Pages + Campaign Name) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-bold mb-2">Story Mode</label>
+              <label className="block text-sm font-bold mb-2">Current Story</label>
               <select
-                className="w-full p-3 border-2 rounded-md bg-[#0f2334] text-white border-[#2c3f55]"
+                className="
+                  w-full p-3 border-2 rounded-md
+                  bg-white text-slate-900 border-slate-300
+                  dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]
+                "
                 value={draft.category}
                 onChange={(e) => {
                   const nextKey = e.target.value as Draft['category'];
@@ -641,7 +694,30 @@ export default function BeginPage() {
                   <option key={c.key} value={c.key}>{c.label}</option>
                 ))}
               </select>
-              <p className="text-xs mt-1 text-[#C8D6E5]/70">Allowed pages: {cat.min}–{cat.max}</p>
+              <p className="text-xs mt-1 text-slate-600 dark:text-[#C8D6E5]/70">
+                Allowed pages: {cat.min}–{cat.max}
+              </p>
+
+              {/* Campaign Name (solo si category === 'campaign') */}
+              {draft.category === 'campaign' && (
+                <div className="mt-4">
+                  <label className="block text-sm font-bold mb-2">Campaign Name</label>
+                  <input
+                    className="
+                      w-full p-3 border-2 rounded-md
+                      bg-white text-slate-900 border-slate-300
+                      focus:outline-none focus:ring-2 focus:ring-slate-300
+                      dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55] dark:focus:ring-[#2c3f55]
+                    "
+                    value={draft.campaignName || ''}
+                    onChange={(e) => setDraft((d) => ({ ...d, campaignName: e.target.value }))}
+                    placeholder="e.g., Summer Reading Challenge"
+                  />
+                  <p className="text-xs mt-1 text-slate-600 dark:text-[#C8D6E5]/70">
+                    This is saved in <code>metadata.campaignName</code> for discovery filters.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div>
@@ -654,14 +730,20 @@ export default function BeginPage() {
                 onChange={(e) => setDraft((d) => ({ ...d, pages: Number(e.target.value) }))}
                 className="w-full accent-[#E97451]"
               />
-              <div className="text-sm mt-1">Pages: <strong>{draft.pages}</strong></div>
+              <div className="text-sm mt-1">
+                Pages: <strong>{draft.pages}</strong>
+              </div>
             </div>
           </div>
 
           {/* Start & quick actions */}
           <div className="flex justify-end flex-wrap gap-3 mt-6">
             <button
-              className="px-5 py-2 rounded-md border bg-gray-700/40 text-[#C8D6E5] hover:bg-gray-700/70 active:scale-[.98]"
+              className="
+                px-5 py-2 rounded-md border
+                bg-slate-200 text-slate-800 hover:bg-slate-300 active:scale-[.98]
+                dark:bg-gray-700/40 dark:text-[#C8D6E5] dark:hover:bg-gray-700/70
+              "
               onClick={() => { try { localStorage.removeItem(DRAFT_KEY); } catch {} location.reload(); }}
             >
               Reset
@@ -669,24 +751,32 @@ export default function BeginPage() {
 
             <button
               onClick={onStartStory}
-              disabled={starting || (storyMode === 'new' ? !canStartNew : false)}
-              className={`px-6 py-2 rounded-md text-white font-semibold transition transform active:scale-[.98]
+              disabled={
+                starting ||
+                (storyMode === 'new' ? !canStartNew : !existingStoryId)
+              }
+              className={`
+                px-6 py-2 rounded-md text-white font-semibold transition transform active:scale-[.98]
                 ${storyMode === 'new'
                   ? (canStartNew ? 'bg-[#2e7d32] hover:bg-[#276a2b]' : 'bg-[#2e7d32]/50')
-                  : 'bg-[#2e7d32] hover:bg-[#276a2b]'}
+                  : (existingStoryId ? 'bg-[#2e7d32] hover:bg-[#276a2b]' : 'bg-[#2e7d32]/50')}
               `}
+              title={storyMode === 'continue' ? 'Load the selected story' : 'Create the new story draft'}
             >
-              {storyMode === 'new' ? (starting ? 'Starting…' : 'Start Story') : 'Use This Story'}
+              {storyMode === 'new' ? (starting ? 'Starting…' : 'Start Story') : 'Load Story'}
             </button>
 
             <button
-              className="px-6 py-2 rounded-md bg-[#E97451] text-white font-semibold disabled:opacity-50 hover:bg-[#D46342]"
+              className="
+                px-6 py-2 rounded-md font-semibold disabled:opacity-50
+                bg-[#E97451] text-white hover:bg-[#D46342]
+              "
               onClick={async () => {
-                try { 
+                try {
                   const id = await ensureStoryId();
                   router.push(`/create/support?storyId=${id}`);
-                } catch (e: any) { 
-                  alert(e?.message || 'Failed to continue.'); 
+                } catch (e: any) {
+                  alert(e?.message || 'Failed to continue.');
                 }
               }}
               disabled={!isNextButtonEnabled}
@@ -700,8 +790,12 @@ export default function BeginPage() {
                 jumpingScenes ||
                 (storyMode === 'new' ? !canStartNew : !existingStoryId)
               }
-              className="px-6 py-2 rounded-md border-2 border-[#3D4F60] text-[#C8D6E5] bg-[#0f2334]
-                         hover:bg-[#152b42] active:scale-[.98] disabled:opacity-50"
+              className="
+                px-6 py-2 rounded-md border-2
+                border-slate-300 text-slate-800 bg-white
+                hover:bg-slate-100 active:scale-[.98] disabled:opacity-50
+                dark:border-[#3D4F60] dark:text-[#C8D6E5] dark:bg-[#0f2334] dark:hover:bg-[#152b42]
+              "
             >
               Skip to Scenes →
             </button>
@@ -710,7 +804,11 @@ export default function BeginPage() {
 
         {/* Book Cover (hidden until Start Story or Continue) */}
         {showCover && (
-          <div className="rounded-xl border-2 border-[#344b63] bg-[#142436] text-[#E0C9A0] shadow p-6">
+          <div className="
+            rounded-xl border-2 shadow p-6
+            border-slate-300 bg-white text-slate-800
+            dark:border-[#344b63] dark:bg-[#142436] dark:text-[#E0C9A0]
+          ">
             <h2 className="text-xl font-bold mb-4">Book Cover Image</h2>
 
             <CoverImageManager
@@ -727,7 +825,11 @@ export default function BeginPage() {
             />
 
             {/* AI Describe panel */}
-            <div className="mt-4 p-3 rounded-lg border border-[#344b63] bg-black/20">
+            <div className="
+              mt-4 p-3 rounded-lg border
+              border-slate-300 bg-slate-50
+              dark:border-[#344b63] dark:bg-black/20
+            ">
               <div className="flex flex-col md:flex-row md:items-center gap-3">
                 <button
                   onClick={describeCurrentCover}
@@ -736,14 +838,18 @@ export default function BeginPage() {
                 >
                   {descLoading ? 'Describing…' : 'AI Describe Cover'}
                 </button>
-                {descError && <span className="text-red-400 text-sm">{descError}</span>}
+                {descError && <span className="text-red-600 dark:text-red-400 text-sm">{descError}</span>}
               </div>
 
               {!!descText && (
                 <div className="mt-3">
                   <label className="block text-sm font-bold mb-1">AI Description</label>
                   <textarea
-                    className="w-full p-3 border-2 rounded-md bg-[#0f2334] border-[#2c3f55]"
+                    className="
+                      w-full p-3 border-2 rounded-md
+                      bg-white text-slate-900 border-slate-300
+                      dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]
+                    "
                     rows={3}
                     value={descText}
                     onChange={(e) => setDescText(e.target.value)}
@@ -751,13 +857,21 @@ export default function BeginPage() {
                   <div className="flex gap-2 mt-2">
                     <button
                       onClick={() => setDraft((d) => ({ ...d, synopsis: descText }))}
-                      className="px-3 py-1 rounded-md border bg-gray-700/40"
+                      className="
+                        px-3 py-1 rounded-md border
+                        bg-slate-200 text-slate-800 hover:bg-slate-300
+                        dark:bg-gray-700/40 dark:text-[#C8D6E5] dark:hover:bg-gray-700/70
+                      "
                     >
                       Use as Synopsis
                     </button>
                     <button
                       onClick={() => navigator.clipboard.writeText(descText)}
-                      className="px-3 py-1 rounded-md border bg-gray-700/40"
+                      className="
+                        px-3 py-1 rounded-md border
+                        bg-slate-200 text-slate-800 hover:bg-slate-300 active:scale-[.98]
+                        dark:bg-gray-700/40 dark:text-[#C8D6E5] dark:hover:bg-gray-700/70
+                      "
                     >
                       Copy
                     </button>
