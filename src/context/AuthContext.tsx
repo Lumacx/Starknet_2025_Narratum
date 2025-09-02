@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { onAuthStateChanged, signOut as firebaseSignOut, type User } from 'firebase/auth';
+import { onAuthStateChanged, signOut as firebaseSignOut, signInAnonymously, type User } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
 interface AuthContextType {
@@ -34,6 +34,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     });
     return () => unsubscribe();
   }, []);
+
+// 🔐 Si el usuario solo conectó Starknet, crea sesión anónima antes de cualquier lectura
+ useEffect(() => {
+     if (loading) return;
+     if (user) return;                 // ya hay sesión
+     if (!starknetAddress) return;     // no hay Starknet => no hagas nada
+     signInAnonymously(auth).catch((e) => {
+       console.warn('Anonymous sign-in failed:', e?.message || e);
+     });
+   }, [loading, user, starknetAddress]);
 
   const setStarknetLoginStatus = (address: string | null) => {
     setStarknetAddressInternal(address);

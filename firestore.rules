@@ -46,6 +46,11 @@ service cloud.firestore {
       // Profile doc (unchanged)
       allow read, write: if isSignedIn() && request.auth.uid == uid;
 
+      // ✅ Subcolección META del usuario (keepalive y flags)
+      match /_meta/{docId} {
+        allow read, write: if isSignedIn() && request.auth.uid == uid;
+       }
+
       // User gallery (characters, locations, narrations, sfx, videos)
       match /assets/{assetId} {
         allow read, write: if isSignedIn() && request.auth.uid == uid;

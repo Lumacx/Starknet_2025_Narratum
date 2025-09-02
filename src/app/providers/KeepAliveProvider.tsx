@@ -5,22 +5,17 @@ import { useEffect } from 'react';
 import { rtdb, db } from '@/lib/firebase';
 import { ref, onValue, off } from 'firebase/database';
 import { doc, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { onSnapshotDebug } from '@/lib/firestoreDebug';
 import { useAuth } from '@/context/AuthContext';
 
-/**
- * Keeps Firebase sockets warm during idle UI.
- * - Runs only when user is authenticated (default).
- */
 export default function KeepAliveProvider({
   children,
   requireAuth = true,
-  rtdbPath = '_meta/keepalive',
-  firestoreDocPath = '_meta/keepalive',
+  rtdbPath = '_meta/keepalive',          // RTDB lo dejamos igual
 }: {
   children: React.ReactNode;
   requireAuth?: boolean;
-  rtdbPath?: string;          // e.g. '_meta/keepalive'
-  firestoreDocPath?: string;  // e.g. '_meta/keepalive'
+  rtdbPath?: string;
 }) {
   const { user } = useAuth();
 
@@ -29,24 +24,27 @@ export default function KeepAliveProvider({
 
     // --- RTDB keep-alive ---
     const r = ref(rtdb, rtdbPath);
-    const stopRtdb = onValue(r, () => { /* no-op */ });
+    const stopRtdb = onValue(r, () => {});
 
-    // --- Firestore keep-alive (optional tiny doc) ---
+
+    // --- Firestore keep-alive bajo el usuario ---
     let stopFs: Unsubscribe | undefined;
     try {
-      const [c, d] = firestoreDocPath.split('/');
-      if (c && d) {
-        const keepDoc = doc(db, c, d);
-        stopFs = onSnapshot(keepDoc, () => { /* no-op */ });
+      if (user) {
+        // const keepDoc = doc(db, 'users', user.uid, '_meta', 'keepalive');
+        // stopFs = onSnapshotDebug(keepDoc, () => {});
+    
+        const keepDoc = doc(db, 'users', user.uid, '_meta', 'keepalive');
+        stopFs = onSnapshot(keepDoc, () => {});
       }
-    } catch { /* ignore */ }
+    } catch {}
 
     return () => {
       try { off(r); } catch {}
       try { stopRtdb(); } catch {}
       try { stopFs?.(); } catch {}
     };
-  }, [user, requireAuth, rtdbPath, firestoreDocPath]);
+  }, [user, requireAuth, rtdbPath]);
 
   return <>{children}</>;
 }

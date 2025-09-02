@@ -9,7 +9,6 @@ export type StoryCategory = 'short' | 'novela' | 'campaign';
 export type StoryVisibility = 'public' | 'private' | 'unlisted';
 export type StoryStatus = 'draft' | 'published';
 
-// mismos códigos que usas en Begin/page
 export type LangCode =
   | 'en' | 'es' | 'pt' | 'fr' | 'de'
   | 'it' | 'ja' | 'ko' | 'zh' | 'hi' | 'ar';
@@ -23,16 +22,11 @@ export type CreateStoryInput = {
   coverImageUrl?: string | null;
   visibility?: StoryVisibility;   // default -> 'private'
   status?: StoryStatus;           // default -> 'draft'
-  /** ✅ NUEVO: idioma coherente con Begin/Support */
   language?: LangCode;            // default -> 'en'
+  /** 🔹 NUEVO: para soportar campaignName y futuros metadatos */
+  metadata?: Record<string, any>;
 };
 
-/**
- * Creates a story document that satisfies your Firestore rules:
- * - ownerUid == request.auth.uid
- * - sets status/visibility
- * - sets createdAt/updatedAt
- */
 export function useCreateStory() {
   const { user } = useAuth();
 
@@ -40,7 +34,12 @@ export function useCreateStory() {
     if (!user) throw new Error('You must be signed in to create a story.');
 
     const now = serverTimestamp();
+
     const docRef = await addDoc(collection(db, 'stories'), {
+      // 🔐 Reglas: requerido
+      ownerUid: user.uid,
+
+      // Datos
       title: data.title ?? '(untitled)',
       synopsis: data.synopsis ?? '',
       genres: Array.isArray(data.genres) ? data.genres : [],
@@ -48,16 +47,15 @@ export function useCreateStory() {
       pageCount: Number.isFinite(data.pageCount) ? data.pageCount : 1,
       coverImageUrl: data.coverImageUrl ?? null,
 
-      // ✅ idioma persistido
+      // Idioma/estado/visibilidad
       language: data.language ?? 'en',
-
-      // ✅ required by your rules
-      ownerUid: user.uid,
-
-      // ✅ rules read these for public/published access gates
       visibility: data.visibility ?? 'private',
       status: data.status ?? 'draft',
 
+      // 🔹 Metadata opcional (ej. { campaignName })
+      metadata: data.metadata ?? {},
+
+      // Timestamps
       createdAt: now,
       updatedAt: now,
     });
