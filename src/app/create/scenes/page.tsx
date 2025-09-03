@@ -121,6 +121,7 @@ type StoryDoc = {
   isPublic?: boolean;
   publishedAt?: any;
   updatedAt?: any;
+  pageCount?: number; // Added pageCount here
 };
 
 /* ----- UI helpers ----- */

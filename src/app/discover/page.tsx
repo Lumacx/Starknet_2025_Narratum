@@ -1,4 +1,4 @@
-// app/discover/page.tsx  (or wherever your CatalogPage lives)
+// app/discover/page.tsx
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -7,9 +7,7 @@ import { Story } from '@/lib/types';
 import { useListPublishedStories } from '@/hooks/useListPublishedStories';
 import GenreMultiSelect from '@/components/GenreMultiSelect';
 import { useAuth } from '@/context/AuthContext';
-import {
-  db
-} from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import {
   collection,
   doc,
@@ -20,14 +18,14 @@ import {
   deleteDoc,
   runTransaction,
   where,
-  getDocs,
-  serverTimestamp
+  serverTimestamp,
 } from 'firebase/firestore';
 import { Heart } from 'lucide-react';
 
+/* ----------------------------- Constants ----------------------------- */
 const GENRE_OPTIONS = [
   'Fantasy','Sci-Fi','Mystery','Horror','Romance','Adventure','Children','Comedy','Drama','Action','Other'
-];
+] as const;
 
 /* ----------------------------- Star Rating UI ----------------------------- */
 function Star({
@@ -85,34 +83,34 @@ function StarRating({
   }, [average, count]);
 
   const handleSetRating = async (value: number) => {
-    if (!user) return alert('Sign in to rate.');
+    if (!user?.uid) {
+      alert('Sign in to rate.');
+      return;
+    }
     if (!storyId) return;
 
     setSaving(true);
     try {
-      // We maintain atomic aggregates on story doc:
-      // fields: ratingCount: number, ratingSum: number
-      // And keep user's rating in subcollection: stories/{id}/ratings/{uid} { rating, updatedAt }
+      // Atomiza agregados en story y guarda rating por usuario en subcolección
       await runTransaction(db, async (tx) => {
         const storyRef = doc(db, 'stories', storyId);
         const userRatingRef = doc(db, 'stories', storyId, 'ratings', user.uid);
 
         const storySnap = await tx.get(storyRef);
         const prevCount = (storySnap.data()?.ratingCount ?? 0) as number;
-        const prevSum = (storySnap.data()?.ratingSum ?? 0) as number;
+        const prevSum   = (storySnap.data()?.ratingSum   ?? 0) as number;
 
         const userSnap = await tx.get(userRatingRef);
         const hadRating = userSnap.exists();
         const oldVal = hadRating ? (userSnap.data()?.rating ?? 0) as number : 0;
 
         let newCount = prevCount;
-        let newSum = prevSum;
+        let newSum   = prevSum;
 
         if (!hadRating) {
           newCount = prevCount + 1;
           newSum   = prevSum + value;
         } else {
-          // adjust sum by delta, count unchanged
           newSum = prevSum - oldVal + value;
         }
 
@@ -175,7 +173,10 @@ function FavoriteButton({
   useEffect(() => setIsFav(initialIsFav), [initialIsFav]);
 
   const toggleFavorite = async () => {
-    if (!user) return alert('Sign in to add favorites.');
+    if (!user?.uid) {
+      alert('Sign in to add favorites.');
+      return;
+    }
     setBusy(true);
     try {
       const favRef = doc(db, 'users', user.uid, 'favorites', storyId);
@@ -213,7 +214,7 @@ function FavoriteButton({
 /* --------------------------------- Page ---------------------------------- */
 
 const CatalogPage: React.FC = () => {
-  const [activeFilter, setActiveFilter] = useState('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'popular' | 'recent'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [displayedStories, setDisplayedStories] = useState<Story[]>([]);
@@ -225,39 +226,54 @@ const CatalogPage: React.FC = () => {
   const { user } = useAuth();
   const { data, isLoading, error } = useListPublishedStories();
 
-  // pull published stories
+  // Pull published stories (para no logueados también)
   useEffect(() => {
     const stories = data ?? [];
     setAllStories(stories);
     setDisplayedStories(stories);
   }, [data]);
 
-  // live load user ratings/favorites
+  // Live load user ratings/favorites — SOLO si hay user
   useEffect(() => {
-    if (!user) {
+    // reset si no hay user
+    if (!user?.uid) {
       setUserRatings({});
       setUserFavorites({});
       return;
     }
 
-    // Favorites subscription
+    // Favorites subscription (con handler de error)
     const favCol = collection(db, 'users', user.uid, 'favorites');
-    const unsubFav = onSnapshot(favCol, (snap) => {
-      const map: Record<string, boolean> = {};
-      snap.forEach(d => { map[d.id] = true; });
-      setUserFavorites(map);
-    });
+    const unsubFav = onSnapshot(
+      favCol,
+      (snap) => {
+        const map: Record<string, boolean> = {};
+        snap.forEach((d) => { map[d.id] = true; });
+        setUserFavorites(map);
+      },
+      (err) => {
+        console.error('[favorites onSnapshot] error:', err?.code || err, err);
+        // Si por alguna razón las rules niegan, no rompemos la página
+      }
+    );
 
-    // Ratings for visible stories (optional: load all)
-    // Simple approach: get each rating doc once when story list changes.
+    // Ratings del usuario para las historias visibles (lookup 1x)
     const loadRatings = async () => {
       const map: Record<string, number | null> = {};
-      await Promise.all((data ?? []).map(async (s) => {
-        if (!s.id) return;
-        const rRef = doc(db, 'stories', s.id, 'ratings', user.uid);
-        const rSnap = await getDoc(rRef);
-        map[s.id] = rSnap.exists() ? (rSnap.data()?.rating ?? null) : null;
-      }));
+      const list = data ?? [];
+      await Promise.all(
+        list.map(async (s) => {
+          if (!s.id) return;
+          try {
+            const rRef = doc(db, 'stories', s.id, 'ratings', user.uid);
+            const rSnap = await getDoc(rRef);
+            map[s.id] = rSnap.exists() ? (rSnap.data()?.rating ?? null) : null;
+          } catch (e) {
+            console.warn('get rating failed for story', s.id, e);
+            map[s.id] = null;
+          }
+        })
+      );
       setUserRatings(map);
     };
     loadRatings();
@@ -265,7 +281,7 @@ const CatalogPage: React.FC = () => {
     return () => {
       unsubFav();
     };
-  }, [user, data]);
+  }, [user?.uid, data]);
 
   const applyFiltersAndSearch = (stories: Story[]) => {
     let filtered = [...stories];
@@ -310,7 +326,7 @@ const CatalogPage: React.FC = () => {
     }
   }, [activeFilter, selectedGenres, searchQuery]);
 
-  const handleFilterClick = (filter: string) => {
+  const handleFilterClick = (filter: 'all'|'popular'|'recent') => {
     setActiveFilter(filter);
     setSearchQuery('');
   };
@@ -386,7 +402,7 @@ const CatalogPage: React.FC = () => {
         </header>
 
         <nav className="filter-nav flex justify-center gap-6 md:gap-8 mb-6 flex-wrap">
-          {['all', 'popular', 'recent'].map(filter => (
+          {(['all', 'popular', 'recent'] as const).map(filter => (
             <button
               key={filter}
               onClick={() => handleFilterClick(filter)}
@@ -400,7 +416,7 @@ const CatalogPage: React.FC = () => {
             </button>
           ))}
           <GenreMultiSelect
-            genresList={GENRE_OPTIONS}
+            genresList={GENRE_OPTIONS as unknown as string[]}
             selectedGenres={selectedGenres}
             onSelectedGenresChange={setSelectedGenres}
           />

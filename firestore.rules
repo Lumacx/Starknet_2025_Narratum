@@ -3,17 +3,15 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /* ---------- Helpers ---------- */
-    function isSignedIn() {
-      return request.auth != null;
-    }
+    /* ----------------- Helpers ----------------- */
+    function isSignedIn() { return request.auth != null; }
 
-    // Existing doc -> owner (expects { ownerUid } on the doc)
+    // existing doc -> owner (requires { ownerUid } on the doc)
     function isOwnerDoc() {
       return isSignedIn() && resource.data.ownerUid == request.auth.uid;
     }
 
-    // Incoming payload -> owner (expects { ownerUid } in request body)
+    // incoming payload -> owner (requires { ownerUid } in request)
     function isOwnerCreate() {
       return isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
     }
@@ -22,7 +20,7 @@ service cloud.firestore {
       return resource.data.status == "published" && resource.data.visibility == "public";
     }
 
-    // Resolve story ownership/public from a top-level storyId
+    // Check ownership of top-level story
     function isStoryOwner(storyId) {
       return isSignedIn() &&
         get(/databases/$(database)/documents/stories/$(storyId)).data.ownerUid == request.auth.uid;
@@ -33,39 +31,40 @@ service cloud.firestore {
       return s.status == "published" && s.visibility == "public";
     }
 
+    function canReadStoryById(storyId) {
+      return storyIsPublic(storyId) || isStoryOwner(storyId);
+    }
+
     /* ============================================================
-       USERS TREE  (used by the new Scenes page)
-       - users/{uid}               -> private profile (already had)
-       - users/{uid}/assets/{id}   -> user's gallery items
-       - users/{uid}/stories/{id}  -> user's WIP stories (no ownerUid required)
-         - scenes/{sceneId}        -> optional per-scene docs (if you use them)
-         - assets/{assetId}        -> optional story-scoped assets
-       All owner-gated by path uid, so we don't require {ownerUid} here.
+       USERS TREE (path-scoped; no exige ownerUid en el doc)
        ============================================================ */
     match /users/{uid} {
-      // Profile doc (unchanged)
+      // Perfil del usuario
       allow read, write: if isSignedIn() && request.auth.uid == uid;
 
-      // ✅ Subcolección META del usuario (keepalive y flags)
+      // _meta (keepalive/flags)
       match /_meta/{docId} {
         allow read, write: if isSignedIn() && request.auth.uid == uid;
-       }
+      }
 
-      // User gallery (characters, locations, narrations, sfx, videos)
+      // Galería
       match /assets/{assetId} {
         allow read, write: if isSignedIn() && request.auth.uid == uid;
       }
 
-      // User-scoped stories (the Scenes page writes here)
+      // Favoritos (usado en discover/profile)
+      match /favorites/{favId} {
+        allow read, write: if isSignedIn() && request.auth.uid == uid;
+      }
+
+      // Historias WIP del usuario
       match /stories/{storyId} {
         allow read, write: if isSignedIn() && request.auth.uid == uid;
 
-        // OPTIONAL: if you break scenes into subcollection docs
         match /scenes/{sceneId} {
           allow read, write: if isSignedIn() && request.auth.uid == uid;
         }
 
-        // OPTIONAL: story-scoped assets (e.g., renders attached to a story)
         match /assets/{assetId} {
           allow read, write: if isSignedIn() && request.auth.uid == uid;
         }
@@ -73,43 +72,91 @@ service cloud.firestore {
     }
 
     /* ============================================================
-       TOP-LEVEL STORIES (public/published + owner rules)
-       Keeps your original model for public discovery/publishing.
+       TOP-LEVEL STORIES (descubrimiento/publishing)
        ============================================================ */
     match /stories/{storyId} {
-      // Create must include ownerUid == caller
+      // Crear: debe venir con ownerUid == caller
       allow create: if isOwnerCreate();
 
-      // Reads: public published stories OR owner reads anything
+      // Leer: públicas/published o dueño
       allow read: if isPublicStory() || isOwnerDoc();
 
-      // Only owner may update/delete
-      allow update, delete: if isOwnerDoc();
+      // Actualizar/Eliminar: sólo dueño + congelar ownerUid
+      allow update, delete: if isOwnerDoc()
+        && request.resource.data.ownerUid == resource.data.ownerUid;
+
+      /* ---------- Subcolecciones bajo stories ---------- */
+
+      // Ratings: clave = uid del rater (así lo usas en discover)
+      match /ratings/{raterUid} {
+        // Leer: si story es público o caller es dueño del story o caller es el rater y quiere leer su propio rating
+        allow read: if canReadStoryById(storyId)
+                 || (isSignedIn() && request.auth.uid == raterUid);
+
+        // Crear/actualizar/eliminar: sólo el propio rater sobre su doc
+        allow create, update, delete: if isSignedIn() && request.auth.uid == raterUid;
+      }
+
+      // Comments (si los lees desde cliente; tu GraphQL con Admin SDK no necesita rules)
+      match /comments/{commentId} {
+        // Leer: si story es público o caller es dueño del story
+        allow read: if canReadStoryById(storyId);
+
+        // Crear: user autenticado; guarda authorId y congélalo en updates
+        allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+
+        // Update/Delete: sólo el autor del comentario
+        allow update, delete: if isSignedIn()
+          && resource.data.authorId == request.auth.uid
+          && request.resource.data.authorId == resource.data.authorId;
+
+        // Reacciones a un comentario
+        match /reactions/{userId} {
+          // Leer: si story es público o caller es dueño del story
+          allow read: if canReadStoryById(storyId);
+
+          // Crear/Actualizar/Eliminar: sólo el propio userId
+          allow create, update, delete: if isSignedIn() && request.auth.uid == userId;
+        }
+      }
+
+      // Reacciones directas al story (si las usas)
+      match /reactions/{userId} {
+        allow read: if canReadStoryById(storyId);
+        allow create, update, delete: if isSignedIn() && request.auth.uid == userId;
+      }
     }
 
     /* ============================================================
-       TOP-LEVEL storyContents (page documents)
-       Read if parent story is public+published OR caller owns it.
-       Only the parent story owner can write.
+       TOP-LEVEL storyContents (pages/segments)
        ============================================================ */
     match /storyContents/{id} {
+
       function storyIdFromExisting() {
         return resource != null ? resource.data.storyId : null;
       }
+
       function storyIdFromRequest() {
         return request.resource != null ? request.resource.data.storyId : null;
       }
+
       function effectiveStoryId() {
         return storyIdFromExisting() != null ? storyIdFromExisting() : storyIdFromRequest();
       }
 
-      allow read: if (effectiveStoryId() != null && storyIsPublic(effectiveStoryId()))
-               || (effectiveStoryId() != null && isStoryOwner(effectiveStoryId()));
+      // read (get + list)
+      allow read: if effectiveStoryId() != null && canReadStoryById(effectiveStoryId());
 
-      allow create, update, delete: if (effectiveStoryId() != null && isStoryOwner(effectiveStoryId()));
+      // create: sólo si caller es dueño del story
+      allow create: if effectiveStoryId() != null && isStoryOwner(effectiveStoryId());
+
+      // update/delete: dueño + no permitir cambiar storyId
+      allow update, delete: if effectiveStoryId() != null
+        && isStoryOwner(effectiveStoryId())
+        && request.resource.data.storyId == resource.data.storyId;
     }
 
-    /* ---------- Default deny ---------- */
+    /* ----------------- Default deny ----------------- */
     match /{document=**} {
       allow read, write: if false;
     }
