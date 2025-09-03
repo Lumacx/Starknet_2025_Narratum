@@ -5,16 +5,14 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ImageIcon, Music, Upload, Wand2, Loader2, Check, Info, PlusCircle, Quote } from 'lucide-react';
+import { ImageIcon, Music, Upload, Wand2, Loader2, Check, Info, PlusCircle, Quote, Volume2, Image as ImgIcon } from 'lucide-react';
 
 import { useAuth } from '@/context/AuthContext';
 import { db, storage } from '@/lib/firebase';
 import {
-  setDoc,
   getDoc,
   updateDoc,
   doc as fsDoc,
-  collection,
   serverTimestamp,
 } from 'firebase/firestore';
 import {
@@ -23,13 +21,6 @@ import {
   getDownloadURL,
   getMetadata,
 } from 'firebase/storage';
-
-const makeDefaultScene = (index = 0): Scene => ({
-  id: crypto.randomUUID(),
-  index,
-  title: `Scene ${index + 1}`,
-  text: '',
-});
 
 /* ------------------------------------------------------------------ */
 /* Types & constants                                                   */
@@ -76,7 +67,6 @@ const LANG_LABELS: Record<string, string> = {
   it: 'Italian', ja: 'Japanese', ko: 'Korean', zh: 'Chinese', hi: 'Hindi', ar: 'Arabic',
 };
 
-const DRAFT_KEY = 'newStoryDraft';
 const DEFAULTS = {
   avatarUrl: '/avatars/Default.png',
   backgroundUrl: '/story_reader_backgrounds/dream-background.png',
@@ -94,19 +84,19 @@ const GALLERY_TABS: Array<{
   { key: 'videos',          label: 'Videos (MP4)',     kind: 'video' },
 ];
 
-/* ----- Scene/Story types for merged flow ----- */
+/* ----- Scene/Story types ----- */
 
 type Scene = {
   id: string;
   index: number;
   title?: string;
   text?: string;
-  imageUrl?: string;
-  imageName?: string;
-  audioUrl?: string;
-  audioName?: string;
-  voiceId?: string;              // per-scene override (optional)
-  durationMs?: number;
+  imageUrl?: string | null;
+  imageName?: string | null;
+  audioUrl?: string | null;
+  audioName?: string | null;
+  voiceId?: string | null;   // per-scene override (optional)
+  durationMs?: number | null;
 };
 
 type StoryDoc = {
@@ -114,19 +104,64 @@ type StoryDoc = {
   synopsis?: string;
   genres?: string[];
   language?: LangCode;
-  voiceId?: string;              // story-level default voice (optional)
+  voiceId?: string;          // story-level default voice (optional)
   reader?: { avatarUrl?: string; backgroundUrl?: string };
   scenes?: Scene[];
   status?: 'draft' | 'published';
   isPublic?: boolean;
   publishedAt?: any;
   updatedAt?: any;
-  pageCount?: number; // Added pageCount here
+  pageCount?: number;        // <- Begin sets this (1–10 short, up to 20 long)
 };
 
-/* ----- UI helpers ----- */
+/* ----- helpers ----- */
+
 function classNames(...xs: (string | false | null | undefined)[]) {
   return xs.filter(Boolean).join(' ');
+}
+
+function makeDefaultScene(index = 0): Scene {
+  const id = typeof crypto?.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : String(Math.random()).slice(2);
+  return { id, index, title: `Scene ${index + 1}`, text: '', imageUrl: null, imageName: null, audioUrl: null, audioName: null, voiceId: null, durationMs: null };
+}
+
+/** Firestore SAFE: replace undefined with null and strip unknowns */
+function serializeScene(s: Partial<Scene>, i: number) {
+  return {
+    id: s.id || (typeof crypto?.randomUUID === 'function' ? crypto.randomUUID() : String(Math.random()).slice(2)),
+    index: Number.isFinite(s.index as number) ? (s.index as number) : i,
+    title: s.title ?? '',
+    text: s.text ?? '',
+    imageUrl: s.imageUrl ?? null,
+    imageName: s.imageName ?? null,
+    audioUrl: s.audioUrl ?? null,
+    audioName: s.audioName ?? null,
+    voiceId: s.voiceId ?? null,
+    durationMs: Number.isFinite(s.durationMs as number) ? (s.durationMs as number) : null,
+  };
+}
+
+function serializeStoryForWrite(story: StoryDoc | null, scenes: Scene[]) {
+  const safeScenes = scenes.map((s, i) => serializeScene(s, i));
+  const out: any = {
+    title: story?.title ?? '',
+    synopsis: story?.synopsis ?? '',
+    genres: Array.isArray(story?.genres) ? story!.genres : [],
+    language: (story?.language as LangCode) ?? 'en',
+    reader: {
+      avatarUrl: story?.reader?.avatarUrl ?? DEFAULTS.avatarUrl,
+      backgroundUrl: story?.reader?.backgroundUrl ?? DEFAULTS.backgroundUrl,
+    },
+    scenes: safeScenes,
+    status: story?.status ?? 'draft',
+    isPublic: !!story?.isPublic,
+    updatedAt: serverTimestamp(),
+  };
+  if (typeof story?.pageCount === 'number') out.pageCount = story!.pageCount;
+  if (story?.voiceId) out.voiceId = story.voiceId;
+  return out;
 }
 
 function inferKindFromPath(path?: string, contentType?: string): 'image' | 'audio' | 'video' | 'unknown' {
@@ -142,7 +177,7 @@ function inferKindFromPath(path?: string, contentType?: string): 'image' | 'audi
 }
 
 /* ------------------------------------------------------------------ */
-/* Imagen-oriented helpers (consistent with Support/Begin)             */
+/* Imagen + Suggest helpers                                           */
 /* ------------------------------------------------------------------ */
 
 function genreDescriptors(genres: string[] = []): string[] {
@@ -169,19 +204,13 @@ function composePromptForImagen(
   const lines: string[] = [];
   lines.push(`Use ${ctx?.language || 'English'} to interpret all descriptive concepts. Do not render any textual characters in the image.`);
   lines.push('Create a professional, illustration-style image (no text). Use a single striking composition with a clear focal subject, cinematic lighting, and a cohesive palette.');
-  if (ctx?.synopsis) {
-    lines.push(`PRIMARY GUIDANCE (Story Synopsis — highest priority): ${ctx.synopsis}`);
-  }
+  if (ctx?.synopsis) lines.push(`PRIMARY GUIDANCE (Story Synopsis — highest priority): ${ctx.synopsis}`);
   if (ctx?.genres?.length) {
     const desc = genreDescriptors(ctx.genres);
     lines.push(`SECONDARY GUIDANCE (Genre atmosphere): ${ctx.genres.join(', ')}.` + (desc.length ? ` Visual tone cues: ${desc.join('; ')}.` : ''));
   }
-  if (userPrompt) {
-    lines.push(`TERTIARY GUIDANCE (Additional creative direction): ${userPrompt}`);
-  }
-  if (ctx?.title) {
-    lines.push(`LIGHT INFLUENCE (Title motif — do NOT add text): ${ctx.title}. Use it only as thematic inspiration.`);
-  }
+  if (userPrompt) lines.push(`TERTIARY GUIDANCE (Additional creative direction): ${userPrompt}`);
+  if (ctx?.title) lines.push(`LIGHT INFLUENCE (Title motif — do NOT add text): ${ctx.title}. Use it only as thematic inspiration.`);
   const negativesBase = 'text, watermark, logo, low-res, blurry, jpeg artifacts, malformed anatomy, extra limbs, cropped face';
   return { prompt: lines.join('\n'), negativePrompt: negativesBase };
 }
@@ -213,22 +242,12 @@ export default function ScenesPage() {
   const searchParams = useSearchParams();
   const storyId = searchParams.get('storyId') || undefined;
 
-  /* -------- Story context (title/genres/synopsis/language/voice) -------- */
   const [story, setStory] = useState<StoryDoc | null>(null);
-  const [readerUI, setReaderUI] = useState({
-    avatarUrl: DEFAULTS.avatarUrl,
-    backgroundUrl: DEFAULTS.backgroundUrl,
-  });
+  const [readerUI, setReaderUI] = useState({ avatarUrl: DEFAULTS.avatarUrl, backgroundUrl: DEFAULTS.backgroundUrl });
   const [scenes, setScenes] = useState<Scene[]>([makeDefaultScene(0)]);
-
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const langLabel = useMemo(
-    () => LANG_LABELS[(story?.language || 'en') as LangCode] || 'English',
-    [story?.language]
-  );
-
-  // Local per-scene UI helpers (kept from your file)
+  // UI locals
   const [imagePrompt, setImagePrompt] = useState('');
   const [imageDesc, setImageDesc] = useState('');
   const [narrationText, setNarrationText] = useState('');
@@ -244,44 +263,46 @@ export default function ScenesPage() {
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [loadingGallery, setLoadingGallery] = useState(false);
 
-  // AI Scene-Outline ideas
+  // AI ideas
   const [ideasLoading, setIdeasLoading] = useState(false);
-  const [ideas, setIdeas] = useState<Array<{ title: string; outline: string }>>([]);
+  const [ideas, setIdeas] = useState<Array<{ title: string; outline: string; imagePrompt?: string }>>([]);
 
-  // Derived current scene
+  // Derived
   const currentScene = scenes[currentIndex] || null;
+  const langLabel = useMemo(() => LANG_LABELS[(story?.language || 'en') as LangCode] || 'English', [story?.language]);
+
+  // ----- Page limit logic (from Begin/pageCount) -----
+  const selectedPages = Math.max(1, Math.min( (story?.pageCount ?? 10), 20 ));
+  const progressLabel = `Scene ${Math.min(currentIndex + 1, selectedPages)} / ${selectedPages}`;
 
   /* -------- Load story + scenes from Firestore -------- */
   useEffect(() => {
     (async () => {
       if (!storyId) return;
-  
+
       try {
         const storyRef = fsDoc(db, 'stories', storyId);
         const snap = await getDoc(storyRef);
         let docData: StoryDoc = {};
         if (snap.exists()) docData = (snap.data() as StoryDoc) || {};
-  
-        // 1) Normalize scenes from Firestore
+
         const fixedScenes: Scene[] = (docData.scenes || [])
           .map((s, i) => ({
-            id: s.id || crypto.randomUUID(),
+            id: s.id || (typeof crypto?.randomUUID === 'function' ? crypto.randomUUID() : String(Math.random()).slice(2)),
             index: Number.isFinite(s.index) ? s.index : i,
             title: s.title ?? `Scene ${i + 1}`,
             text: s.text || '',
-            imageUrl: s.imageUrl || undefined,
-            imageName: s.imageName || undefined,
-            audioUrl: s.audioUrl || undefined,
-            audioName: s.audioName || undefined,
-            voiceId: s.voiceId || undefined,
-            durationMs: s.durationMs || undefined,
+            imageUrl: s.imageUrl ?? null,
+            imageName: s.imageName ?? null,
+            audioUrl: s.audioUrl ?? null,
+            audioName: s.audioName ?? null,
+            voiceId: s.voiceId ?? null,
+            durationMs: Number.isFinite(s.durationMs as number) ? s.durationMs! : null,
           }))
           .sort((a, b) => a.index - b.index);
-  
-        // 2) ✅ Ensure at least ONE scene exists
+
         const ensured = fixedScenes.length > 0 ? fixedScenes : [makeDefaultScene(0)];
-  
-        // 3) Write story + scenes into state
+
         setStory({
           title: docData.title || '',
           synopsis: docData.synopsis || '',
@@ -294,35 +315,32 @@ export default function ScenesPage() {
           },
           status: docData.status || 'draft',
           isPublic: !!docData.isPublic,
-          scenes: ensured,                // ✅ use ensured here
+          scenes: ensured,
+          pageCount: typeof docData.pageCount === 'number' ? docData.pageCount : undefined,
         });
-  
+
         setReaderUI({
           avatarUrl: docData.reader?.avatarUrl || DEFAULTS.avatarUrl,
           backgroundUrl: docData.reader?.backgroundUrl || DEFAULTS.backgroundUrl,
         });
-  
-        setScenes(ensured);               // ✅ and here
-  
-        // 4) Initialize currentIndex from URL/localStorage, clamped to ensured length
+
+        setScenes(ensured);
+
+        // Initialize index
         const fromUrl = Number.parseInt(searchParams.get('scene') || '', 10);
         const fromLs  = Number.parseInt(localStorage.getItem('reader:lastScene') || '', 10);
         const initial = Number.isFinite(fromUrl) ? fromUrl : (Number.isFinite(fromLs) ? fromLs : 0);
         setCurrentIndex(Math.max(0, Math.min(initial, Math.max(ensured.length - 1, 0))));
       } catch (e) {
         console.error('Failed to load story', e);
-        // As a safety net, make sure at least one scene exists even if read fails
         setScenes(prev => prev.length ? prev : [makeDefaultScene(0)]);
-        setStory(prev =>
-          prev ? prev : { title: '', synopsis: '', genres: [], language: 'en' as LangCode, scenes: [makeDefaultScene(0)] }
-        );
+        setStory(prev => prev ? prev : { title: '', synopsis: '', genres: [], language: 'en' as LangCode, scenes: [makeDefaultScene(0)], pageCount: 10 });
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storyId]);
-  
 
-  // keep URL and localStorage in sync
+  // keep URL + lastScene
   useEffect(() => {
     const sp2 = new URLSearchParams(window.location.search);
     if (storyId) sp2.set('storyId', storyId);
@@ -331,7 +349,7 @@ export default function ScenesPage() {
     localStorage.setItem('reader:lastScene', String(currentIndex));
   }, [currentIndex, storyId]);
 
-  /* -------- Gallery loader (Storage-based, consistent with Support) -------- */
+  /* -------- Gallery loader -------- */
   const loadGallery = useCallback(async (category: AssetCategory) => {
     if (!user) return;
     setLoadingGallery(true);
@@ -379,7 +397,7 @@ export default function ScenesPage() {
     void loadGallery(tab);
   }, [user, activeTab, loadGallery]);
 
-  /* -------- Helpers to update story/scenes in state -------- */
+  /* -------- Helpers to update local state -------- */
   function updateCurrentScene(patch: Partial<Scene>) {
     setScenes(prev => {
       const next = [...prev];
@@ -388,16 +406,12 @@ export default function ScenesPage() {
       return next;
     });
   }
-  
   function updateStoryPatch(patch: Partial<StoryDoc>) {
     setStory(prev => (prev ? { ...prev, ...patch } : prev));
   }
 
-  /* -------- Actions: select from gallery / describe / reference -------- */
-  const canDescribeSelected = (item: GalleryItem) => {
-    const k = inferKindFromPath(item.fullPath, item.contentType);
-    return k === 'image';
-  };
+  /* -------- Select/Describe/Reference -------- */
+  const canDescribeSelected = (item: GalleryItem) => inferKindFromPath(item.fullPath, item.contentType) === 'image';
 
   async function handleDescribe(item: GalleryItem) {
     try {
@@ -429,13 +443,13 @@ export default function ScenesPage() {
     }
   }
 
-  // Soft references list (kept in component only for now)
+  // Soft references
   const [references, setReferences] = useState<Array<{ url: string; name?: string; category?: AssetCategory }>>([]);
   function handleUseAsReference(item: GalleryItem) {
     setReferences((prev) => [...prev, { url: item.url, name: item.name, category: activeTab as AssetCategory }]);
   }
 
-  /* -------- AI: Generate Image (Imagen 4 via /api/generate-image) -------- */
+  /* -------- AI: Generate Image -------- */
   const handleGenerateImage = useCallback(async () => {
     if (!story) return;
     if (!imagePrompt.trim() && !story.synopsis && !(story.genres?.length)) {
@@ -451,11 +465,8 @@ export default function ScenesPage() {
         language: story.language,
       });
 
-      // Optionally blend soft reference names
       const refNames = (references || []).map(r => r.name).filter(Boolean);
-      const promptWithRefs = refNames.length
-        ? `${prompt}\nVISUAL REFERENCES (soft influence): ${refNames.join(', ')}.`
-        : prompt;
+      const promptWithRefs = refNames.length ? `${prompt}\nVISUAL REFERENCES (soft influence): ${refNames.join(', ')}.` : prompt;
 
       const r = await fetch('/api/generate-image', {
         method: 'POST',
@@ -474,103 +485,94 @@ export default function ScenesPage() {
     }
   }, [story, imagePrompt, references, currentIndex]);
 
-  /* -------- Auto-suggest scene text + image prompt (kept from your flow) ----- */
-  /* -------- Auto-suggest scene text + image prompt -------- */
-async function handleSuggestForScene() {
-  if (!story) return;
-  setIsSuggesting(true);
-  try {
-    const payload = {
-      title: story.title,
-      genres: story.genres,
-      synopsis: story.synopsis,
-      language: story.language,
-      sceneIndex: currentIndex + 1,
-    };
+  /* -------- AI: Suggest -------- */
+  async function handleSuggestForScene() {
+    if (!story) return;
+    setIsSuggesting(true);
+    try {
+      const payload = {
+        title: story.title,
+        genres: story.genres,
+        synopsis: story.synopsis,
+        language: story.language,
+        sceneIndex: currentIndex + 1,
+      };
 
-    const res = await fetch('/api/suggest-scene', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
+      const res = await fetch('/api/suggest-scene', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
 
-    const json = await res.json();
-    if (!res.ok) throw new Error(json?.error || 'Suggestion failed');
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Suggestion failed');
 
-    if (json?.storyText) updateCurrentScene({ text: json.storyText });
-    if (json?.imagePrompt) setImagePrompt(json.imagePrompt);
+      if (json?.storyText) updateCurrentScene({ text: json.storyText });
+      if (json?.imagePrompt) setImagePrompt(json.imagePrompt);
 
-    if (!json?.storyText && !json?.imagePrompt) {
-      throw new Error('No suggestions returned.');
+      if (!json?.storyText && !json?.imagePrompt) throw new Error('No suggestions returned.');
+    } catch (e: any) {
+      alert(e?.message || 'Suggest failed');
+    } finally {
+      setIsSuggesting(false);
     }
-  } catch (e: any) {
-    alert(e?.message || 'Suggest failed');
-  } finally {
-    setIsSuggesting(false);
   }
-}
 
-  /* -------- AI Scene-Outline Ideas (new optional panel) ------------------ */
-  /* -------- AI Scene-Outline Ideas (array from /api/generate-scene-outline) -------- */
-async function handleGenerateIdeas() {
-  if (!story) return;
-  setIdeasLoading(true);
-  setIdeas([]);
-  try {
-    const res = await fetch('/api/generate-scene-outline', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        idea: story.synopsis || story.title || 'Story',
-        pages: 5,
-        language: story.language || 'en',
-      }),
-    });
+  /* -------- AI: Outline Ideas -------- */
+  async function handleGenerateIdeas() {
+    if (!story) return;
+    setIdeasLoading(true);
+    setIdeas([]);
+    try {
+      const res = await fetch('/api/generate-scene-outline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idea: story.synopsis || story.title || 'Story',
+          pages: selectedPages,
+          language: story.language || 'en',
+        }),
+      });
 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data?.error || 'AI outline endpoint failed');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'AI outline endpoint failed');
 
-    // Expecting an array: [{ storyText, imagePrompt }, ...]
-    const arr = Array.isArray(data) ? data : [];
-    const mapped = arr.map((p: any, i: number) => ({
-      title: `Beat ${i + 1}`,
-      outline: String(p?.storyText || '').trim(),
-      imagePrompt: String(p?.imagePrompt || '').trim(),
-    }));
+      const arr = Array.isArray(data) ? data : [];
+      const mapped = arr.map((p: any, i: number) => ({
+        title: `Beat ${i + 1}`,
+        outline: String(p?.storyText || '').trim(),
+        imagePrompt: String(p?.imagePrompt || '').trim(),
+      }));
 
-    setIdeas(mapped);
-  } catch (e: any) {
-    alert(e?.message || 'Could not generate ideas.');
-  } finally {
-    setIdeasLoading(false);
+      setIdeas(mapped);
+    } catch (e: any) {
+      alert(e?.message || 'Could not generate ideas.');
+    } finally {
+      setIdeasLoading(false);
+    }
   }
-}
 
-function applyIdeaToCurrent(idea: { title: string; outline: string; imagePrompt?: string }) {
-  if (!currentScene) return;
-  const mergedText = currentScene.text?.trim()
-    ? `${currentScene.text.trim()}\n\n${idea.outline.trim()}`
-    : idea.outline.trim();
+  function applyIdeaToCurrent(idea: { title: string; outline: string; imagePrompt?: string }) {
+    if (!currentScene) return;
+    const mergedText = currentScene.text?.trim()
+      ? `${currentScene.text.trim()}\n\n${idea.outline.trim()}`
+      : idea.outline.trim();
 
-  updateCurrentScene({ title: idea.title || currentScene.title, text: mergedText });
-  if (idea.imagePrompt && idea.imagePrompt.trim()) {
-    setImagePrompt(idea.imagePrompt.trim());
+    updateCurrentScene({ title: idea.title || currentScene.title, text: mergedText });
+    if (idea.imagePrompt && idea.imagePrompt.trim()) setImagePrompt(idea.imagePrompt.trim());
   }
-}
-
   function addIdeaAsNewScene(idea: { title: string; outline: string }) {
-    setScenes(prev => ([
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        index: prev.length,
-        title: idea.title || `Scene ${prev.length + 1}`,
-        text: idea.outline,
-      }
-    ]));
+    setScenes(prev => {
+      if (prev.length >= selectedPages) return prev;
+      const next = [
+        ...prev,
+        { id: typeof crypto?.randomUUID === 'function' ? crypto.randomUUID() : String(Math.random()).slice(2), index: prev.length, title: idea.title || `Scene ${prev.length + 1}`, text: idea.outline, imageUrl: null, imageName: null, audioUrl: null, audioName: null, voiceId: null, durationMs: null }
+      ];
+      return next;
+    });
   }
 
-  /* -------- AUDIO: Single player with autoplay gating + preload next ---- */
+  /* -------- AUDIO player -------- */
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
@@ -578,7 +580,6 @@ function applyIdeaToCurrent(idea: { title: string; outline: string; imagePrompt?
   const [currentTime, setCurrentTime] = useState(0);
   const autoplayUnlockedRef = React.useRef(false);
 
-  // bind to current scene audio
   useEffect(() => {
     const el = audioRef.current;
     if (!el) return;
@@ -598,25 +599,17 @@ function applyIdeaToCurrent(idea: { title: string; outline: string; imagePrompt?
     }
   }, [currentScene?.audioUrl, currentIndex]);
 
-  // preload next scene
   useEffect(() => {
     const next = scenes[currentIndex + 1];
-    if (!next?.audioUrl) return; // devolver void está bien
-  
+    if (!next?.audioUrl) return;
     const link = document.createElement('link');
-    link.rel = 'prefetch';         // o 'preload' si prefieres
+    link.rel = 'prefetch';
     link.as = 'audio';
-    link.href = next.audioUrl;
+    link.href = next.audioUrl!;
     document.head.appendChild(link);
-  
-    return () => {
-      // asegúrate de devolver una FUNCIÓN que haga el cleanup
-      if (link.parentNode) link.parentNode.removeChild(link);
-    };
+    return () => { if (link.parentNode) link.parentNode.removeChild(link); };
   }, [currentIndex, scenes]);
-  
 
-  // audio events
   useEffect(() => {
     const el = audioRef.current;
     if (!el) return;
@@ -648,32 +641,61 @@ function applyIdeaToCurrent(idea: { title: string; outline: string; imagePrompt?
     setIsPlaying(false);
   }
 
-  /* -------- NAV + SAVE/PUBLISH/READER ---------------------------------- */
+  /* -------- NAV + SAVE/PUBLISH ---------------------------------- */
   function goPrev() { setCurrentIndex(i => Math.max(0, i - 1)); }
   function goNext() { setCurrentIndex(i => Math.min(scenes.length - 1, i + 1)); }
 
   const readerHref = storyId ? `/ereader?storyId=${encodeURIComponent(storyId)}` : '#';
 
-  async function handleSaveStory() {
+  async function persistScenes(nextScenes: Scene[]) {
     if (!storyId) return;
     try {
       const storyRef = fsDoc(db, 'stories', storyId);
-      const nextDoc: Partial<StoryDoc> = {
-        title: story?.title || '',
-        synopsis: story?.synopsis || '',
-        genres: story?.genres || [],
-        language: (story?.language as LangCode) || 'en',
-        voiceId: story?.voiceId, // default voice if you add a selector
-        reader: readerUI,
-        scenes: scenes.map((s, i) => ({ ...s, index: i })),
-        updatedAt: serverTimestamp(),
-      };
-      await updateDoc(storyRef, nextDoc);
-      alert('Story saved.');
-    } catch (e) {
-      console.error(e);
-      alert('Failed to save story.');
+      const safeDoc = serializeStoryForWrite(story, nextScenes);
+      await updateDoc(storyRef, safeDoc);
+      return true;
+    } catch (e: any) {
+      console.error('Save error:', e);
+      alert(`Failed to save scene.\n\n${e?.message || ''}`);
+      return false;
     }
+  }
+
+  async function handleSaveScene() {
+    const clipped = scenes
+      .slice(0, selectedPages)
+      .map((s, i) => ({ ...s, index: i }));
+    const ok = await persistScenes(clipped);
+    if (ok) alert('Scene saved.');
+  }
+
+  async function handleSaveSceneAndNext() {
+    let nextScenes = scenes.slice(0, selectedPages).map((s, i) => ({ ...s, index: i }));
+
+    const onLastExisting = currentIndex === nextScenes.length - 1;
+    const canAddMore = nextScenes.length < selectedPages;
+
+    if (onLastExisting && canAddMore) {
+      const newIdx = nextScenes.length;
+      nextScenes = [...nextScenes, makeDefaultScene(newIdx)];
+    }
+
+    const ok = await persistScenes(nextScenes);
+    if (!ok) return;
+
+    setScenes(nextScenes);
+    if (onLastExisting && canAddMore) {
+      setCurrentIndex(i => Math.min(i + 1, nextScenes.length - 1));
+    } else if (currentIndex < nextScenes.length - 1) {
+      setCurrentIndex(i => i + 1);
+    } else {
+      alert('Reached selected page limit.');
+    }
+  }
+
+  async function handleSaveStory() {
+    const ok = await persistScenes(scenes.map((s, i) => ({ ...s, index: i })));
+    if (ok) alert('Story saved.');
   }
 
   async function handlePublishStory() {
@@ -693,7 +715,7 @@ function applyIdeaToCurrent(idea: { title: string; outline: string; imagePrompt?
     }
   }
 
-  /* -------- Keyboard nav (optional) ------------------------------------ */
+  /* -------- Keyboard nav ------------------------------------ */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight' && currentIndex < scenes.length - 1) goNext();
@@ -726,9 +748,74 @@ function applyIdeaToCurrent(idea: { title: string; outline: string; imagePrompt?
     );
   }
 
+  /* -------- Scene strip (thumbnail list) ------------------------------- */
+  function SceneStrip() {
+    const slots = Array.from({ length: selectedPages }, (_, i) => scenes[i] || null);
+
+    return (
+      <div className="w-full overflow-x-auto">
+        <div className="flex gap-2 py-2">
+          {slots.map((sc, i) => {
+            const isActive = i === currentIndex;
+            const hasImg = !!sc?.imageUrl;
+            const hasAudio = !!sc?.audioUrl;
+            return (
+              <button
+                key={i}
+                onClick={() => setCurrentIndex(i)}
+                className={classNames(
+                  'min-w-[90px] max-w-[110px] shrink-0 rounded-lg border p-1 text-[11px] text-left',
+                  isActive ? 'border-[#E97451] ring-2 ring-[#E97451]/40 bg-white' : 'border-[#3D4F60]/20 bg-white/70',
+                )}
+                title={sc?.title || `Scene ${i + 1}`}
+              >
+                <div className="relative h-16 w-full rounded overflow-hidden bg-zinc-100 grid place-items-center">
+                  {hasImg ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={sc!.imageUrl!} alt={`S${i + 1}`} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="flex items-center gap-1 text-zinc-500">
+                      <ImgIcon size={14} /> No image
+                    </div>
+                  )}
+                  {/* badges */}
+                  <div className="absolute top-1 left-1 text-[10px] bg-black/60 text-white px-1 rounded">
+                    {i + 1}/{selectedPages}
+                  </div>
+                  {hasAudio && (
+                    <div className="absolute bottom-1 right-1 text-[10px] bg-black/70 text-white px-1 rounded inline-flex items-center gap-1">
+                      <Volume2 size={12} /> MP3/WAV
+                    </div>
+                  )}
+                </div>
+                <div className="mt-1 line-clamp-1">{sc?.title || `Scene ${i + 1}`}</div>
+              </button>
+            );
+          })}
+          {scenes.length < selectedPages && (
+            <button
+              onClick={() => {
+                setScenes(prev => {
+                  if (prev.length >= selectedPages) return prev;
+                  const idx = prev.length;
+                  return [...prev, makeDefaultScene(idx)];
+                });
+                setCurrentIndex(scenes.length);
+              }}
+              className="min-w-[90px] max-w-[110px] shrink-0 rounded-lg border border-dashed p-1 grid place-items-center text-[11px] text-zinc-600 bg-white/60"
+              title="Add new scene"
+            >
+              <PlusCircle className="w-5 h-5" />
+              Add scene
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26] text-[#3A4B5C] dark:text-[#E0C9A0] font-sans">
-      {/* Keep inputs dark-readable like Support */}
       <style jsx global>{`
         .dark .asset-scope input[type="text"],
         .dark .asset-scope textarea {
@@ -744,6 +831,7 @@ function applyIdeaToCurrent(idea: { title: string; outline: string; imagePrompt?
             <Link href="/" className="text-sm font-semibold text-[#3D4F60] dark:text-[#E0C9A0]">Narratum</Link>
             <span className="text-sm opacity-60">/ Create /</span>
             <span className="text-sm font-semibold">Scenes</span>
+            <span className="ml-3 text-xs opacity-70 px-2 py-1 rounded bg-white/60 border">{progressLabel}</span>
           </div>
           <div className="flex items-center gap-2">
             <Link href="/create/begin" className="text-xs px-3 py-1.5 rounded-lg bg-white border-2 border-[#3D4F60]/20 dark:bg-[#1A2533] dark:border-[#4B5A6B]/20">Begin</Link>
@@ -756,8 +844,9 @@ function applyIdeaToCurrent(idea: { title: string; outline: string; imagePrompt?
       {/* Workspace */}
       <main className="mx-auto max-w-6xl px-4 pb-40">
         <div className="min-h-[calc(100vh-140px)] overflow-y-auto py-6">
+
           {/* Top actions */}
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-[#3D4F60]/10 dark:border-[#4B5A6B]/20 bg-white/60 dark:bg-[#0f1620]/60 p-3">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-[#3D4F60]/10 dark:border-[#4B5A6B]/20 bg-white/60 dark:bg-[#0f1620]/60 p-3">
             <div className="flex min-w-0 items-center gap-2">
               <input
                 className="min-w-0 flex-1 rounded-lg border border-[#3D4F60]/30 dark:border-[#4B5A6B]/30 bg-white dark:bg-[#0e1520] px-3 py-2 text-sm"
@@ -765,41 +854,48 @@ function applyIdeaToCurrent(idea: { title: string; outline: string; imagePrompt?
                 value={story?.title || ''}
                 onChange={(e) => updateStoryPatch({ title: e.target.value })}
               />
-              {/* optional: story default voice selector can go here later */}
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={goPrev} disabled={currentIndex <= 0} className="rounded-lg border px-3 py-2 text-sm bg-white/70 dark:bg-[#1A2533] disabled:opacity-50">← Previous scene</button>
-              <button onClick={goNext} disabled={currentIndex >= Math.max(0, scenes.length - 1)} className="rounded-lg border px-3 py-2 text-sm bg-white/70 dark:bg-[#1A2533] disabled:opacity-50">Next scene →</button>
-              <button onClick={handleSaveStory} className="rounded-lg border border-teal-600/60 bg-teal-600/20 px-3 py-2 text-sm text-teal-900 dark:text-teal-200 hover:bg-teal-600/30">
-                Save Story
+              <button onClick={goPrev} disabled={currentIndex <= 0} className="rounded-lg border px-3 py-2 text-sm bg-white/70 dark:bg-[#1A2533] disabled:opacity-50">← Previous</button>
+              <button onClick={goNext} disabled={currentIndex >= Math.max(0, scenes.length - 1)} className="rounded-lg border px-3 py-2 text-sm bg-white/70 dark:bg-[#1A2533] disabled:opacity-50">Next →</button>
+
+              <button onClick={handleSaveScene} className="rounded-lg border border-emerald-600/60 bg-emerald-600/20 px-3 py-2 text-sm text-emerald-900 dark:text-emerald-200 hover:bg-emerald-600/30">
+                Save Scene
               </button>
-              <Link href={storyId ? `/ereader?storyId=${encodeURIComponent(storyId)}` : '#'} className="rounded-lg border border-indigo-600/60 bg-indigo-600/20 px-3 py-2 text-sm text-indigo-900 dark:text-indigo-200 hover:bg-indigo-600/30">
+              <button onClick={handleSaveSceneAndNext} className="rounded-lg border border-teal-600/60 bg-teal-600/20 px-3 py-2 text-sm text-teal-900 dark:text-teal-200 hover:bg-teal-600/30">
+                Save Scene & Next
+              </button>
+
+              <Link href={readerHref} className="rounded-lg border border-indigo-600/60 bg-indigo-600/20 px-3 py-2 text-sm text-indigo-900 dark:text-indigo-200 hover:bg-indigo-600/30">
                 Preview Story
               </Link>
               <button onClick={handlePublishStory} className="rounded-lg border border-amber-600/60 bg-amber-600/20 px-3 py-2 text-sm text-amber-900 dark:text-amber-200 hover:bg-amber-600/30">
-                Publish Story
+                Publish
               </button>
             </div>
           </div>
 
+          {/* Scene strip */}
+          <div className="mb-4 rounded-2xl border-2 border-[#3D4F60]/10 dark:border-[#4B5A6B]/20 bg-white/70 dark:bg-[#0f1620]/70 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold">Scenes</h3>
+              <div className="text-xs opacity-70">Selected pages: <strong>{selectedPages}</strong></div>
+            </div>
+            <SceneStrip />
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* LEFT – Preview & Scene text & AI panels */}
+            {/* LEFT */}
             <section className="space-y-4">
-              {/* Preview card */}
+              {/* Preview */}
               <div
                 className="rounded-2xl overflow-hidden border-2 border-[#3D4F60]/10 dark:border-[#4B5A6B]/20"
-                style={{
-                  backgroundImage: `url(${readerUI.backgroundUrl})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                }}
+                style={{ backgroundImage: `url(${readerUI.backgroundUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
               >
                 <div className="backdrop-blur bg-white/60 dark:bg-[#0f1620]/60 p-3">
                   <div className="flex items-center justify-between mb-2">
-                    <h2 className="text-sm font-semibold flex items-center gap-2">
-                      <ImageIcon className="w-4 h-4" /> Story Preview
-                    </h2>
-                    <div className="text-xs opacity-70">Scene #{currentIndex + 1}</div>
+                    <h2 className="text-sm font-semibold flex items-center gap-2"><ImageIcon className="w-4 h-4" /> Story Preview</h2>
+                    <div className="text-xs opacity-70">{progressLabel}</div>
                   </div>
 
                   <div className="aspect-[4/3] w-full rounded-xl overflow-hidden bg-white/60 dark:bg-[#0f1620]/60 grid place-items-center">
@@ -919,8 +1015,8 @@ function applyIdeaToCurrent(idea: { title: string; outline: string; imagePrompt?
                     >
                       <option value="Kore">Kore (Male, Firm)</option>
                       <option value="Puck">Puck (Male, Upbeat)</option>
-                      <option value="Zephyr">Zephyr (Female, Bright)</option>
-                      <option value="Leda">Leda (Female, Youthful)</option>
+                      <option value="Zephyr">Zephyr (Female, Youthful)</option>
+                      <option value="Leda">Leda (Female, Elegant)</option>
                       <option value="Sadachbia">Sadachbia (Female, Lively)</option>
                     </select>
                     <select
@@ -958,7 +1054,7 @@ function applyIdeaToCurrent(idea: { title: string; outline: string; imagePrompt?
                           if (!json?.audioUrl) throw new Error('No audioUrl returned by TTS route.');
                           updateCurrentScene({
                             audioUrl: json.audioUrl,
-                            audioName: `scene-${currentIndex + 1}-narration.mp3`,
+                            audioName: `scene-${currentIndex + 1}-narration`,
                           });
                         } catch (e: any) {
                           alert((e?.message || 'TTS failed') + '\n\nTip: ensure /api/generate-audio returns { audioUrl }.');
@@ -974,14 +1070,14 @@ function applyIdeaToCurrent(idea: { title: string; outline: string; imagePrompt?
                     </button>
                     {currentScene?.audioUrl && (
                       <a href={currentScene.audioUrl} className="px-4 py-2 rounded-md border" download>
-                        Download MP3
+                        Download
                       </a>
                     )}
                   </div>
                 </div>
               </div>
 
-              {/* Scene-Outline Ideas (AI) */}
+              {/* AI ideas */}
               <div className="rounded-2xl border-2 border-[#3D4F60]/10 dark:border-[#4B5A6B]/20 bg-white/70 dark:bg-[#0f1620]/70 p-3">
                 <div className="mb-2 flex items-center justify-between">
                   <h3 className="text-sm font-semibold">Scene-Outline Ideas (AI)</h3>
@@ -994,7 +1090,7 @@ function applyIdeaToCurrent(idea: { title: string; outline: string; imagePrompt?
                   </button>
                 </div>
                 {ideas.length === 0 && !ideasLoading && (
-                  <p className="text-xs opacity-70">Click “Generate ideas” to get 3–5 scene beats you can insert or add as new scenes.</p>
+                  <p className="text-xs opacity-70">Click “Generate ideas” to get scene beats you can insert or add as new scenes.</p>
                 )}
                 <ul className="space-y-3">
                   {ideas.map((idea, idx) => (
@@ -1023,7 +1119,7 @@ function applyIdeaToCurrent(idea: { title: string; outline: string; imagePrompt?
               </div>
             </section>
 
-            {/* RIGHT – My Gallery (Tabs) */}
+            {/* RIGHT – My Gallery */}
             <section className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold">My Gallery</h3>
@@ -1090,35 +1186,19 @@ function applyIdeaToCurrent(idea: { title: string; outline: string; imagePrompt?
                           <div className="absolute inset-x-1 bottom-1 flex gap-1 opacity-0 group-hover:opacity-100 transition">
                             {kind === 'image' && (
                               <>
-                                <button
-                                  onClick={() => handleDescribe(it)}
-                                  className="flex-1 text-[11px] px-2 py-1 rounded bg-blue-500/90 text-white"
-                                  title="AI Describe"
-                                >
+                                <button onClick={() => handleDescribe(it)} className="flex-1 text-[11px] px-2 py-1 rounded bg-blue-500/90 text-white" title="AI Describe">
                                   Describe
                                 </button>
-                                <button
-                                  onClick={() => handleUseAsReference(it)}
-                                  className="flex-1 text-[11px] px-2 py-1 rounded bg-zinc-800/90 text-white"
-                                  title="Use as Reference"
-                                >
+                                <button onClick={() => handleUseAsReference(it)} className="flex-1 text-[11px] px-2 py-1 rounded bg-zinc-800/90 text-white" title="Use as Reference">
                                   Reference
                                 </button>
-                                <button
-                                  onClick={() => handleSelectForScene(it)}
-                                  className="flex-1 text-[11px] px-2 py-1 rounded bg-[#E97451]/90 text-white"
-                                  title="Select for Scene"
-                                >
+                                <button onClick={() => handleSelectForScene(it)} className="flex-1 text-[11px] px-2 py-1 rounded bg-[#E97451]/90 text-white" title="Select for Scene">
                                   Select
                                 </button>
                               </>
                             )}
                             {kind === 'audio' && (
-                              <button
-                                onClick={() => handleSelectForScene(it)}
-                                className="w-full text-[11px] px-2 py-1 rounded bg-[#E97451]/90 text-white"
-                                title="Select for Scene (Audio)"
-                              >
+                              <button onClick={() => handleSelectForScene(it)} className="w-full text-[11px] px-2 py-1 rounded bg-[#E97451]/90 text-white" title="Select for Scene (Audio)">
                                 Use Audio
                               </button>
                             )}
@@ -1148,46 +1228,32 @@ function applyIdeaToCurrent(idea: { title: string; outline: string; imagePrompt?
         </div>
       </main>
 
-      {/* Local footer for scene nav (kept; now index-based) */}
+      {/* Footer */}
       <footer className="sticky bottom-0 z-30 border-t border-[#3D4F60]/10 dark:border-[#4B5A6B]/20 bg-white/80 dark:bg-[#0d1520]/80 backdrop-blur">
         <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
           <div className="text-xs opacity-70">
-            Use <span className="font-medium">Auto-Suggest</span> to draft scenes, <span className="font-medium">Generate Image</span> to illustrate, and <span className="font-medium">Generate Narration</span> for audio.
+            {progressLabel} • Use <span className="font-medium">Auto-Suggest</span>, <span className="font-medium">Generate Image</span>, and <span className="font-medium">Generate Narration</span>.
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={goPrev}
-              className="text-xs px-3 py-1.5 rounded-lg bg-white border-2 border-[#3D4F60]/20 dark:bg-[#1A2533] dark:border-[#4B5A6B]/20 disabled:opacity-50"
-              disabled={currentIndex <= 0}
-            >
-              Prev Scene
+            <button onClick={goPrev} className="text-xs px-3 py-1.5 rounded-lg bg-white border-2 border-[#3D4F60]/20 dark:bg-[#1A2533] dark:border-[#4B5A6B]/20 disabled:opacity-50" disabled={currentIndex <= 0}>
+              Prev
             </button>
-            <button
-              onClick={goNext}
-              className="text-xs px-3 py-1.5 rounded-lg bg-white border-2 border-[#3D4F60]/20 dark:bg-[#1A2533] dark:border-[#4B5A6B]/20 disabled:opacity-50"
-              disabled={currentIndex >= Math.max(0, scenes.length - 1)}
-            >
-              Next Scene
+            <button onClick={goNext} className="text-xs px-3 py-1.5 rounded-lg bg-white border-2 border-[#3D4F60]/20 dark:bg-[#1A2533] dark:border-[#4B5A6B]/20 disabled:opacity-50" disabled={currentIndex >= Math.max(0, scenes.length - 1)}>
+              Next
             </button>
-            <button
-              onClick={handleSaveStory}
-              className="inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-[#E97451] text-white"
-              title="Save entire story"
-            >
-              <Check className="w-4 h-4" />
-              Save Story
+
+            <button onClick={handleSaveScene} className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600/20 border-2 border-emerald-600/40 text-emerald-900 dark:text-emerald-200">
+              Save Scene
             </button>
-            <Link
-              href={readerHref}
-              className="text-xs px-3 py-1.5 rounded-lg bg-white border-2 border-[#3D4F60]/20 dark:bg-[#1A2533] dark:border-[#4B5A6B]/20"
-            >
-              Preview Story
+            <button onClick={handleSaveSceneAndNext} className="text-xs px-3 py-1.5 rounded-lg bg-teal-600/20 border-2 border-teal-600/40 text-teal-900 dark:text-teal-200">
+              Save Scene & Next
+            </button>
+
+            <Link href={readerHref} className="text-xs px-3 py-1.5 rounded-lg bg-white border-2 border-[#3D4F60]/20 dark:bg-[#1A2533] dark:border-[#4B5A6B]/20">
+              Preview
             </Link>
-            <button
-              onClick={handlePublishStory}
-              className="text-xs px-3 py-1.5 rounded-lg bg-amber-600/20 border-2 border-amber-600/40 text-amber-900 dark:text-amber-200"
-            >
-              Publish Story
+            <button onClick={handlePublishStory} className="text-xs px-3 py-1.5 rounded-lg bg-amber-600/20 border-2 border-amber-600/40 text-amber-900 dark:text-amber-200">
+              Publish
             </button>
           </div>
         </div>

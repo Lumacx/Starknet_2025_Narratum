@@ -1,20 +1,49 @@
 // src/app/api/generate-audio/route.ts
 import { NextResponse } from 'next/server';
+import { GoogleGenAI } from '@google/genai';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 type Body = {
   text: string;
-  voice?: string;     // 'Kore' | 'Puck' | 'Zephyr' | 'Leda' | 'Sadachbia'
-  tone?: string;      // e.g. 'a cheerful'
-  language?: string;  // e.g. 'en', 'es'
-  model?: string;     // default below
+  voice?: 'Kore' | 'Puck' | 'Zephyr' | 'Leda' | 'Sadachbia' | string;
+  tone?: string;        // e.g. 'a cheerful', 'an excited'
+  language?: string;    // 'en' | 'es' | ...
+  model?: string;       // default below
+  format?: 'wav' | 'mp3' | 'both' | 'auto'; // qué formato regresar
 };
 
 const DEFAULT_MODEL = 'gemini-2.5-flash-preview-tts';
 const VOICES = new Set(['Kore', 'Puck', 'Zephyr', 'Leda', 'Sadachbia']);
 
+/* ------------------------- Helpers PCM -> WAV ------------------------- */
+function pcm16ToWav(pcm: Uint8Array, sampleRate = 24000, channels = 1) {
+  const bytesPerSample = 2;
+  const blockAlign = channels * bytesPerSample;
+  const buffer = new ArrayBuffer(44 + pcm.byteLength);
+  const view = new DataView(buffer);
+
+  const writeStr = (o: number, s: string) => [...s].forEach((c, i) => view.setUint8(o + i, c.charCodeAt(0)));
+  writeStr(0, 'RIFF');
+  view.setUint32(4, 36 + pcm.byteLength, true);
+  writeStr(8, 'WAVE');
+  writeStr(12, 'fmt ');
+  view.setUint32(16, 16, true);      // chunk size
+  view.setUint16(20, 1, true);       // PCM
+  view.setUint16(22, channels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * blockAlign, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bytesPerSample * 8, true);
+  writeStr(36, 'data');
+  view.setUint32(40, pcm.byteLength, true);
+
+  new Uint8Array(buffer, 44).set(pcm);
+  return new Uint8Array(buffer);
+}
+
+/* ----------------------------- Prompts ------------------------------- */
 function buildPrompt(text: string, language: string, tone?: string | null) {
   if (language === 'es') {
     return `Idioma: español. Lee de manera natural como narrador${tone ? `, ${tone}` : ''}.\n\nTexto:\n${text}`;
@@ -22,29 +51,56 @@ function buildPrompt(text: string, language: string, tone?: string | null) {
   return `Language: ${language}. Read naturally as a narrator${tone ? `, ${tone}` : ''}.\n\nText:\n${text}`;
 }
 
-async function callV1Generate({
-  apiKey,
-  modelId,
-  prompt,
-  responseMime,
-  voiceName,
-}: {
+/* ----------- Opción 1 (estable): SDK -> PCM -> WAV (data URL) ----------- */
+async function generateWithSDKWav(opts: {
   apiKey: string;
   modelId: string;
   prompt: string;
-  responseMime: 'audio/mp3' | 'audio/wav';
   voiceName: string;
 }) {
+  const ai = new GoogleGenAI({ apiKey: opts.apiKey });
+  const res = await ai.models.generateContent({
+    model: opts.modelId,
+    contents: [{ parts: [{ text: opts.prompt }] }],
+    config: {
+      responseModalities: ['AUDIO'],
+      speechConfig: {
+        voiceConfig: { prebuiltVoiceConfig: { voiceName: opts.voiceName } },
+      },
+    },
+  });
+
+  const b64 = res?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+  if (!b64) throw new Error('No audio returned by SDK.');
+  const pcm = Buffer.from(b64, 'base64');
+  const wav = pcm16ToWav(new Uint8Array(pcm), 24000, 1);
+  const wavB64 = Buffer.from(wav).toString('base64');
+  return {
+    ok: true as const,
+    mimeType: 'audio/wav',
+    audioUrl: `data:audio/wav;base64,${wavB64}`,
+  };
+}
+
+/* ----------- Opción 2 (si funciona en tu proyecto): REST MP3/WAV ----------- */
+/** Intenta pedir al endpoint público que ya te devuelva MP3 o WAV directo */
+async function generateViaREST(opts: {
+  apiKey: string;
+  modelId: string;
+  prompt: string;
+  voiceName: string;
+  responseMime: 'audio/mp3' | 'audio/wav';
+}) {
+  const { apiKey, modelId, prompt, voiceName, responseMime } = opts;
   const url = `https://generativelanguage.googleapis.com/v1/models/${encodeURIComponent(
     modelId
   )}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
+  // Esta combinación puede variar por versión; si falla, haremos fallback al SDK
   const body = {
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    // NOTE: v1 expects snake_case response_mime_type
-    generationConfig: { response_mime_type: responseMime },
-    // NOTE: v1 uses top-level voiceConfig (no speechConfig)
-    voiceConfig: { prebuiltVoiceConfig: { voiceName } },
+    generationConfig: { response_mime_type: responseMime }, // algunos backends aceptan snake_case aquí
+    voiceConfig: { prebuiltVoiceConfig: { voiceName } },     // y esta ubicación top-level
   };
 
   const r = await fetch(url, {
@@ -59,7 +115,6 @@ async function callV1Generate({
   }
 
   const json = await r.json();
-
   const part =
     json?.candidates?.[0]?.content?.parts?.find(
       (p: any) => p?.inlineData?.data && typeof p?.inlineData?.mimeType === 'string'
@@ -71,9 +126,10 @@ async function callV1Generate({
 
   const mime: string = String(part.inlineData.mimeType);
   const b64: string = String(part.inlineData.data);
-  return { ok: true as const, audioUrl: `data:${mime};base64,${b64}`, mimeType: mime };
+  return { ok: true as const, mimeType: mime, audioUrl: `data:${mime};base64,${b64}` };
 }
 
+/* ------------------------------- Handler ------------------------------ */
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as Body;
@@ -96,47 +152,66 @@ export async function POST(req: Request) {
     const tone = body.tone || null;
     const voiceName = VOICES.has(body.voice || '') ? String(body.voice) : 'Kore';
     const modelId = (body.model || DEFAULT_MODEL).trim();
+    const format = (body.format || 'both') as Body['format'];
 
     const prompt = buildPrompt(text, language, tone);
 
-    // Try MP3 first (best UX for browsers)
-    let out = await callV1Generate({
-      apiKey,
-      modelId,
-      prompt,
-      responseMime: 'audio/mp3',
-      voiceName,
-    });
+    let mp3: { ok: true; audioUrl: string; mimeType: string } | null = null;
+    let wav: { ok: true; audioUrl: string; mimeType: string } | null = null;
 
-    if (!out.ok) {
-      // Fallback to WAV if MP3 is not supported by the backend/model
-      out = await callV1Generate({
+    // 1) Si el cliente pide MP3 (o auto/both), intentamos REST con MP3
+    if (format === 'mp3' || format === 'both' || format === 'auto') {
+      const r = await generateViaREST({
         apiKey,
         modelId,
         prompt,
-        responseMime: 'audio/wav',
         voiceName,
+        responseMime: 'audio/mp3',
       });
+      if (r.ok) mp3 = { ok: true, audioUrl: r.audioUrl, mimeType: r.mimeType };
     }
 
-    if (!out.ok) {
-      // Bubble up a concise message
-      return NextResponse.json(
-        { error: `TTS failed (${out.status}): ${String(out.error).slice(0, 400)}` },
-        { status: 502 }
-      );
+    // 2) Si el cliente pide WAV (o auto/both) — SDK es robusto
+    if (format === 'wav' || format === 'both' || format === 'auto') {
+      try {
+        const s = await generateWithSDKWav({ apiKey, modelId, prompt, voiceName });
+        wav = { ok: true, audioUrl: s.audioUrl, mimeType: s.mimeType };
+      } catch {
+        // fallback REST WAV si SDK fallara (raro)
+        const r2 = await generateViaREST({
+          apiKey,
+          modelId,
+          prompt,
+          voiceName,
+          responseMime: 'audio/wav',
+        });
+        if (r2.ok) wav = { ok: true, audioUrl: r2.audioUrl, mimeType: r2.mimeType };
+      }
+    }
+
+    // Determina la mejor salida para "audioUrl" principal
+    let primary: { audioUrl: string; mimeType: string } | null = null;
+    if (format === 'mp3') primary = mp3;
+    else if (format === 'wav') primary = wav;
+    else if (format === 'auto') primary = mp3 || wav;
+    else /* both */ primary = mp3 || wav;
+
+    if (!primary) {
+      // Nada funcionó
+      const msg = 'TTS failed: neither MP3 nor WAV could be generated.';
+      return NextResponse.json({ error: msg }, { status: 502 });
     }
 
     return NextResponse.json({
-      audioUrl: out.audioUrl, // data URL: drop straight into <audio src=...>
-      mimeType: out.mimeType,
+      audioUrl: primary.audioUrl,
+      mimeType: primary.mimeType,
       modelUsed: modelId,
+      // devolvemos variantes si se pidieron ambas
+      audioUrlMp3: mp3?.audioUrl || null,
+      audioUrlWav: wav?.audioUrl || null,
     });
   } catch (e: any) {
     console.error('generate-audio error:', e);
-    return NextResponse.json(
-      { error: e?.message || 'TTS failed' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: e?.message || 'TTS failed' }, { status: 500 });
   }
 }
