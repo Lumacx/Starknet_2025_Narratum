@@ -6,83 +6,137 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import StoryReader from '@/components/StoryReader';
 
-type Scene = {
+/* ---------- Tipos mínimos que usa StoryReader ---------- */
+type ReaderPage = {
   id?: string | null;
-  index?: number | null;
-  title?: string | null;
-  text?: string | null;
+  pageNumber?: number | null;
+  textContent?: string | null;
   imageUrl?: string | null;
   audioUrl?: string | null;
 };
 
-type StoryDoc = {
+type StoryView = {
+  id?: string | null;
   title?: string | null;
   coverImageUrl?: string | null;
-  language?: string | null;
-  reader?: { avatarUrl?: string | null; backgroundUrl?: string | null } | null;
-  scenes?: Scene[];
+  backgroundMusicUrl?: string | null;
+  readerAvatarUrl?: string | null;
+  readerBackgroundUrl?: string | null;
+  storyContent: ReaderPage[];
+  creator?: { avatarUrl?: string | null } | null;
 };
 
+/* ---------------- Helpers de saneo ---------------- */
+function safeStr(x: any): string | undefined {
+  const s = typeof x === 'string' ? x.trim() : '';
+  return s ? s : undefined;
+}
+
+function toReaderShape(storyId: string, d: any): StoryView {
+  const scenesSrc: any[] = Array.isArray(d?.scenes) ? d.scenes : [];
+  const pages: ReaderPage[] = scenesSrc.map((s, i) => ({
+    id: safeStr(s?.id) ?? null,
+    pageNumber: Number.isFinite(s?.index) ? s.index : i,
+    textContent: safeStr(s?.text) ?? '',
+    imageUrl: safeStr(s?.imageUrl),
+    audioUrl: safeStr(s?.audioUrl),
+  }));
+
+  // Asegura orden por pageNumber
+  pages.sort((a, b) => (a.pageNumber ?? 0) - (b.pageNumber ?? 0));
+
+  const cover =
+    safeStr(d?.coverImageUrl) ||
+    (pages.length && safeStr(pages[0]?.imageUrl)) ||
+    undefined;
+
+  return {
+    id: storyId,
+    title: safeStr(d?.title) ?? '(untitled)',
+    coverImageUrl: cover,
+    backgroundMusicUrl: safeStr(d?.backgroundMusicUrl),
+    readerAvatarUrl:
+      safeStr(d?.reader?.avatarUrl) ||
+      safeStr(d?.creator?.avatarUrl) ||
+      '/story_reader_avatars/Default.png',
+    readerBackgroundUrl:
+      safeStr(d?.reader?.backgroundUrl) ||
+      '/story_reader_backgrounds/dream-background.png',
+    storyContent: pages,
+    creator: d?.creator ? { avatarUrl: safeStr(d?.creator?.avatarUrl) ?? null } : null,
+  };
+}
+
+/* ---------------- Página ---------------- */
 export default function EReaderPage() {
   const params = useSearchParams();
   const router = useRouter();
-  const storyId = params.get('storyId');
+
+  const storyId = params.get('storyId') || '';
+  const backParam = params.get('back') || params.get('backHref') || '';
+
+  // Si no se pasa back, volvemos al editor de escenas
+  const backHref = useMemo(
+    () => backParam || (storyId ? `/create/scenes?storyId=${encodeURIComponent(storyId)}` : '/'),
+    [backParam, storyId]
+  );
 
   const [loading, setLoading] = useState(true);
-  const [story, setStory] = useState<StoryDoc | null>(null);
+  const [story, setStory] = useState<StoryView | null>(null);
+  const [error, setError] = useState<string>('');
 
   useEffect(() => {
     (async () => {
-      if (!storyId) { setLoading(false); return; }
+      if (!storyId) {
+        setError('Missing storyId');
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      setError('');
       try {
         const ref = doc(db, 'stories', storyId);
         const snap = await getDoc(ref);
-        if (!snap.exists()) { setLoading(false); return; }
-        const data = (snap.data() || {}) as StoryDoc;
-        setStory(data);
-      } catch (e) {
-        console.error('Failed to load story for reader', e);
+        if (!snap.exists()) {
+          setError('Story not found.');
+          setStory(null);
+        } else {
+          setStory(toReaderShape(snap.id, snap.data()));
+        }
+      } catch (e: any) {
+        setError(e?.message || 'Failed to load story.');
+        setStory(null);
       } finally {
         setLoading(false);
       }
     })();
   }, [storyId]);
 
-  const storyView = useMemo(() => {
-    const s = story || {};
-    const scenes = (s.scenes || [])
-      .slice()
-      .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
-      .map((x, i) => ({
-        id: x.id ?? String(i + 1),
-        pageNumber: (x.index ?? i) + 1,
-        textContent: x.text ?? '',
-        imageUrl: x.imageUrl ?? null,
-        audioUrl: x.audioUrl ?? null,
-      }));
-
-    // Fallback de portada: primera imagen de escenas
-    const cover = s.coverImageUrl || scenes[0]?.imageUrl || null;
-
-    return {
-      id: storyId,
-      title: s.title ?? 'Untitled',
-      coverImageUrl: cover,
-      readerAvatarUrl: s.reader?.avatarUrl || '/story_reader_avatars/Default.png',
-      readerBackgroundUrl: s.reader?.backgroundUrl || '/story_reader_backgrounds/dream-background.png',
-      storyContent: scenes,
-    };
-  }, [story, storyId]);
-
-  if (!storyId) return <div className="p-6">Missing storyId.</div>;
+  if (!storyId) return <div className="p-6">Missing <code>storyId</code>.</div>;
   if (loading) return <div className="p-6">Loading…</div>;
-  if (!story) return <div className="p-6">Story not found.</div>;
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="max-w-xl mx-auto rounded-lg border p-4 bg-white">
+          <h2 className="font-bold mb-2">Preview error</h2>
+          <p className="text-sm mb-3">{error}</p>
+          <button
+            className="px-4 py-2 rounded-md bg-[#3D4F60] text-white"
+            onClick={() => router.push(backHref)}
+          >
+            ← Back to Scenes
+          </button>
+        </div>
+      </div>
+    );
+  }
+  if (!story) return null;
 
   return (
-    <div className="w-screen min-h-screen" style={{ background: '#0b1220 url(/story_reader_backgrounds/dream-background.png) center/cover fixed no-repeat' }}>
+    <div className="w-screen min-h-screen">
       <StoryReader
-        story={storyView as any}
-        onBack={() => router.push(`/create/scenes?storyId=${encodeURIComponent(storyId)}`)}
+        story={story}
+        onBack={() => router.push(backHref)}
       />
     </div>
   );
