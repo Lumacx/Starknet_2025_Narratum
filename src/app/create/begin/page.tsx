@@ -25,6 +25,7 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, uploadString, getDownloadURL } from 'firebase/storage';
 import { useCreateStory } from '@/hooks/useCreateStory';
+import { uploadCoverToStory } from '@/lib/uploadCover';
 
 /* ------------------------------------------------------------------ */
 /* Page constants & types                                              */
@@ -65,7 +66,7 @@ type Draft = {
   pages: number;
   coverUrl?: string | null;
   language: LangCode;
-  campaignName?: string; // ← NUEVO
+  campaignName?: string;
 
   scenes?: Array<{
     text: string;
@@ -94,13 +95,18 @@ type StorySummary = {
 
 const DRAFT_KEY = 'newStoryDraft';
 const DEFAULTS = {
-  avatarUrl: '/avatars/Default.png',
+  avatarUrl: '/story_reader_avatars/Default.png',
   backgroundUrl: '/story_reader_backgrounds/dream-background.png',
 };
 
 /* Helpers */
 function isHttpUrl(u?: string | null) {
   return !!u && (u.startsWith('http://') || u.startsWith('https://'));
+}
+function clampPagesForCategory(catKey: Draft['category'], pages: number) {
+  const cfg = CATEGORIES.find(c => c.key === catKey)!;
+  const n = Math.floor(Number.isFinite(pages as any) ? pages : cfg.min);
+  return Math.max(cfg.min, Math.min(cfg.max, n));
 }
 
 /* ------------------------------------------------------------------ */
@@ -162,9 +168,8 @@ export default function BeginPage() {
           language: parsed?.language || 'en',
           campaignName: parsed?.campaignName || '',
         }));
-        setShowCover(Boolean(parsed?.storyId)); // if user already started
+        setShowCover(Boolean(parsed?.storyId));
       } else {
-        // seed empty scenes with page count
         setDraft((d) => ({
           ...d,
           scenes: Array.from({ length: d.pages }, () => ({
@@ -177,13 +182,12 @@ export default function BeginPage() {
         }));
       }
     } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /* ---------------- Keep scenes length in sync ---------------- */
   useEffect(() => {
     setDraft((d) => {
-      const target = draft.pages;
+      const target = clampPagesForCategory(d.category, d.pages);
       const cur = d.scenes?.length ?? 0;
       if (cur === target) return d;
       const next = d.scenes ? [...d.scenes] : [];
@@ -194,12 +198,11 @@ export default function BeginPage() {
       } else {
         next.length = target;
       }
-      return { ...d, scenes: next };
+      return { ...d, pages: target, scenes: next };
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft.pages]);
+  }, [draft.pages, draft.category]);
 
-  /* ---------------- Persist draft ---------------- */
+  /* ---------------- Persist draft (localStorage) ---------------- */
   useEffect(() => {
     try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch {}
   }, [draft]);
@@ -260,12 +263,12 @@ export default function BeginPage() {
       synopsis: draft.synopsis || '',
       genres: draft.genres || [],
       category: draft.category,
-      pageCount: draft.pages || 0,
+      pageCount: clampPagesForCategory(draft.category, draft.pages),
       coverImageUrl: null,
       visibility: 'private',
       status: 'draft',
       language: draft.language,
-      metadata: draft.campaignName ? { campaignName: draft.campaignName } : {}, // ← NUEVO
+      metadata: draft.campaignName ? { campaignName: draft.campaignName } : {},
     } as any);
 
     setDraft((d) => ({ ...d, storyId: id }));
@@ -278,23 +281,18 @@ export default function BeginPage() {
     return id;
   }
 
-  /* ---------------- Upload cover into canonical path ---------------- */
-  async function uploadCoverIntoStoryPath(userUid: string, storyId: string, srcUrl: string) {
+  /* ---------------- Upload cover helpers ---------------- */
+  async function uploadCoverViaSdk(userUid: string, storyId: string, srcUrl: string) {
     const path = `users/${userUid}/stories/${storyId}/images/cover.png`;
     const r = ref(storage, path);
-    try {
-      if (srcUrl.startsWith('data:')) {
-        await uploadString(r, srcUrl, 'data_url');
-      } else {
-        const resp = await fetch(srcUrl);
-        const blob = await resp.blob();
-        await uploadBytes(r, blob, { contentType: blob.type || 'image/png' });
-      }
-      return await getDownloadURL(r);
-    } catch (e: any) {
-      console.error('Upload cover into story path failed:', path, e?.code, e?.message || e);
-      throw e;
+    if (srcUrl.startsWith('data:')) {
+      await uploadString(r, srcUrl, 'data_url');
+    } else {
+      const resp = await fetch(srcUrl);
+      const blob = await resp.blob();
+      await uploadBytes(r, blob, { contentType: blob.type || 'image/png' });
     }
+    return await getDownloadURL(r);
   }
 
   const handleCoverImageSaved = async (url: string) => {
@@ -302,7 +300,27 @@ export default function BeginPage() {
     try {
       if (!user) throw new Error('Please sign in first.');
       const id = await ensureStoryId();
-      const httpsUrl = await uploadCoverIntoStoryPath(user.uid, id, url);
+
+      let httpsUrl = url;
+
+      // ✅ TIPADO SUAVE para evitar "never"
+      try {
+        const out: any = await (uploadCoverToStory as any)?.({
+          uid: user.uid,
+          storyId: id,
+          src: url,
+        });
+        if (typeof out === 'string') httpsUrl = out;
+        else if (out && typeof out.publicUrl === 'string') httpsUrl = out.publicUrl;
+      } catch (e) {
+        console.warn('uploadCoverToStory helper failed, falling back to SDK:', e);
+        try {
+          httpsUrl = await uploadCoverViaSdk(user.uid, id, url);
+        } catch (e2) {
+          console.warn('SDK upload failed, falling back to using external URL:', e2);
+          httpsUrl = url; // último recurso: deja el URL externo
+        }
+      }
 
       await updateDoc(fsDoc(db, 'stories', id), {
         coverImageUrl: httpsUrl,
@@ -388,7 +406,9 @@ export default function BeginPage() {
           synopsis: s.synopsis || d.synopsis,
           genres: Array.isArray(s.genres) ? s.genres : d.genres,
           category: (s.category || d.category) as Draft['category'],
-          pages: typeof s.pageCount === 'number' ? s.pageCount : d.pages,
+          pages: typeof s.pageCount === 'number'
+            ? clampPagesForCategory((s.category || d.category) as Draft['category'], s.pageCount)
+            : d.pages,
           coverUrl: s.coverImageUrl ?? d.coverUrl ?? null,
           language: (s.language as LangCode) || d.language,
           campaignName: s?.metadata?.campaignName || d.campaignName || '',
@@ -400,7 +420,7 @@ export default function BeginPage() {
     })();
   }, [user, existingStoryId, storyMode]);
 
-  /* Persist language changes if story already existe */
+  /* Persist language when story exists */
   useEffect(() => {
     (async () => {
       try {
@@ -415,7 +435,7 @@ export default function BeginPage() {
     })();
   }, [draft.language, draft.storyId, user]);
 
-  /* Persist campaignName when available and story exists */
+  /* Persist campaignName when story exists */
   useEffect(() => {
     (async () => {
       try {
@@ -430,6 +450,23 @@ export default function BeginPage() {
       }
     })();
   }, [draft.campaignName, draft.storyId, user]);
+
+  /* Persist category + pageCount when story exists */
+  useEffect(() => {
+    (async () => {
+      try {
+        if (!draft.storyId || !user) return;
+        const pageCount = clampPagesForCategory(draft.category, draft.pages);
+        await updateDoc(fsDoc(db, 'stories', draft.storyId), {
+          category: draft.category,
+          pageCount,
+          updatedAt: serverTimestamp(),
+        });
+      } catch (e) {
+        console.warn('Could not persist category/pageCount change', e);
+      }
+    })();
+  }, [draft.category, draft.pages, draft.storyId, user]);
 
   /* ---------------- Buttons ---------------- */
   const canStartNew =
@@ -448,13 +485,12 @@ export default function BeginPage() {
       }
       if (!canStartNew) throw new Error('Fill Title, Genres, Synopsis (and Campaign Name if Campaign).');
 
-      // Create only now
       const id = await createStory({
         title: draft.title.trim(),
         synopsis: draft.synopsis.trim(),
         genres: draft.genres,
         category: draft.category,
-        pageCount: draft.pages,
+        pageCount: clampPagesForCategory(draft.category, draft.pages),
         coverImageUrl: null,
         visibility: 'private',
         status: 'draft',
@@ -497,7 +533,7 @@ export default function BeginPage() {
           synopsis: draft.synopsis.trim(),
           genres: draft.genres,
           category: draft.category,
-          pageCount: draft.pages,
+          pageCount: clampPagesForCategory(draft.category, draft.pages),
           visibility: 'private',
           status: 'draft',
           language: draft.language,
@@ -682,12 +718,10 @@ export default function BeginPage() {
                 value={draft.category}
                 onChange={(e) => {
                   const nextKey = e.target.value as Draft['category'];
-                  const cfg = CATEGORIES.find((c) => c.key === nextKey)!;
-                  setDraft((d) => ({
-                    ...d,
-                    category: nextKey,
-                    pages: Math.min(Math.max(d.pages, cfg.min), cfg.max),
-                  }));
+                  setDraft((d) => {
+                    const nextPages = clampPagesForCategory(nextKey, d.pages);
+                    return { ...d, category: nextKey, pages: nextPages };
+                  });
                 }}
               >
                 {CATEGORIES.map((c) => (
@@ -698,7 +732,6 @@ export default function BeginPage() {
                 Allowed pages: {cat.min}–{cat.max}
               </p>
 
-              {/* Campaign Name (solo si category === 'campaign') */}
               {draft.category === 'campaign' && (
                 <div className="mt-4">
                   <label className="block text-sm font-bold mb-2">Campaign Name</label>
@@ -727,7 +760,7 @@ export default function BeginPage() {
                 min={cat.min}
                 max={cat.max}
                 value={draft.pages}
-                onChange={(e) => setDraft((d) => ({ ...d, pages: Number(e.target.value) }))}
+                onChange={(e) => setDraft((d) => ({ ...d, pages: clampPagesForCategory(d.category, Number(e.target.value)) }))}
                 className="w-full accent-[#E97451]"
               />
               <div className="text-sm mt-1">
