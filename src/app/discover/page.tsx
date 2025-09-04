@@ -13,11 +13,9 @@ import {
   doc,
   getDoc,
   onSnapshot,
-  query,
   setDoc,
   deleteDoc,
   runTransaction,
-  where,
   serverTimestamp,
 } from 'firebase/firestore';
 import { Heart } from 'lucide-react';
@@ -91,7 +89,6 @@ function StarRating({
 
     setSaving(true);
     try {
-      // Atomiza agregados en story y guarda rating por usuario en subcolección
       await runTransaction(db, async (tx) => {
         const storyRef = doc(db, 'stories', storyId);
         const userRatingRef = doc(db, 'stories', storyId, 'ratings', user.uid);
@@ -226,6 +223,10 @@ const CatalogPage: React.FC = () => {
   const { user } = useAuth();
   const { data, isLoading, error } = useListPublishedStories();
 
+  // Helper to build the reader href that knows how to go back to Discover
+  const readerHref = (id?: string) =>
+    id ? `/ereader?storyId=${encodeURIComponent(id)}&back=${encodeURIComponent('/discover')}` : '#';
+
   // Pull published stories (para no logueados también)
   useEffect(() => {
     const stories = data ?? [];
@@ -235,14 +236,12 @@ const CatalogPage: React.FC = () => {
 
   // Live load user ratings/favorites — SOLO si hay user
   useEffect(() => {
-    // reset si no hay user
     if (!user?.uid) {
       setUserRatings({});
       setUserFavorites({});
       return;
     }
 
-    // Favorites subscription (con handler de error)
     const favCol = collection(db, 'users', user.uid, 'favorites');
     const unsubFav = onSnapshot(
       favCol,
@@ -253,11 +252,9 @@ const CatalogPage: React.FC = () => {
       },
       (err) => {
         console.error('[favorites onSnapshot] error:', err?.code || err, err);
-        // Si por alguna razón las rules niegan, no rompemos la página
       }
     );
 
-    // Ratings del usuario para las historias visibles (lookup 1x)
     const loadRatings = async () => {
       const map: Record<string, number | null> = {};
       const list = data ?? [];
@@ -286,7 +283,6 @@ const CatalogPage: React.FC = () => {
   const applyFiltersAndSearch = (stories: Story[]) => {
     let filtered = [...stories];
 
-    // Sort by popular or recent
     switch (activeFilter) {
       case 'popular':
         filtered = [...filtered].sort((a, b) => (b.views ?? 0) - (a.views ?? 0));
@@ -302,7 +298,6 @@ const CatalogPage: React.FC = () => {
         break;
     }
 
-    // Genre filter
     if (selectedGenres.length > 0) {
       filtered = filtered.filter(story =>
         story.genres?.some(genre => selectedGenres.includes(genre))
@@ -396,9 +391,6 @@ const CatalogPage: React.FC = () => {
           <h1 className="font-['Cinzel_Decorative'] text-5xl md:text-6xl font-bold text-[#3A4B5C] dark:text-[#E0C9A0] m-0 tracking-wide">
             NARRATUM
           </h1>
-          <h2 className="font-['Lato'] text-xl md:text-2xl font-bold uppercase tracking-wider text-[#3A4B5C] dark:text-[#E0C9A0] m-0">
-            CATALOG OF STORIES
-          </h2>
         </header>
 
         <nav className="filter-nav flex justify-center gap-6 md:gap-8 mb-6 flex-wrap">
@@ -462,14 +454,16 @@ const CatalogPage: React.FC = () => {
                   key={story.id}
                   className="story-card bg-[#233446] border-2 border-[#4A5C6E] p-2.5 rounded-lg w-64 text-[#E0C9A0] shadow-xl relative transition-all duration-300 ease-in-out hover:translate-y-[-5px] hover:shadow-2xl"
                 >
-                  {/* Favorite */}
                   <FavoriteButton storyId={story.id!} initialIsFav={!!userFavorites[story.id!]}/>
 
-                  {/* Border overlay */}
                   <div className="absolute inset-1 border border-[#BFA071] rounded-md pointer-events-none z-10"></div>
 
-                  {/* Cover */}
-                  <Link href={`/story/${story.id}`} className="card-art-container block w-full h-40 mb-4 rounded-sm overflow-hidden relative z-20">
+                  {/* Cover → Reader with back to /discover */}
+                  <Link
+                    href={readerHref(story.id)}
+                    prefetch={false}
+                    className="card-art-container block w-full h-40 mb-4 rounded-sm overflow-hidden relative z-20"
+                  >
                     <img
                       src={story.coverImageUrl || 'https://placehold.co/300x200/BFA071/1A2533?text=Image+Not+Found'}
                       alt={story.title || 'Untitled Story'}
@@ -477,33 +471,29 @@ const CatalogPage: React.FC = () => {
                     />
                   </Link>
 
-                  {/* Title */}
-                  <Link href={`/story/${story.id}`}>
+                  {/* Title → Reader with back to /discover */}
+                  <Link href={readerHref(story.id)} prefetch={false}>
                     <h3 className="font-['Merriweather'] text-xl font-bold mb-2 leading-tight min-h-[2.6rem] z-20 relative">
                       {story.title || 'Untitled Story'}
                     </h3>
                   </Link>
 
-                  {/* Genres */}
                   {story.genres?.length ? (
                     <p className="text-xs text-[#8FA0AF] mb-1">{story.genres.join(', ')}</p>
                   ) : null}
 
-                  {/* Author */}
                   {story.creator && (
                     <p className="text-sm text-[#8FA0AF] mb-1">
                       By {story.creator.displayname || 'Unknown Author'}
                     </p>
                   )}
 
-                  {/* Comments */}
                   {story.commentsCount !== undefined && (
                     <p className="text-sm text-[#8FA0AF] flex items-center justify-center gap-1">
                       💬 {story.commentsCount} Comments
                     </p>
                   )}
 
-                  {/* Rating */}
                   <div className="mt-2">
                     <StarRating
                       storyId={story.id!}
@@ -513,9 +503,10 @@ const CatalogPage: React.FC = () => {
                     />
                   </div>
 
-                  {/* Read */}
+                  {/* READ → Reader with back to /discover */}
                   <Link
-                    href={`/story/${story.id}`}
+                    href={readerHref(story.id)}
+                    prefetch={false}
                     className="mt-3 font-['Lato'] bg-[#BFA071] text-[#1A2533] py-2.5 px-6 rounded-md text-base font-bold uppercase tracking-wide inline-block transition-colors duration-300 hover:bg-[#E0C9A0] z-20 relative"
                   >
                     READ

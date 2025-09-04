@@ -1,93 +1,137 @@
 // src/hooks/useListPublishedStories.ts
 'use client';
 
-import { useMemo } from 'react';
-import { useGetAllStories } from '@firebasegen/default-connector/react';
-import type { GetAllStoriesData } from '@firebasegen/default-connector';
+import { useEffect, useMemo, useState } from 'react';
+import { db } from '@/lib/firebase';
+import {
+  collection,
+  getDocs,
+  limit as fsLimit,
+  query,
+  where,
+  Timestamp,
+  DocumentData,
+} from 'firebase/firestore';
 import type { Story } from '@/lib/types';
 
-type Row = NonNullable<GetAllStoriesData['stories']>[number];
-
-/** Normalize Firestore timestamp/Date/string/number into a sortable millis number. */
-function tsToMillis(x: any): number {
-  if (!x) return 0;
-  // Firestore Timestamp
-  if (typeof x?.toMillis === 'function') return Number(x.toMillis() || 0);
-  // Date
-  if (x instanceof Date) return x.getTime();
-  // string/number
-  const n = Number(new Date(x as any).getTime());
-  return Number.isFinite(n) ? n : 0;
+/* ----------------------------- helpers ------------------------------ */
+function tsToIso(x: any): string | undefined {
+  if (!x) return undefined;
+  try {
+    if (typeof (x as Timestamp)?.toDate === 'function') {
+      return (x as Timestamp).toDate().toISOString();
+    }
+  } catch {}
+  const s = String(x);
+  return s || undefined;
 }
 
-/** Accept both schemas:
- *  - status === 'published'
- *  - visibility === 'public'
- *  - isPublic === true (legacy)
- */
-function isDiscoverable(row: Row): boolean {
-  const status = String((row as any).status ?? '').trim().toLowerCase();
-  const visibility = String((row as any).visibility ?? '').trim().toLowerCase();
-  const isPublic = (row as any).isPublic === true;
-  return status === 'published' || visibility === 'public' || isPublic;
-}
+function mapDocToStory(d: { id: string; data: DocumentData }): Story {
+  const row = d.data;
 
-function mapRowToStory(row: Row): Story {
-  return {
-    id: row.id,
-    title: row.title ?? undefined,
-    genres: row.genres ?? null,
-    description: (row as any).description ?? undefined,
-    coverImageUrl:
-      row.coverImageUrl ??
-      (row as any).coverUrl ?? // tolerate older field name
-      undefined,
-    authorId: row.creator?.id ?? '',
-    status: (row as any).status ?? 'draft',
-    createdAt: String((row as any).createdAt ?? ''),
-    updatedAt: String((row as any).updatedAt ?? ''),
-    // optional extras the Discover page uses
-    views: (row as any).views ?? undefined,
-    likes: (row as any).likes ?? undefined,
-    commentsCount: (row as any).commentsCount ?? undefined,
-    ratinglevel: (row as any).ratinglevel ?? undefined,
-    // creator minimal
-    creator: row.creator
+  // Build a Story, then tack on visibility/isPublic as extra props.
+  const s: any = {
+    id: d.id,
+    title: row?.title ?? undefined,
+    genres: Array.isArray(row?.genres) ? row.genres : null,
+    description: row?.description ?? undefined,
+    coverImageUrl: row?.coverImageUrl ?? undefined,
+
+    authorId: row?.creator?.id ?? row?.ownerUid ?? '',
+    status: row?.status ?? 'draft',
+
+    createdAt: tsToIso(row?.createdAt) ?? '',
+    updatedAt: tsToIso(row?.updatedAt) ?? '',
+
+    creator: row?.creator
       ? { id: row.creator.id, displayname: row.creator.displayname ?? '' }
       : undefined,
-    // not loaded by this hook
+
+    views: row?.views ?? undefined,
+    likes: row?.likes ?? undefined,
+    commentsCount: row?.commentsCount ?? undefined,
+    ratinglevel: row?.ratinglevel ?? undefined,
+
+    // not used in Discover
     storyContent: undefined,
     comments: undefined,
     reactions: undefined,
   };
+
+  // Extras used for visibility filtering (not necessarily in your Story type)
+  s.visibility = row?.visibility;
+  s.isPublic = row?.isPublic;
+
+  return s as Story;
 }
 
-export const useListPublishedStories = (limit?: number) => {
-  // Generated connector fetches a flat list; we'll filter/sort locally.
-  const query = useGetAllStories();
+/* ------------------------------- hook -------------------------------- */
+export const useListPublishedStories = (take?: number) => {
+  const [data, setData] = useState<Story[]>([]);
+  const [isLoading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [reloadTick, setReloadTick] = useState(0);
 
-  const data: Story[] = useMemo(() => {
-    const rows: Row[] = query.data?.stories ?? [];
+  useEffect(() => {
+    let cancelled = false;
 
-    // filter by our "discoverable" predicate
-    let mapped = rows.filter(isDiscoverable).map(mapRowToStory);
+    const run = async () => {
+      setLoading(true);
+      setError(null);
 
-    // stable sort: publishedAt -> updatedAt -> createdAt (desc)
-    mapped.sort((a, b) => {
-      const ap = tsToMillis((a as any).publishedAt ?? (a as any).updatedAt ?? a.createdAt);
-      const bp = tsToMillis((b as any).publishedAt ?? (b as any).updatedAt ?? b.createdAt);
-      return bp - ap;
+      try {
+        const col = collection(db, 'stories');
+        const lim = typeof take === 'number' ? [fsLimit(take)] : [];
+
+        // 3 independent queries (OR via client-side union)
+        const [q1, q2, q3] = await Promise.all([
+          getDocs(query(col, where('status', '==', 'published'), ...lim)),
+          getDocs(query(col, where('visibility', '==', 'public'), ...lim)),
+          getDocs(query(col, where('isPublic', '==', true), ...lim)),
+        ]);
+
+        if (cancelled) return;
+
+        // Union by id
+        const bag = new Map<string, Story>();
+        for (const snap of [q1, q2, q3]) {
+          snap.forEach(doc => {
+            bag.set(doc.id, mapDocToStory({ id: doc.id, data: doc.data() }));
+          });
+        }
+
+        setData(Array.from(bag.values()));
+      } catch (e: any) {
+        if (!cancelled) {
+          setError(e instanceof Error ? e : new Error(String(e)));
+          setData([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [take, reloadTick]);
+
+  // Safety filter in client (keeps semantics even if something slips in)
+  const filtered = useMemo(() => {
+    return (data || []).filter((s: any) => {
+      const statusOk = (s.status ?? '').toLowerCase() === 'published';
+      const visOk = (s.visibility ?? '').toLowerCase() === 'public';
+      const isPub = s.isPublic === true;
+      return statusOk || visOk || isPub;
     });
-
-    if (typeof limit === 'number') mapped = mapped.slice(0, Math.max(0, limit));
-    return mapped;
-  }, [query.data, limit]);
+  }, [data]);
 
   return {
-    data,
-    isLoading: query.isLoading || (query as any).isFetching,
-    error: (query as any).error as Error | null,
-    refetch: query.refetch,
+    data: filtered,
+    isLoading,
+    error,
+    refetch: () => setReloadTick(t => t + 1),
   };
 };
 
