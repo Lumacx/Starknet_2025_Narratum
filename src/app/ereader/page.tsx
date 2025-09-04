@@ -1,31 +1,35 @@
-// src/app/ereader/page.tsx
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { doc, getDoc } from 'firebase/firestore';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import StoryReader from '@/components/StoryReader';
-import { Loader2 } from 'lucide-react';
-
-type LangCode = 'en'|'es'|'pt'|'fr'|'de'|'it'|'ja'|'ko'|'zh'|'hi'|'ar';
 
 type Scene = {
-  id?: string;
-  index?: number;
-  title?: string;
-  text?: string;
+  id?: string | null;
+  index?: number | null;
+  title?: string | null;
+  text?: string | null;
   imageUrl?: string | null;
   audioUrl?: string | null;
 };
 
+type StoryDoc = {
+  title?: string | null;
+  coverImageUrl?: string | null;
+  language?: string | null;
+  reader?: { avatarUrl?: string | null; backgroundUrl?: string | null } | null;
+  scenes?: Scene[];
+};
+
 export default function EReaderPage() {
-  const searchParams = useSearchParams();
+  const params = useSearchParams();
   const router = useRouter();
-  const storyId = searchParams.get('storyId') || undefined;
+  const storyId = params.get('storyId');
 
   const [loading, setLoading] = useState(true);
-  const [storyView, setStoryView] = useState<any | null>(null);
+  const [story, setStory] = useState<StoryDoc | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -34,69 +38,52 @@ export default function EReaderPage() {
         const ref = doc(db, 'stories', storyId);
         const snap = await getDoc(ref);
         if (!snap.exists()) { setLoading(false); return; }
-        const data = snap.data() as any;
-
-        const scenes: Scene[] = Array.isArray(data.scenes) ? data.scenes : [];
-        const ordered = scenes
-          .map((s: any, i: number) => ({
-            pageNumber: Number.isFinite(s?.index) ? Number(s.index) + 1 : i + 1,
-            textContent: String(s?.text ?? ''),
-            imageUrl: s?.imageUrl || null,
-            audioUrl: s?.audioUrl || null,
-            id: String(s?.id || `${i}`),
-          }))
-          .sort((a: any, b: any) => (a.pageNumber ?? 0) - (b.pageNumber ?? 0));
-
-        const view = {
-          id: storyId,
-          title: String(data.title || 'Untitled'),
-          coverImageUrl: ordered[0]?.imageUrl || null,
-          backgroundMusicUrl: null, // si luego guardas música global, mapéala aquí
-          readerAvatarUrl: data?.reader?.avatarUrl || null,
-          readerBackgroundUrl: data?.reader?.backgroundUrl || null,
-          storyContent: ordered,
-          creator: { avatarUrl: data?.reader?.avatarUrl || null },
-        };
-
-        setStoryView(view);
+        const data = (snap.data() || {}) as StoryDoc;
+        setStory(data);
       } catch (e) {
-        console.error(e);
+        console.error('Failed to load story for reader', e);
       } finally {
         setLoading(false);
       }
     })();
   }, [storyId]);
 
-  if (!storyId) {
-    return (
-      <div className="min-h-screen grid place-items-center p-6">
-        <div className="text-center">
-          <p className="mb-3">Missing <code>storyId</code>.</p>
-          <button onClick={() => router.back()} className="underline">Go back</button>
-        </div>
-      </div>
-    );
-  }
+  const storyView = useMemo(() => {
+    const s = story || {};
+    const scenes = (s.scenes || [])
+      .slice()
+      .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
+      .map((x, i) => ({
+        id: x.id ?? String(i + 1),
+        pageNumber: (x.index ?? i) + 1,
+        textContent: x.text ?? '',
+        imageUrl: x.imageUrl ?? null,
+        audioUrl: x.audioUrl ?? null,
+      }));
 
-  if (loading) {
-    return (
-      <div className="min-h-screen grid place-items-center text-sm opacity-70">
-        <Loader2 className="animate-spin mr-2" /> Loading story…
-      </div>
-    );
-  }
+    // Fallback de portada: primera imagen de escenas
+    const cover = s.coverImageUrl || scenes[0]?.imageUrl || null;
 
-  if (!storyView) {
-    return (
-      <div className="min-h-screen grid place-items-center p-6">
-        <div className="text-center">
-          <h1 className="text-xl font-semibold mb-2">Story not found</h1>
-          <p className="opacity-70 mb-4">Check the storyId or save/publish the story first.</p>
-          <button onClick={() => router.back()} className="px-4 py-2 rounded border">← Back</button>
-        </div>
-      </div>
-    );
-  }
+    return {
+      id: storyId,
+      title: s.title ?? 'Untitled',
+      coverImageUrl: cover,
+      readerAvatarUrl: s.reader?.avatarUrl || '/story_reader_avatars/Default.png',
+      readerBackgroundUrl: s.reader?.backgroundUrl || '/story_reader_backgrounds/dream-background.png',
+      storyContent: scenes,
+    };
+  }, [story, storyId]);
 
-  return <StoryReader story={storyView} />;
+  if (!storyId) return <div className="p-6">Missing storyId.</div>;
+  if (loading) return <div className="p-6">Loading…</div>;
+  if (!story) return <div className="p-6">Story not found.</div>;
+
+  return (
+    <div className="w-screen min-h-screen" style={{ background: '#0b1220 url(/story_reader_backgrounds/dream-background.png) center/cover fixed no-repeat' }}>
+      <StoryReader
+        story={storyView as any}
+        onBack={() => router.push(`/create/scenes?storyId=${encodeURIComponent(storyId)}`)}
+      />
+    </div>
+  );
 }

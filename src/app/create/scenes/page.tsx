@@ -5,11 +5,24 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ImageIcon, Music, Upload, Wand2, Loader2, Check, Info, PlusCircle, Quote, Volume2, Image as ImgIcon } from 'lucide-react';
+import {
+  Image as ImgIcon,
+  ImageIcon,
+  Music,
+  Upload,
+  Wand2,
+  Loader2,
+  Check,
+  Info,
+  PlusCircle,
+  Quote,
+  Volume2,
+} from 'lucide-react';
 
 import { useAuth } from '@/context/AuthContext';
 import { db, storage } from '@/lib/firebase';
 import {
+  setDoc,
   getDoc,
   updateDoc,
   doc as fsDoc,
@@ -67,8 +80,9 @@ const LANG_LABELS: Record<string, string> = {
   it: 'Italian', ja: 'Japanese', ko: 'Korean', zh: 'Chinese', hi: 'Hindi', ar: 'Arabic',
 };
 
+// ✅ paths válidos que existen en /public
 const DEFAULTS = {
-  avatarUrl: '/avatars/Default.png',
+  avatarUrl: '/story_reader_avatars/Default.png',
   backgroundUrl: '/story_reader_backgrounds/dream-background.png',
 };
 
@@ -95,7 +109,7 @@ type Scene = {
   imageName?: string | null;
   audioUrl?: string | null;
   audioName?: string | null;
-  voiceId?: string | null;   // per-scene override (optional)
+  voiceId?: string | null;   // override opcional
   durationMs?: number | null;
 };
 
@@ -104,14 +118,14 @@ type StoryDoc = {
   synopsis?: string;
   genres?: string[];
   language?: LangCode;
-  voiceId?: string;          // story-level default voice (optional)
-  reader?: { avatarUrl?: string; backgroundUrl?: string };
+  voiceId?: string | null;
+  reader?: { avatarUrl?: string | null; backgroundUrl?: string | null };
   scenes?: Scene[];
   status?: 'draft' | 'published';
   isPublic?: boolean;
   publishedAt?: any;
   updatedAt?: any;
-  pageCount?: number;        // <- Begin sets this (1–10 short, up to 20 long)
+  pageCount?: number; // 1–10 (short), hasta 20 (long)
 };
 
 /* ----- helpers ----- */
@@ -120,26 +134,36 @@ function classNames(...xs: (string | false | null | undefined)[]) {
   return xs.filter(Boolean).join(' ');
 }
 
-function makeDefaultScene(index = 0): Scene {
-  const id = typeof crypto?.randomUUID === 'function'
-    ? crypto.randomUUID()
-    : String(Math.random()).slice(2);
-  return { id, index, title: `Scene ${index + 1}`, text: '', imageUrl: null, imageName: null, audioUrl: null, audioName: null, voiceId: null, durationMs: null };
+function makeId() {
+  // crypto.randomUUID en navegadores modernos; fallback para SSR/legacy
+  try { return crypto.randomUUID(); } catch { return Math.random().toString(36).slice(2); }
 }
 
-/** Firestore SAFE: replace undefined with null and strip unknowns */
-function serializeScene(s: Partial<Scene>, i: number) {
+function makeDefaultScene(index = 0): Scene {
+  return { id: makeId(), index, title: `Scene ${index + 1}`, text: '' };
+}
+
+function sanitizeGenres(arr?: unknown): string[] {
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .map((x) => (x == null ? '' : String(x)))
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+/** Firestore SAFE: sin undefined en ningún nivel */
+function serializeScene(s: Scene, i: number) {
   return {
-    id: s.id || (typeof crypto?.randomUUID === 'function' ? crypto.randomUUID() : String(Math.random()).slice(2)),
-    index: Number.isFinite(s.index as number) ? (s.index as number) : i,
-    title: s.title ?? '',
-    text: s.text ?? '',
-    imageUrl: s.imageUrl ?? null,
-    imageName: s.imageName ?? null,
-    audioUrl: s.audioUrl ?? null,
-    audioName: s.audioName ?? null,
-    voiceId: s.voiceId ?? null,
-    durationMs: Number.isFinite(s.durationMs as number) ? (s.durationMs as number) : null,
+    id: s?.id || makeId(),
+    index: Number.isFinite(s?.index as number) ? (s!.index as number) : i,
+    title: s?.title ?? '',
+    text: s?.text ?? '',
+    imageUrl: s?.imageUrl ?? null,
+    imageName: s?.imageName ?? null,
+    audioUrl: s?.audioUrl ?? null,
+    audioName: s?.audioName ?? null,
+    voiceId: s?.voiceId ?? null,
+    durationMs: Number.isFinite(s?.durationMs as number) ? (s!.durationMs as number) : null,
   };
 }
 
@@ -148,23 +172,26 @@ function serializeStoryForWrite(story: StoryDoc | null, scenes: Scene[]) {
   const out: any = {
     title: story?.title ?? '',
     synopsis: story?.synopsis ?? '',
-    genres: Array.isArray(story?.genres) ? story!.genres : [],
+    genres: sanitizeGenres(story?.genres),
     language: (story?.language as LangCode) ?? 'en',
     reader: {
-      avatarUrl: story?.reader?.avatarUrl ?? DEFAULTS.avatarUrl,
-      backgroundUrl: story?.reader?.backgroundUrl ?? DEFAULTS.backgroundUrl,
+      avatarUrl: (story?.reader?.avatarUrl ?? DEFAULTS.avatarUrl) || DEFAULTS.avatarUrl,
+      backgroundUrl: (story?.reader?.backgroundUrl ?? DEFAULTS.backgroundUrl) || DEFAULTS.backgroundUrl,
     },
     scenes: safeScenes,
     status: story?.status ?? 'draft',
     isPublic: !!story?.isPublic,
     updatedAt: serverTimestamp(),
   };
-  if (typeof story?.pageCount === 'number') out.pageCount = story!.pageCount;
+  if (typeof story?.pageCount === 'number') out.pageCount = Math.max(1, Math.min(20, Math.floor(story!.pageCount)));
   if (story?.voiceId) out.voiceId = story.voiceId;
   return out;
 }
 
-function inferKindFromPath(path?: string, contentType?: string): 'image' | 'audio' | 'video' | 'unknown' {
+function inferKindFromPath(
+  path?: string,
+  contentType?: string
+): 'image' | 'audio' | 'video' | 'unknown' {
   const ct = (contentType || '').toLowerCase();
   if (ct.startsWith('image/')) return 'image';
   if (ct.startsWith('audio/')) return 'audio';
@@ -272,7 +299,7 @@ export default function ScenesPage() {
   const langLabel = useMemo(() => LANG_LABELS[(story?.language || 'en') as LangCode] || 'English', [story?.language]);
 
   // ----- Page limit logic (from Begin/pageCount) -----
-  const selectedPages = Math.max(1, Math.min( (story?.pageCount ?? 10), 20 ));
+  const selectedPages = Math.max(1, Math.min( (story?.pageCount ?? 10), 20 )); // cap 20
   const progressLabel = `Scene ${Math.min(currentIndex + 1, selectedPages)} / ${selectedPages}`;
 
   /* -------- Load story + scenes from Firestore -------- */
@@ -288,30 +315,30 @@ export default function ScenesPage() {
 
         const fixedScenes: Scene[] = (docData.scenes || [])
           .map((s, i) => ({
-            id: s.id || (typeof crypto?.randomUUID === 'function' ? crypto.randomUUID() : String(Math.random()).slice(2)),
-            index: Number.isFinite(s.index) ? s.index : i,
-            title: s.title ?? `Scene ${i + 1}`,
-            text: s.text || '',
-            imageUrl: s.imageUrl ?? null,
-            imageName: s.imageName ?? null,
-            audioUrl: s.audioUrl ?? null,
-            audioName: s.audioName ?? null,
-            voiceId: s.voiceId ?? null,
-            durationMs: Number.isFinite(s.durationMs as number) ? s.durationMs! : null,
+            id: s?.id || makeId(),
+            index: Number.isFinite(s?.index as number) ? (s!.index as number) : i,
+            title: s?.title ?? `Scene ${i + 1}`,
+            text: s?.text ?? '',
+            imageUrl: s?.imageUrl ?? null,
+            imageName: s?.imageName ?? null,
+            audioUrl: s?.audioUrl ?? null,
+            audioName: s?.audioName ?? null,
+            voiceId: s?.voiceId ?? null,
+            durationMs: Number.isFinite(s?.durationMs as number) ? (s!.durationMs as number) : null,
           }))
           .sort((a, b) => a.index - b.index);
 
         const ensured = fixedScenes.length > 0 ? fixedScenes : [makeDefaultScene(0)];
 
         setStory({
-          title: docData.title || '',
-          synopsis: docData.synopsis || '',
-          genres: docData.genres || [],
+          title: docData.title ?? '',
+          synopsis: docData.synopsis ?? '',
+          genres: sanitizeGenres(docData.genres),
           language: (docData.language as LangCode) || 'en',
-          voiceId: docData.voiceId || undefined,
+          voiceId: docData.voiceId ?? null,
           reader: {
-            avatarUrl: docData.reader?.avatarUrl || DEFAULTS.avatarUrl,
-            backgroundUrl: docData.reader?.backgroundUrl || DEFAULTS.backgroundUrl,
+            avatarUrl: docData.reader?.avatarUrl ?? DEFAULTS.avatarUrl,
+            backgroundUrl: docData.reader?.backgroundUrl ?? DEFAULTS.backgroundUrl,
           },
           status: docData.status || 'draft',
           isPublic: !!docData.isPublic,
@@ -320,8 +347,8 @@ export default function ScenesPage() {
         });
 
         setReaderUI({
-          avatarUrl: docData.reader?.avatarUrl || DEFAULTS.avatarUrl,
-          backgroundUrl: docData.reader?.backgroundUrl || DEFAULTS.backgroundUrl,
+          avatarUrl: docData.reader?.avatarUrl ?? DEFAULTS.avatarUrl,
+          backgroundUrl: docData.reader?.backgroundUrl ?? DEFAULTS.backgroundUrl,
         });
 
         setScenes(ensured);
@@ -443,7 +470,7 @@ export default function ScenesPage() {
     }
   }
 
-  // Soft references
+  // Soft references (solo UI)
   const [references, setReferences] = useState<Array<{ url: string; name?: string; category?: AssetCategory }>>([]);
   function handleUseAsReference(item: GalleryItem) {
     setReferences((prev) => [...prev, { url: item.url, name: item.name, category: activeTab as AssetCategory }]);
@@ -460,12 +487,12 @@ export default function ScenesPage() {
     try {
       const { prompt, negativePrompt } = composePromptForImagen(imagePrompt, {
         title: story.title,
-        genres: story.genres,
+        genres: sanitizeGenres(story.genres),
         synopsis: story.synopsis,
         language: story.language,
       });
 
-      const refNames = (references || []).map(r => r.name).filter(Boolean);
+      const refNames = (references || []).map(r => r.name).filter(Boolean) as string[];
       const promptWithRefs = refNames.length ? `${prompt}\nVISUAL REFERENCES (soft influence): ${refNames.join(', ')}.` : prompt;
 
       const r = await fetch('/api/generate-image', {
@@ -492,7 +519,7 @@ export default function ScenesPage() {
     try {
       const payload = {
         title: story.title,
-        genres: story.genres,
+        genres: sanitizeGenres(story.genres),
         synopsis: story.synopsis,
         language: story.language,
         sceneIndex: currentIndex + 1,
@@ -564,10 +591,7 @@ export default function ScenesPage() {
   function addIdeaAsNewScene(idea: { title: string; outline: string }) {
     setScenes(prev => {
       if (prev.length >= selectedPages) return prev;
-      const next = [
-        ...prev,
-        { id: typeof crypto?.randomUUID === 'function' ? crypto.randomUUID() : String(Math.random()).slice(2), index: prev.length, title: idea.title || `Scene ${prev.length + 1}`, text: idea.outline, imageUrl: null, imageName: null, audioUrl: null, audioName: null, voiceId: null, durationMs: null }
-      ];
+      const next = [...prev, { id: makeId(), index: prev.length, title: idea.title || `Scene ${prev.length + 1}`, text: idea.outline }];
       return next;
     });
   }
@@ -648,16 +672,23 @@ export default function ScenesPage() {
   const readerHref = storyId ? `/ereader?storyId=${encodeURIComponent(storyId)}` : '#';
 
   async function persistScenes(nextScenes: Scene[]) {
-    if (!storyId) return;
+    if (!storyId) return false;
+    const safeDoc = serializeStoryForWrite(story, nextScenes);
     try {
       const storyRef = fsDoc(db, 'stories', storyId);
-      const safeDoc = serializeStoryForWrite(story, nextScenes);
       await updateDoc(storyRef, safeDoc);
       return true;
     } catch (e: any) {
-      console.error('Save error:', e);
-      alert(`Failed to save scene.\n\n${e?.message || ''}`);
-      return false;
+      // Fallback a setDoc en caso de doc nuevo/errores raros
+      try {
+        const storyRef = fsDoc(db, 'stories', storyId);
+        await setDoc(storyRef, safeDoc, { merge: true });
+        return true;
+      } catch (e2: any) {
+        console.error('Save error:', e2);
+        alert(`Failed to save scene.\n\n${e2?.message || ''}`);
+        return false;
+      }
     }
   }
 
@@ -671,7 +702,6 @@ export default function ScenesPage() {
 
   async function handleSaveSceneAndNext() {
     let nextScenes = scenes.slice(0, selectedPages).map((s, i) => ({ ...s, index: i }));
-
     const onLastExisting = currentIndex === nextScenes.length - 1;
     const canAddMore = nextScenes.length < selectedPages;
 
@@ -691,11 +721,6 @@ export default function ScenesPage() {
     } else {
       alert('Reached selected page limit.');
     }
-  }
-
-  async function handleSaveStory() {
-    const ok = await persistScenes(scenes.map((s, i) => ({ ...s, index: i })));
-    if (ok) alert('Story saved.');
   }
 
   async function handlePublishStory() {
@@ -725,33 +750,9 @@ export default function ScenesPage() {
     return () => window.removeEventListener('keydown', onKey);
   }, [currentIndex, scenes.length]);
 
-  /* -------- UI ---------------------------------------------------------- */
-  if (loading) {
-    return (
-      <div className="min-h-screen grid place-items-center text-sm opacity-70">
-        <Loader2 className="animate-spin mr-2" /> Checking your session…
-      </div>
-    );
-  }
-  if (!user) {
-    return (
-      <div className="min-h-screen p-6">
-        <div className="max-w-xl mx-auto bg-[#F3EADF] rounded-xl p-8">
-          <h1 className="text-2xl font-bold mb-2">Sign in required</h1>
-          <p className="mb-6">Please sign in to edit scenes.</p>
-          <div className="flex gap-3">
-            <Link href="/login" className="px-5 py-2 rounded-md bg-[#3D4F60] text-white">Go to Login</Link>
-            <button onClick={() => router.back()} className="px-5 py-2 rounded-md border-2">← Back</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  /* -------- Scene strip (thumbnail list) ------------------------------- */
+  /* -------- Scene strip (thumbnail list) --------------------- */
   function SceneStrip() {
     const slots = Array.from({ length: selectedPages }, (_, i) => scenes[i] || null);
-
     return (
       <div className="w-full overflow-x-auto">
         <div className="flex gap-2 py-2">
@@ -778,7 +779,6 @@ export default function ScenesPage() {
                       <ImgIcon size={14} /> No image
                     </div>
                   )}
-                  {/* badges */}
                   <div className="absolute top-1 left-1 text-[10px] bg-black/60 text-white px-1 rounded">
                     {i + 1}/{selectedPages}
                   </div>
@@ -809,6 +809,29 @@ export default function ScenesPage() {
               Add scene
             </button>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  /* -------- UI ---------------------------------------------------------- */
+  if (loading) {
+    return (
+      <div className="min-h-screen grid place-items-center text-sm opacity-70">
+        <Loader2 className="animate-spin mr-2" /> Checking your session…
+      </div>
+    );
+  }
+  if (!user) {
+    return (
+      <div className="min-h-screen p-6">
+        <div className="max-w-xl mx-auto bg-[#F3EADF] rounded-xl p-8">
+          <h1 className="text-2xl font-bold mb-2">Sign in required</h1>
+          <p className="mb-6">Please sign in to edit scenes.</p>
+          <div className="flex gap-3">
+            <Link href="/login" className="px-5 py-2 rounded-md bg-[#3D4F60] text-white">Go to Login</Link>
+            <button onClick={() => router.back()} className="px-5 py-2 rounded-md border-2">← Back</button>
+          </div>
         </div>
       </div>
     );
@@ -1013,11 +1036,11 @@ export default function ScenesPage() {
                       value={voice}
                       onChange={e => setVoice(e.target.value)}
                     >
-                      <option value="Kore">Kore (Male, Firm)</option>
+                      <option value="Kore">Nuna (Female, Firm)</option>
                       <option value="Puck">Puck (Male, Upbeat)</option>
                       <option value="Zephyr">Zephyr (Female, Youthful)</option>
-                      <option value="Leda">Leda (Female, Elegant)</option>
-                      <option value="Sadachbia">Sadachbia (Female, Lively)</option>
+                      <option value="Leda">Juniper (Female, Elegant)</option>
+                      <option value="Sadachbia">Argus (Male, Mysterious)</option>
                     </select>
                     <select
                       className="w-full p-2 rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-white text-[#3D4F60]"
