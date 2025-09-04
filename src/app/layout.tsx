@@ -6,8 +6,7 @@ import { StarknetProvider } from "@/components/Starknet/StarknetProviderComponen
 import { AuthProvider } from "@/context/AuthContext";
 import Header from "@/components/header";
 import Footer from "@/components/layout/Footer";
-// ✅ add this import (client component)
-import KeepAliveProvider from "@/app/providers/KeepAliveProvider";
+import KeepAliveProvider from "@/app/providers/KeepAliveProvider"; // client
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -16,18 +15,42 @@ export const metadata: Metadata = {
   description: "Interactive storytelling with AI",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
+        {/* Oculta Header/Footer y toolbars cuando el StoryReader aplica html.reader-mode */}
+        <style
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{
+            __html: `
+              html.reader-mode .site-header,
+              html.reader-mode .site-footer,
+              html.reader-mode .subscriptions-bar,
+              html.reader-mode .global-toolbar,
+              html.reader-mode .floating-toolbar {
+                display: none !important;
+              }
+            `,
+          }}
+        />
+
         <GsiScript />
         <StarknetProvider>
           <AuthProvider>
-            {/* ⬇️ attaches listeners only when authenticated */}
-            <KeepAliveProvider requireAuth rtdbPath="_meta/keepalive" firestoreDocPath="_meta/keepalive">
-              <Header />
+            {/* ⚠️ Tu KeepAliveProvider sólo acepta requireAuth y rtdbPath */}
+            <KeepAliveProvider requireAuth rtdbPath="_meta/keepalive">
+              <div className="site-header">
+                <Header />
+              </div>
+
               {children}
-              <Footer />
+
+              <div className="site-footer">
+                <Footer />
+              </div>
             </KeepAliveProvider>
           </AuthProvider>
         </StarknetProvider>

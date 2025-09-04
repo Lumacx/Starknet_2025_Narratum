@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -36,7 +36,7 @@ function toReaderShape(storyId: string, d: any): StoryView {
   const scenesSrc: any[] = Array.isArray(d?.scenes) ? d.scenes : [];
   const pages: ReaderPage[] = scenesSrc.map((s, i) => ({
     id: safeStr(s?.id) ?? null,
-    pageNumber: Number.isFinite(s?.index) ? s.index : i,
+    pageNumber: Number.isFinite(s?.index) ? s.index : i + 1,
     textContent: safeStr(s?.text) ?? '',
     imageUrl: safeStr(s?.imageUrl),
     audioUrl: safeStr(s?.audioUrl),
@@ -77,7 +77,9 @@ export default function EReaderPage() {
 
   // Si no se pasa back, volvemos al editor de escenas
   const backHref = useMemo(
-    () => backParam || (storyId ? `/create/scenes?storyId=${encodeURIComponent(storyId)}` : '/'),
+    () =>
+      backParam ||
+      (storyId ? `/create/scenes?storyId=${encodeURIComponent(storyId)}` : '/'),
     [backParam, storyId]
   );
 
@@ -85,6 +87,21 @@ export default function EReaderPage() {
   const [story, setStory] = useState<StoryView | null>(null);
   const [error, setError] = useState<string>('');
 
+  // Activa/limpia el modo lector también desde aquí
+  useEffect(() => {
+    try {
+      document.documentElement.classList.add('reader-mode');
+      // Opcional: llevar scroll al top
+      window.scrollTo({ top: 0, behavior: 'instant' as any });
+    } catch {}
+    return () => {
+      try {
+        document.documentElement.classList.remove('reader-mode');
+      } catch {}
+    };
+  }, []);
+
+  // Cargar historia
   useEffect(() => {
     (async () => {
       if (!storyId) {
@@ -112,6 +129,20 @@ export default function EReaderPage() {
     })();
   }, [storyId]);
 
+  // Back que limpia la clase y fuerza un refresh para restaurar fondos/estilos de la página previa.
+  const handleBack = useCallback(() => {
+    try {
+      document.documentElement.classList.remove('reader-mode');
+    } catch {}
+    router.push(backHref);
+    // pequeño refresh después de navegar para evitar residuos visuales
+    setTimeout(() => {
+      try {
+        window.location.reload();
+      } catch {}
+    }, 30);
+  }, [backHref, router]);
+
   if (!storyId) return <div className="p-6">Missing <code>storyId</code>.</div>;
   if (loading) return <div className="p-6">Loading…</div>;
   if (error) {
@@ -122,7 +153,7 @@ export default function EReaderPage() {
           <p className="text-sm mb-3">{error}</p>
           <button
             className="px-4 py-2 rounded-md bg-[#3D4F60] text-white"
-            onClick={() => router.push(backHref)}
+            onClick={handleBack}
           >
             ← Back to Scenes
           </button>
@@ -134,10 +165,7 @@ export default function EReaderPage() {
 
   return (
     <div className="w-screen min-h-screen">
-      <StoryReader
-        story={story}
-        onBack={() => router.push(backHref)}
-      />
+      <StoryReader story={story} onBack={handleBack} />
     </div>
   );
 }

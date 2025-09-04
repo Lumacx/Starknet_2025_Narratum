@@ -12,10 +12,12 @@ import {
   faChevronRight,
   faPause,
   faRedo,
+  faTimes,
+  faCheck,
 } from "@fortawesome/free-solid-svg-icons";
 import "../app/story.css";
 
-/** Minimal page shape the reader needs (works for both preview and DB). */
+/** Mínimo que necesita el reader (sirve para preview y DB). */
 type ReaderPage = {
   id?: string | null;
   pageNumber?: number | null;
@@ -30,6 +32,7 @@ type StoryView = {
   coverImageUrl?: string | null;
   backgroundMusicUrl?: string | null;
 
+  /** Skin global del reader (no por escena) */
   readerAvatarUrl?: string | null;
   readerBackgroundUrl?: string | null;
 
@@ -39,11 +42,11 @@ type StoryView = {
 
 interface StoryReaderProps {
   story: StoryView;
-  /** Si prefieres navegar con link, ignora esto y maneja el back desde la página */
+  /** Para volver al editor desde el lector */
   onBack?: () => void;
 }
 
-/* Fondos disponibles (mini picker) */
+/* Fondos disponibles (puedes añadir más PNGs en /public/story_reader_backgrounds/) */
 const BG_CHOICES = [
   "/story_reader_backgrounds/dream-background.png",
   "/story_reader_backgrounds/blockchain-background.png",
@@ -52,44 +55,36 @@ const BG_CHOICES = [
   "/story_reader_backgrounds/space-background.png",
 ];
 
-/* Evita <img src=""> y errores en Next/React */
-function safeSrc(u?: string | null): string | undefined {
-  const s = (u || "").trim();
-  return s ? s : undefined;
-}
-
-const DEFAULT_AVATARS = ["/avatars/Default.png", "/story_reader_avatars/Default.png"];
-const DEFAULT_MUSIC = "/story_reader_audio/background-music.mp3";
-const PAGE_TURN = "/story_reader_audio/page-flip.mp3";
+const DEFAULT_AVATAR = "/story_reader_avatars/Default.png";
+const DEFAULT_BGM = "/story_reader_audio/background-music.mp3";
+const PAGE_FLIP_SFX = "/story_reader_audio/page-flip.mp3";
 
 const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
-  // 0 = cover
+  /** 0 = portada */
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
 
-  // UI state
-  const [fontScale, setFontScale] = useState(1);
-  const [showFonts, setShowFonts] = useState(false);
-  const [showBrush, setShowBrush] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-
-  // background elegido
-  const [bgUrl, setBgUrl] = useState<string>(() => {
-    return (
-      story.readerBackgroundUrl ||
-      BG_CHOICES[0] ||
-      "/story_reader_backgrounds/dream-background.png"
-    );
-  });
-
-  // música / interacción
+  /** UI / estado */
   const [musicPlaying, setMusicPlaying] = useState(false);
-  const [userInteracted, setUserInteracted] = useState(false);
+  const [fontScale, setFontScale] = useState(1);
+  const [bgIdx, setBgIdx] = useState(0);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showBgPicker, setShowBgPicker] = useState(false);
 
+  /** Responsive: “narrow” cuando el viewport es menor a ~1080 px */
+  const [isNarrow, setIsNarrow] = useState(false);
+  useEffect(() => {
+    const onResize = () => setIsNarrow(window.innerWidth < 1080);
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  /** Audio refs */
   const backgroundMusicRef = useRef<HTMLAudioElement | null>(null);
   const narrationRef = useRef<HTMLAudioElement | null>(null);
   const pageTurnSoundRef = useRef<HTMLAudioElement | null>(null);
 
-  // ordenar páginas por pageNumber
+  /* Ordena páginas por pageNumber de forma segura */
   const sortedStoryContent = useMemo(
     () =>
       [...(story.storyContent || [])].sort(
@@ -98,19 +93,16 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
     [story.storyContent]
   );
 
-  /* Inicializa audios una vez */
+  /* Init audios una sola vez */
   useEffect(() => {
-    backgroundMusicRef.current = document.createElement("audio");
-    backgroundMusicRef.current.src =
-      safeSrc(story.backgroundMusicUrl) || DEFAULT_MUSIC;
+    backgroundMusicRef.current = new Audio(
+      story.backgroundMusicUrl || DEFAULT_BGM
+    );
     backgroundMusicRef.current.loop = true;
-    backgroundMusicRef.current.volume = 0.18;
-    backgroundMusicRef.current.preload = "metadata";
+    backgroundMusicRef.current.volume = 0.15;
 
-    pageTurnSoundRef.current = document.createElement("audio");
-    pageTurnSoundRef.current.src = PAGE_TURN;
+    pageTurnSoundRef.current = new Audio(PAGE_FLIP_SFX);
     pageTurnSoundRef.current.volume = 0.5;
-    pageTurnSoundRef.current.preload = "auto";
 
     return () => {
       backgroundMusicRef.current?.pause();
@@ -119,38 +111,66 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleUserInteraction = () => {
-    if (!userInteracted) setUserInteracted(true);
-  };
+  // Ocultar chrome del sitio mientras el reader está montado
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add("reader-mode");
+    // Llevar al top por si veníamos con scroll
+    window.scrollTo({ top: 0, behavior: "instant" as any });
+    return () => root.classList.remove("reader-mode");
+  }, []);
 
-  const toggleBackgroundMusic = async () => {
-    handleUserInteraction();
-    try {
-      if (!backgroundMusicRef.current) return;
-      if (musicPlaying) {
-        backgroundMusicRef.current.pause();
-        setMusicPlaying(false);
-      } else {
-        await backgroundMusicRef.current.play();
-        setMusicPlaying(true);
+  // Navegación por teclado
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowRight") nextPage();
+      if (e.key === "ArrowLeft") previousPage();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPageIndex, sortedStoryContent.length]);
+
+  // Cierre del panel de fondos clicando fuera
+  const bgPickerRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!showBgPicker) return;
+    const handler = (e: MouseEvent) => {
+      if (!bgPickerRef.current) return;
+      if (!bgPickerRef.current.contains(e.target as Node)) {
+        setShowBgPicker(false);
       }
-    } catch {
-      // Autoplay bloqueado: solo ignoramos
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showBgPicker]);
+
+  const toggleBackgroundMusic = () => {
+    const el = backgroundMusicRef.current;
+    if (!el) return;
+    if (musicPlaying) {
+      el.pause();
       setMusicPlaying(false);
+    } else {
+      el.play().then(() => setMusicPlaying(true)).catch(() => {
+        // algunos navegadores requieren gesto usuario; el botón ya lo es,
+        // pero por si falla no rompemos UX.
+      });
     }
   };
 
   const playNarration = (audioUrl: string) => {
-    const src = safeSrc(audioUrl);
-    if (!src) return;
+    if (!audioUrl) return;
     if (narrationRef.current) narrationRef.current.pause();
-    narrationRef.current = new Audio(src);
-    narrationRef.current.play().catch(() => {});
+    narrationRef.current = new Audio(audioUrl);
+    narrationRef.current
+      .play()
+      .catch((e) => console.error("Narration play failed:", e));
   };
 
   const nextPage = () => {
     if (currentPageIndex < sortedStoryContent.length) {
-      pageTurnSoundRef.current?.play().catch(() => {});
+      pageTurnSoundRef.current?.play();
       const nextIndex = currentPageIndex + 1;
       setCurrentPageIndex(nextIndex);
       const nextPageContent = sortedStoryContent[nextIndex - 1];
@@ -160,7 +180,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
 
   const previousPage = () => {
     if (currentPageIndex > 0) {
-      pageTurnSoundRef.current?.play().catch(() => {});
+      pageTurnSoundRef.current?.play();
       const prevIndex = currentPageIndex - 1;
       setCurrentPageIndex(prevIndex);
       if (prevIndex > 0) {
@@ -170,56 +190,76 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
     }
   };
 
-  const startStory = async () => {
-    handleUserInteraction();
-    if (!musicPlaying) await toggleBackgroundMusic();
+  const startStory = () => {
+    toggleBackgroundMusic();
     nextPage();
   };
 
   const currentPageContent =
     currentPageIndex > 0 ? sortedStoryContent[currentPageIndex - 1] : null;
 
-  // --------- skins / fuentes ----------
+  /* Skin (con defaults seguros) */
   const avatarUrl =
-    safeSrc(story.readerAvatarUrl) ||
-    safeSrc(story.creator?.avatarUrl) ||
-    DEFAULT_AVATARS.find(Boolean);
+    story.readerAvatarUrl || story.creator?.avatarUrl || DEFAULT_AVATAR;
 
-  const backgroundUrl = bgUrl;
+  const backgroundUrl =
+    story.readerBackgroundUrl || BG_CHOICES[bgIdx] || BG_CHOICES[0];
 
-  const coverImage = safeSrc(story.coverImageUrl);
-  const storyImageSrc = safeSrc(currentPageContent?.imageUrl) || coverImage;
+  /* Portada: usa cover si existe, si no, primera imagen */
+  const coverImage = story.coverImageUrl || sortedStoryContent[0]?.imageUrl || "";
+  const storyImageSrc = currentPageContent?.imageUrl || coverImage || "";
 
-  // --------- estilos responsivos ----------
+  /* Estilos responsivos base */
   const containerStyle: React.CSSProperties = {
-    width: "min(1100px, 96vw)",
-    marginInline: "auto",
-    padding: "16px",
+    width: "min(1200px, 100vw - 16px)",
+    margin: "0 auto",
+    padding: "clamp(8px, 2vw, 20px)",
   };
 
+  const headerStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    padding: "10px 12px",
+    borderRadius: 12,
+    background: "rgba(0,0,0,0.35)",
+    color: "white",
+    position: "sticky",
+    top: 8,
+    zIndex: 40,
+  };
+
+  const gridStyle: React.CSSProperties = {
+    marginTop: 8,
+    display: "grid",
+    gridTemplateColumns: isNarrow ? "1fr" : "minmax(220px, 26%) 1fr",
+    gap: "clamp(8px, 2vw, 18px)",
+    alignItems: "start",
+  };
+
+  const avatarPanelStyle: React.CSSProperties = {
+    background: "rgba(20,60,60,0.35)",
+    borderRadius: 14,
+    padding: "clamp(10px, 2vw, 16px)",
+    display: "grid",
+    placeItems: "center",
+    minHeight: isNarrow ? 120 : 180,
+  };
+
+  const imagePanelStyle: React.CSSProperties = {
+    borderRadius: 16,
+    background: "rgba(0,0,0,0.25)",
+    padding: "clamp(8px, 1.5vw, 14px)",
+  };
+
+  /* Limitamos la altura del “canvas” para que quepa sin scroll horizontal. */
+  const maxImageHeight = isNarrow ? "54vh" : "66vh";
+
   return (
-    <div
-      id="app-container"
-      onClick={handleUserInteraction}
-      style={containerStyle}
-    >
-      {/* HEADER (arriba) */}
-      <header
-        id="app-header"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
-          padding: "10px 12px",
-          borderRadius: 12,
-          background: "rgba(0,0,0,0.35)",
-          color: "white",
-          position: "sticky",
-          top: 8,
-          zIndex: 40,
-        }}
-      >
+    <div id="app-container" style={containerStyle}>
+      {/* Header */}
+      <header id="app-header" style={headerStyle}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {onBack && (
             <button
@@ -241,36 +281,30 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
           </div>
         </div>
 
-        <div id="header-icons" style={{ display: "flex", gap: 8 }}>
-          {/* FONT PANEL */}
+        <div id="header-icons" style={{ display: "flex", gap: 8, position: "relative" }}>
+          {/* Font size */}
           <button
             className="header-icon-btn"
             aria-label="Font Settings"
             title="Font Settings"
-            onClick={() => {
-              setShowFonts((v) => !v);
-              setShowBrush(false);
-              setShowSettings(false);
-            }}
+            onClick={() =>
+              setFontScale((s) => (s >= 1.4 ? 1 : +(s + 0.1).toFixed(1)))
+            }
           >
             <FontAwesomeIcon icon={faFont} />
           </button>
 
-          {/* BRUSH: abre picker de fondos */}
+          {/* Background picker: abre panel */}
           <button
             className="header-icon-btn"
             aria-label="Change Background"
             title="Change Background"
-            onClick={() => {
-              setShowBrush((v) => !v);
-              setShowFonts(false);
-              setShowSettings(false);
-            }}
+            onClick={() => setShowBgPicker((v) => !v)}
           >
             <FontAwesomeIcon icon={faPaintBrush} />
           </button>
 
-          {/* MUSIC */}
+          {/* Música */}
           <button
             onClick={toggleBackgroundMusic}
             id="play-music-button"
@@ -281,25 +315,102 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
             <FontAwesomeIcon icon={musicPlaying ? faVolumeMute : faVolumeUp} />
           </button>
 
-          {/* SETTINGS */}
+          {/* Settings panel pequeño */}
           <button
             id="options-button-new"
             className="header-icon-btn"
             aria-label="Settings"
             title="Settings"
-            onClick={() => {
-              setShowSettings((v) => !v);
-              setShowBrush(false);
-              setShowFonts(false);
-            }}
+            onClick={() => setShowSettings((v) => !v)}
           >
             <FontAwesomeIcon icon={faCog} />
           </button>
+
+          {/* Panel de fondos */}
+          {showBgPicker && (
+            <div
+              ref={bgPickerRef}
+              style={{
+                position: "absolute",
+                right: 48, // aparece cerca del brush
+                top: 44,
+                background: "rgba(0,0,0,0.75)",
+                color: "white",
+                padding: 10,
+                borderRadius: 10,
+                zIndex: 60,
+                width: 260,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                <div style={{ fontWeight: 600 }}>Choose background</div>
+                <button
+                  aria-label="Close"
+                  title="Close"
+                  className="header-icon-btn"
+                  onClick={() => setShowBgPicker(false)}
+                >
+                  <FontAwesomeIcon icon={faTimes} />
+                </button>
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 8,
+                }}
+              >
+                {BG_CHOICES.map((src, i) => (
+                  <button
+                    key={src}
+                    onClick={() => {
+                      setBgIdx(i);
+                      setShowBgPicker(false);
+                    }}
+                    style={{
+                      position: "relative",
+                      borderRadius: 8,
+                      overflow: "hidden",
+                      border: i === bgIdx ? "2px solid #94d3a2" : "2px solid transparent",
+                      padding: 0,
+                      cursor: "pointer",
+                      background: "transparent",
+                    }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={src}
+                      alt={`Background ${i + 1}`}
+                      style={{ width: "100%", height: 72, objectFit: "cover", display: "block" }}
+                    />
+                    {i === bgIdx && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          right: 6,
+                          top: 6,
+                          width: 18,
+                          height: 18,
+                          borderRadius: "50%",
+                          background: "#1db954",
+                          display: "grid",
+                          placeItems: "center",
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faCheck} style={{ fontSize: 10, color: "white" }} />
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
-      {/* PANELS flotantes */}
-      {(showFonts || showBrush || showSettings) && (
+      {/* Settings flotante */}
+      {showSettings && (
         <div
           style={{
             position: "fixed",
@@ -310,92 +421,24 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
             padding: 12,
             borderRadius: 12,
             zIndex: 50,
-            minWidth: 240,
-            maxWidth: "min(80vw, 360px)",
+            minWidth: 220,
           }}
         >
-          {showFonts && (
-            <>
-              <div style={{ fontWeight: 600, marginBottom: 8 }}>Font size</div>
-              <input
-                type="range"
-                min={0.85}
-                max={1.5}
-                step={0.05}
-                value={fontScale}
-                onChange={(e) => setFontScale(parseFloat(e.target.value))}
-                style={{ width: "100%" }}
-              />
-              <div style={{ fontSize: 12, opacity: 0.85, marginTop: 6 }}>
-                • Scale: {fontScale.toFixed(2)}
-              </div>
-            </>
-          )}
-
-          {showBrush && (
-            <>
-              <div style={{ fontWeight: 600, marginBottom: 8 }}>
-                Backgrounds
-              </div>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(4, minmax(0,1fr))",
-                  gap: 6,
-                }}
-              >
-                {BG_CHOICES.map((u) => (
-                  <button
-                    key={u}
-                    onClick={() => setBgUrl(u)}
-                    title={u.split("/").pop() || "bg"}
-                    style={{
-                      border:
-                        bgUrl === u
-                          ? "2px solid #34d399"
-                          : "1px solid rgba(255,255,255,.35)",
-                      borderRadius: 8,
-                      overflow: "hidden",
-                    }}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={u}
-                      alt="bg"
-                      style={{ width: "100%", height: 48, objectFit: "cover" }}
-                    />
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-
-          {showSettings && (
-            <>
-              <div style={{ fontWeight: 600, marginBottom: 8 }}>
-                Reader Settings
-              </div>
-              <div style={{ fontSize: 12, opacity: 0.85 }}>
-                • Font scale: {fontScale.toFixed(2)}
-              </div>
-              <div style={{ fontSize: 12, opacity: 0.85 }}>
-                • Background: {bgUrl.split("/").pop()}
-              </div>
-              <div style={{ fontSize: 12, opacity: 0.85 }}>
-                • Music: {musicPlaying ? "on" : "off"}
-              </div>
-            </>
-          )}
+          <div style={{ fontWeight: 600, marginBottom: 8 }}>Reader Settings</div>
+          <div style={{ fontSize: 12, opacity: 0.85 }}>• Font scale: {fontScale.toFixed(1)}</div>
+          <div style={{ fontSize: 12, opacity: 0.85 }}>
+            • Background: {bgIdx + 1}/{BG_CHOICES.length}
+          </div>
         </div>
       )}
 
-      {/* NAV superior */}
+      {/* Barra de transporte superior */}
       <div
         id="navigation-controls-bar"
         style={{
           alignItems: "center",
           gap: "12px",
-          marginTop: "12px",
+          marginTop: "10px",
           width: "100%",
           padding: "6px 0",
           display: "flex",
@@ -406,9 +449,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
         <button
           id="arrow-left"
           onClick={previousPage}
-          className={`arrow nav-arrow ${
-            currentPageIndex === 0 ? "hidden" : ""
-          }`}
+          className={`arrow nav-arrow ${currentPageIndex === 0 ? "hidden" : ""}`}
           aria-label="Previous Page"
           title="Previous Page"
         >
@@ -446,43 +487,83 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
         </button>
       </div>
 
-      {/* MAIN (avatar + imagen) */}
-      <main
-        id="app-main"
-        style={{
-          marginTop: "6px",
-          display: "grid",
-          gridTemplateColumns: "1fr",
-          gap: 12,
-        }}
-      >
-        {/* Avatar + start */}
-        <div id="avatar-panel">
+      {/* Main responsive: grid 1col (móvil) / 2col (desktop) */}
+      <main id="app-main" style={{ marginTop: 6, ...gridStyle }}>
+        {/* Panel avatar / Start */}
+        <div id="avatar-panel" style={avatarPanelStyle}>
+          {/* Evita <img src=""> */}
           {avatarUrl ? (
-            <img id="avatar-image" src={avatarUrl} alt="Narrator Avatar" />
+            <img
+              id="avatar-image"
+              src={avatarUrl}
+              alt="Narrator Avatar"
+              style={{
+                width: isNarrow ? 96 : 120,
+                height: isNarrow ? 96 : 120,
+                borderRadius: "50%",
+                objectFit: "cover",
+                border: "3px solid rgba(255,255,255,0.3)",
+              }}
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = DEFAULT_AVATAR;
+              }}
+            />
           ) : null}
+
           {currentPageIndex === 0 && (
-            <button id="start-story-button" onClick={startStory}>
+            <button
+              id="start-story-button"
+              onClick={startStory}
+              style={{
+                marginTop: 16,
+                padding: "10px 16px",
+                borderRadius: 10,
+                background: "#2d3f50",
+                color: "white",
+                fontWeight: 600,
+              }}
+            >
               Start Story
             </button>
           )}
         </div>
 
-        {/* Imagen con fondo */}
-        <div id="image-panel">
+        {/* Panel imagen (mantiene dentro del viewport) */}
+        <div id="image-panel" style={imagePanelStyle}>
           <div
             id="story-background"
-            style={{ backgroundImage: `url(${backgroundUrl})` }}
+            style={{
+              backgroundImage: `url(${backgroundUrl})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              borderRadius: 14,
+              padding: "clamp(6px, 1vw, 12px)",
+            }}
           >
+            {/* Evita error de <img src=""> */}
             {storyImageSrc ? (
-              <img id="story-image" src={storyImageSrc} alt="Story Image" />
+              <img
+                id="story-image"
+                src={storyImageSrc}
+                alt="Story Image"
+                style={{
+                  width: "100%",
+                  height: "auto",
+                  maxHeight: maxImageHeight,
+                  objectFit: "contain",
+                  display: "block",
+                  margin: "0 auto",
+                  borderRadius: 10,
+                  background: "rgba(255,255,255,0.12)",
+                }}
+              />
             ) : null}
           </div>
         </div>
       </main>
 
-      {/* TEXTO */}
-      <div id="text-area" style={{ marginBottom: "20px" }}>
+      {/* Texto + controles de audio adicionales */}
+      <div id="text-area" style={{ margin: "12px 0 20px" }}>
         <div
           id="text-bubble"
           style={{
@@ -494,24 +575,26 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
             ? 'Click "Start Story" to begin.'
             : currentPageContent?.textContent || ""}
         </div>
+
         {currentPageIndex > 0 && currentPageContent?.audioUrl && (
           <button
             id="read-again-button"
             onClick={() => playNarration(currentPageContent.audioUrl!)}
+            style={{ marginTop: 8 }}
           >
             <FontAwesomeIcon icon={faRedo} /> Read it again
           </button>
         )}
       </div>
 
-      {/* FOOTER */}
+      {/* Footer info */}
       <footer
         id="app-footer"
         style={{
-          marginTop: "24px",
+          marginTop: 18,
           display: "flex",
-          justifyContent: "start",
-          gap: "10px",
+          justifyContent: "flex-start",
+          gap: 10,
           alignItems: "center",
           padding: "0 6px",
         }}

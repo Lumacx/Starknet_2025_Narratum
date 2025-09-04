@@ -342,3 +342,17 @@ body {
     #page-info { font-size: 0.7em; }
     #options-popup { width: 90%; right: 5%; } /* Adjust popup */
 }
+
+/* --- Reader Mode: ocultar chrome global del sitio --- */
+html.reader-mode .site-header,
+html.reader-mode .site-footer,
+html.reader-mode .site-chrome,
+html.reader-mode .global-footer,
+html.reader-mode .floating-toolbar,
+html.reader-mode .subscriptions-bar {
+  display: none !important;
+}
+
+/* Si tu header/footer globales no tienen clases, añade una de estas clases
+   en tu layout (ver paso 3). También puedes ajustar o añadir selectores
+   concretos de tu proyecto aquí. */
