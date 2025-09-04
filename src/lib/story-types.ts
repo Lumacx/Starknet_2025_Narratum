@@ -1,35 +1,21 @@
-// Core story types kept in sync with Firestore shape and rules
+// src/lib/story-types.ts
+// Editor/Workspace-only shapes + re-exports of core Story types.
 
-export type StoryCategory = 'short' | 'novela' | 'campaign';
-export type StoryVisibility = 'public' | 'private' | 'unlisted';
-export type StoryStatus = 'draft' | 'published';
+export * from './types';  // re-export core models (Story, StoryContent, etc.)
+export type { Story, ReaderSkin, PremiumConfig, StoryCategory, StoryVisibility, StoryStatus } from './types';
 
-export interface Story {
-  id: string;
-  ownerUid: string;                 // ✅ rules key
-  title: string;
-  synopsis: string;
-  genres: string[];
-  category: StoryCategory;
-  pageCount: number;
-  coverImageUrl: string | null;
-  visibility: StoryVisibility;
-  status: StoryStatus;
-  createdAt?: any;                  // Firestore Timestamp
-  updatedAt?: any;                  // Firestore Timestamp
-  publishedAt?: any;                // optional
-}
-
+// Scene/page units for the editor workflow
 export interface ScenePage {
-  pageNumber: number;               // 1-based index is convenient
-  text: string;                     // story text for the page
-  imagePrompt: string;              // prompt user used (if any)
-  imageUrl?: string | null;         // data URL or HTTPS URL
-  narrationText?: string;           // explicit TTS text (default to text)
-  audioUrl?: string | null;         // HTTPS URL (or blob during edit)
+  pageNumber: number;           // 1-based index is convenient
+  text: string;                 // story text for the page
+  imagePrompt: string;          // prompt user used (if any)
+  imageUrl?: string | null;     // data URL or HTTPS URL
+  narrationText?: string;       // explicit TTS text (default to text)
+  audioUrl?: string | null;     // HTTPS URL (or blob during edit)
 }
 
-// Workspace used by the editor flow (local UI model)
+// Workspace used by the editor flow (local UI state)
+// Note: This is not necessarily identical to Firestore doc – it's a UI model.
 export interface StoryWorkspace {
   storyId: string;
   title: string;
@@ -37,7 +23,28 @@ export interface StoryWorkspace {
   synopsis: string;
   pages: number;
   coverUrl: string;
+
+  // Optional asset sections
   characters?: { name: string; imageUrl?: string }[];
   locations?:  { name: string; imageUrl?: string }[];
+
+  // Page data
   pagesData: ScenePage[];
+
+  // Reader skin (avatar/background/BGM) shown in preview
+  reader?: {
+    avatarUrl?: string | null;
+    backgroundUrl?: string | null;
+    backgroundMusicUrl?: string | null;
+  };
+
+  // Premium options edited in Begin page (e.g., Convai agent)
+  premium?: {
+    convaiAgentId?: string | null;
+    features?: {
+      songs?: boolean;
+      sfx?: boolean;
+      videos?: boolean;
+    };
+  };
 }

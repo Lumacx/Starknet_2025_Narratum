@@ -80,6 +80,11 @@ type Draft = {
     avatarUrl?: string;
     backgroundUrl?: string;
   };
+
+  // ⭐ NEW: premium options (per-story)
+  premium?: {
+    convaiAgentId?: string | null;
+  };
 };
 
 type StorySummary = {
@@ -129,13 +134,14 @@ export default function BeginPage() {
     language: 'en',
     campaignName: '',
     reader: { avatarUrl: DEFAULTS.avatarUrl, backgroundUrl: DEFAULTS.backgroundUrl },
+    premium: { convaiAgentId: '' }, // ⭐ NEW: default empty
   });
 
   /* ---------------- Story Mode (New / Continue) ---------------- */
   const [storyMode, setStoryMode] = useState<'new' | 'continue'>('new');
   const [existingStoryId, setExistingStoryId] = useState<string>('');
 
-  /* ---------------- Visibility for Book Cover block ---------------- */
+  /* ---------------- Visibility for blocks ---------------- */
   const [showCover, setShowCover] = useState<boolean>(false);
 
   /* ---------------- Story list for Continue ---------------- */
@@ -165,11 +171,15 @@ export default function BeginPage() {
             avatarUrl: parsed?.reader?.avatarUrl || DEFAULTS.avatarUrl,
             backgroundUrl: parsed?.reader?.backgroundUrl || DEFAULTS.backgroundUrl,
           },
+          premium: {
+            convaiAgentId: parsed?.premium?.convaiAgentId ?? '',
+          },
           language: parsed?.language || 'en',
           campaignName: parsed?.campaignName || '',
         }));
-        setShowCover(Boolean(parsed?.storyId));
+        setShowCover(Boolean(parsed?.storyId)); // if user already started
       } else {
+        // seed empty scenes with page count
         setDraft((d) => ({
           ...d,
           scenes: Array.from({ length: d.pages }, () => ({
@@ -253,11 +263,12 @@ export default function BeginPage() {
     if (user) fetchStoriesPage();
   }, [user, fetchStoriesPage]);
 
-  /* ---------------- Ensure story exists (used by cover upload) ---------------- */
+  /* ---------------- Ensure story exists (used by cover upload & premium) ---------------- */
   async function ensureStoryId(): Promise<string> {
     if (!user) throw new Error('Please sign in first.');
     if (draft.storyId) return draft.storyId;
 
+    const convai = (draft.premium?.convaiAgentId || '').trim();
     const id = await createStory({
       title: draft.title || '(untitled)',
       synopsis: draft.synopsis || '',
@@ -268,7 +279,10 @@ export default function BeginPage() {
       visibility: 'private',
       status: 'draft',
       language: draft.language,
+      // keep your metadata for campaign
       metadata: draft.campaignName ? { campaignName: draft.campaignName } : {},
+      // ⭐ include premium only if provided
+      ...(convai ? { premium: { convaiAgentId: convai } } : {}),
     } as any);
 
     setDraft((d) => ({ ...d, storyId: id }));
@@ -303,7 +317,6 @@ export default function BeginPage() {
 
       let httpsUrl = url;
 
-      // ✅ TIPADO SUAVE para evitar "never"
       try {
         const out: any = await (uploadCoverToStory as any)?.({
           uid: user.uid,
@@ -318,7 +331,7 @@ export default function BeginPage() {
           httpsUrl = await uploadCoverViaSdk(user.uid, id, url);
         } catch (e2) {
           console.warn('SDK upload failed, falling back to using external URL:', e2);
-          httpsUrl = url; // último recurso: deja el URL externo
+          httpsUrl = url; // last resort
         }
       }
 
@@ -412,6 +425,10 @@ export default function BeginPage() {
           coverUrl: s.coverImageUrl ?? d.coverUrl ?? null,
           language: (s.language as LangCode) || d.language,
           campaignName: s?.metadata?.campaignName || d.campaignName || '',
+          // ⭐ bring premium config if present
+          premium: {
+            convaiAgentId: s?.premium?.convaiAgentId ?? d.premium?.convaiAgentId ?? '',
+          },
         }));
         setShowCover(true);
       } catch (e) {
@@ -468,6 +485,22 @@ export default function BeginPage() {
     })();
   }, [draft.category, draft.pages, draft.storyId, user]);
 
+  /* ⭐ Persist premium.convaiAgentId when story exists */
+  useEffect(() => {
+    (async () => {
+      try {
+        if (!draft.storyId || !user) return;
+        const val = (draft.premium?.convaiAgentId || '').trim();
+        await updateDoc(fsDoc(db, 'stories', draft.storyId), {
+          premium: { convaiAgentId: val || null },
+          updatedAt: serverTimestamp(),
+        });
+      } catch (e) {
+        console.warn('Could not persist premium.convaiAgentId', e);
+      }
+    })();
+  }, [draft.premium?.convaiAgentId, draft.storyId, user]);
+
   /* ---------------- Buttons ---------------- */
   const canStartNew =
     draft.title.trim() !== '' &&
@@ -485,6 +518,8 @@ export default function BeginPage() {
       }
       if (!canStartNew) throw new Error('Fill Title, Genres, Synopsis (and Campaign Name if Campaign).');
 
+      const convai = (draft.premium?.convaiAgentId || '').trim();
+
       const id = await createStory({
         title: draft.title.trim(),
         synopsis: draft.synopsis.trim(),
@@ -496,6 +531,8 @@ export default function BeginPage() {
         status: 'draft',
         language: draft.language,
         metadata: draft.campaignName ? { campaignName: draft.campaignName } : {},
+        // ⭐ include premium only if provided
+        ...(convai ? { premium: { convaiAgentId: convai } } : {}),
       } as any);
 
       setDraft((d) => ({ ...d, storyId: id }));
@@ -538,6 +575,10 @@ export default function BeginPage() {
           status: 'draft',
           language: draft.language,
           metadata: draft.campaignName ? { campaignName: draft.campaignName } : {},
+          // premium included on first creation if provided
+          ...((draft.premium?.convaiAgentId || '').trim()
+            ? { premium: { convaiAgentId: (draft.premium!.convaiAgentId || '').trim() } }
+            : {}),
         } as any));
 
       setDraft(d => ({ ...d, storyId: id }));
@@ -911,6 +952,69 @@ export default function BeginPage() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* ⭐ PREMIUM FEATURES (hidden until story exists, shown under Cover) */}
+        {showCover && (
+          <div className="
+            mt-6 rounded-xl border-2 shadow p-6
+            border-slate-300 bg-white text-slate-800
+            dark:border-[#344b63] dark:bg-[#142436] dark:text-[#E0C9A0]
+          ">
+            <h2 className="text-xl font-bold mb-2">Premium Features</h2>
+            <p className="text-sm text-slate-600 dark:text-[#C8D6E5]/70 mb-4">
+              Enable the ElevenLabs Conversational AI widget for this story.
+              Paste the <code>agent-id</code> below. If you leave it empty, the widget will be disabled.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-bold mb-2">Convai Agent ID</label>
+                <input
+                  className="
+                    w-full p-3 border-2 rounded-md
+                    bg-white text-slate-900 border-slate-300
+                    focus:outline-none focus:ring-2 focus:ring-slate-300
+                    dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55] dark:focus:ring-[#2c3f55]
+                  "
+                  value={draft.premium?.convaiAgentId ?? ''}
+                  placeholder="e.g., agent_01jz5wvvenep3awvc2d65kfq0a"
+                  onChange={(e) =>
+                    setDraft((d) => ({
+                      ...d,
+                      premium: { ...(d.premium || {}), convaiAgentId: e.target.value },
+                    }))
+                  }
+                />
+                <p className="text-xs mt-1 text-slate-600 dark:text-[#C8D6E5]/70">
+                  Saved to <code>stories/{'{storyId}'}/premium.convaiAgentId</code>.
+                  The Reader will render the widget only if this value is present.
+                </p>
+              </div>
+
+              <div className="flex items-end">
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded-md bg-slate-200 text-slate-800 hover:bg-slate-300 active:scale-[.98]
+                             dark:bg-gray-700/40 dark:text-[#C8D6E5] dark:hover:bg-gray-700/70"
+                  onClick={() =>
+                    setDraft((d) => ({
+                      ...d,
+                      premium: { ...(d.premium || {}), convaiAgentId: '' },
+                    }))
+                  }
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-4 text-xs text-slate-600 dark:text-[#C8D6E5]/70">
+              Reader side will inject:
+              <pre className="mt-2 p-2 rounded bg-slate-100 dark:bg-black/30 overflow-x-auto">{`<elevenlabs-convai agent-id="<this value>"></elevenlabs-convai>
+<script src="https://unpkg.com/@elevenlabs/convai-widget-embed" async type="text/javascript"></script>`}</pre>
             </div>
           </div>
         )}

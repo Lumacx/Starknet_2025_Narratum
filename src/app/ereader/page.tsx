@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -22,6 +22,7 @@ type StoryView = {
   backgroundMusicUrl?: string | null;
   readerAvatarUrl?: string | null;
   readerBackgroundUrl?: string | null;
+  premium?: { convaiAgentId?: string | null } | null;
   storyContent: ReaderPage[];
   creator?: { avatarUrl?: string | null } | null;
 };
@@ -36,13 +37,12 @@ function toReaderShape(storyId: string, d: any): StoryView {
   const scenesSrc: any[] = Array.isArray(d?.scenes) ? d.scenes : [];
   const pages: ReaderPage[] = scenesSrc.map((s, i) => ({
     id: safeStr(s?.id) ?? null,
-    pageNumber: Number.isFinite(s?.index) ? s.index : i + 1,
+    pageNumber: Number.isFinite(s?.index) ? s.index : i,
     textContent: safeStr(s?.text) ?? '',
     imageUrl: safeStr(s?.imageUrl),
     audioUrl: safeStr(s?.audioUrl),
   }));
 
-  // Asegura orden por pageNumber
   pages.sort((a, b) => (a.pageNumber ?? 0) - (b.pageNumber ?? 0));
 
   const cover =
@@ -62,6 +62,9 @@ function toReaderShape(storyId: string, d: any): StoryView {
     readerBackgroundUrl:
       safeStr(d?.reader?.backgroundUrl) ||
       '/story_reader_backgrounds/dream-background.png',
+    premium: d?.premium
+      ? { convaiAgentId: safeStr(d?.premium?.convaiAgentId) ?? null }
+      : null,
     storyContent: pages,
     creator: d?.creator ? { avatarUrl: safeStr(d?.creator?.avatarUrl) ?? null } : null,
   };
@@ -75,11 +78,8 @@ export default function EReaderPage() {
   const storyId = params.get('storyId') || '';
   const backParam = params.get('back') || params.get('backHref') || '';
 
-  // Si no se pasa back, volvemos al editor de escenas
   const backHref = useMemo(
-    () =>
-      backParam ||
-      (storyId ? `/create/scenes?storyId=${encodeURIComponent(storyId)}` : '/'),
+    () => backParam || (storyId ? `/create/scenes?storyId=${encodeURIComponent(storyId)}` : '/'),
     [backParam, storyId]
   );
 
@@ -87,21 +87,6 @@ export default function EReaderPage() {
   const [story, setStory] = useState<StoryView | null>(null);
   const [error, setError] = useState<string>('');
 
-  // Activa/limpia el modo lector también desde aquí
-  useEffect(() => {
-    try {
-      document.documentElement.classList.add('reader-mode');
-      // Opcional: llevar scroll al top
-      window.scrollTo({ top: 0, behavior: 'instant' as any });
-    } catch {}
-    return () => {
-      try {
-        document.documentElement.classList.remove('reader-mode');
-      } catch {}
-    };
-  }, []);
-
-  // Cargar historia
   useEffect(() => {
     (async () => {
       if (!storyId) {
@@ -129,20 +114,6 @@ export default function EReaderPage() {
     })();
   }, [storyId]);
 
-  // Back que limpia la clase y fuerza un refresh para restaurar fondos/estilos de la página previa.
-  const handleBack = useCallback(() => {
-    try {
-      document.documentElement.classList.remove('reader-mode');
-    } catch {}
-    router.push(backHref);
-    // pequeño refresh después de navegar para evitar residuos visuales
-    setTimeout(() => {
-      try {
-        window.location.reload();
-      } catch {}
-    }, 30);
-  }, [backHref, router]);
-
   if (!storyId) return <div className="p-6">Missing <code>storyId</code>.</div>;
   if (loading) return <div className="p-6">Loading…</div>;
   if (error) {
@@ -153,9 +124,9 @@ export default function EReaderPage() {
           <p className="text-sm mb-3">{error}</p>
           <button
             className="px-4 py-2 rounded-md bg-[#3D4F60] text-white"
-            onClick={handleBack}
+            onClick={() => router.push(backHref)}
           >
-            ← Back to Scenes
+            ← Back
           </button>
         </div>
       </div>
@@ -165,7 +136,10 @@ export default function EReaderPage() {
 
   return (
     <div className="w-screen min-h-screen">
-      <StoryReader story={story} onBack={handleBack} />
+      <StoryReader
+        story={story}
+        onBack={() => router.push(backHref)}
+      />
     </div>
   );
 }

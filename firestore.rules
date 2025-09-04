@@ -16,7 +16,7 @@ service cloud.firestore {
       return isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
     }
 
-    // 👇 NEW: “public enough” if ANY of these is true
+    // “public enough” if ANY is true (covers status/visibility/legacy flag)
     function isPublicishData(d) {
       return (d.status == "published") ||
              (d.visibility == "public") ||
@@ -42,6 +42,13 @@ service cloud.firestore {
 
     function canReadStoryById(storyId) {
       return storyIsPublic(storyId) || isStoryOwner(storyId);
+    }
+
+    /* ============================================================
+       TOP-LEVEL _meta (KeepAliveProvider, etc.)
+       ============================================================ */
+    match /_meta/{docId} {
+      allow read, write: if isSignedIn();
     }
 
     /* ============================================================
@@ -87,7 +94,8 @@ service cloud.firestore {
       // Crear: debe venir con ownerUid == caller
       allow create: if isOwnerCreate();
 
-      // 👇 Leer: público (ANY of the flags) o dueño
+      // Leer: público (ANY of the flags) o dueño
+      // (Includes reading `premium.convaiAgentId` and any other fields.)
       allow read: if isPublicStory() || isOwnerDoc();
 
       // Actualizar/Eliminar: sólo dueño + congelar ownerUid
@@ -150,7 +158,7 @@ service cloud.firestore {
         return storyIdFromExisting() != null ? storyIdFromExisting() : storyIdFromRequest();
       }
 
-      // read (get + list)
+      // get + list
       allow read: if effectiveStoryId() != null && canReadStoryById(effectiveStoryId());
 
       // create: sólo si caller es dueño del story

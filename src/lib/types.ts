@@ -1,6 +1,94 @@
 // src/lib/types.ts
-// Pure shared interfaces used by both client and server.
-// No server-only deps (e.g., firebase-admin) and no circular imports.
+// Canonical app-wide types. Import these everywhere else.
+
+export type StoryCategory   = 'short' | 'novela' | 'campaign';
+export type StoryVisibility = 'public' | 'private' | 'unlisted';
+export type StoryStatus     = 'draft' | 'published';
+
+export interface ReaderSkin {
+  avatarUrl?: string | null;        // e.g. "/avatars/Default.png" or HTTPS
+  backgroundUrl?: string | null;    // e.g. "/story_reader_backgrounds/..."
+  backgroundMusicUrl?: string | null;
+}
+
+export interface PremiumConfig {
+  /** ElevenLabs Convai widget agent id to enable the assistant on Reader */
+  convaiAgentId?: string | null;
+
+  /** Reserved flags for upcoming features (songs, SFX, videos, etc.) */
+  features?: {
+    songs?: boolean;
+    sfx?: boolean;
+    videos?: boolean;
+  };
+}
+
+export interface Story {
+  id: string;
+
+  // Ownership & visibility
+  ownerUid: string;                      // required by security rules
+  visibility?: StoryVisibility;          // 'public' | 'private' | 'unlisted'
+  status?: StoryStatus;                  // 'draft' | 'published'
+  /** Legacy/compatibility flag some code still checks */
+  isPublic?: boolean;
+
+  // Main metadata
+  title?: string;
+  synopsis?: string;                     // editor uses this
+  description?: string;                  // discover uses this alias in some places
+  genres?: string[] | null;
+  category?: StoryCategory;
+  pageCount?: number;
+
+  // Media
+  coverImageUrl?: string | null;
+  /** A convenience copy used by the Reader for background music */
+  backgroundMusicUrl?: string | null;
+
+  // Reader skin and premium features (Convai widget, etc.)
+  reader?: ReaderSkin | null;
+  premium?: PremiumConfig | null;
+
+  // Timestamps (Firestore Timestamp or ISO string)
+  createdAt?: any;
+  updatedAt?: any;
+  publishedAt?: any;
+
+  // Denormalized creator (used in Discover/Reader)
+  creator?: {
+    id?: string;
+    displayname?: string;
+    avatarUrl?: string | null;
+  };
+
+  // Aggregates / analytics
+  views?: number;
+  likes?: number;
+  commentsCount?: number;
+  ratinglevel?: number;
+  ratingSum?: number;
+  ratingCount?: number;
+  averageRating?: number;
+
+  // Nested relations (optional; often loaded separately)
+  storyContent?: StoryContent[];
+  comments?: Comment[];
+  reactions?: Reaction[];
+}
+
+export interface StoryContent {
+  id: string;
+  storyId: string;          // reference back to Story by id (avoid circular typing)
+  textContent?: string;
+  pageNumber?: number;
+  imageUrl?: string | null;
+  audioUrl?: string | null;
+  videoUrl?: string | null;
+  createdAt?: any;
+}
+
+/* ------------ Community / user entities ------------ */
 
 export interface User {
   id: string;
@@ -16,57 +104,21 @@ export interface User {
 export interface Comment {
   id: string;
   content: string;
-  authorId: string;     // user who wrote the comment
-  storyId: string;      // story this comment belongs to
+  authorId: string;       // user who wrote the comment
+  storyId: string;        // story this comment belongs to
   createdAt: string;
 }
 
 export interface Reaction {
   id: string;
-  reactionType: string; // e.g., "like", "love", "wow"
-  userId: string;       // who reacted
-  commentId: string;    // comment reacted to
+  reactionType: string;   // e.g., "like", "love", "wow"
+  userId: string;
+  commentId: string;
   storyId: string;
   createdAt: string;
 }
 
-export interface StoryContent {
-  id: string;
-  storyId: string;      // avoid circular typing; link back by id
-  textContent?: string;
-  pageNumber?: number;
-  imageUrl?: string;
-  audioUrl?: string;
-  videoUrl?: string;
-  createdAt: string;
-}
-
-export interface Story {
-  id: string;
-  title?: string;
-  genres?: string[] | null;
-  description?: string;
-  coverImageUrl?: string;
-  authorId: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-
-  // denormalized/derived fields (optional)
-  creator?: {
-    id?: string;
-    displayname?: string;
-  };
-  views?: number;
-  likes?: number;
-  commentsCount?: number;
-  ratinglevel?: number;
-
-  // nested relations (optional)
-  storyContent?: StoryContent[];
-  comments?: Comment[];
-  reactions?: Reaction[];
-}
+/* ------------ Misc app models (unchanged) ------------ */
 
 export interface AppSubscription {
   id: string;
