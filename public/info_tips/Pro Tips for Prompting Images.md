@@ -1,12 +1,4 @@
-# Pro Tips for Prompting Images
-
-This document provides professional tips for crafting effective image prompts, focusing on a structured approach to generate desired visuals.
-
-## Master Prompt Structure Guide:
-
-Below is a visual representation of a recommended master prompt structure. Following this structure can help in creating more precise and effective image generations.
-
-![Master Prompt Structure](Integrations/HTML Code for eReader Nice)
+Following this structure can help in creating more precise and effective image generations.
 
 ### Components of a Master Prompt:
 
@@ -26,7 +18,3 @@ Below is a visual representation of a recommended master prompt structure. Follo
 *   **Aspect Ratio (`--ar`)**: Always specify the aspect ratio to control the image dimensions (e.g., `--ar 16:9` for widescreen, `--ar 9:16` for portrait).
 *   **Chaos Value (`--c`)**: Experiment with `--c` (0-100) to control the randomness and variety of the generated images. Higher values lead to more abstract results.
 *   **Personalization Style (`--p`)**: If available, use `--p` to apply a specific artistic style or emulate a particular artist.
-
-## UI Integration Note:
-
-An info icon should be placed next to any general prompt input area or a dedicated "Pro Tips" section in the UI. Clicking this icon should display the content of this `docs/Pro Tips for Prompting Images.md` file in a pop-up or modal.

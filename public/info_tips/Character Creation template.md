@@ -1,7 +1,3 @@
-# Character Creation Template Guide
-
-This document provides guidance and a structured example for creating character prompts.
-
 ## Example Structure for Character Creation Prompt:
 
 ```
@@ -27,7 +23,3 @@ This document provides guidance and a structured example for creating character 
 *   **"[--no [Negative_Elements]]"**: Optional. Use to exclude unwanted elements (e.g., `--no blurry, deformed`).
 *   **"[--c [Chaos_Value]]"**: Optional. Controls the randomness/variety (0-100).
 *   **"[--p [Personalization_Style]]"**: Optional. A specific style or artist to emulate.
-
-## UI Integration Note:
-
-An info icon should be placed next to the "Character Creation" textbox label in the UI. Clicking this icon should display the content of this `docs/Character Creation Template.md` file in a pop-up or modal.

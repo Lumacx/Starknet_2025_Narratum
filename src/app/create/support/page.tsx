@@ -12,6 +12,8 @@ import { ImageIcon, MapPin, User, Music, Wand2, Film, Loader2 } from 'lucide-rea
 import { db } from '@/lib/firebase';
 import { doc as fsDoc, getDoc } from 'firebase/firestore';
 
+import InfoPopover from '@/components/InfoPopover';
+
 /* --- LOGIC MOVED HERE from UploadImageReference --- */
 function extractImageAndModel(json: any): { dataUrl?: string; modelUsed?: string } {
   if (Array.isArray(json?.images) && json.images.length) {
@@ -238,6 +240,15 @@ export default function SupportPage() {
     finally { setDescLoading(false); }
   }
 
+   // Decide which doc to show for the #1 icon based on the active tab
+   const tipDocForOne =
+   active === 'locations'
+     ? '/info_tips/Location Generation Template.md'
+     : '/info_tips/Character Creation template.md';
+
+    // #2 is the same for both tabs
+    const tipDocForTwo = '/info_tips/Pro Tips for Prompting Images.md';
+
   if (loading) { return ( <div className="min-h-screen grid place-items-center"><div className="flex items-center gap-3"><Loader2 className="animate-spin" /><span>Checking your session…</span></div></div> ); }
   if (!user) { return ( <div className="min-h-screen p-6"><div className="max-w-xl mx-auto bg-[#F3EADF] rounded-xl p-8"><h1 className="text-2xl font-bold mb-2">Sign in required</h1><p className="mb-6">Please sign in to upload or view your reference gallery.</p><div className="flex gap-3"><Link href="/login" className="px-5 py-2 rounded-md bg-[#3D4F60] text-white">Go to Login</Link><button onClick={() => router.back()} className="px-5 py-2 rounded-md border-2">← Back</button></div></div></div> ); }
 
@@ -306,6 +317,33 @@ export default function SupportPage() {
                   )}
                 </div>
               )}
+              
+               {/* ▼▼ NEW: quick tips row that mirrors your #1 and #2 icons ▼▼ */}
+               {isImageTab(activeTab.key) && (
+                <div className="flex items-center gap-3 text-xs -mb-2">
+                  <span className="opacity-70">Tips for this section:</span>
+                  {/* #1 -> Character/Location template depending on tab */}
+                  <div className="inline-flex items-center gap-1">
+                    <span className="opacity-60">#1</span>
+                    <InfoPopover
+                      title={active === 'locations' ? 'Location Template' : 'Character Template'}
+                      docHref={tipDocForOne}
+                      align="left"
+                    />
+                  </div>
+                  {/* #2 -> Pro Tips for Prompting Images (always) */}
+                  <div className="inline-flex items-center gap-1">
+                    <span className="opacity-60">#2</span>
+                    <InfoPopover
+                      title="Pro Tips for Prompting Images"
+                      docHref={tipDocForTwo}
+                      align="left"
+                    />
+                  </div>
+                </div>
+              )}
+              {/* ▲▲ END tips row ▲▲ */}
+
               <div className="uploader-scope">
                 <UploadImageReference
                   mode="uploaderOnly"

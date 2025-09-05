@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { Info, Trash2, Music, Film, ImageIcon, Copy } from 'lucide-react';
+import { Info, Trash2, Copy } from 'lucide-react';
 import Image from 'next/image';
 import { storage } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import { ref, uploadString, getDownloadURL, listAll, deleteObject } from 'firebase/storage';
+import InfoPopover from '@/components/InfoPopover';
 
 /* ---------- Types ---------- */
 type LangCode = 'en' | 'es' | 'pt' | 'fr' | 'de' | 'it' | 'ja' | 'ko' | 'zh' | 'hi' | 'ar';
@@ -32,17 +33,18 @@ type Props = {
   preferredLanguage?: LangCode;
 };
 
-/* ---------- Helpers (Restored & Kept) ---------- */
-const isImageCategory = (c: AssetCategory) => ['covers','avatars','characters','locations','backgrounds'].includes(c);
+/* ---------- Helpers ---------- */
+const isImageCategory = (c: AssetCategory) =>
+  ['covers', 'avatars', 'characters', 'locations', 'backgrounds'].includes(c);
 
 const KB = 1024;
 const MB = 1024 * KB;
 const LIMITS: Record<string, { min: number; max: number }> = {
-  'image/png':  { min: 50 * KB, max: 10 * MB },
+  'image/png': { min: 50 * KB, max: 10 * MB },
   'image/jpeg': { min: 50 * KB, max: 10 * MB },
   'audio/mpeg': { min: 50 * KB, max: 15 * MB },
-  'audio/mp3':  { min: 50 * KB, max: 15 * MB },
-  'video/mp4':  { min: 1 * MB,  max: 50 * MB },
+  'audio/mp3': { min: 50 * KB, max: 15 * MB },
+  'video/mp4': { min: 1 * MB, max: 50 * MB },
 };
 function fmt(bytes: number) {
   return bytes >= MB ? `${(bytes / MB).toFixed(1)} MB` : `${Math.round(bytes / KB)} KB`;
@@ -81,10 +83,21 @@ export default function UploadImageReference({
   const { user: currentUser } = useAuth();
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const noun = nounOverride ?? (variant === 'character' ? 'Character' : variant === 'location' ? 'Location' : 'Cover');
+  const noun =
+    nounOverride ?? (variant === 'character' ? 'Character' : variant === 'location' ? 'Location' : 'Cover');
   const generateCta = `Generate ${noun} Image (AI)`;
 
-  // All original state variables are kept
+  // tooltip docs
+  const tipDocForOne =
+    assetCategory === 'locations'
+      ? '/info_tips/Location Generation Template.md'
+      : assetCategory === 'characters'
+      ? '/info_tips/Character Creation template.md'
+      : null; // only show #1 on character/location
+
+  const tipDocForTwo = '/info_tips/Pro Tips for Prompting Images.md'; // always for #2 (when image category)
+
+  // state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState('');
   const [nameToSave, setNameToSave] = useState('');
@@ -94,50 +107,69 @@ export default function UploadImageReference({
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [err, setErr] = useState('');
 
-  // Local state for the generated image, synced from the parent prop
   const [localGeneratedUrl, setLocalGeneratedUrl] = useState('');
   useEffect(() => {
     setLocalGeneratedUrl(generatedImageUrl || '');
     if (generatedImageUrl && !nameToSave.trim()) {
-       setNameToSave(`${noun.toLowerCase().replace(' ', '-')}-${Math.floor(Date.now() / 1000)}`);
+      setNameToSave(`${noun.toLowerCase().replace(' ', '-')}-${Math.floor(Date.now() / 1000)}`);
     }
   }, [generatedImageUrl, noun, nameToSave]);
 
-  useEffect(() => { return () => { if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl); }; }, [previewUrl]);
+  useEffect(() => {
+    return () => {
+      if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   const loadGallery = useCallback(async () => {
     if (!currentUser) return;
     const base = ref(storage, `users/${currentUser.uid}/assets/${assetCategory}/`);
     const res = await listAll(base);
-    const items = await Promise.all(res.items.map(async (i) => ({ name: i.name, fullPath: i.fullPath, url: await getDownloadURL(i) })));
+    const items = await Promise.all(
+      res.items.map(async (i) => ({ name: i.name, fullPath: i.fullPath, url: await getDownloadURL(i) }))
+    );
     setGallery(items.sort((a, b) => (a.name < b.name ? 1 : -1)));
     setErr('');
   }, [assetCategory, currentUser]);
 
-  useEffect(() => { loadGallery(); }, [loadGallery]);
+  useEffect(() => {
+    loadGallery();
+  }, [loadGallery]);
 
-  // Original onChoose function with validation restored
   async function onChoose(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
     const check = validate(f);
-    if (!check.ok) { setErr(check.msg!); return; }
+    if (!check.ok) {
+      setErr(check.msg!);
+      return;
+    }
     setErr('');
     setSelectedFile(f);
     const objectUrl = URL.createObjectURL(f);
     setPreviewUrl(objectUrl);
     setNameToSave(f.name.replace(/\.[^.]+$/, ''));
-    
+
     if (isImageCategory(assetCategory)) {
-        const dataUrl = await fileToDataUrl(f);
-        onSaved?.({ name: f.name, url: dataUrl, fullPath: 'local://selected', contentType: f.type });
+      const dataUrl = await fileToDataUrl(f);
+      onSaved?.({ name: f.name, url: dataUrl, fullPath: 'local://selected', contentType: f.type });
     } else {
-        onSaved?.({ name: f.name, url: objectUrl, fullPath: 'local://selected', contentType: f.type });
+      onSaved?.({ name: f.name, url: objectUrl, fullPath: 'local://selected', contentType: f.type });
     }
   }
 
-  async function handleDescribe() { /* Original placeholder */ }
-  
+  async function handleDescribe() {
+    // keep placeholder; description handled by parent page’s button (AI Describe — Selected Image)
+    if (!selectedFile) return;
+    setIsDescribing(true);
+    try {
+      // You can wire this to your /api/describe-image if you want local-file describe here too.
+      setSuggestedPrompt('(Use “Describe Selected” above to analyze the current image).');
+    } finally {
+      setIsDescribing(false);
+    }
+  }
+
   async function handleSaveOriginal() {
     if (!currentUser || !selectedFile || !nameToSave.trim()) return;
     try {
@@ -148,13 +180,14 @@ export default function UploadImageReference({
       await uploadString(storageRef, dataUrl, 'data_url');
       const downloadUrl = await getDownloadURL(storageRef);
       const item = { name: `${nameToSave}.${ext}`, url: downloadUrl, fullPath: path, contentType: selectedFile.type };
-      setGallery(g => [item, ...g]);
+      setGallery((g) => [item, ...g]);
       onSaved?.(item);
       alert('Saved to gallery!');
-    } catch (e: any) { alert(e?.message || 'Save failed'); }
+    } catch (e: any) {
+      alert(e?.message || 'Save failed');
+    }
   }
 
-  // Simplified handler that calls the parent
   function handleGenerate() {
     onGenerateRequest?.(mainPrompt);
   }
@@ -162,15 +195,17 @@ export default function UploadImageReference({
   async function handleSaveGenerated() {
     if (!currentUser || !localGeneratedUrl || !nameToSave.trim()) return;
     try {
-        const path = `users/${currentUser.uid}/assets/${assetCategory}/${nameToSave}.png`;
-        const storageRef = ref(storage, path);
-        await uploadString(storageRef, localGeneratedUrl, 'data_url');
-        const downloadUrl = await getDownloadURL(storageRef);
-        const item = { name: `${nameToSave}.png`, url: downloadUrl, fullPath: path, contentType: 'image/png' };
-        setGallery(g => [item, ...g]);
-        onSaved?.(item);
-        alert('Generated image saved!');
-    } catch (e: any) { alert(e?.message || 'Save failed'); }
+      const path = `users/${currentUser.uid}/assets/${assetCategory}/${nameToSave}.png`;
+      const storageRef = ref(storage, path);
+      await uploadString(storageRef, localGeneratedUrl, 'data_url');
+      const downloadUrl = await getDownloadURL(storageRef);
+      const item = { name: `${nameToSave}.png`, url: downloadUrl, fullPath: path, contentType: 'image/png' };
+      setGallery((g) => [item, ...g]);
+      onSaved?.(item);
+      alert('Generated image saved!');
+    } catch (e: any) {
+      alert(e?.message || 'Save failed');
+    }
   }
 
   function handleRegenerate() {
@@ -182,19 +217,39 @@ export default function UploadImageReference({
     try {
       await deleteObject(ref(storage, item.fullPath));
       setGallery((g) => g.filter((x) => x.fullPath !== item.fullPath));
-    } catch (e: any) { alert(e?.message || 'Delete failed'); }
+    } catch (e: any) {
+      alert(e?.message || 'Delete failed');
+    }
   }
 
   function PreviewBlock() {
     if (!previewUrl || !selectedFile) return null;
     if (selectedFile.type.startsWith('image/')) {
-      return <div className="mt-3"><Image src={previewUrl} alt="preview" width={240} height={240} className="mx-auto max-h-48 rounded-md border object-contain"/></div>;
+      return (
+        <div className="mt-3">
+          <Image
+            src={previewUrl}
+            alt="preview"
+            width={240}
+            height={240}
+            className="mx-auto max-h-48 rounded-md border object-contain"
+          />
+        </div>
+      );
     }
     if (selectedFile.type.startsWith('audio/')) {
-      return <div className="mt-3"><audio controls src={previewUrl} className="w-full" /></div>;
+      return (
+        <div className="mt-3">
+          <audio controls src={previewUrl} className="w-full" />
+        </div>
+      );
     }
     if (selectedFile.type.startsWith('video/')) {
-      return <div className="mt-3"><video controls src={previewUrl} className="w-full max-h-48 rounded-md border" /></div>;
+      return (
+        <div className="mt-3">
+          <video controls src={previewUrl} className="w-full max-h-48 rounded-md border" />
+        </div>
+      );
     }
     return null;
   }
@@ -207,52 +262,144 @@ export default function UploadImageReference({
         </label>
         <div className="border-2 border-dashed border-[#B0C4DE] rounded-md p-4 text-center">
           <input ref={inputRef} type="file" accept={accept} className="hidden" onChange={onChoose} />
-          <button className="cursor-pointer text-[#E97451] font-semibold" onClick={() => inputRef.current?.click()}>Click to Upload Image</button>
+          <button className="cursor-pointer text-[#E97451] font-semibold" onClick={() => inputRef.current?.click()}>
+            Click to Upload Image
+          </button>
           <p className="text-sm text-[#3D4F60]/70 mt-1">or drag and drop</p>
-          {selectedFile && <div className="mt-3 text-sm">Selected: <span className="font-medium">{selectedFile.name}</span></div>}
+          {selectedFile && (
+            <div className="mt-3 text-sm">
+              Selected: <span className="font-medium">{selectedFile.name}</span>
+            </div>
+          )}
           <PreviewBlock />
         </div>
         {err && <div className="text-red-600 text-sm">{err}</div>}
-        {selectedFile && 
-            <div className="flex gap-2">
-                <input className="flex-1 p-2 border-2 border-[#B0C4DE] rounded-md" placeholder="Name to save" value={nameToSave} onChange={(e) => setNameToSave(e.target.value)} />
-                <button onClick={handleSaveOriginal} className="px-4 py-2 rounded-md bg-[#3D4F60] text-white">Save to My Gallery</button>
-            </div>
-        }
+        {selectedFile && (
+          <div className="flex gap-2">
+            <input
+              className="flex-1 p-2 border-2 border-[#B0C4DE] rounded-md"
+              placeholder="Name to save"
+              value={nameToSave}
+              onChange={(e) => setNameToSave(e.target.value)}
+            />
+            <button onClick={handleSaveOriginal} className="px-4 py-2 rounded-md bg-[#3D4F60] text-white">
+              Save to My Gallery
+            </button>
+          </div>
+        )}
+
+        {/* ---------- IMAGE-SPECIFIC SECTION ---------- */}
         {isImageCategory(assetCategory) && (
           <>
-            <div className="border-t my-4"></div>
+            <div className="border-t my-4" />
+
+            {/* Suggested Prompt (from AI) — with tooltip #1 */}
             {showInnerDescribe && (
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <h4 className="font-semibold">Suggested Prompt Description (from AI)</h4>
-                  <button type="button" onClick={onOpenTemplate} title={`${noun} template`}><Info size={16} className="text-neutral-500" /></button>
-                  {!!suggestedPrompt && (<button type="button" title="Copy" className="ml-auto inline-flex items-center gap-1" onClick={() => navigator.clipboard.writeText(suggestedPrompt)}><Copy size={14} /> Copy</button>)}
+
+                  {/* Tooltip #1: Character/Location template */}
+                  {tipDocForOne && (
+                    <InfoPopover
+                      title={assetCategory === 'locations' ? 'Location Template' : 'Character Template'}
+                      docHref={tipDocForOne}
+                      align="right"
+                    />
+                  )}
+
+                  {/* (kept) optional template button from parent */}
+                  {!!onOpenTemplate && (
+                    <button
+                      type="button"
+                      onClick={onOpenTemplate}
+                      title={`${noun} template`}
+                      className="ml-1 inline-flex items-center justify-center rounded-full p-1.5 border border-black/10 hover:bg-black/5"
+                    >
+                      <Info size={16} className="text-neutral-500" />
+                    </button>
+                  )}
+
+                  {!!suggestedPrompt && (
+                    <button
+                      type="button"
+                      title="Copy"
+                      className="ml-auto inline-flex items-center gap-1"
+                      onClick={() => navigator.clipboard.writeText(suggestedPrompt)}
+                    >
+                      <Copy size={14} /> Copy
+                    </button>
+                  )}
                 </div>
+
                 <div className="flex gap-2">
-                  <button onClick={handleDescribe} disabled={!selectedFile || isDescribing} className="px-3 py-2 rounded-md border bg-white disabled:opacity-50">{isDescribing ? 'Describing…' : 'AI Describe'}</button>
-                  <textarea className="flex-1 min-h-[90px] border rounded-md p-2" placeholder="AI will place the description here…" value={suggestedPrompt} onChange={(e) => setSuggestedPrompt(e.target.value)} />
+                  <button
+                    onClick={handleDescribe}
+                    disabled={!selectedFile || isDescribing}
+                    className="px-3 py-2 rounded-md border bg-white disabled:opacity-50"
+                  >
+                    {isDescribing ? 'Describing…' : 'AI Describe'}
+                  </button>
+                  <textarea
+                    className="flex-1 min-h-[90px] border rounded-md p-2"
+                    placeholder="AI will place the description here…"
+                    value={suggestedPrompt}
+                    onChange={(e) => setSuggestedPrompt(e.target.value)}
+                  />
                 </div>
               </div>
             )}
+
+            {/* User main prompt — with tooltip #2 */}
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <h4 className="font-semibold">{mainPromptLabel ?? `${noun} Description`}</h4>
-                <Info size={16} className="text-neutral-500" />
+
+                {/* Tooltip #2: Pro Tips for Prompting Images (always for image categories) */}
+                <InfoPopover title="Pro Tips for Prompting Images" docHref={tipDocForTwo} align="right" />
               </div>
-              <textarea className="w-full min-h-[120px] border rounded-md p-2" placeholder={`Describe the ${noun.toLowerCase()} you want the AI to generate…`} value={mainPrompt} onChange={(e) => setMainPrompt(e.target.value)} />
+
+              <textarea
+                className="w-full min-h-[120px] border rounded-md p-2"
+                placeholder={`Describe the ${noun.toLowerCase()} you want the AI to generate…`}
+                value={mainPrompt}
+                onChange={(e) => setMainPrompt(e.target.value)}
+              />
             </div>
+
+            {/* Generate / Save generated */}
             {!localGeneratedUrl ? (
-              <button onClick={handleGenerate} disabled={isGenerating || !mainPrompt.trim()} className="w-full py-3 rounded-md bg-[#E97451] text-white font-semibold disabled:opacity-50 transition">
-                {isGenerating ? <span className="inline-flex items-center gap-2"><span className="animate-spin inline-block h-5 w-5 rounded-full border-2" />Generating…</span> : generateCta}
+              <button
+                onClick={handleGenerate}
+                disabled={isGenerating || !mainPrompt.trim()}
+                className="w-full py-3 rounded-md bg-[#E97451] text-white font-semibold disabled:opacity-50 transition"
+              >
+                {isGenerating ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="animate-spin inline-block h-5 w-5 rounded-full border-2" />
+                    Generating…
+                  </span>
+                ) : (
+                  generateCta
+                )}
               </button>
             ) : (
               <div className="flex flex-col md:flex-row gap-2">
-                <input className="flex-1 border rounded-md px-3 py-2" placeholder="Name to save" value={nameToSave} onChange={(e) => setNameToSave(e.target.value)} />
-                <button className="px-4 py-2 rounded-md bg-[#3D4F60] text-white" onClick={handleSaveGenerated}>Save to My Gallery</button>
-                <button className="px-4 py-2 rounded-md border" onClick={handleRegenerate}>Regenerate</button>
+                <input
+                  className="flex-1 border rounded-md px-3 py-2"
+                  placeholder="Name to save"
+                  value={nameToSave}
+                  onChange={(e) => setNameToSave(e.target.value)}
+                />
+                <button className="px-4 py-2 rounded-md bg-[#3D4F60] text-white" onClick={handleSaveGenerated}>
+                  Save to My Gallery
+                </button>
+                <button className="px-4 py-2 rounded-md border" onClick={handleRegenerate}>
+                  Regenerate
+                </button>
               </div>
             )}
+
             {localGeneratedUrl && (
               <div className="mt-3 border rounded-xl p-3">
                 <p className="text-sm mb-2">Generated Image</p>
@@ -274,9 +421,20 @@ export default function UploadImageReference({
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {gallery.map((it) => (
-              <div key={it.fullPath} className="relative group border rounded-md overflow-hidden p-1 cursor-pointer" onClick={() => onSaved?.(it)}>
+              <div
+                key={it.fullPath}
+                className="relative group border rounded-md overflow-hidden p-1 cursor-pointer"
+                onClick={() => onSaved?.(it)}
+              >
                 <Image src={it.url} alt={it.name} width={150} height={150} className="w-full h-32 object-cover rounded" />
-                <button title="Delete" onClick={(e) => { e.stopPropagation(); handleDelete(it); }} className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition bg-white/90 rounded-full p-1 shadow">
+                <button
+                  title="Delete"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(it);
+                  }}
+                  className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition bg-white/90 rounded-full p-1 shadow"
+                >
                   <Trash2 size={16} className="text-red-600" />
                 </button>
                 <div className="px-2 py-1 text-xs truncate">{it.name}</div>
