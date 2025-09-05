@@ -51,10 +51,10 @@ const SubscriptionPage: React.FC = () => {
           </div>
           <div className="plan-card featured-plan bg-[#F9F6F0] border-2 border-[#A9834F] rounded-xl p-8 md:p-10 w-64 flex flex-col items-center shadow-lg transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-xl">
             <i className="fas fa-star text-6xl text-[#A9834F] mb-6"></i>
-            <h3 className="font-['Merriweather'] text-2xl font-extrabold uppercase text-[#4A3B31] mb-2">PLUS</h3>
-            <p className="font-['Merriweather'] text-3xl font-bold text-[#3D2B1F] mb-6">$10 <span className="text-base font-normal block leading-none mt-0.5 text-[#5C4B3E]">month</span></p>
+            <h3 className="font-['Merriweather'] text-2xl font-extrabold uppercase text-[#4A3B31] mb-2">Fan</h3>
+            <p className="font-['Merriweather'] text-3xl font-bold text-[#3D2B1F] mb-6">$8 <span className="text-base font-normal block leading-none mt-0.5 text-[#5C4B3E]">month</span></p>
             <button
-              onClick={() => handleSubscribe('Plus')}
+              onClick={() => handleSubscribe('Fan')}
               className="font-['Lato'] bg-[#5D6D7E] text-[#FDFCFB] border-none rounded-lg py-3 px-6 text-base font-bold uppercase tracking-wide cursor-pointer transition-all duration-300 ease-in-out w-4/5 shadow-md hover:bg-[#4E5C6A] hover:translate-y-[-2px]"
             >
               SUBSCRIBE
@@ -62,10 +62,10 @@ const SubscriptionPage: React.FC = () => {
           </div>
           <div className="plan-card bg-[#F9F6F0] border-2 border-[#C1A98A] rounded-xl p-8 md:p-10 w-64 flex flex-col items-center shadow-lg transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-xl">
             <i className="fas fa-dragon text-6xl text-[#A9834F] mb-6"></i>
-            <h3 className="font-['Merriweather'] text-2xl font-extrabold uppercase text-[#4A3B31] mb-2">MASTER</h3>
-            <p className="font-['Merriweather'] text-3xl font-bold text-[#3D2B1F] mb-6">$25 <span className="text-base font-normal block leading-none mt-0.5 text-[#5C4B3E]">month</span></p>
+            <h3 className="font-['Merriweather'] text-2xl font-extrabold uppercase text-[#4A3B31] mb-2">Premium</h3>
+            <p className="font-['Merriweather'] text-3xl font-bold text-[#3D2B1F] mb-6">$15 <span className="text-base font-normal block leading-none mt-0.5 text-[#5C4B3E]">month</span></p>
             <button
-              onClick={() => handleSubscribe('Master')}
+              onClick={() => handleSubscribe('Premium')}
               className="font-['Lato'] bg-[#5D6D7E] text-[#FDFCFB] border-none rounded-lg py-3 px-6 text-base font-bold uppercase tracking-wide cursor-pointer transition-all duration-300 ease-in-out w-4/5 shadow-md hover:bg-[#4E5C6A] hover:translate-y-[-2px]"
             >
               SUBSCRIBE

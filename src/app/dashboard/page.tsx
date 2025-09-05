@@ -80,7 +80,7 @@ const DashboardPage: React.FC = () => {
                 <div className="p-6">
                   <h2 className="text-2xl font-bold mb-2">{story.title}</h2>
                   <p className="text-sm mb-1">
-                    <strong>Genre:</strong> {story.genre}
+                    <strong>Genre:</strong> {story.genres}
                   </p>
                   <p className="text-sm mb-4">
                     <strong>Status:</strong>{' '}
