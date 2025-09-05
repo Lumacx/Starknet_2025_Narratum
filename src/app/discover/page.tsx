@@ -18,12 +18,101 @@ import {
   runTransaction,
   serverTimestamp,
 } from 'firebase/firestore';
-import { Heart } from 'lucide-react';
+import { Heart, Feather, BookOpen, Flag, Crown, Circle } from 'lucide-react';
 
 /* ----------------------------- Constants ----------------------------- */
 const GENRE_OPTIONS = [
   'Fantasy','Sci-Fi','Mystery','Horror','Romance','Adventure','Children','Comedy','Drama','Action','Other'
 ] as const;
+
+type StoryTypeKey = 'short' | 'novela' | 'campaign' | 'unknown';
+type PlanKey = 'free' | 'paid' | 'unknown';
+
+function norm(x?: string | null) {
+  return (x ?? '').toString().trim().toLowerCase();
+}
+
+/** Infer story type from several fields */
+function getStoryType(s: Partial<Story> & Record<string, any>): StoryTypeKey {
+  const candidates = [
+    norm(s.storyType),
+    norm(s.mode),
+    norm(s.category),
+    norm(s.type),
+    norm(s.metadata?.storyType),
+    norm(s.metadata?.mode),
+  ].filter(Boolean);
+
+  for (const c of candidates) {
+    if (c.includes('short')) return 'short';
+    if (c.includes('novel') || c.includes('novela')) return 'novela';
+    if (c.includes('campaign')) return 'campaign';
+  }
+  const slides = Number(s.pageCount ?? s.slides ?? s.pages ?? 0);
+  if (!Number.isNaN(slides) && slides > 0 && slides <= 10) return 'short';
+  return 'unknown';
+}
+
+/** Infer creator plan */
+function getPlan(s: Partial<Story> & Record<string, any>): PlanKey {
+  const planStr = norm(s.creatorPlan) || norm(s.plan) || norm(s.metadata?.plan);
+  if (planStr === 'paid' || planStr === 'premium' || planStr === 'pro') return 'paid';
+  if (planStr === 'free' || planStr === 'basic') return 'free';
+  if (s.isPremium === true) return 'paid';
+  if (s.premium && typeof s.premium === 'object') return 'paid';
+  return 'unknown';
+}
+
+/** Visual config for types */
+const TYPE_STYLES: Record<StoryTypeKey, {
+  border: string;
+  glow: string;
+  badgeBg: string;
+  badgeText: string;
+  label: string;
+  Icon: React.FC<any>;
+}> = {
+  short: {
+    border: 'border-teal-500',
+    glow: 'shadow-[0_0_0_1px_rgba(20,184,166,0.35),0_6px_24px_rgba(20,184,166,0.25)]',
+    badgeBg: 'bg-teal-500/90',
+    badgeText: 'text-white',
+    label: 'Short Story',
+    Icon: Feather,
+  },
+  novela: {
+    border: 'border-violet-500',
+    glow: 'shadow-[0_0_0_1px_rgba(139,92,246,0.35),0_6px_24px_rgba(139,92,246,0.25)]',
+    badgeBg: 'bg-violet-500/90',
+    badgeText: 'text-white',
+    label: 'Novela',
+    Icon: BookOpen,
+  },
+  campaign: {
+    border: 'border-amber-400',
+    glow: 'shadow-[0_0_0_1px_rgba(251,191,36,0.35),0_6px_24px_rgba(251,191,36,0.25)]',
+    badgeBg: 'bg-amber-400/90',
+    badgeText: 'text-[#1A2533]',
+    label: 'Campaign',
+    Icon: Flag,
+  },
+  unknown: {
+    border: 'border-[#4A5C6E]',
+    glow: 'shadow-none',
+    badgeBg: 'bg-slate-500/80',
+    badgeText: 'text-white',
+    label: 'Story',
+    Icon: Feather,
+  },
+};
+
+const PLAN_STYLES: Record<PlanKey, {
+  badgeBg: string; badgeText: string; label: string; Icon: React.FC<any>;
+}> = {
+  paid:   { badgeBg: 'bg-rose-500',  badgeText: 'text-white', label: 'Premium', Icon: Crown },
+  free:   { badgeBg: 'bg-slate-700', badgeText: 'text-white', label: 'Free',    Icon: Circle },
+  unknown:{ badgeBg: 'bg-slate-500', badgeText: 'text-white', label: '—',       Icon: Circle },
+};
 
 /* ----------------------------- Star Rating UI ----------------------------- */
 function Star({
@@ -57,12 +146,23 @@ function StarRating({
   storyId,
   initialUserRating,
   average,
-  count
+  count,
+  // NEW anti-abuse inputs
+  userReadCount,
+  userRatedUniqueCount,
+  hasReadThisStory,
+  hasRatedThisStory,
+  onRated // optional callback to let parent update mirrors
 }: {
   storyId: string;
   initialUserRating?: number | null;
   average?: number;
   count?: number;
+  userReadCount: number;
+  userRatedUniqueCount: number;
+  hasReadThisStory: boolean;
+  hasRatedThisStory: boolean;
+  onRated?: () => void;
 }) {
   const { user } = useAuth();
   const [hoverValue, setHoverValue] = useState<number | null>(null);
@@ -80,6 +180,14 @@ function StarRating({
     return 'No ratings yet';
   }, [average, count]);
 
+  const allowedToRate = useMemo(() => {
+    if (!user?.uid) return false;
+    if (hasRatedThisStory) return true; // updating is allowed
+    if (hasReadThisStory) return true;  // rating what you read is always OK
+    // else consume a "rating credit"
+    return userRatedUniqueCount < userReadCount;
+  }, [user?.uid, hasRatedThisStory, hasReadThisStory, userRatedUniqueCount, userReadCount]);
+
   const handleSetRating = async (value: number) => {
     if (!user?.uid) {
       alert('Sign in to rate.');
@@ -87,11 +195,22 @@ function StarRating({
     }
     if (!storyId) return;
 
+    if (!allowedToRate) {
+      const remaining = Math.max(0, userReadCount - userRatedUniqueCount);
+      alert(
+        remaining > 0
+          ? `You have ${remaining} rating credits left. Read a story or use a remaining credit to rate.`
+          : 'You’ve used all your rating credits. Read more stories to unlock more ratings.'
+      );
+      return;
+    }
+
     setSaving(true);
     try {
       await runTransaction(db, async (tx) => {
         const storyRef = doc(db, 'stories', storyId);
         const userRatingRef = doc(db, 'stories', storyId, 'ratings', user.uid);
+        const userRatingMirrorRef = doc(db, 'users', user.uid, 'ratings', storyId);
 
         const storySnap = await tx.get(storyRef);
         const prevCount = (storySnap.data()?.ratingCount ?? 0) as number;
@@ -111,7 +230,8 @@ function StarRating({
           newSum = prevSum - oldVal + value;
         }
 
-        tx.set(userRatingRef, { rating: value, updatedAt: serverTimestamp() }, { merge: true });
+        tx.set(userRatingRef,       { rating: value, updatedAt: serverTimestamp() }, { merge: true });
+        tx.set(userRatingMirrorRef, { rating: value, updatedAt: serverTimestamp(), storyId }, { merge: true });
         tx.set(
           storyRef,
           {
@@ -124,6 +244,7 @@ function StarRating({
       });
 
       setUserRating(value);
+      onRated?.();
     } catch (e) {
       console.error('Rating save failed', e);
       alert('Could not save rating. Please try again.');
@@ -135,7 +256,7 @@ function StarRating({
   const stars = [1,2,3,4,5];
 
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className={`flex flex-col items-center gap-1 ${!allowedToRate ? 'opacity-60' : ''}`}>
       <div className={`flex ${saving ? 'opacity-70 pointer-events-none' : ''}`}>
         {stars.map((s) => {
           const active = hoverValue ? s <= hoverValue : s <= (userRating ?? 0);
@@ -150,7 +271,7 @@ function StarRating({
           );
         })}
       </div>
-      <p className="text-xs text-[#8FA0AF]">{displayAverage}</p>
+      <p className="text-[11px] text-[#8FA0AF]">{displayAverage}</p>
     </div>
   );
 }
@@ -220,70 +341,109 @@ const CatalogPage: React.FC = () => {
   const [userRatings, setUserRatings] = useState<Record<string, number | null>>({});
   const [userFavorites, setUserFavorites] = useState<Record<string, boolean>>({});
 
-  // ✅ Correct use of the hook — NO getState here
-  const { user } = useAuth();
+  // NEW filters
+  const [storyTypeFilter, setStoryTypeFilter] = useState<'all'|'short'|'novela'|'campaign'>('all');
+  const [planFilter, setPlanFilter] = useState<'all'|'free'|'paid'>('all');
 
+  // NEW anti-abuse tracking
+  const [userReadsSet, setUserReadsSet] = useState<Record<string, true>>({});
+  const [userRatedSet, setUserRatedSet] = useState<Record<string, true>>({});
+
+  const userReadCount = useMemo(() => Object.keys(userReadsSet).length, [userReadsSet]);
+  const userRatedUniqueCount = useMemo(() => Object.keys(userRatedSet).length, [userRatedSet]);
+
+  const { user } = useAuth();
   const { data, isLoading, error } = useListPublishedStories();
 
-  // Pull published stories (para no logueados también)
+  // Pull published stories
   useEffect(() => {
     const stories = data ?? [];
     setAllStories(stories);
     setDisplayedStories(stories);
   }, [data]);
 
-  // Live load user ratings/favorites — SOLO si hay user
+  // Live subscriptions for user-scoped reads & ratings mirrors + favorites + per-story ratings
   useEffect(() => {
     if (!user?.uid) {
       setUserRatings({});
       setUserFavorites({});
+      setUserReadsSet({});
+      setUserRatedSet({});
       return;
     }
 
-    // Favorites subscription (con handler de error)
-    const favCol = collection(db, 'users', user.uid, 'favorites');
+    // Favorites
     const unsubFav = onSnapshot(
-      favCol,
+      collection(db, 'users', user.uid, 'favorites'),
       (snap) => {
         const map: Record<string, boolean> = {};
         snap.forEach((d) => { map[d.id] = true; });
         setUserFavorites(map);
       },
-      (err) => {
-        console.error('[favorites onSnapshot] error:', err?.code || err, err);
-      }
+      (err) => console.error('[favorites onSnapshot] error:', err?.code || err, err)
     );
 
-    // Ratings del usuario para las historias visibles (lookup 1x)
-    const loadRatings = async () => {
-      const map: Record<string, number | null> = {};
+    // Reads mirror
+    const unsubReads = onSnapshot(
+      collection(db, 'users', user.uid, 'reads'),
+      (snap) => {
+        const map: Record<string, true> = {};
+        snap.forEach((d) => { map[d.id] = true; });
+        setUserReadsSet(map);
+      },
+      (err) => console.error('[reads onSnapshot] error:', err?.code || err, err)
+    );
+
+    // Ratings mirror (user-level unique rated stories)
+    const unsubUserRatingsMirror = onSnapshot(
+      collection(db, 'users', user.uid, 'ratings'),
+      (snap) => {
+        const setMap: Record<string, true> = {};
+        const userRatingsVal: Record<string, number | null> = {};
+        snap.forEach((d) => {
+          setMap[d.id] = true;
+          const r = (d.data() as any)?.rating;
+          userRatingsVal[d.id] = typeof r === 'number' ? r : null;
+        });
+        setUserRatedSet(setMap);
+        // Also hydrate visible per-story initial values
+        setUserRatings((prev) => ({ ...prev, ...userRatingsVal }));
+      },
+      (err) => console.error('[user ratings mirror onSnapshot] error:', err?.code || err, err)
+    );
+
+    // Initial per-story rating fetch for any stories without mirror (backfill)
+    (async () => {
       const list = data ?? [];
+      const map: Record<string, number | null> = {};
       await Promise.all(
         list.map(async (s) => {
           if (!s.id) return;
           try {
             const rRef = doc(db, 'stories', s.id, 'ratings', user.uid);
             const rSnap = await getDoc(rRef);
-            map[s.id] = rSnap.exists() ? (rSnap.data()?.rating ?? null) : null;
-          } catch (e) {
-            console.warn('get rating failed for story', s.id, e);
-            map[s.id] = null;
+            if (rSnap.exists()) {
+              map[s.id] = (rSnap.data() as any)?.rating ?? null;
+            }
+          } catch {
+            /* ignore */
           }
         })
       );
-      setUserRatings(map);
-    };
-    loadRatings();
+      if (Object.keys(map).length) setUserRatings((prev) => ({ ...map, ...prev }));
+    })();
 
     return () => {
       unsubFav();
+      unsubReads();
+      unsubUserRatingsMirror();
     };
   }, [user?.uid, data]);
 
+  /** Apply filters */
   const applyFiltersAndSearch = (stories: Story[]) => {
     let filtered = [...stories];
 
-    // Sort by popular or recent
     switch (activeFilter) {
       case 'popular':
         filtered = [...filtered].sort((a, b) => (b.views ?? 0) - (a.views ?? 0));
@@ -299,29 +459,44 @@ const CatalogPage: React.FC = () => {
         break;
     }
 
-    // Genre filter
     if (selectedGenres.length > 0) {
       filtered = filtered.filter(story =>
         story.genres?.some(genre => selectedGenres.includes(genre))
       );
     }
+
+    if (storyTypeFilter !== 'all') {
+      filtered = filtered.filter(s => getStoryType(s) === storyTypeFilter);
+    }
+
+    if (planFilter !== 'all') {
+      filtered = filtered.filter(s => getPlan(s) === planFilter);
+    }
+
     return filtered;
   };
 
   useEffect(() => {
     setDisplayedStories(applyFiltersAndSearch(allStories));
-  }, [activeFilter, selectedGenres, allStories]);
+  }, [activeFilter, selectedGenres, storyTypeFilter, planFilter, allStories]);
 
   useEffect(() => {
-    if (activeFilter !== 'all' || selectedGenres.length > 0) {
-      let message = '';
-      if (activeFilter !== 'all') message += `Filter: ${activeFilter}. `;
-      if (selectedGenres.length > 0) message += `Genres: ${selectedGenres.join(', ')}.`;
-      setSearchMessage(message.trim());
+    if (
+      activeFilter !== 'all' ||
+      selectedGenres.length > 0 ||
+      storyTypeFilter !== 'all' ||
+      planFilter !== 'all'
+    ) {
+      const parts: string[] = [];
+      if (activeFilter !== 'all') parts.push(`Filter: ${activeFilter}`);
+      if (selectedGenres.length > 0) parts.push(`Genres: ${selectedGenres.join(', ')}`);
+      if (storyTypeFilter !== 'all') parts.push(`Type: ${storyTypeFilter}`);
+      if (planFilter !== 'all') parts.push(`Plan: ${planFilter}`);
+      setSearchMessage(parts.join(' • '));
     } else if (!searchQuery.trim()) {
       setSearchMessage('');
     }
-  }, [activeFilter, selectedGenres, searchQuery]);
+  }, [activeFilter, selectedGenres, storyTypeFilter, planFilter, searchQuery]);
 
   const handleFilterClick = (filter: 'all'|'popular'|'recent') => {
     setActiveFilter(filter);
@@ -366,6 +541,17 @@ const CatalogPage: React.FC = () => {
     }
   };
 
+  /** Log a "read" entry when user clicks READ in catalog (optional if eReader already logs) */
+  const logRead = async (storyId: string) => {
+    if (!user?.uid || !storyId) return;
+    try {
+      const ref = doc(db, 'users', user.uid, 'reads', storyId);
+      await setDoc(ref, { storyId, lastReadAt: serverTimestamp() }, { merge: true });
+    } catch (e) {
+      console.warn('[logRead] failed', e);
+    }
+  };
+
   if (error) {
     return (
       <div className="text-red-500 text-center mt-10">
@@ -396,8 +582,39 @@ const CatalogPage: React.FC = () => {
           <h2 className="font-['Lato'] text-xl md:text-2xl font-bold uppercase tracking-wider text-[#3A4B5C] dark:text-[#E0C9A0] m-0">
             CATALOG OF STORIES
           </h2>
+
+          {/* Legend */}
+          <div className="mt-4 flex flex-wrap gap-3 justify-center text-sm">
+            {(['short','novela','campaign'] as StoryTypeKey[]).map((k) => {
+              const Ico = TYPE_STYLES[k].Icon;
+              return (
+                <span
+                  key={k}
+                  className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border ${TYPE_STYLES[k].border} ${TYPE_STYLES[k].badgeText}`}
+                >
+                  <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full ${TYPE_STYLES[k].badgeBg}`}>
+                    <Ico size={14}/>
+                  </span>
+                  {TYPE_STYLES[k].label}
+                </span>
+              );
+            })}
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-rose-500 text-white">
+              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-rose-500">
+                <Crown size={14}/>
+              </span>
+              Premium
+            </span>
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-slate-600 text-white">
+              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-700">
+                <Circle size={12}/>
+              </span>
+              Free
+            </span>
+          </div>
         </header>
 
+        {/* Top filters */}
         <nav className="filter-nav flex justify-center gap-6 md:gap-8 mb-6 flex-wrap">
           {(['all', 'popular', 'recent'] as const).map(filter => (
             <button
@@ -412,6 +629,32 @@ const CatalogPage: React.FC = () => {
               {filter.charAt(0).toUpperCase() + filter.slice(1)}
             </button>
           ))}
+
+          {/* Story Type */}
+          <select
+            value={storyTypeFilter}
+            onChange={(e) => setStoryTypeFilter(e.target.value as any)}
+            className="px-3 py-2 rounded-lg border-2 border-[#4A5C6E] bg-[#233446] text-[#E0C9A0] focus:outline-none"
+            title="Filter by Story Type"
+          >
+            <option value="all">All Types</option>
+            <option value="short">Short Story</option>
+            <option value="novela">Novela</option>
+            <option value="campaign">Campaign</option>
+          </select>
+
+          {/* Plan */}
+          <select
+            value={planFilter}
+            onChange={(e) => setPlanFilter(e.target.value as any)}
+            className="px-3 py-2 rounded-lg border-2 border-[#4A5C6E] bg-[#233446] text-[#E0C9A0] focus:outline-none"
+            title="Filter by Creator Plan"
+          >
+            <option value="all">All Plans</option>
+            <option value="free">Free</option>
+            <option value="paid">Premium</option>
+          </select>
+
           <GenreMultiSelect
             genresList={GENRE_OPTIONS as unknown as string[]}
             selectedGenres={selectedGenres}
@@ -419,6 +662,7 @@ const CatalogPage: React.FC = () => {
           />
         </nav>
 
+        {/* Search */}
         <div className="flex justify-center items-center gap-3 mb-8 w-full max-w-md mx-auto">
           <input
             type="text"
@@ -456,19 +700,45 @@ const CatalogPage: React.FC = () => {
 
               const readHref = `/ereader?storyId=${encodeURIComponent(story.id!)}&back=%2Fdiscover`;
 
+              const typeKey = getStoryType(story);
+              const planKey = getPlan(story);
+              const typeStyle = TYPE_STYLES[typeKey];
+              const planStyle = PLAN_STYLES[planKey];
+              const TypeIcon = typeStyle.Icon;
+              const PlanIcon = planStyle.Icon;
+
+              const hasReadThis = !!userReadsSet[story.id!];
+              const hasRatedThis = !!userRatedSet[story.id!];
+
               return (
                 <div
                   key={story.id}
-                  className="story-card bg-[#233446] border-2 border-[#4A5C6E] p-2.5 rounded-lg w-64 text-[#E0C9A0] shadow-xl relative transition-all duration-300 ease-in-out hover:translate-y-[-5px] hover:shadow-2xl"
+                  className={`story-card bg-[#233446] border-2 ${typeStyle.border} p-2.5 rounded-lg w-64 text-[#E0C9A0] relative transition-all duration-300 ease-in-out hover:translate-y-[-5px] hover:shadow-2xl ${typeStyle.glow}`}
                 >
                   {/* Favorite */}
                   <FavoriteButton storyId={story.id!} initialIsFav={!!userFavorites[story.id!]}/>
 
-                  {/* Border overlay */}
+                  {/* Inner border accent */}
                   <div className="absolute inset-1 border border-[#BFA071] rounded-md pointer-events-none z-10"></div>
 
+                  {/* Badges */}
+                  <div className="absolute left-2 top-2 z-30 flex gap-2">
+                    <span className={`px-2 py-0.5 text-[11px] rounded ${typeStyle.badgeBg} ${typeStyle.badgeText} font-bold uppercase tracking-wide inline-flex items-center gap-1.5`}>
+                      <TypeIcon size={13}/> {typeStyle.label}
+                    </span>
+                  </div>
+                  <div className="absolute right-12 top-2 z-30 flex gap-2">
+                    <span className={`px-2 py-0.5 text-[11px] rounded ${planStyle.badgeBg} ${planStyle.badgeText} font-semibold inline-flex items-center gap-1.5`}>
+                      <PlanIcon size={13}/> {planStyle.label}
+                    </span>
+                  </div>
+
                   {/* Cover */}
-                  <Link href={readHref} className="card-art-container block w-full h-40 mb-4 rounded-sm overflow-hidden relative z-20">
+                  <Link
+                    href={readHref}
+                    onClick={() => logRead(story.id!)}
+                    className="card-art-container block w-full h-40 mb-4 rounded-sm overflow-hidden relative z-20"
+                  >
                     <img
                       src={story.coverImageUrl || 'https://placehold.co/300x200/BFA071/1A2533?text=Image+Not+Found'}
                       alt={story.title || 'Untitled Story'}
@@ -477,7 +747,7 @@ const CatalogPage: React.FC = () => {
                   </Link>
 
                   {/* Title */}
-                  <Link href={readHref}>
+                  <Link href={readHref} onClick={() => logRead(story.id!)}>
                     <h3 className="font-['Merriweather'] text-xl font-bold mb-2 leading-tight min-h-[2.6rem] z-20 relative">
                       {story.title || 'Untitled Story'}
                     </h3>
@@ -509,12 +779,18 @@ const CatalogPage: React.FC = () => {
                       initialUserRating={my ?? null}
                       average={avg}
                       count={count}
+                      userReadCount={userReadCount}
+                      userRatedUniqueCount={userRatedUniqueCount}
+                      hasReadThisStory={hasReadThis}
+                      hasRatedThisStory={hasRatedThis}
+                      onRated={() => {/* parent state mirrors auto-sync via onSnapshot */}}
                     />
                   </div>
 
                   {/* Read */}
                   <Link
                     href={readHref}
+                    onClick={() => logRead(story.id!)}
                     className="mt-3 font-['Lato'] bg-[#BFA071] text-[#1A2533] py-2.5 px-6 rounded-md text-base font-bold uppercase tracking-wide inline-block transition-colors duration-300 hover:bg-[#E0C9A0] z-20 relative"
                   >
                     READ
