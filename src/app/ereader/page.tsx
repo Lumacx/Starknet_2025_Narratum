@@ -22,9 +22,13 @@ type StoryView = {
   backgroundMusicUrl?: string | null;
   readerAvatarUrl?: string | null;
   readerBackgroundUrl?: string | null;
-  premium?: { convaiAgentId?: string | null } | null;
   storyContent: ReaderPage[];
   creator?: { avatarUrl?: string | null } | null;
+  premium?: {
+    convaiAgentId?: string | null;
+    teaserVideoUrl?: string | null;
+    freeNavigationIndex?: boolean;
+  } | null;
 };
 
 /* ---------------- Helpers de saneo ---------------- */
@@ -62,11 +66,15 @@ function toReaderShape(storyId: string, d: any): StoryView {
     readerBackgroundUrl:
       safeStr(d?.reader?.backgroundUrl) ||
       '/story_reader_backgrounds/dream-background.png',
-    premium: d?.premium
-      ? { convaiAgentId: safeStr(d?.premium?.convaiAgentId) ?? null }
-      : null,
     storyContent: pages,
     creator: d?.creator ? { avatarUrl: safeStr(d?.creator?.avatarUrl) ?? null } : null,
+    premium: d?.premium
+      ? {
+          convaiAgentId: safeStr(d?.premium?.convaiAgentId) ?? null,
+          teaserVideoUrl: safeStr(d?.premium?.teaserVideoUrl) ?? null,
+          freeNavigationIndex: !!d?.premium?.freeNavigationIndex,
+        }
+      : null,
   };
 }
 
@@ -138,7 +146,7 @@ export default function EReaderPage() {
     <div className="w-screen min-h-screen">
       <StoryReader
         story={story}
-        onBack={() => router.push(backHref)}
+        onBack={() => router.push(backHref || '/discover')}
       />
     </div>
   );

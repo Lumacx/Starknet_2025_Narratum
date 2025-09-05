@@ -12,9 +12,7 @@ import {
   faChevronRight,
   faPause,
   faRedo,
-  faStar, // ⭐ premium toggle
 } from "@fortawesome/free-solid-svg-icons";
-import ElevenLabsConvai from "@/components/premium/ElevenLabsConvai";
 import "../app/story.css";
 
 /** Mínimo que necesita el reader (sirve para preview y DB). */
@@ -36,18 +34,19 @@ type StoryView = {
   readerAvatarUrl?: string | null;
   readerBackgroundUrl?: string | null;
 
-  /** Premium features (optional) */
-  premium?: {
-    convaiAgentId?: string | null;
-  } | null;
-
   storyContent: ReaderPage[];
   creator?: { avatarUrl?: string | null } | null;
+
+  premium?: {
+    convaiAgentId?: string | null;
+    teaserVideoUrl?: string | null;
+    freeNavigationIndex?: boolean;
+  } | null;
 };
 
 interface StoryReaderProps {
   story: StoryView;
-  /** Para volver al editor/descubrir desde el lector */
+  /** Para volver desde el lector */
   onBack?: () => void;
 }
 
@@ -75,10 +74,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
   const [bgIdx, setBgIdx] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
 
-  /** Premium toggle UI */
-  const [showPremium, setShowPremium] = useState(true);
-
-  /** Responsive: “narrow” cuando el viewport es menor a ~1080 px */
+  /** Responsive: narrow cuando <1080 */
   const [isNarrow, setIsNarrow] = useState(false);
   useEffect(() => {
     const onResize = () => setIsNarrow(window.innerWidth < 1080);
@@ -92,7 +88,9 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
   const narrationRef = useRef<HTMLAudioElement | null>(null);
   const pageTurnSoundRef = useRef<HTMLAudioElement | null>(null);
 
-  /* Ordena páginas por pageNumber de forma segura */
+  const hasFreeNav = !!story?.premium?.freeNavigationIndex;
+
+  /* Ordena páginas por pageNumber */
   const sortedStoryContent = useMemo(
     () =>
       [...(story.storyContent || [])].sort(
@@ -122,8 +120,8 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
   // Ocultar chrome del sitio mientras el reader está montado
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.add("reader-mode");
-    return () => root.classList.remove("reader-mode");
+    root.classList.add('reader-mode');
+    return () => root.classList.remove('reader-mode');
   }, []);
 
   const handleUserInteraction = () => {
@@ -146,27 +144,16 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
       .catch((e) => console.error("Narration play failed:", e));
   };
 
-  const nextPage = () => {
-    if (currentPageIndex < sortedStoryContent.length) {
-      pageTurnSoundRef.current?.play();
-      const nextIndex = currentPageIndex + 1;
-      setCurrentPageIndex(nextIndex);
-      const nextPageContent = sortedStoryContent[nextIndex - 1];
-      if (nextPageContent?.audioUrl) playNarration(nextPageContent.audioUrl);
-    }
+  const goToIndex = (nextIndex: number) => {
+    if (nextIndex < 0 || nextIndex > sortedStoryContent.length) return;
+    pageTurnSoundRef.current?.play();
+    setCurrentPageIndex(nextIndex);
+    const pg = nextIndex > 0 ? sortedStoryContent[nextIndex - 1] : null;
+    if (pg?.audioUrl) playNarration(pg.audioUrl);
   };
 
-  const previousPage = () => {
-    if (currentPageIndex > 0) {
-      pageTurnSoundRef.current?.play();
-      const prevIndex = currentPageIndex - 1;
-      setCurrentPageIndex(prevIndex);
-      if (prevIndex > 0) {
-        const prevPageContent = sortedStoryContent[prevIndex - 1];
-        if (prevPageContent?.audioUrl) playNarration(prevPageContent.audioUrl);
-      }
-    }
-  };
+  const nextPage = () => goToIndex(currentPageIndex + 1);
+  const previousPage = () => goToIndex(currentPageIndex - 1);
 
   const startStory = () => {
     handleUserInteraction();
@@ -177,23 +164,20 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
   const currentPageContent =
     currentPageIndex > 0 ? sortedStoryContent[currentPageIndex - 1] : null;
 
-  /* Skin (con defaults seguros) */
+  /* Skin */
   const avatarUrl =
     story.readerAvatarUrl || story.creator?.avatarUrl || DEFAULT_AVATAR;
 
   const backgroundUrl =
     story.readerBackgroundUrl || BG_CHOICES[bgIdx] || BG_CHOICES[0];
 
-  /* Portada: usa cover si existe, si no, primera imagen */
+  /* Portada */
   const coverImage = story.coverImageUrl || sortedStoryContent[0]?.imageUrl || "";
   const storyImageSrc = currentPageContent?.imageUrl || coverImage || "";
 
-  /* Premium config (if present) */
-  const premiumAgentId = story.premium?.convaiAgentId || undefined;
-
-  /* === 80% sizing tweaks === */
+  /* 80% width sizing */
   const containerStyle: React.CSSProperties = {
-    width: "min(960px, 100vw - 16px)", // was 1200px → 960px (~80%)
+    width: "min(1000px, 80vw)",
     margin: "0 auto",
     padding: "clamp(8px, 2vw, 20px)",
   };
@@ -215,7 +199,11 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
   const gridStyle: React.CSSProperties = {
     marginTop: 8,
     display: "grid",
-    gridTemplateColumns: isNarrow ? "1fr" : "minmax(220px, 26%) 1fr",
+    gridTemplateColumns: isNarrow
+      ? "1fr"
+      : hasFreeNav
+      ? "minmax(220px, 24%) 1fr"
+      : "minmax(220px, 26%) 1fr",
     gap: "clamp(8px, 2vw, 18px)",
     alignItems: "start",
   };
@@ -225,6 +213,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
     borderRadius: 14,
     padding: "clamp(10px, 2vw, 16px)",
     display: "grid",
+    gap: 10,
     placeItems: "center",
     minHeight: isNarrow ? 120 : 180,
   };
@@ -235,8 +224,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
     padding: "clamp(8px, 1.5vw, 14px)",
   };
 
-  // Reduce image height budget proportionally (~80%)
-  const maxImageHeight = isNarrow ? "43vh" : "53vh";
+  const maxImageHeight = isNarrow ? "54vh" : "66vh";
 
   return (
     <div id="app-container" onClick={handleUserInteraction} style={containerStyle}>
@@ -255,7 +243,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
                 fontSize: 12,
               }}
             >
-              ← Back to Scenes
+              ← Back
             </button>
           )}
           <div style={{ fontWeight: 700, fontSize: 20 }}>
@@ -264,7 +252,6 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
         </div>
 
         <div id="header-icons" style={{ display: "flex", gap: 8 }}>
-          {/* Font size */}
           <button
             className="header-icon-btn"
             aria-label="Font Settings"
@@ -276,7 +263,6 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
             <FontAwesomeIcon icon={faFont} />
           </button>
 
-          {/* Background picker (ciclo) */}
           <button
             className="header-icon-btn"
             aria-label="Change Background"
@@ -286,7 +272,6 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
             <FontAwesomeIcon icon={faPaintBrush} />
           </button>
 
-          {/* Música */}
           <button
             onClick={toggleBackgroundMusic}
             id="play-music-button"
@@ -297,19 +282,6 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
             <FontAwesomeIcon icon={musicPlaying ? faVolumeMute : faVolumeUp} />
           </button>
 
-          {/* Premium toggle (only if there is something premium to show) */}
-          {premiumAgentId && (
-            <button
-              className="header-icon-btn"
-              aria-label="Premium features"
-              title={showPremium ? "Hide premium features" : "Show premium features"}
-              onClick={() => setShowPremium((v) => !v)}
-            >
-              <FontAwesomeIcon icon={faStar} />
-            </button>
-          )}
-
-          {/* Settings panel pequeño */}
           <button
             id="options-button-new"
             className="header-icon-btn"
@@ -322,7 +294,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
         </div>
       </header>
 
-      {/* Settings flotante */}
+      {/* Tiny settings */}
       {showSettings && (
         <div
           style={{
@@ -400,9 +372,9 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
         </button>
       </div>
 
-      {/* Main responsive: grid 1col (móvil) / 2col (desktop) */}
+      {/* Main responsive */}
       <main id="app-main" style={{ marginTop: 6, ...gridStyle }}>
-        {/* Panel avatar / Start */}
+        {/* Panel avatar + Start + Free Nav */}
         <div id="avatar-panel" style={avatarPanelStyle}>
           {avatarUrl ? (
             <img
@@ -410,8 +382,8 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
               src={avatarUrl}
               alt="Narrator Avatar"
               style={{
-                width: isNarrow ? 96 : 110,
-                height: isNarrow ? 96 : 110,
+                width: isNarrow ? 96 : 120,
+                height: isNarrow ? 96 : 120,
                 borderRadius: "50%",
                 objectFit: "cover",
                 border: "3px solid rgba(255,255,255,0.3)",
@@ -427,7 +399,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
               id="start-story-button"
               onClick={startStory}
               style={{
-                marginTop: 14,
+                marginTop: 8,
                 padding: "10px 16px",
                 borderRadius: 10,
                 background: "#2d3f50",
@@ -437,6 +409,61 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
             >
               Start Story
             </button>
+          )}
+
+          {/* Free Navigation Index */}
+          {hasFreeNav && sortedStoryContent.length > 0 && (
+            <div
+              style={{
+                width: "100%",
+                marginTop: 6,
+                maxHeight: isNarrow ? 140 : 240,
+                overflow: "auto",
+                background: "rgba(0,0,0,0.2)",
+                borderRadius: 10,
+                padding: 8,
+              }}
+            >
+              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#fff" }}>
+                Overview Index
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {/* include a chip for cover as 0 */}
+                <button
+                  onClick={() => goToIndex(0)}
+                  className="chip-btn"
+                  style={{
+                    padding: "6px 10px",
+                    borderRadius: 8,
+                    border: "1px solid rgba(255,255,255,0.25)",
+                    background: currentPageIndex === 0 ? "rgba(255,255,255,0.25)" : "transparent",
+                    color: "#fff",
+                    fontSize: 12,
+                  }}
+                >
+                  Cover
+                </button>
+                {sortedStoryContent.map((p, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => goToIndex(idx + 1)}
+                    className="chip-btn"
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: 8,
+                      border: "1px solid rgba(255,255,255,0.25)",
+                      background:
+                        currentPageIndex === idx + 1 ? "rgba(255,255,255,0.25)" : "transparent",
+                      color: "#fff",
+                      fontSize: 12,
+                    }}
+                    title={p.textContent?.slice(0, 50) || `Page ${idx + 1}`}
+                  >
+                    {idx + 1}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
         </div>
 
@@ -474,7 +501,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
       </main>
 
       {/* Texto */}
-      <div id="text-area" style={{ margin: "12px 0 12px" }}>
+      <div id="text-area" style={{ margin: "12px 0 20px" }}>
         <div
           id="text-bubble"
           style={{
@@ -498,19 +525,11 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
         )}
       </div>
 
-      {/* Premium section (below main content, like a feature area) */}
-      {premiumAgentId && (
-        <div style={{ marginTop: 8 }}>
-          {/* only renders when showPremium is true */}
-          <ElevenLabsConvai agentId={premiumAgentId} hidden={!showPremium} />
-        </div>
-      )}
-
       {/* Footer info */}
       <footer
         id="app-footer"
         style={{
-          marginTop: 12,
+          marginTop: 18,
           display: "flex",
           justifyContent: "flex-start",
           gap: 10,
@@ -524,6 +543,14 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
             : `Page ${currentPageIndex} of ${sortedStoryContent.length}`}
         </div>
       </footer>
+
+      {/* Optional: Convai widget via agent id */}
+      {story?.premium?.convaiAgentId && (
+        <>
+          <elevenlabs-convai agent-id={story.premium.convaiAgentId}></elevenlabs-convai>
+          <script src="https://unpkg.com/@elevenlabs/convai-widget-embed" async type="text/javascript"></script>
+        </>
+      )}
     </div>
   );
 };

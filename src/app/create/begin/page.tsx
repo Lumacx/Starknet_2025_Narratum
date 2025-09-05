@@ -81,9 +81,11 @@ type Draft = {
     backgroundUrl?: string;
   };
 
-  // ⭐ NEW: premium options (per-story)
+  /** Premium editor fields */
   premium?: {
-    convaiAgentId?: string | null;
+    convaiAgentId?: string;
+    teaserVideoUrl?: string;
+    freeNavigationIndex?: boolean;
   };
 };
 
@@ -114,6 +116,28 @@ function clampPagesForCategory(catKey: Draft['category'], pages: number) {
   return Math.max(cfg.min, Math.min(cfg.max, n));
 }
 
+// ----- premium payload builder (draft-safe) -----
+function buildPremiumPayloadFromDraft(d: any) {
+  const p = (d?.premium ?? {}) as any;
+
+  // accept either draft.premium.* …or loose fields on draft
+  const convai = (p.convaiAgentId ?? d?.convaiAgentId ?? '').trim?.() ?? '';
+  const teaser = (p.teaserVideoUrl ?? d?.teaserVideoUrl ?? '').trim?.() ?? '';
+  const freeIdx =
+    typeof p.freeNavigationIndex === 'boolean'
+      ? p.freeNavigationIndex
+      : typeof d?.freeNavigationIndex === 'boolean'
+      ? d.freeNavigationIndex
+      : undefined;
+
+  const out: any = {};
+  if (convai) out.convaiAgentId = convai;
+  if (teaser) out.teaserVideoUrl = teaser;
+  if (typeof freeIdx === 'boolean') out.freeNavigationIndex = freeIdx;
+
+  return Object.keys(out).length ? { premium: out } : {};
+}
+
 /* ------------------------------------------------------------------ */
 /* Component                                                           */
 /* ------------------------------------------------------------------ */
@@ -134,14 +158,16 @@ export default function BeginPage() {
     language: 'en',
     campaignName: '',
     reader: { avatarUrl: DEFAULTS.avatarUrl, backgroundUrl: DEFAULTS.backgroundUrl },
-    premium: { convaiAgentId: '' }, // ⭐ NEW: default empty
+    premium: { convaiAgentId: '', teaserVideoUrl: '', freeNavigationIndex: false },
   });
+
+  const [showPremium, setShowPremium] = useState<boolean>(false);
 
   /* ---------------- Story Mode (New / Continue) ---------------- */
   const [storyMode, setStoryMode] = useState<'new' | 'continue'>('new');
   const [existingStoryId, setExistingStoryId] = useState<string>('');
 
-  /* ---------------- Visibility for blocks ---------------- */
+  /* ---------------- Visibility for Book Cover block ---------------- */
   const [showCover, setShowCover] = useState<boolean>(false);
 
   /* ---------------- Story list for Continue ---------------- */
@@ -172,14 +198,15 @@ export default function BeginPage() {
             backgroundUrl: parsed?.reader?.backgroundUrl || DEFAULTS.backgroundUrl,
           },
           premium: {
-            convaiAgentId: parsed?.premium?.convaiAgentId ?? '',
+            convaiAgentId: parsed?.premium?.convaiAgentId || '',
+            teaserVideoUrl: parsed?.premium?.teaserVideoUrl || '',
+            freeNavigationIndex: !!parsed?.premium?.freeNavigationIndex,
           },
           language: parsed?.language || 'en',
           campaignName: parsed?.campaignName || '',
         }));
-        setShowCover(Boolean(parsed?.storyId)); // if user already started
+        setShowCover(Boolean(parsed?.storyId));
       } else {
-        // seed empty scenes with page count
         setDraft((d) => ({
           ...d,
           scenes: Array.from({ length: d.pages }, () => ({
@@ -218,6 +245,7 @@ export default function BeginPage() {
   }, [draft]);
 
   const cat = useMemo(() => CATEGORIES.find((c) => c.key === draft.category)!, [draft.category]);
+  const isLongForm = draft.category === 'novela' || draft.category === 'campaign';
 
   /* ---------------- Fetch user's stories for Continue ---------------- */
   const fetchStoriesPage = useCallback(async (after?: QueryDocumentSnapshot) => {
@@ -263,37 +291,37 @@ export default function BeginPage() {
     if (user) fetchStoriesPage();
   }, [user, fetchStoriesPage]);
 
-  /* ---------------- Ensure story exists (used by cover upload & premium) ---------------- */
+  /* ---------------- Ensure story exists (used by cover/premium saving) ---------------- */
   async function ensureStoryId(): Promise<string> {
     if (!user) throw new Error('Please sign in first.');
     if (draft.storyId) return draft.storyId;
 
-    const convai = (draft.premium?.convaiAgentId || '').trim();
-    const id = await createStory({
-      title: draft.title || '(untitled)',
-      synopsis: draft.synopsis || '',
-      genres: draft.genres || [],
-      category: draft.category,
-      pageCount: clampPagesForCategory(draft.category, draft.pages),
-      coverImageUrl: null,
-      visibility: 'private',
-      status: 'draft',
-      language: draft.language,
-      // keep your metadata for campaign
-      metadata: draft.campaignName ? { campaignName: draft.campaignName } : {},
-      // ⭐ include premium only if provided
-      ...(convai ? { premium: { convaiAgentId: convai } } : {}),
-    } as any);
+    const premiumPayload = buildPremiumPayloadFromDraft(draft);
 
-    setDraft((d) => ({ ...d, storyId: id }));
-    try {
-      const raw = localStorage.getItem(DRAFT_KEY);
-      const obj = raw ? JSON.parse(raw) : {};
-      obj.storyId = id;
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(obj));
-    } catch {}
-    return id;
-  }
+    const id = await createStory({
+    title: draft.title || '(untitled)',
+    synopsis: draft.synopsis || '',
+    genres: draft.genres || [],
+    category: draft.category,
+    pageCount: clampPagesForCategory(draft.category, draft.pages),
+    coverImageUrl: null,
+    visibility: 'private',
+    status: 'draft',
+    language: draft.language,
+    metadata: draft.campaignName ? { campaignName: draft.campaignName } : {},
+    // ⭐ include premium only if provided
+    ...premiumPayload,
+  } as any);
+
+  setDraft((d) => ({ ...d, storyId: id }));
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    const obj = raw ? JSON.parse(raw) : {};
+    obj.storyId = id;
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(obj));
+  } catch {}
+  return id;
+}
 
   /* ---------------- Upload cover helpers ---------------- */
   async function uploadCoverViaSdk(userUid: string, storyId: string, srcUrl: string) {
@@ -317,6 +345,7 @@ export default function BeginPage() {
 
       let httpsUrl = url;
 
+      // attempt helper -> SDK -> fallback
       try {
         const out: any = await (uploadCoverToStory as any)?.({
           uid: user.uid,
@@ -325,13 +354,11 @@ export default function BeginPage() {
         });
         if (typeof out === 'string') httpsUrl = out;
         else if (out && typeof out.publicUrl === 'string') httpsUrl = out.publicUrl;
-      } catch (e) {
-        console.warn('uploadCoverToStory helper failed, falling back to SDK:', e);
+      } catch {
         try {
           httpsUrl = await uploadCoverViaSdk(user.uid, id, url);
-        } catch (e2) {
-          console.warn('SDK upload failed, falling back to using external URL:', e2);
-          httpsUrl = url; // last resort
+        } catch {
+          httpsUrl = url;
         }
       }
 
@@ -352,6 +379,19 @@ export default function BeginPage() {
       console.error('Failed to persist cover to story path:', e?.message || e);
     }
   };
+
+  /* ---------------- Premium: save helper ---------------- */
+  async function savePremiumField(path: 'premium.convaiAgentId'|'premium.teaserVideoUrl'|'premium.freeNavigationIndex', value: any) {
+    try {
+      const id = await ensureStoryId();
+      await updateDoc(fsDoc(db, 'stories', id), {
+        [path]: value,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (e) {
+      console.warn('[premium save] failed', e);
+    }
+  }
 
   /* ---------------- AI Describe for current cover ---------------- */
   async function describeCurrentCover() {
@@ -425,19 +465,21 @@ export default function BeginPage() {
           coverUrl: s.coverImageUrl ?? d.coverUrl ?? null,
           language: (s.language as LangCode) || d.language,
           campaignName: s?.metadata?.campaignName || d.campaignName || '',
-          // ⭐ bring premium config if present
           premium: {
-            convaiAgentId: s?.premium?.convaiAgentId ?? d.premium?.convaiAgentId ?? '',
+            convaiAgentId: s?.premium?.convaiAgentId || '',
+            teaserVideoUrl: s?.premium?.teaserVideoUrl || '',
+            freeNavigationIndex: !!s?.premium?.freeNavigationIndex,
           },
         }));
         setShowCover(true);
+        if (s?.premium) setShowPremium(true);
       } catch (e) {
         console.error('Failed to load story details', e);
       }
     })();
   }, [user, existingStoryId, storyMode]);
 
-  /* Persist language when story exists */
+  /* Persist basic fields (language, campaign, category/pages) — unchanged blocks omitted for brevity */
   useEffect(() => {
     (async () => {
       try {
@@ -452,7 +494,6 @@ export default function BeginPage() {
     })();
   }, [draft.language, draft.storyId, user]);
 
-  /* Persist campaignName when story exists */
   useEffect(() => {
     (async () => {
       try {
@@ -468,7 +509,6 @@ export default function BeginPage() {
     })();
   }, [draft.campaignName, draft.storyId, user]);
 
-  /* Persist category + pageCount when story exists */
   useEffect(() => {
     (async () => {
       try {
@@ -484,22 +524,6 @@ export default function BeginPage() {
       }
     })();
   }, [draft.category, draft.pages, draft.storyId, user]);
-
-  /* ⭐ Persist premium.convaiAgentId when story exists */
-  useEffect(() => {
-    (async () => {
-      try {
-        if (!draft.storyId || !user) return;
-        const val = (draft.premium?.convaiAgentId || '').trim();
-        await updateDoc(fsDoc(db, 'stories', draft.storyId), {
-          premium: { convaiAgentId: val || null },
-          updatedAt: serverTimestamp(),
-        });
-      } catch (e) {
-        console.warn('Could not persist premium.convaiAgentId', e);
-      }
-    })();
-  }, [draft.premium?.convaiAgentId, draft.storyId, user]);
 
   /* ---------------- Buttons ---------------- */
   const canStartNew =
@@ -518,22 +542,23 @@ export default function BeginPage() {
       }
       if (!canStartNew) throw new Error('Fill Title, Genres, Synopsis (and Campaign Name if Campaign).');
 
-      const convai = (draft.premium?.convaiAgentId || '').trim();
+      const premiumPayload = buildPremiumPayloadFromDraft(draft);
 
       const id = await createStory({
-        title: draft.title.trim(),
-        synopsis: draft.synopsis.trim(),
-        genres: draft.genres,
-        category: draft.category,
-        pageCount: clampPagesForCategory(draft.category, draft.pages),
-        coverImageUrl: null,
-        visibility: 'private',
-        status: 'draft',
-        language: draft.language,
-        metadata: draft.campaignName ? { campaignName: draft.campaignName } : {},
-        // ⭐ include premium only if provided
-        ...(convai ? { premium: { convaiAgentId: convai } } : {}),
+      title: draft.title.trim(),
+      synopsis: draft.synopsis.trim(),
+      genres: draft.genres,
+      category: draft.category,
+      pageCount: clampPagesForCategory(draft.category, draft.pages),
+      coverImageUrl: null,
+      visibility: 'private',
+      status: 'draft',
+      language: draft.language,
+      metadata: draft.campaignName ? { campaignName: draft.campaignName } : {},
+      // ⭐ include premium only if provided
+      ...premiumPayload,
       } as any);
+
 
       setDraft((d) => ({ ...d, storyId: id }));
       try {
@@ -563,23 +588,24 @@ export default function BeginPage() {
 
       if (!canStartNew) throw new Error('Fill Title, Genres, Synopsis (and Campaign Name if Campaign).');
 
+      const premiumPayload = buildPremiumPayloadFromDraft(draft);
+
       const id =
-        draft.storyId ||
-        (await createStory({
-          title: draft.title.trim(),
-          synopsis: draft.synopsis.trim(),
-          genres: draft.genres,
-          category: draft.category,
-          pageCount: clampPagesForCategory(draft.category, draft.pages),
-          visibility: 'private',
-          status: 'draft',
-          language: draft.language,
-          metadata: draft.campaignName ? { campaignName: draft.campaignName } : {},
-          // premium included on first creation if provided
-          ...((draft.premium?.convaiAgentId || '').trim()
-            ? { premium: { convaiAgentId: (draft.premium!.convaiAgentId || '').trim() } }
-            : {}),
+      draft.storyId ||
+      (await createStory({
+        title: draft.title.trim(),
+        synopsis: draft.synopsis.trim(),
+        genres: draft.genres,
+        category: draft.category,
+        pageCount: clampPagesForCategory(draft.category, draft.pages),
+        visibility: 'private',
+        status: 'draft',
+        language: draft.language,
+        metadata: draft.campaignName ? { campaignName: draft.campaignName } : {},
+        // ⭐ include premium only if provided
+        ...premiumPayload,
         } as any));
+
 
       setDraft(d => ({ ...d, storyId: id }));
       try {
@@ -810,6 +836,82 @@ export default function BeginPage() {
             </div>
           </div>
 
+              {/* --- Premium features toggle header --- */}
+            <div className="mt-6 border-t border-slate-300 dark:border-[#2c3f55] pt-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold">Premium Features</h2>
+              <label className="flex items-center gap-2 text-sm">
+                <span>Show panel</span>
+                <input
+                  type="checkbox"
+                  checked={showPremium}
+                  onChange={(e) => setShowPremium(e.target.checked)}
+                />
+              </label>
+            </div>
+
+            {showPremium && (
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* ElevenLabs Convai Agent ID */}
+                <div className="col-span-1">
+                  <label className="block text-sm font-bold mb-2">ElevenLabs Convai Agent ID</label>
+                  <input
+                    className="w-full p-3 border-2 rounded-md bg-white text-slate-900 border-slate-300 dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]"
+                    placeholder="agent_01jz5wvvenep3awvc2d65kfq0a"
+                    value={draft.premium?.convaiAgentId || ''}
+                    onChange={async (e) => {
+                      const v = e.target.value;
+                      setDraft((d) => ({ ...d, premium: { ...(d.premium||{}), convaiAgentId: v }}));
+                      await savePremiumField('premium.convaiAgentId', v || null);
+                    }}
+                  />
+                  <p className="text-xs mt-1 text-slate-600 dark:text-[#C8D6E5]/70">
+                    If provided, the reader can load the embedded AI avatar widget.
+                  </p>
+                </div>
+
+                {/* Teaser Video URL — only for Novela/Campaign */}
+                {isLongForm && (
+                  <div className="col-span-1">
+                    <label className="block text-sm font-bold mb-2">Link to Teaser Video</label>
+                    <input
+                      className="w-full p-3 border-2 rounded-md bg-white text-slate-900 border-slate-300 dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]"
+                      placeholder="URL for your YouTube video"
+                      value={draft.premium?.teaserVideoUrl || ''}
+                      onChange={async (e) => {
+                        const v = e.target.value.trim();
+                        setDraft((d) => ({ ...d, premium: { ...(d.premium||{}), teaserVideoUrl: v }}));
+                        await savePremiumField('premium.teaserVideoUrl', v || null);
+                      }}
+                    />
+                    <p className="text-xs mt-1 text-slate-600 dark:text-[#C8D6E5]/70">
+                      If set, Discover will show a “Teaser” button with a pop-up YouTube player.
+                    </p>
+                  </div>
+                )}
+
+                {/* Free Navigation Index — only for Novela/Campaign */}
+                {isLongForm && (
+                  <div className="col-span-1">
+                    <label className="block text-sm font-bold mb-2">Activate Free Navigation Index</label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={!!draft.premium?.freeNavigationIndex}
+                        onChange={async (e) => {
+                          const v = e.target.checked;
+                          setDraft((d) => ({ ...d, premium: { ...(d.premium||{}), freeNavigationIndex: v }}));
+                          await savePremiumField('premium.freeNavigationIndex', v);
+                        }}
+                      />
+                      <span className="text-sm">Enable left-side index in the Story Reader.</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Start & quick actions */}
           <div className="flex justify-end flex-wrap gap-3 mt-6">
             <button
@@ -1014,7 +1116,7 @@ export default function BeginPage() {
             <div className="mt-4 text-xs text-slate-600 dark:text-[#C8D6E5]/70">
               Reader side will inject:
               <pre className="mt-2 p-2 rounded bg-slate-100 dark:bg-black/30 overflow-x-auto">{`<elevenlabs-convai agent-id="<this value>"></elevenlabs-convai>
-<script src="https://unpkg.com/@elevenlabs/convai-widget-embed" async type="text/javascript"></script>`}</pre>
+          <script src="https://unpkg.com/@elevenlabs/convai-widget-embed" async type="text/javascript"></script>`}</pre>
             </div>
           </div>
         )}

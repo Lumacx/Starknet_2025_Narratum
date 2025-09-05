@@ -22,45 +22,127 @@ function tsToIso(x: any): string | undefined {
       return (x as Timestamp).toDate().toISOString();
     }
   } catch {}
-  const s = String(x);
+  const s = String(x ?? '');
   return s || undefined;
+}
+
+function normalizeStoryType(row: any): 'Short' | 'Novela' | 'Campaign' | 'Unknown' {
+  const raw =
+    row?.category ??
+    row?.type ??
+    row?.storyType ??
+    row?.metadata?.category ??
+    '';
+  const s = String(raw || '').toLowerCase();
+  if (s.includes('short')) return 'Short';
+  if (s.includes('novela') || s.includes('novel') || s.includes('novella')) return 'Novela';
+  if (s.includes('campaign') || (row?.metadata?.campaignName && String(row.metadata.campaignName).trim() !== '')) {
+    return 'Campaign';
+  }
+  return 'Unknown';
 }
 
 function mapDocToStory(d: { id: string; data: DocumentData }): Story {
   const row = d.data;
 
-  // Build a Story, then tack on visibility/isPublic as extra props.
+  // ratings (supports ratingSum/ratingCount or precomputed averages)
+  const ratingCount = typeof row?.ratingCount === 'number' ? row.ratingCount : 0;
+  const ratingSum   = typeof row?.ratingSum   === 'number' ? row.ratingSum   : 0;
+  const computedAvg = ratingCount > 0 ? ratingSum / ratingCount : null;
+  const averageRating =
+    typeof row?.averageRating === 'number'
+      ? row.averageRating
+      : typeof row?.ratingAvg === 'number'
+        ? row.ratingAvg
+        : typeof row?.avgRating === 'number'
+          ? row.avgRating
+          : computedAvg;
+
+  // Premium mapping (optional object)
+  const premiumRow = row?.premium || {};
+  const convaiAgentId = typeof premiumRow?.convaiAgentId === 'string' ? premiumRow.convaiAgentId : undefined;
+  const teaserVideoUrl =
+    typeof premiumRow?.teaserVideoUrl === 'string' ? premiumRow.teaserVideoUrl : undefined;
+  const freeNavigationIndex =
+    typeof premiumRow?.freeNavigationIndex === 'boolean' ? premiumRow.freeNavigationIndex : undefined;
+
+  const hasPremium =
+    convaiAgentId != null || teaserVideoUrl != null || freeNavigationIndex != null;
+
   const s: any = {
     id: d.id,
-    title: row?.title ?? undefined,
-    genres: Array.isArray(row?.genres) ? row.genres : null,
-    description: row?.description ?? undefined,
-    coverImageUrl: row?.coverImageUrl ?? undefined,
 
-    authorId: row?.creator?.id ?? row?.ownerUid ?? '',
+    // ownership / access
+    ownerUid: row?.ownerUid,
+    authorId: row?.creator?.id ?? row?.ownerUid ?? undefined,
+    visibility: row?.visibility,
     status: row?.status ?? 'draft',
 
+    // core
+    title: row?.title ?? undefined,
+    synopsis: row?.synopsis ?? undefined,
+    description: row?.description ?? undefined,
+    genres: Array.isArray(row?.genres)
+      ? row.genres
+      : typeof row?.genres === 'string'
+        ? row.genres.split(',').map((g: string) => g.trim()).filter(Boolean)
+        : null,
+    category: row?.category,
+    storyType: normalizeStoryType(row), // <<< added normalized type
+    pageCount: typeof row?.pageCount === 'number' ? row.pageCount : undefined,
+    language: row?.language,
+
+    // media
+    coverImageUrl: row?.coverImageUrl ?? undefined,
+
+    // timestamps
     createdAt: tsToIso(row?.createdAt) ?? '',
     updatedAt: tsToIso(row?.updatedAt) ?? '',
+    publishedAt: tsToIso(row?.publishedAt),
 
+    // denormalized creator
     creator: row?.creator
-      ? { id: row.creator.id, displayname: row.creator.displayname ?? '' }
+      ? {
+          id: row.creator.id,
+          displayname: row.creator.displayname ?? '',
+          avatarUrl: row.creator.avatarUrl ?? undefined,
+        }
       : undefined,
 
-    views: row?.views ?? undefined,
-    likes: row?.likes ?? undefined,
-    commentsCount: row?.commentsCount ?? undefined,
-    ratinglevel: row?.ratinglevel ?? undefined,
+    // metrics
+    views: typeof row?.views === 'number' ? row.views : undefined,
+    likes: typeof row?.likes === 'number' ? row.likes : undefined,
+    commentsCount:
+      typeof row?.commentsCount === 'number' ? row.commentsCount : undefined,
 
-    // not used in Discover
+    // ratings
+    ratingCount,
+    ratingSum,
+    averageRating,          // your field
+    ratingsAvg: averageRating ?? undefined, // alias for consumers
+
+    // relations not used here
     storyContent: undefined,
     comments: undefined,
     reactions: undefined,
+
+    // premium (only set if present)
+    premium: hasPremium
+      ? {
+          convaiAgentId,
+          teaserVideoUrl,
+          freeNavigationIndex,
+        }
+      : undefined,
+
+    // carry-through metadata if present
+    metadata: row?.metadata,
   };
 
-  // Extras used for visibility filtering (not necessarily in your Story type)
-  s.visibility = row?.visibility;
-  s.isPublic = row?.isPublic;
+  // legacy isPublic flag (kept for client filter)
+  if (typeof row?.isPublic === 'boolean') {
+    s.isPublic = row.isPublic;
+  }
 
   return s as Story;
 }
@@ -83,7 +165,7 @@ export const useListPublishedStories = (take?: number) => {
         const col = collection(db, 'stories');
         const lim = typeof take === 'number' ? [fsLimit(take)] : [];
 
-        // 3 independent queries (OR via client-side union)
+        // client-side OR union
         const [q1, q2, q3] = await Promise.all([
           getDocs(query(col, where('status', '==', 'published'), ...lim)),
           getDocs(query(col, where('visibility', '==', 'public'), ...lim)),
@@ -92,11 +174,10 @@ export const useListPublishedStories = (take?: number) => {
 
         if (cancelled) return;
 
-        // Union by id
         const bag = new Map<string, Story>();
         for (const snap of [q1, q2, q3]) {
-          snap.forEach(doc => {
-            bag.set(doc.id, mapDocToStory({ id: doc.id, data: doc.data() }));
+          snap.forEach(docSnap => {
+            bag.set(docSnap.id, mapDocToStory({ id: docSnap.id, data: docSnap.data() }));
           });
         }
 
@@ -117,12 +198,12 @@ export const useListPublishedStories = (take?: number) => {
     };
   }, [take, reloadTick]);
 
-  // Safety filter in client (keeps semantics even if something slips in)
+  // OR semantics: published OR public visibility OR legacy isPublic
   const filtered = useMemo(() => {
     return (data || []).filter((s: any) => {
       const statusOk = (s.status ?? '').toLowerCase() === 'published';
       const visOk = (s.visibility ?? '').toLowerCase() === 'public';
-      const isPub = s.isPublic === true;
+      const isPub = (s as any).isPublic === true;
       return statusOk || visOk || isPub;
     });
   }, [data]);
