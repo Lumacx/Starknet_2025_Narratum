@@ -28,6 +28,7 @@ const GENRE_OPTIONS = [
 type StoryTypeKey = 'short' | 'novela' | 'campaign' | 'unknown';
 type PlanKey = 'free' | 'paid' | 'unknown';
 
+/* ----------------------------- Helpers ----------------------------- */
 function norm(x?: string | null) {
   return (x ?? '').toString().trim().toLowerCase();
 }
@@ -147,12 +148,12 @@ function StarRating({
   initialUserRating,
   average,
   count,
-  // NEW anti-abuse inputs
+  // anti-abuse inputs
   userReadCount,
   userRatedUniqueCount,
   hasReadThisStory,
   hasRatedThisStory,
-  onRated // optional callback to let parent update mirrors
+  onRated
 }: {
   storyId: string;
   initialUserRating?: number | null;
@@ -184,8 +185,7 @@ function StarRating({
     if (!user?.uid) return false;
     if (hasRatedThisStory) return true; // updating is allowed
     if (hasReadThisStory) return true;  // rating what you read is always OK
-    // else consume a "rating credit"
-    return userRatedUniqueCount < userReadCount;
+    return userRatedUniqueCount < userReadCount; // otherwise need a credit
   }, [user?.uid, hasRatedThisStory, hasReadThisStory, userRatedUniqueCount, userReadCount]);
 
   const handleSetRating = async (value: number) => {
@@ -199,7 +199,7 @@ function StarRating({
       const remaining = Math.max(0, userReadCount - userRatedUniqueCount);
       alert(
         remaining > 0
-          ? `You have ${remaining} rating credits left. Read a story or use a remaining credit to rate.`
+          ? `You have ${remaining} rating credit(s) left. Read a story or use a remaining credit to rate.`
           : 'You’ve used all your rating credits. Read more stories to unlock more ratings.'
       );
       return;
@@ -255,22 +255,45 @@ function StarRating({
 
   const stars = [1,2,3,4,5];
 
+  const tip = !allowedToRate
+    ? (hasReadThisStory
+        ? ''
+        : (userRatedUniqueCount < userReadCount
+           ? `You have ${userReadCount - userRatedUniqueCount} rating credit(s) left`
+           : 'Read more stories to unlock more ratings'))
+    : '';
+
   return (
-    <div className={`flex flex-col items-center gap-1 ${!allowedToRate ? 'opacity-60' : ''}`}>
-      <div className={`flex ${saving ? 'opacity-70 pointer-events-none' : ''}`}>
+    <div className="relative group flex flex-col items-center gap-1">
+      <div
+        className={`flex ${saving ? 'opacity-70 pointer-events-none' : ''} ${!allowedToRate ? 'opacity-60' : ''}`}
+        aria-disabled={!allowedToRate}
+        title={tip}
+      >
         {stars.map((s) => {
           const active = hoverValue ? s <= hoverValue : s <= (userRating ?? 0);
           return (
-            <Star
+            <span
               key={s}
-              filled={active}
-              onClick={() => handleSetRating(s)}
-              onMouseEnter={() => setHoverValue(s)}
-              onMouseLeave={() => setHoverValue(null)}
-            />
+              className={`${!allowedToRate ? 'pointer-events-none' : 'cursor-pointer'}`}
+            >
+              <Star
+                filled={active}
+                onClick={() => handleSetRating(s)}
+                onMouseEnter={() => setHoverValue(s)}
+                onMouseLeave={() => setHoverValue(null)}
+              />
+            </span>
           );
         })}
       </div>
+
+      {!allowedToRate && tip && (
+        <div className="absolute -bottom-8 w-max max-w-[220px] text-[11px] px-2 py-1 rounded bg-black/80 text-white opacity-0 group-hover:opacity-100 transition pointer-events-none">
+          {tip}
+        </div>
+      )}
+
       <p className="text-[11px] text-[#8FA0AF]">{displayAverage}</p>
     </div>
   );
@@ -341,11 +364,11 @@ const CatalogPage: React.FC = () => {
   const [userRatings, setUserRatings] = useState<Record<string, number | null>>({});
   const [userFavorites, setUserFavorites] = useState<Record<string, boolean>>({});
 
-  // NEW filters
+  // Extra filters
   const [storyTypeFilter, setStoryTypeFilter] = useState<'all'|'short'|'novela'|'campaign'>('all');
   const [planFilter, setPlanFilter] = useState<'all'|'free'|'paid'>('all');
 
-  // NEW anti-abuse tracking
+  // Anti-abuse tracking
   const [userReadsSet, setUserReadsSet] = useState<Record<string, true>>({});
   const [userRatedSet, setUserRatedSet] = useState<Record<string, true>>({});
 
@@ -362,7 +385,7 @@ const CatalogPage: React.FC = () => {
     setDisplayedStories(stories);
   }, [data]);
 
-  // Live subscriptions for user-scoped reads & ratings mirrors + favorites + per-story ratings
+  // Subscriptions for favorites, reads, user-rating mirrors
   useEffect(() => {
     if (!user?.uid) {
       setUserRatings({});
@@ -372,7 +395,6 @@ const CatalogPage: React.FC = () => {
       return;
     }
 
-    // Favorites
     const unsubFav = onSnapshot(
       collection(db, 'users', user.uid, 'favorites'),
       (snap) => {
@@ -383,7 +405,6 @@ const CatalogPage: React.FC = () => {
       (err) => console.error('[favorites onSnapshot] error:', err?.code || err, err)
     );
 
-    // Reads mirror
     const unsubReads = onSnapshot(
       collection(db, 'users', user.uid, 'reads'),
       (snap) => {
@@ -394,7 +415,6 @@ const CatalogPage: React.FC = () => {
       (err) => console.error('[reads onSnapshot] error:', err?.code || err, err)
     );
 
-    // Ratings mirror (user-level unique rated stories)
     const unsubUserRatingsMirror = onSnapshot(
       collection(db, 'users', user.uid, 'ratings'),
       (snap) => {
@@ -406,13 +426,12 @@ const CatalogPage: React.FC = () => {
           userRatingsVal[d.id] = typeof r === 'number' ? r : null;
         });
         setUserRatedSet(setMap);
-        // Also hydrate visible per-story initial values
         setUserRatings((prev) => ({ ...prev, ...userRatingsVal }));
       },
       (err) => console.error('[user ratings mirror onSnapshot] error:', err?.code || err, err)
     );
 
-    // Initial per-story rating fetch for any stories without mirror (backfill)
+    // Backfill per-story rating for any without mirror doc
     (async () => {
       const list = data ?? [];
       const map: Record<string, number | null> = {};
@@ -425,9 +444,7 @@ const CatalogPage: React.FC = () => {
             if (rSnap.exists()) {
               map[s.id] = (rSnap.data() as any)?.rating ?? null;
             }
-          } catch {
-            /* ignore */
-          }
+          } catch { /* ignore */ }
         })
       );
       if (Object.keys(map).length) setUserRatings((prev) => ({ ...map, ...prev }));
@@ -541,7 +558,7 @@ const CatalogPage: React.FC = () => {
     }
   };
 
-  /** Log a "read" entry when user clicks READ in catalog (optional if eReader already logs) */
+  /** Log a "read" entry when user clicks READ (optional if eReader already logs) */
   const logRead = async (storyId: string) => {
     if (!user?.uid || !storyId) return;
     try {
@@ -783,18 +800,28 @@ const CatalogPage: React.FC = () => {
                       userRatedUniqueCount={userRatedUniqueCount}
                       hasReadThisStory={hasReadThis}
                       hasRatedThisStory={hasRatedThis}
-                      onRated={() => {/* parent state mirrors auto-sync via onSnapshot */}}
+                      onRated={() => {/* mirrors auto-sync via onSnapshot */}}
                     />
                   </div>
 
                   {/* Read */}
-                  <Link
-                    href={readHref}
-                    onClick={() => logRead(story.id!)}
-                    className="mt-3 font-['Lato'] bg-[#BFA071] text-[#1A2533] py-2.5 px-6 rounded-md text-base font-bold uppercase tracking-wide inline-block transition-colors duration-300 hover:bg-[#E0C9A0] z-20 relative"
-                  >
-                    READ
-                  </Link>
+                  <div className="mt-3 relative inline-block">
+                    {!hasReadThis && (
+                      <span
+                        className="absolute -top-2 -right-2 z-30 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500 text-white shadow"
+                        title="Reading logs a credit so you can rate more"
+                      >
+                        Earn credit
+                      </span>
+                    )}
+                    <Link
+                      href={readHref}
+                      onClick={() => logRead(story.id!)}
+                      className="font-['Lato'] bg-[#BFA071] text-[#1A2533] py-2.5 px-6 rounded-md text-base font-bold uppercase tracking-wide inline-block transition-colors duration-300 hover:bg-[#E0C9A0] z-20 relative"
+                    >
+                      READ
+                    </Link>
+                  </div>
                 </div>
               );
             })

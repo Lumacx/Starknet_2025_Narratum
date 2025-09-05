@@ -87,7 +87,7 @@ export default function EReaderPage() {
   const backParam = params.get('back') || params.get('backHref') || '';
 
   const backHref = useMemo(
-    () => backParam || (storyId ? `/create/scenes?storyId=${encodeURIComponent(storyId)}` : '/'),
+    () => backParam || (storyId ? `/create/scenes?storyId=${encodeURIComponent(storyId)}` : '/discover'),
     [backParam, storyId]
   );
 
@@ -132,7 +132,10 @@ export default function EReaderPage() {
           <p className="text-sm mb-3">{error}</p>
           <button
             className="px-4 py-2 rounded-md bg-[#3D4F60] text-white"
-            onClick={() => router.push(backHref)}
+            onClick={() => {
+              router.push(backHref);
+              setTimeout(() => window.location.reload(), 100);
+            }}
           >
             ← Back
           </button>
@@ -146,7 +149,10 @@ export default function EReaderPage() {
     <div className="w-screen min-h-screen">
       <StoryReader
         story={story}
-        onBack={() => router.push(backHref || '/discover')}
+        onBack={() => {
+          router.push(backHref || '/discover');
+          setTimeout(() => window.location.reload(), 100);
+        }}
       />
     </div>
   );
