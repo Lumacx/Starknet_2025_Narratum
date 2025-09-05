@@ -25,6 +25,22 @@ const GENRE_OPTIONS = [
   'Fantasy','Sci-Fi','Mystery','Horror','Romance','Adventure','Children','Comedy','Drama','Action','Other'
 ] as const;
 
+// Simple language list (codes -> label)
+const LANGUAGE_OPTIONS: { code: string; label: string }[] = [
+  { code: 'all', label: 'All Languages' },
+  { code: 'en', label: 'English' },
+  { code: 'es', label: 'Spanish' },
+  { code: 'pt', label: 'Portuguese' },
+  { code: 'fr', label: 'French' },
+  { code: 'de', label: 'German' },
+  { code: 'it', label: 'Italian' },
+  { code: 'ja', label: 'Japanese' },
+  { code: 'ko', label: 'Korean' },
+  { code: 'zh', label: 'Chinese' },
+  { code: 'hi', label: 'Hindi' },
+  { code: 'ar', label: 'Arabic' },
+];
+
 type StoryTypeKey = 'short' | 'novela' | 'campaign' | 'unknown';
 type PlanKey = 'free' | 'paid' | 'unknown';
 
@@ -64,6 +80,25 @@ function getPlan(s: Partial<Story> & Record<string, any>): PlanKey {
   return 'unknown';
 }
 
+/** Pick a canonical language code from various fields */
+function getLanguageCode(s: Partial<Story> & Record<string, any>): string | undefined {
+  // Common places it may live
+  const cand = [s.language, s.lang, s.metadata?.language, s.metadata?.lang, s.locale]
+    .map((v) => norm(v))
+    .find(Boolean);
+  if (!cand) return undefined;
+
+  // If it's already a 2-letter code we keep it
+  if (/^[a-z]{2}$/.test(cand)) return cand;
+
+  // Map common words -> codes
+  const map: Record<string, string> = {
+    english: 'en', spanish: 'es', espanol: 'es', portuguese: 'pt', french: 'fr', german: 'de',
+    italian: 'it', japanese: 'ja', korean: 'ko', chinese: 'zh', hindi: 'hi', arabic: 'ar'
+  };
+  return map[cand] || undefined;
+}
+
 /** Visual config for types */
 const TYPE_STYLES: Record<StoryTypeKey, {
   border: string;
@@ -93,7 +128,7 @@ const TYPE_STYLES: Record<StoryTypeKey, {
     border: 'border-amber-400',
     glow: 'shadow-[0_0_0_1px_rgba(251,191,36,0.35),0_6px_24px_rgba(251,191,36,0.25)]',
     badgeBg: 'bg-amber-400/90',
-    badgeText: 'text-[#1A2533]',
+    badgeText: 'text-white',
     label: 'Campaign',
     Icon: Flag,
   },
@@ -185,7 +220,7 @@ function StarRating({
     if (!user?.uid) return false;
     if (hasRatedThisStory) return true; // updating is allowed
     if (hasReadThisStory) return true;  // rating what you read is always OK
-    return userRatedUniqueCount < userReadCount; // otherwise need a credit
+    return userRatedUniqueCount < userReadCount; // otherwise need a star
   }, [user?.uid, hasRatedThisStory, hasReadThisStory, userRatedUniqueCount, userReadCount]);
 
   const handleSetRating = async (value: number) => {
@@ -199,8 +234,8 @@ function StarRating({
       const remaining = Math.max(0, userReadCount - userRatedUniqueCount);
       alert(
         remaining > 0
-          ? `You have ${remaining} rating credit(s) left. Read a story or use a remaining credit to rate.`
-          : 'You’ve used all your rating credits. Read more stories to unlock more ratings.'
+          ? `You have ${remaining} rating star(s) left. Read a story or use a remaining star to rate.`
+          : 'You’ve used all your rating stars. Read more stories to unlock more ratings.'
       );
       return;
     }
@@ -259,7 +294,7 @@ function StarRating({
     ? (hasReadThisStory
         ? ''
         : (userRatedUniqueCount < userReadCount
-           ? `You have ${userReadCount - userRatedUniqueCount} rating credit(s) left`
+           ? `You have ${userReadCount - userRatedUniqueCount} rating star(s) left`
            : 'Read more stories to unlock more ratings'))
     : '';
 
@@ -288,8 +323,9 @@ function StarRating({
         })}
       </div>
 
+      {/* Quick hover message now ABOVE the stars */}
       {!allowedToRate && tip && (
-        <div className="absolute -bottom-8 w-max max-w-[220px] text-[11px] px-2 py-1 rounded bg-black/80 text-white opacity-0 group-hover:opacity-100 transition pointer-events-none">
+        <div className="absolute -top-7 w-max max-w-[240px] text-[11px] px-2 py-1 rounded bg-black/80 text-white opacity-0 group-hover:opacity-100 transition pointer-events-none z-30">
           {tip}
         </div>
       )}
@@ -367,6 +403,7 @@ const CatalogPage: React.FC = () => {
   // Extra filters
   const [storyTypeFilter, setStoryTypeFilter] = useState<'all'|'short'|'novela'|'campaign'>('all');
   const [planFilter, setPlanFilter] = useState<'all'|'free'|'paid'>('all');
+  const [languageFilter, setLanguageFilter] = useState<string>('all');
 
   // Anti-abuse tracking
   const [userReadsSet, setUserReadsSet] = useState<Record<string, true>>({});
@@ -490,30 +527,39 @@ const CatalogPage: React.FC = () => {
       filtered = filtered.filter(s => getPlan(s) === planFilter);
     }
 
+    if (languageFilter !== 'all') {
+      filtered = filtered.filter((s) => getLanguageCode(s) === languageFilter);
+    }
+
     return filtered;
   };
 
   useEffect(() => {
     setDisplayedStories(applyFiltersAndSearch(allStories));
-  }, [activeFilter, selectedGenres, storyTypeFilter, planFilter, allStories]);
+  }, [activeFilter, selectedGenres, storyTypeFilter, planFilter, languageFilter, allStories]);
 
   useEffect(() => {
     if (
       activeFilter !== 'all' ||
       selectedGenres.length > 0 ||
       storyTypeFilter !== 'all' ||
-      planFilter !== 'all'
+      planFilter !== 'all' ||
+      languageFilter !== 'all'
     ) {
       const parts: string[] = [];
       if (activeFilter !== 'all') parts.push(`Filter: ${activeFilter}`);
       if (selectedGenres.length > 0) parts.push(`Genres: ${selectedGenres.join(', ')}`);
       if (storyTypeFilter !== 'all') parts.push(`Type: ${storyTypeFilter}`);
       if (planFilter !== 'all') parts.push(`Plan: ${planFilter}`);
+      if (languageFilter !== 'all') {
+        const label = LANGUAGE_OPTIONS.find(l => l.code === languageFilter)?.label || languageFilter;
+        parts.push(`Language: ${label}`);
+      }
       setSearchMessage(parts.join(' • '));
     } else if (!searchQuery.trim()) {
       setSearchMessage('');
     }
-  }, [activeFilter, selectedGenres, storyTypeFilter, planFilter, searchQuery]);
+  }, [activeFilter, selectedGenres, storyTypeFilter, planFilter, languageFilter, searchQuery]);
 
   const handleFilterClick = (filter: 'all'|'popular'|'recent') => {
     setActiveFilter(filter);
@@ -600,14 +646,14 @@ const CatalogPage: React.FC = () => {
             CATALOG OF STORIES
           </h2>
 
-          {/* Legend */}
+          {/* Legend with dynamic text color: light -> #3A4B5C, dark -> white */}
           <div className="mt-4 flex flex-wrap gap-3 justify-center text-sm">
             {(['short','novela','campaign'] as StoryTypeKey[]).map((k) => {
               const Ico = TYPE_STYLES[k].Icon;
               return (
                 <span
                   key={k}
-                  className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border ${TYPE_STYLES[k].border} ${TYPE_STYLES[k].badgeText}`}
+                  className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border ${TYPE_STYLES[k].border} text-[#3A4B5C] dark:text-white`}
                 >
                   <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full ${TYPE_STYLES[k].badgeBg}`}>
                     <Ico size={14}/>
@@ -616,13 +662,13 @@ const CatalogPage: React.FC = () => {
                 </span>
               );
             })}
-            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-rose-500 text-white">
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-rose-500 text-[#3A4B5C] dark:text-white">
               <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-rose-500">
                 <Crown size={14}/>
               </span>
               Premium
             </span>
-            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-slate-600 text-white">
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-slate-600 text-[#3A4B5C] dark:text-white">
               <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-700">
                 <Circle size={12}/>
               </span>
@@ -631,8 +677,8 @@ const CatalogPage: React.FC = () => {
           </div>
         </header>
 
-        {/* Top filters */}
-        <nav className="filter-nav flex justify-center gap-6 md:gap-8 mb-6 flex-wrap">
+        {/* ---------------------- FILTERS (Row 1) ---------------------- */}
+        <nav className="flex flex-wrap items-center justify-center gap-4 md:gap-6 mb-4">
           {(['all', 'popular', 'recent'] as const).map(filter => (
             <button
               key={filter}
@@ -647,6 +693,28 @@ const CatalogPage: React.FC = () => {
             </button>
           ))}
 
+          {/* Language (to the left of Genres) */}
+          <select
+            value={languageFilter}
+            onChange={(e) => setLanguageFilter(e.target.value)}
+            className="px-3 py-2 rounded-lg border-2 border-[#4A5C6E] bg-[#233446] text-[#E0C9A0] focus:outline-none"
+            title="Filter by Language"
+          >
+            {LANGUAGE_OPTIONS.map(l => (
+              <option key={l.code} value={l.code}>{l.label}</option>
+            ))}
+          </select>
+
+          {/* Genres */}
+          <GenreMultiSelect
+            genresList={GENRE_OPTIONS as unknown as string[]}
+            selectedGenres={selectedGenres}
+            onSelectedGenresChange={setSelectedGenres}
+          />
+        </nav>
+
+        {/* ---------------------- FILTERS (Row 2) ---------------------- */}
+        <div className="flex flex-wrap items-center justify-center gap-3 md:gap-4 mb-8 w-full">
           {/* Story Type */}
           <select
             value={storyTypeFilter}
@@ -672,29 +740,23 @@ const CatalogPage: React.FC = () => {
             <option value="paid">Premium</option>
           </select>
 
-          <GenreMultiSelect
-            genresList={GENRE_OPTIONS as unknown as string[]}
-            selectedGenres={selectedGenres}
-            onSelectedGenresChange={setSelectedGenres}
-          />
-        </nav>
-
-        {/* Search */}
-        <div className="flex justify-center items-center gap-3 mb-8 w-full max-w-md mx-auto">
-          <input
-            type="text"
-            placeholder="Search stories semantically..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="flex-grow p-3 rounded-lg border-2 border-[#4A5C6E] bg-[#233446] text-[#E0C9A0] placeholder-[#8FA0AF] focus:outline-none focus:border-[#BFA071]"
-          />
-          <button
-            onClick={handleSemanticSearch}
-            disabled={isLoading}
-            className="bg-[#BFA071] text-[#1A2533] py-3 px-6 rounded-lg font-bold text-sm uppercase tracking-wide transition-colors duration-300 hover:bg-[#E0C9A0] disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? 'Searching...' : 'Search'}
-          </button>
+          {/* Search bar + button (aligned on the same row) */}
+          <div className="flex items-center gap-3 w-full max-w-xl">
+            <input
+              type="text"
+              placeholder="Search stories semantically..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="flex-grow p-3 rounded-lg border-2 border-[#4A5C6E] bg-[#233446] text-[#E0C9A0] placeholder-[#8FA0AF] focus:outline-none focus:border-[#BFA071]"
+            />
+            <button
+              onClick={handleSemanticSearch}
+              disabled={isLoading}
+              className="bg-[#BFA071] text-[#1A2533] py-3 px-6 rounded-lg font-bold text-sm uppercase tracking-wide transition-colors duration-300 hover:bg-[#E0C9A0] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? 'Searching...' : 'Search'}
+            </button>
+          </div>
         </div>
 
         {searchMessage && (
@@ -809,9 +871,9 @@ const CatalogPage: React.FC = () => {
                     {!hasReadThis && (
                       <span
                         className="absolute -top-2 -right-2 z-30 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500 text-white shadow"
-                        title="Reading logs a credit so you can rate more"
+                        title="Reading logs a star so you can rate more"
                       >
-                        Earn credit
+                        Earn Stars
                       </span>
                     )}
                     <Link

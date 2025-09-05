@@ -16,9 +16,21 @@ service cloud.firestore {
       return isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
     }
 
-    // “public enough” if ANY is true (covers status/visibility/legacy flag)
+    // Allow either explicit boolean "published", a "publishedAt" timestamp in the past,
+    // or your legacy flags (status/visibility/isPublic).
+    function isPublishedBool(d) {
+      return d.published == true;
+    }
+
+    function isPublishedAtNow(d) {
+      return (d.publishedAt is timestamp) && d.publishedAt <= request.time;
+    }
+
+    // “public enough” if ANY is true (covers all schemas you’ve used)
     function isPublicishData(d) {
-      return (d.status == "published") ||
+      return isPublishedBool(d) ||
+             isPublishedAtNow(d) ||
+             (d.status == "published") ||
              (d.visibility == "public") ||
              (d.isPublic == true);
     }
@@ -55,7 +67,7 @@ service cloud.firestore {
        USERS TREE (path-scoped; no exige ownerUid en el doc)
        ============================================================ */
     match /users/{uid} {
-      // Perfil del usuario
+      // Perfil del usuario + subcolecciones salvo overrides
       allow read, write: if isSignedIn() && request.auth.uid == uid;
 
       // _meta (keepalive/flags)
@@ -70,6 +82,16 @@ service cloud.firestore {
 
       // Favoritos (usado en discover/profile)
       match /favorites/{favId} {
+        allow read, write: if isSignedIn() && request.auth.uid == uid;
+      }
+
+      // Lecturas (para “Earn Stars”)
+      match /reads/{storyId} {
+        allow read, write: if isSignedIn() && request.auth.uid == uid;
+      }
+
+      // Ratings mirror (tu copia por usuario)
+      match /ratings/{storyId} {
         allow read, write: if isSignedIn() && request.auth.uid == uid;
       }
 
@@ -94,8 +116,8 @@ service cloud.firestore {
       // Crear: debe venir con ownerUid == caller
       allow create: if isOwnerCreate();
 
-      // Leer: público (ANY of the flags) o dueño
-      // (Includes reading `premium.convaiAgentId` and any other fields.)
+      // Leer: público (ANY of published/publishedAt/status/visibility/isPublic) o dueño
+      // (Incluye leer premium.convaiAgentId y otros campos.)
       allow read: if isPublicStory() || isOwnerDoc();
 
       // Actualizar/Eliminar: sólo dueño + congelar ownerUid
@@ -106,7 +128,7 @@ service cloud.firestore {
 
       // Ratings: clave = uid del rater
       match /ratings/{raterUid} {
-        // Leer: si story es público o caller es dueño del story o caller lee su propio rating
+        // Leer: si story es público/owner o si el caller está leyendo su propio rating
         allow read: if canReadStoryById(storyId)
                  || (isSignedIn() && request.auth.uid == raterUid);
 
@@ -122,7 +144,7 @@ service cloud.firestore {
         // Crear: user autenticado; guarda authorId y congélalo
         allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
 
-        // Update/Delete: sólo el autor del comentario
+        // Update/Delete: sólo el autor del comentario y mantener authorId
         allow update, delete: if isSignedIn()
           && resource.data.authorId == request.auth.uid
           && request.resource.data.authorId == resource.data.authorId;
