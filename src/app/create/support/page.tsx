@@ -169,6 +169,8 @@ export default function SupportPage() {
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]); // URLs of selected locations
   const [composerPrompt, setComposerPrompt] = useState('');
   const [isComposing, setIsComposing] = useState(false);
+  // ▼▼ NEW: Add state for the model flag ▼▼
+  const [lastModelUsed, setLastModelUsed] = useState<string>('');
   // ▲▲ END NEW STATE ▲▲
 
   // NEW state for managing generation logic which now lives here
@@ -190,6 +192,7 @@ export default function SupportPage() {
     setDescError('');
     setDescLoading(false);
     setGeneratedImageUrlForChild(''); // Also reset the generated image
+    setLastModelUsed(''); // <-- ADD THIS LINE
   }, [active, storyId]);
 
   useEffect(() => { if (!TABS.some((t) => t.key === active)) setActive('characters'); }, [active]);
@@ -221,7 +224,11 @@ export default function SupportPage() {
       const res = await fetch('/api/generate-image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, negativePrompt, count: 1 }) });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'AI image generation failed');
-      const { dataUrl } = extractImageAndModel(json);
+
+       // MODIFIED: Capture modelUsed here
+      const { dataUrl, modelUsed } = extractImageAndModel(json);
+      setLastModelUsed(modelUsed || 'Unknown'); // <-- ADD THIS LINE
+
       if (!dataUrl) throw new Error('No image was returned by the generator.');
       setGeneratedImageUrlForChild(dataUrl);
       handleSaved({ url: dataUrl, contentType: 'image/png' });
@@ -271,7 +278,10 @@ export default function SupportPage() {
           const json = await res.json();
           if (!res.ok) throw new Error(json?.error || 'AI scene generation failed');
 
+          // MODIFIED: Capture modelUsed here
           const { dataUrl, modelUsed } = extractImageAndModel(json);
+          setLastModelUsed(modelUsed || 'Unknown'); // <-- ADD THIS LINE
+
           if (!dataUrl) throw new Error('No image was returned by the generator.');
 
           console.log(`Scene generated with model: ${modelUsed}`);
@@ -344,7 +354,15 @@ export default function SupportPage() {
                   : kind === 'audio' ? <audio controls src={displayUrl} className="w-11/12" />
                   : kind === 'video' ? <video controls src={displayUrl} className="absolute inset-0 w-full h-full object-contain" />
                   : <div className="text-xs opacity-70">Unsupported media</div>}
-                </div>
+                
+                    {/* ▼▼ NEW: The model flag overlay ▼▼ */}
+                      {displayUrl && lastModelUsed && (
+                      <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs font-mono rounded-md px-2 py-1 backdrop-blur-sm shadow-lg">
+                      Model: {lastModelUsed}
+                      </div>
+                    )}
+                  {/* ▲▲ END NEW: The model flag overlay ▲▲ */}
+                  </div>
               </div>
               </div>
               {isImageTab(activeTab.key) && (
