@@ -1,6 +1,6 @@
 ## Example Structure for Character Creation Prompt:
 
-```
+```prompt
 **[Character_Race] [Character_Class]**, [Character_Gender], [Age_Description], [Physical_Description_and_Key_Features], [Clothing_and_Armor_Description], [Weapon_or_Equipment_Description], **in an epic, dynamic position**, **split screen composition**, **left half: highly detailed close-up portrait of the face**, **right half: full body action shot of the character**, on a **clean white background**, intricate details, fantasy art, cinematic lighting --ar 16:9 [--no [Negative_Elements]] [--c [Chaos_Value]] [--p [Personalization_Style]]
 ```
 

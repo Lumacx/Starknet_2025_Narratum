@@ -1,6 +1,6 @@
 ## Example Structure for Location Generation Prompt:
 
-```
+```prompt
 **[Location_Type]** in [Time_of_Day/Weather_Description], [Overall_Mood_or_Atmosphere], **[Key_Architectural_or_Environmental_Features]**, [Specific_Details_like_Flora_Fauna_Objects], [Lighting_Description], **epic wide shot**, **cinematic view**, intricate details, fantasy art, photorealistic --ar 16:9 [--no [Negative_Elements]] [--c [Chaos_Value]] [--p [Personalization_Style]]
 ```
 

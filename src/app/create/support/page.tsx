@@ -418,28 +418,41 @@ export default function SupportPage() {
               )}
               
                {/* --- 3. UPLOAD / GENERATE COMPONENT --- */}
-              <div className="uploader-scope">
-                <div className="flex items-center gap-3 text-xs mb-2">
-                  <span className="opacity-70">Generation Tips:</span>
-                  <div className="inline-flex items-center gap-1">
-                    <span className="opacity-60">#1</span>
-                    {/* Centered modal popovers; fresh markdown fetch */}
-                    <InfoPopover
-                      title={active === 'locations' ? 'Location Template' : 'Character Template'}
-                      docHref={active === 'locations'
-                        ? '/info_tips/Location Generation Template.md'
-                        : '/info_tips/Character Creation template.md'}
-                      noCache
-                    />
-                  </div>
-                  <div className="inline-flex items-center gap-1">
+                    <div className="uploader-scope">
+                      <div className="flex items-center gap-3 text-xs mb-2">
+                        <span className="opacity-70">Generation Tips:</span>
+                        <div className="inline-flex items-center gap-1">
+                          <span className="opacity-60">#1</span>
+                          <InfoPopover
+                            title={active === 'locations' ? 'Location Template' : 'Character Template'}
+                            docHref={active === 'locations'
+                              ? '/info_tips/Location Generation Template.md'
+                              : '/info_tips/Character Creation template.md'}
+                            noCache
+                            onInsertPrompt={(text) => setComposerPrompt(text)}
+                            insertLabel="Insert to Scene Composer"
+                          />
+                        </div>
+                        <div className="inline-flex items-center gap-1">
+                          <span className="opacity-60">#2</span>
+                          <InfoPopover
+                            title="Pro Tips for Prompting Images"
+                            docHref="/info_tips/Pro Tips for Prompting Images.md"
+                            noCache
+                            onInsertPrompt={(text) => setComposerPrompt(text)}
+                            insertLabel="Insert to Scene Composer"
+                          />
+                        </div>
+                    <div className="inline-flex items-center gap-1">
                     <span className="opacity-60">#2</span>
                     <InfoPopover
                       title="Pro Tips for Prompting Images"
                       docHref="/info_tips/Pro Tips for Prompting Images.md"
                       noCache
+                      onInsertPrompt={(text) => setComposerPrompt(text)}
+                      insertLabel="Insert to Scene Composer"
                     />
-                  </div>
+                    </div>
                 </div>
                 <UploadImageReference
                   mode="uploaderOnly"
@@ -475,6 +488,7 @@ export default function SupportPage() {
                         ))}
                       </div>
                       <textarea
+                        id="composer-box"  // <-- add this
                         className="w-full p-2 border rounded dark:bg-white dark:text-[#3D4F60]"
                         rows={3}
                         placeholder="e.g., Make the character stand in front of the castle at sunset..."
