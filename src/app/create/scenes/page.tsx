@@ -1039,8 +1039,9 @@ export default function ScenesPage() {
                       onChange={e => setVoice(e.target.value)}
                     >
                       <option value="Kore">Nuna (Female, Firm)</option>
-                      <option value="Puck">Puck (Male, Upbeat)</option>
-                      <option value="Zephyr">Zephyr (Female, Youthful)</option>
+                      <option value="Puck">Scythe (Male, Upbeat)</option>
+                      <option value="Zephyr">Belle (Female, Youthful)</option>
+                      <option value="en-IN-Chirp3-HD-Achird">Raj (Male, Scholar)</option>
                       <option value="Leda">Juniper (Female, Elegant)</option>
                       <option value="Sadachbia">Argus (Male, Mysterious)</option>
                     </select>

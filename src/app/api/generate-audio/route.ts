@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 type Body = {
   text: string;
-  voice?: 'Kore' | 'Puck' | 'Zephyr' | 'Leda' | 'Sadachbia' | string;
+  voice?: 'Kore' | 'Puck' | 'Zephyr' | 'Achird' |'Leda' | 'Sadachbia' | string;
   tone?: string;        // e.g. 'a cheerful', 'an excited'
   language?: string;    // 'en' | 'es' | ...
   model?: string;       // default below
@@ -15,7 +15,7 @@ type Body = {
 };
 
 const DEFAULT_MODEL = 'gemini-2.5-flash-preview-tts';
-const VOICES = new Set(['Kore', 'Puck', 'Zephyr', 'Leda', 'Sadachbia']);
+const VOICES = new Set(['Kore', 'Puck', 'Zephyr', 'Achird', 'Leda', 'Sadachbia']);
 
 /* ------------------------- Helpers PCM -> WAV ------------------------- */
 function pcm16ToWav(pcm: Uint8Array, sampleRate = 24000, channels = 1) {
