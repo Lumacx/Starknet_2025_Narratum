@@ -200,7 +200,6 @@ export default function SupportPage() {
   const activeTab = useMemo(() => TABS.find((t) => t.key === active)!, [active]);
   const kind = inferKind(displayUrl, displayContentType);
   const canDescribeSelected = isImageTab(activeTab.key) && kind === 'image' && !!displayUrl;
-
   const memoizedPromptContext = useMemo(() => ({ title: context.title, genres: context.genres, synopsis: context.synopsis, language: context.language }), [context.title, context.genres, context.synopsis, context.language]);
 
   const handleSaved = useCallback((item: { url?: string; contentType?: string } | undefined) => {
@@ -316,6 +315,8 @@ export default function SupportPage() {
     <div className="min-h-screen p-6 bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26] text-[#3A4B5C] dark:text-[#E0C9A0] font-sans">
       <div className="max-w-6xl mx-auto bg-[#F3EADF] border-2 border-[#CBBBA0] text-[#3A4B5C] dark:bg-[#2A3645] dark:border-[#4B5A6B] dark:text-[#E0C9A0] rounded-xl shadow-2xl">
         <style jsx global>{`.dark .uploader-scope input[type="text"], .dark .uploader-scope textarea { color: #3D4F60 !important; background: #ffffff !important; }`}</style>
+        
+        {/* --- HEADER --- */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-6 border-b-2 border-[#3D4F60]/10 dark:border-[#4B5A6B]/20">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold">Build References & AI Support</h1>
@@ -327,6 +328,8 @@ export default function SupportPage() {
             <Link className="underline text-sm" href="/create/scenes">Next: AI Story eReader →</Link>
           </div>
         </div>
+        
+        {/* --- TABS --- */}
         <div className="px-4 sm:px-6 pt-4">
           <div role="tablist" aria-label="Reference categories" className="flex flex-wrap gap-2 sm:gap-3">
             {TABS.map(({ key, label, icon: Icon }) => (
@@ -336,6 +339,10 @@ export default function SupportPage() {
             ))}
           </div>
         </div>
+
+        {/* ======================================================================= */}
+        {/* ===================== MAIN CONTENT SECTION ============================ */}
+        {/* ======================================================================= */}
         <section id={`panel-${activeTab.key}`} role="tabpanel" className="p-4 sm:p-6">
           <div className="flex items-start gap-3 mb-4">
             <div className="shrink-0 mt-1">{React.createElement(activeTab.icon, { className: "text-[#3D4F60] dark:text-[#F0D1B0]" })}</div>
@@ -344,8 +351,16 @@ export default function SupportPage() {
               <p className="text-sm text-[#3A4B5C]/80 dark:text-[#E0C9A0]/80">{activeTab.blurb}</p>
             </div>
           </div>
+          
+          {/* --- CORRECTED TWO-COLUMN LAYOUT GRID --- */}
           <div className="grid md:grid-cols-2 gap-6">
-            <div className="space-y-4">
+
+            {/* ---------------------------------------------------------------- */}
+            {/* ------------------------- LEFT COLUMN -------------------------- */}
+            {/* ---------------------------------------------------------------- */}
+            <div className="flex flex-col gap-6">
+            
+              {/* --- 1. DISPLAY COMPONENT --- */}
               <div>
                 <h3 className="text-sm font-semibold mb-2">Display</h3>
                 <div className="relative w-full bg-white dark:bg-[#0f1620] border rounded-lg overflow-hidden aspect-square grid place-items-center">
@@ -354,17 +369,16 @@ export default function SupportPage() {
                   : kind === 'audio' ? <audio controls src={displayUrl} className="w-11/12" />
                   : kind === 'video' ? <video controls src={displayUrl} className="absolute inset-0 w-full h-full object-contain" />
                   : <div className="text-xs opacity-70">Unsupported media</div>}
-                
-                    {/* ▼▼ NEW: The model flag overlay ▼▼ */}
-                      {displayUrl && lastModelUsed && (
-                      <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs font-mono rounded-md px-2 py-1 backdrop-blur-sm shadow-lg">
+                  
+                  {displayUrl && lastModelUsed && (
+                    <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs font-mono rounded-md px-2 py-1 backdrop-blur-sm shadow-lg">
                       Model: {lastModelUsed}
-                      </div>
-                    )}
-                  {/* ▲▲ END NEW: The model flag overlay ▲▲ */}
-                  </div>
+                    </div>
+                  )}
+                </div>
               </div>
-              </div>
+
+              {/* --- 2. AI DESCRIBE COMPONENT --- */}
               {isImageTab(activeTab.key) && (
                 <div className="rounded-xl border-2 border-[#3D4F60] dark:border-[#4B5A6B] bg-[#F3EADF] dark:bg-[#2A3645] p-4">
                   <h3 className="font-semibold mb-2">AI Describe — Selected Image</h3>
@@ -387,40 +401,19 @@ export default function SupportPage() {
                 </div>
               )}
               
-               {/* ▼▼ NEW: quick tips row that mirrors your #1 and #2 icons ▼▼ */}
-               {isImageTab(activeTab.key) && (
-                <div className="flex items-center gap-3 text-xs -mb-2">
-                  <span className="opacity-70">Tips for this section:</span>
-                  {/* #1 -> Character/Location template depending on tab */}
-                  <div className="inline-flex items-center gap-1">
-                    <span className="opacity-60">#1</span>
-                    <InfoPopover
-                      title={active === 'locations' ? 'Location Template' : 'Character Template'}
-                      docHref={tipDocForOne}
-                      align="left"
-                    />
-                  </div>
-                  {/* #2 -> Pro Tips for Prompting Images (always) */}
-                  <div className="inline-flex items-center gap-1">
-                    <span className="opacity-60">#2</span>
-                    <InfoPopover
-                      title="Pro Tips for Prompting Images"
-                      docHref={tipDocForTwo}
-                      align="left"
-                    />
-                  </div>
-                </div>
-              )}
-              {/* ▲▲ END tips row ▲▲ */}
-
+              {/* --- 3. UPLOAD / GENERATE COMPONENT --- */}
               <div className="uploader-scope">
+                <div className="flex items-center gap-3 text-xs mb-2">
+                   <span className="opacity-70">Generation Tips:</span>
+                   <div className="inline-flex items-center gap-1"><span className="opacity-60">#1</span><InfoPopover title={active === 'locations' ? 'Location Template' : 'Character Template'} docHref={tipDocForOne} align="left"/></div>
+                   <div className="inline-flex items-center gap-1"><span className="opacity-60">#2</span><InfoPopover title="Pro Tips for Prompting Images" docHref={tipDocForTwo} align="left"/></div>
+                </div>
                 <UploadImageReference
                   mode="uploaderOnly"
                   variant={activeTab.variant}
                   assetCategory={activeTab.key}
                   accept={acceptByTab[activeTab.key]}
-                  showInnerDescribe={true}
-                  onOpenTemplate={() => {}}
+                  showInnerDescribe={false} // Describe is now a separate component
                   onSaved={handleSaved}
                   onGenerateRequest={handleGenerateRequest}
                   isGenerating={isGenerating}
@@ -428,77 +421,68 @@ export default function SupportPage() {
                 />
               </div>
             </div>
+            
+            {/* ----------------------------------------------------------------- */}
+            {/* ------------------------- RIGHT COLUMN -------------------------- */}
+            {/* ----------------------------------------------------------------- */}
+            <div className="flex flex-col gap-6">
 
-            {/* This is the right column of your grid */}
-            <div className="space-y-6">
-
-            {/* =================================== */}
-            {/* START: NEW SCENE COMPOSER UI      */}
-            {/* =================================== */}
-            {(selectedCharacters.length > 0 || selectedLocations.length > 0) && (
-              <div className="border-2 border-dashed border-[#E97451] rounded-xl p-4 bg-[#F3EADF] dark:bg-[#2A3645]">
-                <h3 className="font-semibold mb-3 text-lg">AI Scene Composer</h3>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {[...selectedCharacters, ...selectedLocations].map(url => (
-                    <img key={url} src={url} className="w-16 h-16 rounded object-cover border" alt="Selected Asset" />
-                  ))}
+              {/* --- 4. AI SCENE COMPOSER --- */}
+              {isImageTab(activeTab.key) && (
+                <div className="border-2 border-dashed border-[#E97451] rounded-xl p-4 bg-[#F3EADF] dark:bg-[#2A3645]">
+                  <h3 className="font-semibold mb-3 text-lg">AI Scene Composer</h3>
+                  
+                  {selectedCharacters.length === 0 && selectedLocations.length === 0 ? (
+                     <p className="text-sm text-gray-500">Select images from your gallery below to begin combining them.</p>
+                  ) : (
+                    <>
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {[...selectedCharacters, ...selectedLocations].map(url => (
+                          <img key={url} src={url} className="w-16 h-16 rounded object-cover border" alt="Selected Asset" />
+                        ))}
+                      </div>
+                      <textarea
+                        className="w-full p-2 border rounded dark:bg-white dark:text-[#3D4F60]"
+                        rows={3}
+                        placeholder="e.g., Make the character stand in front of the castle at sunset..."
+                        value={composerPrompt}
+                        onChange={(e) => setComposerPrompt(e.target.value)}
+                      />
+                      <div className="flex items-center gap-4 mt-2">
+                        <button onClick={handleSceneGeneration} disabled={isComposing || !composerPrompt.trim()} className="px-4 py-2 rounded bg-[#E97451] text-white disabled:opacity-50 flex items-center gap-2">
+                          {isComposing ? <Loader2 className="animate-spin" size={16} /> : <Wand2 size={16} />}
+                          {isComposing ? 'Generating...' : 'Generate Scene'}
+                        </button>
+                        <button onClick={() => { setSelectedCharacters([]); setSelectedLocations([]); setComposerPrompt(''); }} className="text-xs underline">
+                          Clear Selection
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
-                <textarea
-                  className="w-full p-2 border rounded dark:bg-white dark:text-[#3D4F60]"
-                  rows={3}
-                  placeholder="e.g., Make the character stand in front of the castle at sunset..."
-                  value={composerPrompt}
-                  onChange={(e) => setComposerPrompt(e.target.value)}
+              )}
+              
+              {/* --- 5. MY GALLERY --- */}
+              <div className="border-2 border-[#3D4F60] dark:border-[#4B5A6B] rounded-xl p-3 bg-white/60 dark:bg-transparent">
+                <h4 className="font-semibold mb-3">My Gallery — <span className="opacity-80">{activeTab.label}</span></h4>
+                {isImageTab(activeTab.key) && <p className="text-xs text-gray-500 mb-2">Select up to 3 characters and 2 locations to combine them.</p>}
+                {/* @ts-ignore */}
+                <UploadImageReference
+                  mode="galleryOnly"
+                  variant={activeTab.variant}
+                  assetCategory={activeTab.key}
+                  onSaved={handleSaved}
+                  selection={activeTab.key === 'characters' ? selectedCharacters : selectedLocations}
+                  onSelectionChange={activeTab.key === 'characters' ? setSelectedCharacters : setSelectedLocations}
+                  maxSelection={activeTab.key === 'characters' ? 3 : 2}
                 />
-                <div className="flex items-center gap-4 mt-2">
-                  <button
-                    onClick={handleSceneGeneration}
-                    disabled={isComposing || !composerPrompt.trim()}
-                    className="px-4 py-2 rounded bg-[#E97451] text-white disabled:opacity-50 flex items-center gap-2"
-                  >
-                    {isComposing ? <Loader2 className="animate-spin" size={16} /> : <Wand2 size={16} />}
-                    {isComposing ? 'Generating...' : 'Generate Scene'}
-                  </button>
-                  <button
-                      onClick={() => {
-                          setSelectedCharacters([]);
-                          setSelectedLocations([]);
-                          setComposerPrompt('');
-                      }}
-                      className="text-xs underline"
-                  >
-                      Clear Selection
-                  </button>
-                </div>
               </div>
-            )}
-            {/* =================================== */}
-            {/* END: NEW SCENE COMPOSER UI        */}
-            {/* =================================== */}
 
-
-            {/* =================================== */}
-            {/* START: MY GALLERY UI              */}
-            {/* =================================== */}
-            <div className="border-2 border-[#3D4F60] dark:border-[#4B5A6B] rounded-xl p-3 bg-white/60 dark:bg-transparent">
-              <h4 className="font-semibold mb-3">My Gallery — <span className="opacity-80">{activeTab.label}</span></h4>
-              <p className="text-xs text-gray-500 mb-2">Select up to 3 characters and 2 locations to combine them.</p>
-              <UploadImageReference
-                mode="galleryOnly"
-                variant={activeTab.variant}
-                assetCategory={activeTab.key}
-                onSaved={handleSaved}
-                selection={activeTab.key === 'characters' ? selectedCharacters : selectedLocations}
-                onSelectionChange={activeTab.key === 'characters' ? setSelectedCharacters : setSelectedLocations}
-                maxSelection={activeTab.key === 'characters' ? 3 : 2}
-              />
             </div>
-            {/* =================================== */}
-            {/* END: MY GALLERY UI                */}
-            {/* =================================== */}
-
-                    </div> {/* <-- THIS IS THE IMPORTANT CLOSING TAG FOR THE RIGHT COLUMN */}
+          </div>
         </section>
+
+        {/* --- FOOTER --- */}
         <div className="flex justify-end gap-3 p-6 border-t-2 border-[#3D4F60]/10 dark:border-[#4B5A6B]/20">
           <Link className="px-4 py-2 rounded-md border border-[#3D4F60] text-[#3D4F60] bg-white dark:border-[#4B5A6B] dark:text-[#E0C9A0] dark:bg-[#2A3645]" href="/create/begin">
             ← Back
@@ -507,6 +491,7 @@ export default function SupportPage() {
             Next: AI Story eReader →
           </Link>
         </div>
+        
       </div>
     </div>
   );

@@ -25,7 +25,6 @@ const GENRE_OPTIONS = [
   'Fantasy','Sci-Fi','Mystery','Horror','Romance','Adventure','Children','Comedy','Drama','Action','Other'
 ] as const;
 
-// Simple language list (codes -> label)
 const LANGUAGE_OPTIONS: { code: string; label: string }[] = [
   { code: 'all', label: 'All Languages' },
   { code: 'en', label: 'English' },
@@ -44,12 +43,19 @@ const LANGUAGE_OPTIONS: { code: string; label: string }[] = [
 type StoryTypeKey = 'short' | 'novela' | 'campaign' | 'unknown';
 type PlanKey = 'free' | 'paid' | 'unknown';
 
+/** ✅ Narrowed types used by the pills (exclude "unknown") */
+type StoryTypeSelectable = Exclude<StoryTypeKey, 'unknown'>;
+type PlanSelectable = Exclude<PlanKey, 'unknown'>;
+
+/** ✅ Constants with narrow literal unions so TS knows "unknown" can't appear */
+const TYPE_PILLS: readonly StoryTypeSelectable[] = ['short', 'novela', 'campaign'] as const;
+const PLAN_PILLS: readonly PlanSelectable[] = ['paid', 'free'] as const;
+
 /* ----------------------------- Helpers ----------------------------- */
 function norm(x?: string | null) {
   return (x ?? '').toString().trim().toLowerCase();
 }
 
-/** Infer story type from several fields */
 function getStoryType(s: Partial<Story> & Record<string, any>): StoryTypeKey {
   const candidates = [
     norm(s.storyType),
@@ -70,7 +76,6 @@ function getStoryType(s: Partial<Story> & Record<string, any>): StoryTypeKey {
   return 'unknown';
 }
 
-/** Infer creator plan */
 function getPlan(s: Partial<Story> & Record<string, any>): PlanKey {
   const planStr = norm(s.creatorPlan) || norm(s.plan) || norm(s.metadata?.plan);
   if (planStr === 'paid' || planStr === 'premium' || planStr === 'pro') return 'paid';
@@ -80,18 +85,12 @@ function getPlan(s: Partial<Story> & Record<string, any>): PlanKey {
   return 'unknown';
 }
 
-/** Pick a canonical language code from various fields */
 function getLanguageCode(s: Partial<Story> & Record<string, any>): string | undefined {
-  // Common places it may live
   const cand = [s.language, s.lang, s.metadata?.language, s.metadata?.lang, s.locale]
     .map((v) => norm(v))
     .find(Boolean);
   if (!cand) return undefined;
-
-  // If it's already a 2-letter code we keep it
   if (/^[a-z]{2}$/.test(cand)) return cand;
-
-  // Map common words -> codes
   const map: Record<string, string> = {
     english: 'en', spanish: 'es', espanol: 'es', portuguese: 'pt', french: 'fr', german: 'de',
     italian: 'it', japanese: 'ja', korean: 'ko', chinese: 'zh', hindi: 'hi', arabic: 'ar'
@@ -99,7 +98,7 @@ function getLanguageCode(s: Partial<Story> & Record<string, any>): string | unde
   return map[cand] || undefined;
 }
 
-/** Visual config for types */
+/** Visual config */
 const TYPE_STYLES: Record<StoryTypeKey, {
   border: string;
   glow: string;
@@ -150,7 +149,7 @@ const PLAN_STYLES: Record<PlanKey, {
   unknown:{ badgeBg: 'bg-slate-500', badgeText: 'text-white', label: '—',       Icon: Circle },
 };
 
-/* ----------------------------- Star Rating UI ----------------------------- */
+/* ----------------------------- Star Rating ----------------------------- */
 function Star({
   filled, onClick, onMouseEnter, onMouseLeave, size=22
 }: {
@@ -183,7 +182,6 @@ function StarRating({
   initialUserRating,
   average,
   count,
-  // anti-abuse inputs
   userReadCount,
   userRatedUniqueCount,
   hasReadThisStory,
@@ -218,9 +216,9 @@ function StarRating({
 
   const allowedToRate = useMemo(() => {
     if (!user?.uid) return false;
-    if (hasRatedThisStory) return true; // updating is allowed
-    if (hasReadThisStory) return true;  // rating what you read is always OK
-    return userRatedUniqueCount < userReadCount; // otherwise need a star
+    if (hasRatedThisStory) return true;
+    if (hasReadThisStory) return true;
+    return userRatedUniqueCount < userReadCount;
   }, [user?.uid, hasRatedThisStory, hasReadThisStory, userRatedUniqueCount, userReadCount]);
 
   const handleSetRating = async (value: number) => {
@@ -323,7 +321,6 @@ function StarRating({
         })}
       </div>
 
-      {/* Quick hover message now ABOVE the stars */}
       {!allowedToRate && tip && (
         <div className="absolute -top-7 w-max max-w-[240px] text-[11px] px-2 py-1 rounded bg-black/80 text-white opacity-0 group-hover:opacity-100 transition pointer-events-none z-30">
           {tip}
@@ -388,6 +385,32 @@ function FavoriteButton({
   );
 }
 
+/* ------------------------- Reusable UI: Filter Pill ------------------------ */
+function FilterPill({
+  active,
+  onClick,
+  children,
+  ringClass,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  ringClass?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border transition
+        text-[#3A4B5C] dark:text-white
+        ${active ? `bg-white/10 dark:bg-white/10 ${ringClass ?? 'ring-2 ring-[#BFA071]'} border-transparent` : 'border-white/30 hover:bg-white/5'}
+      `}
+    >
+      {children}
+    </button>
+  );
+}
+
 /* --------------------------------- Page ---------------------------------- */
 
 const CatalogPage: React.FC = () => {
@@ -400,9 +423,9 @@ const CatalogPage: React.FC = () => {
   const [userRatings, setUserRatings] = useState<Record<string, number | null>>({});
   const [userFavorites, setUserFavorites] = useState<Record<string, boolean>>({});
 
-  // Extra filters
-  const [storyTypeFilter, setStoryTypeFilter] = useState<'all'|'short'|'novela'|'campaign'>('all');
-  const [planFilter, setPlanFilter] = useState<'all'|'free'|'paid'>('all');
+  // Filters (state types don't include "unknown")
+  const [storyTypeFilter, setStoryTypeFilter] = useState<'all' | StoryTypeSelectable>('all');
+  const [planFilter, setPlanFilter] = useState<'all' | PlanSelectable>('all');
   const [languageFilter, setLanguageFilter] = useState<string>('all');
 
   // Anti-abuse tracking
@@ -415,14 +438,12 @@ const CatalogPage: React.FC = () => {
   const { user } = useAuth();
   const { data, isLoading, error } = useListPublishedStories();
 
-  // Pull published stories
   useEffect(() => {
     const stories = data ?? [];
     setAllStories(stories);
     setDisplayedStories(stories);
   }, [data]);
 
-  // Subscriptions for favorites, reads, user-rating mirrors
   useEffect(() => {
     if (!user?.uid) {
       setUserRatings({});
@@ -468,7 +489,6 @@ const CatalogPage: React.FC = () => {
       (err) => console.error('[user ratings mirror onSnapshot] error:', err?.code || err, err)
     );
 
-    // Backfill per-story rating for any without mirror doc
     (async () => {
       const list = data ?? [];
       const map: Record<string, number | null> = {};
@@ -494,7 +514,6 @@ const CatalogPage: React.FC = () => {
     };
   }, [user?.uid, data]);
 
-  /** Apply filters */
   const applyFiltersAndSearch = (stories: Story[]) => {
     let filtered = [...stories];
 
@@ -604,7 +623,6 @@ const CatalogPage: React.FC = () => {
     }
   };
 
-  /** Log a "read" entry when user clicks READ (optional if eReader already logs) */
   const logRead = async (storyId: string) => {
     if (!user?.uid || !storyId) return;
     try {
@@ -646,38 +664,49 @@ const CatalogPage: React.FC = () => {
             CATALOG OF STORIES
           </h2>
 
-          {/* Legend with dynamic text color: light -> #3A4B5C, dark -> white */}
+          {/* Interactive legend pills (now strongly typed) */}
           <div className="mt-4 flex flex-wrap gap-3 justify-center text-sm">
-            {(['short','novela','campaign'] as StoryTypeKey[]).map((k) => {
+            {/* Story Type Pills */}
+            {TYPE_PILLS.map((k) => {
               const Ico = TYPE_STYLES[k].Icon;
+              const active = storyTypeFilter === k;
               return (
-                <span
+                <FilterPill
                   key={k}
-                  className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border ${TYPE_STYLES[k].border} text-[#3A4B5C] dark:text-white`}
+                  active={active}
+                  onClick={() => setStoryTypeFilter((cur) => (cur === k ? 'all' : k))}
+                  ringClass="ring-2 ring-teal-300"
                 >
                   <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full ${TYPE_STYLES[k].badgeBg}`}>
                     <Ico size={14}/>
                   </span>
                   {TYPE_STYLES[k].label}
-                </span>
+                </FilterPill>
               );
             })}
-            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-rose-500 text-[#3A4B5C] dark:text-white">
-              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-rose-500">
-                <Crown size={14}/>
-              </span>
-              Premium
-            </span>
-            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-slate-600 text-[#3A4B5C] dark:text-white">
-              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-700">
-                <Circle size={12}/>
-              </span>
-              Free
-            </span>
+
+            {/* Plan Pills */}
+            {PLAN_PILLS.map((k) => {
+              const Ico = PLAN_STYLES[k].Icon;
+              const active = planFilter === k;
+              return (
+                <FilterPill
+                  key={k}
+                  active={active}
+                  onClick={() => setPlanFilter((cur) => (cur === k ? 'all' : k))}
+                  ringClass="ring-2 ring-amber-300"
+                >
+                  <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full ${PLAN_STYLES[k].badgeBg}`}>
+                    <Ico size={14}/>
+                  </span>
+                  {PLAN_STYLES[k].label}
+                </FilterPill>
+              );
+            })}
           </div>
         </header>
 
-        {/* ---------------------- FILTERS (Row 1) ---------------------- */}
+        {/* Row 1 */}
         <nav className="flex flex-wrap items-center justify-center gap-4 md:gap-6 mb-4">
           {(['all', 'popular', 'recent'] as const).map(filter => (
             <button
@@ -693,7 +722,6 @@ const CatalogPage: React.FC = () => {
             </button>
           ))}
 
-          {/* Language (to the left of Genres) */}
           <select
             value={languageFilter}
             onChange={(e) => setLanguageFilter(e.target.value)}
@@ -705,7 +733,6 @@ const CatalogPage: React.FC = () => {
             ))}
           </select>
 
-          {/* Genres */}
           <GenreMultiSelect
             genresList={GENRE_OPTIONS as unknown as string[]}
             selectedGenres={selectedGenres}
@@ -713,34 +740,8 @@ const CatalogPage: React.FC = () => {
           />
         </nav>
 
-        {/* ---------------------- FILTERS (Row 2) ---------------------- */}
+        {/* Row 2 (dropdowns removed) */}
         <div className="flex flex-wrap items-center justify-center gap-3 md:gap-4 mb-8 w-full">
-          {/* Story Type */}
-          <select
-            value={storyTypeFilter}
-            onChange={(e) => setStoryTypeFilter(e.target.value as any)}
-            className="px-3 py-2 rounded-lg border-2 border-[#4A5C6E] bg-[#233446] text-[#E0C9A0] focus:outline-none"
-            title="Filter by Story Type"
-          >
-            <option value="all">All Types</option>
-            <option value="short">Short Story</option>
-            <option value="novela">Novela</option>
-            <option value="campaign">Campaign</option>
-          </select>
-
-          {/* Plan */}
-          <select
-            value={planFilter}
-            onChange={(e) => setPlanFilter(e.target.value as any)}
-            className="px-3 py-2 rounded-lg border-2 border-[#4A5C6E] bg-[#233446] text-[#E0C9A0] focus:outline-none"
-            title="Filter by Creator Plan"
-          >
-            <option value="all">All Plans</option>
-            <option value="free">Free</option>
-            <option value="paid">Premium</option>
-          </select>
-
-          {/* Search bar + button (aligned on the same row) */}
           <div className="flex items-center gap-3 w-full max-w-xl">
             <input
               type="text"
@@ -794,13 +795,10 @@ const CatalogPage: React.FC = () => {
                   key={story.id}
                   className={`story-card bg-[#233446] border-2 ${typeStyle.border} p-2.5 rounded-lg w-64 text-[#E0C9A0] relative transition-all duration-300 ease-in-out hover:translate-y-[-5px] hover:shadow-2xl ${typeStyle.glow}`}
                 >
-                  {/* Favorite */}
                   <FavoriteButton storyId={story.id!} initialIsFav={!!userFavorites[story.id!]}/>
 
-                  {/* Inner border accent */}
                   <div className="absolute inset-1 border border-[#BFA071] rounded-md pointer-events-none z-10"></div>
 
-                  {/* Badges */}
                   <div className="absolute left-2 top-2 z-30 flex gap-2">
                     <span className={`px-2 py-0.5 text-[11px] rounded ${typeStyle.badgeBg} ${typeStyle.badgeText} font-bold uppercase tracking-wide inline-flex items-center gap-1.5`}>
                       <TypeIcon size={13}/> {typeStyle.label}
@@ -812,7 +810,6 @@ const CatalogPage: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* Cover */}
                   <Link
                     href={readHref}
                     onClick={() => logRead(story.id!)}
@@ -825,33 +822,28 @@ const CatalogPage: React.FC = () => {
                     />
                   </Link>
 
-                  {/* Title */}
                   <Link href={readHref} onClick={() => logRead(story.id!)}>
                     <h3 className="font-['Merriweather'] text-xl font-bold mb-2 leading-tight min-h-[2.6rem] z-20 relative">
                       {story.title || 'Untitled Story'}
                     </h3>
                   </Link>
 
-                  {/* Genres */}
                   {story.genres?.length ? (
                     <p className="text-xs text-[#8FA0AF] mb-1">{story.genres.join(', ')}</p>
                   ) : null}
 
-                  {/* Author */}
                   {(story as any).creator && (
                     <p className="text-sm text-[#8FA0AF] mb-1">
                       By {(story as any).creator.displayname || 'Unknown Author'}
                     </p>
                   )}
 
-                  {/* Comments */}
                   {(story as any).commentsCount !== undefined && (
                     <p className="text-sm text-[#8FA0AF] flex items-center justify-center gap-1">
                       💬 {(story as any).commentsCount} Comments
                     </p>
                   )}
 
-                  {/* Rating */}
                   <div className="mt-2">
                     <StarRating
                       storyId={story.id!}
@@ -862,11 +854,10 @@ const CatalogPage: React.FC = () => {
                       userRatedUniqueCount={userRatedUniqueCount}
                       hasReadThisStory={hasReadThis}
                       hasRatedThisStory={hasRatedThis}
-                      onRated={() => {/* mirrors auto-sync via onSnapshot */}}
+                      onRated={() => {}}
                     />
                   </div>
 
-                  {/* Read */}
                   <div className="mt-3 relative inline-block">
                     {!hasReadThis && (
                       <span
