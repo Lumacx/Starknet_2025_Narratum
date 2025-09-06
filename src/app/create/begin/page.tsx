@@ -939,7 +939,7 @@ export default function BeginPage() {
               `}
               title={storyMode === 'continue' ? 'Load the selected story' : 'Create the new story draft'}
             >
-              {storyMode === 'new' ? (starting ? 'Starting…' : 'Start Story') : 'Load Story'}
+              {storyMode === 'new' ? (starting ? 'Starting…' : 'Start Story') : 'Update Story'}
             </button>
 
             <button
@@ -1012,7 +1012,7 @@ export default function BeginPage() {
                   disabled={descLoading || !draft.coverUrl}
                   className="px-4 py-2 rounded-md bg-[#E97451] text-white font-semibold disabled:opacity-50 hover:bg-[#D46342]"
                 >
-                  {descLoading ? 'Describing…' : 'AI Describe Cover'}
+                  {descLoading ? 'Describing…' : 'AI Describe - Current Selected Cover'}
                 </button>
                 {descError && <span className="text-red-600 dark:text-red-400 text-sm">{descError}</span>}
               </div>

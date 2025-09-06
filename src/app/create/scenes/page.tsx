@@ -21,6 +21,7 @@ import {
   listAll,
   getDownloadURL,
   getMetadata,
+  uploadString,            // 👈 NEW
 } from 'firebase/storage';
 
 /* ------------------------------------------------------------------ */
@@ -57,7 +58,7 @@ type GalleryItem = {
   fullPath: string;
   contentType?: string;
   meta?: GalleryMeta;
-  size?: number;                  // 👈 NEW
+  size?: number;                  // ✅ shows size badges
 };
 
 type LangCode =
@@ -321,6 +322,46 @@ function extractImageAndModel(json: any): { dataUrl?: string; modelUsed?: string
 }
 
 /* ------------------------------------------------------------------ */
+/* Storage upload helpers (NEW)                                       */
+/* ------------------------------------------------------------------ */
+
+async function uploadDataUrlToStorage(userId: string, storyId: string | undefined, dataUrl: string, filename: string) {
+  const safeStory = storyId || 'no-story';
+  const path = `users/${userId}/stories/${safeStory}/images/${filename}`;
+  const r = sref(storage, path);
+  await uploadString(r, dataUrl, 'data_url');
+  const https = await getDownloadURL(r);
+  return { https, fullPath: r.fullPath };
+}
+
+/** Ensure no scene carries a data: URL before saving to Firestore */
+async function normalizeScenesBeforeSave(
+  userId: string | undefined,
+  storyId: string | undefined,
+  raw: Scene[]
+): Promise<Scene[]> {
+  if (!userId) return raw;
+  const out: Scene[] = [];
+  for (let i = 0; i < raw.length; i++) {
+    const s = { ...raw[i] };
+    if (typeof s.imageUrl === 'string' && s.imageUrl.startsWith('data:')) {
+      const fname = s.imageName || `scene-${i + 1}-${Date.now()}.png`;
+      try {
+        const up = await uploadDataUrlToStorage(userId, storyId, s.imageUrl, fname);
+        s.imageUrl = up.https;
+        s.imageName = fname;
+      } catch (err) {
+        console.warn('Image upload failed during normalization; clearing image to avoid 1MB overflow.', err);
+        s.imageUrl = null;
+      }
+    }
+    // (If you ever store audio as data URLs, normalize here similarly.)
+    out.push(s);
+  }
+  return out;
+}
+
+/* ------------------------------------------------------------------ */
 /* Component                                                           */
 /* ------------------------------------------------------------------ */
 
@@ -457,7 +498,7 @@ export default function ScenesPage() {
             fullPath: i.fullPath,
             url,
             contentType: meta?.contentType || undefined,
-            size: typeof meta?.size === 'number' ? meta.size : undefined,   // 👈 NEW
+            size: typeof meta?.size === 'number' ? meta.size : undefined,   // ✅ size
             meta: {
               modelUsed: (cm['narratum:model'] || cm['modelUsed'] || cm['model'] || null) as string | null,
               provider: (cm['narratum:provider'] || cm['provider'] || null) as string | null,
@@ -583,13 +624,19 @@ export default function ScenesPage() {
       if (!r.ok) throw new Error(json?.error || 'Image generation failed');
       const { dataUrl } = extractImageAndModel(json);
       if (!dataUrl) throw new Error('No image returned by generator.');
-      updateCurrentScene({ imageUrl: dataUrl, imageName: `scene-${currentIndex + 1}-ai.png` });
+
+      // ✅ Immediately upload the data URL to Storage; keep only HTTPS URL in state
+      if (!user) throw new Error('You must be signed in to save generated images.');
+      const fname = `scene-${currentIndex + 1}-${Date.now()}.png`;
+      const uploaded = await uploadDataUrlToStorage(user.uid, storyId, dataUrl, fname);
+
+      updateCurrentScene({ imageUrl: uploaded.https, imageName: fname });
     } catch (e: any) {
       alert(e?.message || 'Image generation error');
     } finally {
       setIsGenImage(false);
     }
-  }, [story, imagePrompt, references, currentIndex]);
+  }, [story, imagePrompt, references, currentIndex, user, storyId]);
 
   /* -------- AI: Suggest -------- */
   async function handleSuggestForScene() {
@@ -756,8 +803,10 @@ export default function ScenesPage() {
   async function persistScenes(nextScenes: Scene[]) {
     if (!storyId) return;
     try {
+      // ✅ ensure no base64 gets saved inside the document
+      const normalized = await normalizeScenesBeforeSave(user?.uid, storyId, nextScenes);
       const storyRef = fsDoc(db, 'stories', storyId);
-      const safeDoc = serializeStoryForWrite(story, nextScenes);
+      const safeDoc = serializeStoryForWrite(story, normalized);
       await setDoc(storyRef, safeDoc, { merge: true });
       return true;
     } catch (e: any) {
@@ -1308,7 +1357,7 @@ export default function ScenesPage() {
                           {/* Size badge */}
                           {typeof it.size === 'number' && (
                             <div className="absolute bottom-1 left-1 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded">
-                            {formatBytes(it.size)}
+                              {formatBytes(it.size)}
                             </div>
                           )}
 
@@ -1401,7 +1450,6 @@ function formatTime(sec: number) {
   const s = Math.floor(sec % 60);
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
-// --- add somewhere near other utils ---
 function formatBytes(n?: number) {
   if (!n && n !== 0) return '';
   const k = 1024;
