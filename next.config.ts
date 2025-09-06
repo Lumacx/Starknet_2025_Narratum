@@ -26,7 +26,7 @@ const nextConfig: NextConfig = {
     allowedDevOrigins: [
       'http://localhost:3000',
       'http://10.88.0.3:3000', // la IP que te muestra Next en consola
-      'https://3000-idx-studio-1746560064210.cluster-f4iwdviaqvc2ct6pgytzw4xqy4.cloudworkstations.dev',
+      'https://3000-idx-studio-1746560064210.cluster-f4iwdviaqvc2ct6pgytzw4xqy4.cloudworkstations.dev'
       // Si tu instancia cambia mucho de subdominio, añade el nuevo valor cuando aparezca en el warning
     ],
     // Si llegas a usar Server Actions cross-origin, podrías necesitar:

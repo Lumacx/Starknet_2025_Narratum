@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { Info, Trash2, Copy } from 'lucide-react';
+import { Trash2, Copy } from 'lucide-react';
 import Image from 'next/image';
 import { storage } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
@@ -12,7 +12,16 @@ import InfoPopover from '@/components/InfoPopover';
 type LangCode = 'en' | 'es' | 'pt' | 'fr' | 'de' | 'it' | 'ja' | 'ko' | 'zh' | 'hi' | 'ar';
 
 type GalleryItem = { name: string; url: string; fullPath: string; contentType?: string };
-type AssetCategory = 'covers' | 'avatars' | 'characters' | 'locations' | 'backgrounds' | 'audioNarrations' | 'audioEffects' | 'videos' | 'others';
+type AssetCategory =
+  | 'covers'
+  | 'avatars'
+  | 'characters'
+  | 'locations'
+  | 'backgrounds'
+  | 'audioNarrations'
+  | 'audioEffects'
+  | 'videos'
+  | 'others';
 type Mode = 'full' | 'uploaderOnly' | 'galleryOnly';
 
 type Props = {
@@ -26,7 +35,7 @@ type Props = {
   generatedImageUrl?: string;
   // Original props
   nounOverride?: string;
-  onOpenTemplate?: () => void;
+  onOpenTemplate?: () => void; // kept in type for compatibility, but no longer rendered
   mainPromptLabel?: string;
   accept?: string;
   showInnerDescribe?: boolean;
@@ -69,7 +78,7 @@ function fileToDataUrl(file: File): Promise<string> {
 export default function UploadImageReference({
   variant,
   nounOverride,
-  onOpenTemplate,
+  onOpenTemplate, // not used anymore (kept for API compatibility)
   onSaved,
   mainPromptLabel,
   assetCategory,
@@ -90,12 +99,12 @@ export default function UploadImageReference({
   // tooltip docs
   const tipDocForOne =
     assetCategory === 'locations'
-      ? '/info_tips/Location Generation Template.md'
+      ? '/info_tips/Location Generation.md'
       : assetCategory === 'characters'
-      ? '/info_tips/Character Creation template.md'
+      ? '/info_tips/Character Creation.md'
       : null; // only show #1 on character/location
 
-  const tipDocForTwo = '/info_tips/Pro Tips for Prompting Images.md'; // always for #2 (when image category)
+  const tipDocForTwo = '/info_tips/Pro Tips for Prompting.md'; // always for #2 (when image category)
 
   // state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -163,7 +172,6 @@ export default function UploadImageReference({
     if (!selectedFile) return;
     setIsDescribing(true);
     try {
-      // You can wire this to your /api/describe-image if you want local-file describe here too.
       setSuggestedPrompt('(Use “Describe Selected” above to analyze the current image).');
     } finally {
       setIsDescribing(false);
@@ -299,7 +307,7 @@ export default function UploadImageReference({
                 <div className="flex items-center gap-2 mb-1">
                   <h4 className="font-semibold">Suggested Prompt Description (from AI)</h4>
 
-                  {/* Tooltip #1: Character/Location template */}
+                  {/* Tooltip #1: Character/Location template (yellow) */}
                   {tipDocForOne && (
                     <InfoPopover
                       title={assetCategory === 'locations' ? 'Location Template' : 'Character Template'}
@@ -308,17 +316,7 @@ export default function UploadImageReference({
                     />
                   )}
 
-                  {/* (kept) optional template button from parent */}
-                  {!!onOpenTemplate && (
-                    <button
-                      type="button"
-                      onClick={onOpenTemplate}
-                      title={`${noun} template`}
-                      className="ml-1 inline-flex items-center justify-center rounded-full p-1.5 border border-black/10 hover:bg-black/5"
-                    >
-                      <Info size={16} className="text-neutral-500" />
-                    </button>
-                  )}
+                  {/* Removed the gray Info button to keep only yellow tooltips */}
 
                   {!!suggestedPrompt && (
                     <button
@@ -350,13 +348,12 @@ export default function UploadImageReference({
               </div>
             )}
 
-            {/* User main prompt — with tooltip #2 */}
+            {/* User main prompt — with tooltip #2 (yellow) */}
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <h4 className="font-semibold">{mainPromptLabel ?? `${noun} Description`}</h4>
 
-                {/* Tooltip #2: Pro Tips for Prompting Images (always for image categories) */}
-                <InfoPopover title="Pro Tips for Prompting Images" docHref={tipDocForTwo} align="right" />
+                <InfoPopover title="Pro Tips for Prompting" docHref={tipDocForTwo} align="right" />
               </div>
 
               <textarea
@@ -403,7 +400,14 @@ export default function UploadImageReference({
             {localGeneratedUrl && (
               <div className="mt-3 border rounded-xl p-3">
                 <p className="text-sm mb-2">Generated Image</p>
-                <Image src={localGeneratedUrl} alt="generated" width={512} height={512} className="max-w-full rounded-md" unoptimized />
+                <Image
+                  src={localGeneratedUrl}
+                  alt="generated"
+                  width={512}
+                  height={512}
+                  className="max-w-full rounded-md"
+                  unoptimized
+                />
               </div>
             )}
           </>
