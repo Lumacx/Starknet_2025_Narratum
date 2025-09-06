@@ -57,6 +57,7 @@ type GalleryItem = {
   fullPath: string;
   contentType?: string;
   meta?: GalleryMeta;
+  size?: number;                  // 👈 NEW
 };
 
 type LangCode =
@@ -456,6 +457,7 @@ export default function ScenesPage() {
             fullPath: i.fullPath,
             url,
             contentType: meta?.contentType || undefined,
+            size: typeof meta?.size === 'number' ? meta.size : undefined,   // 👈 NEW
             meta: {
               modelUsed: (cm['narratum:model'] || cm['modelUsed'] || cm['model'] || null) as string | null,
               provider: (cm['narratum:provider'] || cm['provider'] || null) as string | null,
@@ -1303,6 +1305,12 @@ export default function ScenesPage() {
                               {it.meta.language}
                             </div>
                           )}
+                          {/* Size badge */}
+                          {typeof it.size === 'number' && (
+                            <div className="absolute bottom-1 left-1 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded">
+                            {formatBytes(it.size)}
+                            </div>
+                          )}
 
                           {/* Actions */}
                           <div className="absolute inset-x-1 bottom-1 flex gap-1 opacity-0 group-hover:opacity-100 transition">
@@ -1392,4 +1400,13 @@ function formatTime(sec: number) {
   const m = Math.floor(sec / 60);
   const s = Math.floor(sec % 60);
   return `${m}:${s.toString().padStart(2, '0')}`;
+}
+// --- add somewhere near other utils ---
+function formatBytes(n?: number) {
+  if (!n && n !== 0) return '';
+  const k = 1024;
+  const sizes = ['B','KB','MB','GB'];
+  const i = Math.min(sizes.length - 1, Math.floor(Math.log(Math.max(n,1)) / Math.log(k)));
+  const val = n / Math.pow(k, i);
+  return `${val >= 10 || i === 0 ? Math.round(val) : val.toFixed(1)} ${sizes[i]}`;
 }

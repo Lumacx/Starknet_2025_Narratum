@@ -143,6 +143,7 @@ export default function SupportPage() {
         const snap = await getDoc(ref);
         if (!snap.exists()) return;
         const s = snap.data() as any;
+
         let langFromDoc = s?.language as LangCode | undefined;
         if (!langFromDoc) {
           try {
@@ -151,6 +152,7 @@ export default function SupportPage() {
             langFromDoc = (parsed?.language as LangCode) || 'en';
           } catch {}
         }
+
         setContext((prev) => ({ ...prev, title: s?.title || prev.title, genres: Array.isArray(s?.genres) ? s.genres : prev.genres, synopsis: s?.synopsis || prev.synopsis, language: (langFromDoc || prev.language) as LangCode }));
       } catch (e) { console.error('Failed to fetch story for context', e); }
     })();
@@ -185,6 +187,7 @@ export default function SupportPage() {
     params.set('tab', active);
     if (storyId) params.set('storyId', storyId);
     window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+
     localStorage.setItem('supportTab', active);
     setDisplayUrl('');
     setDisplayContentType(undefined);
@@ -245,6 +248,7 @@ export default function SupportPage() {
       const lang = (context.language || 'en') as LangCode;
       const langLabel = LANG_LABELS[lang] || 'English';
       const promptText = lang === 'es' ? 'Describe esta imagen en un solo párrafo claro y conciso...' : `Describe this image in one clear, concise paragraph... Respond only in ${langLabel}.`;
+     
       const res = await fetch('/api/describe-image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body, prompt: promptText, language: lang, targetLanguage: lang, context: { title: context.title, genres: context.genres, synopsis: context.synopsis, }, responseModalities: ['TEXT'], }), });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Describe failed');
@@ -329,12 +333,24 @@ export default function SupportPage() {
           </div>
         </div>
         
-        {/* --- TABS --- */}
-        <div className="px-4 sm:px-6 pt-4">
+         {/* --- TABS --- */}
+         <div className="px-4 sm:px-6 pt-4">
           <div role="tablist" aria-label="Reference categories" className="flex flex-wrap gap-2 sm:gap-3">
             {TABS.map(({ key, label, icon: Icon }) => (
-              <button key={key} role="tab" aria-selected={active === key} onClick={() => setActive(key)} className={classNames('inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border transition', active === key ? 'bg-[#E97451] text-white border-[#E97451] shadow' : 'bg-white text-[#3D4F60] border-[#3D4F60]/20 hover:border-[#3D4F60]/40 dark:bg-[#1A2533] dark:text-[#F0D1B0] dark:border-[#4B5A6B]/20 dark:hover:border-[#4B5A6B]/40')}>
-                <Icon size={16} /><span className="text-sm font-semibold">{label}</span>
+              <button
+                key={key}
+                role="tab"
+                aria-selected={active === key}
+                onClick={() => setActive(key)}
+                className={classNames(
+                  'inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border transition',
+                  active === key
+                    ? 'bg-[#E97451] text-white border-[#E97451] shadow'
+                    : 'bg-white text-[#3D4F60] border-[#3D4F60]/20 hover:border-[#3D4F60]/40 dark:bg-[#1A2533] dark:text-[#F0D1B0] dark:border-[#4B5A6B]/20 dark:hover:border-[#4B5A6B]/40'
+                )}
+              >
+                <Icon size={16} />
+                <span className="text-sm font-semibold">{label}</span>
               </button>
             ))}
           </div>
@@ -401,12 +417,29 @@ export default function SupportPage() {
                 </div>
               )}
               
-              {/* --- 3. UPLOAD / GENERATE COMPONENT --- */}
+               {/* --- 3. UPLOAD / GENERATE COMPONENT --- */}
               <div className="uploader-scope">
                 <div className="flex items-center gap-3 text-xs mb-2">
-                   <span className="opacity-70">Generation Tips:</span>
-                   <div className="inline-flex items-center gap-1"><span className="opacity-60">#1</span><InfoPopover title={active === 'locations' ? 'Location Template' : 'Character Template'} docHref={tipDocForOne} align="left"/></div>
-                   <div className="inline-flex items-center gap-1"><span className="opacity-60">#2</span><InfoPopover title="Pro Tips for Prompting Images" docHref={tipDocForTwo} align="left"/></div>
+                  <span className="opacity-70">Generation Tips:</span>
+                  <div className="inline-flex items-center gap-1">
+                    <span className="opacity-60">#1</span>
+                    {/* Centered modal popovers; fresh markdown fetch */}
+                    <InfoPopover
+                      title={active === 'locations' ? 'Location Template' : 'Character Template'}
+                      docHref={active === 'locations'
+                        ? '/info_tips/Location Generation Template.md'
+                        : '/info_tips/Character Creation template.md'}
+                      noCache
+                    />
+                  </div>
+                  <div className="inline-flex items-center gap-1">
+                    <span className="opacity-60">#2</span>
+                    <InfoPopover
+                      title="Pro Tips for Prompting Images"
+                      docHref="/info_tips/Pro Tips for Prompting Images.md"
+                      noCache
+                    />
+                  </div>
                 </div>
                 <UploadImageReference
                   mode="uploaderOnly"

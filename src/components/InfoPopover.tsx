@@ -1,119 +1,141 @@
 'use client';
 
-import React, { useEffect, useId, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Info } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw'; // only if your .md has trusted inline HTML
 
 type InfoPopoverProps = {
-  /** Path to the markdown inside /public (or any static path). Example: "/info_tips/Character Creation template.md" */
-  docHref: string;
-  /** Optional: title for the header bar of the popover */
+  /** Button label shown in tooltip/aria (icon always shown) */
   title?: string;
-  /** Pixel width (max) for the popover */
-  maxWidth?: number;
-  /** Positioning preference */
-  align?: 'left' | 'right';
-  /** Optional className for the trigger */
+  /** Path to a Markdown file (e.g., /info_tips/MyDoc.md) */
+  docHref: string;
+  /** If true, add a cache-buster & disable HTTP caching so updates show immediately */
+  noCache?: boolean;
+  /** Optional: size override; defaults to 60vw on md+ screens */
+  widthClassName?: string; // e.g., "md:w-[70vw]"
+  /** Optional: pass a className to the trigger button wrapper */
   className?: string;
 };
 
-/**
- * Hover/focus popover that:
- * - Renders `master_prompt_guidance.PNG` at top-left (25% width), floated with square text wrapping.
- * - Loads .md as plaintext and displays it under/around the image (kept simple for zero extra deps).
- */
-const InfoPopover: React.FC<InfoPopoverProps> = ({
+export default function InfoPopover({
+  title = 'More info',
   docHref,
-  title = 'Tips',
-  maxWidth = 560,
-  align = 'right',
+  noCache = true,
+  widthClassName,
   className,
-}) => {
+}: InfoPopoverProps) {
   const [open, setOpen] = useState(false);
-  const [body, setBody] = useState<string>('Loading…');
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const id = useId();
+  const [md, setMd] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string>('');
+  const panelRef = useRef<HTMLDivElement | null>(null);
 
-  // Load the markdown text
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const res = await fetch(docHref, { cache: 'force-cache' });
-        const txt = await res.text();
-        if (alive) setBody(txt || '(empty)');
-      } catch (e) {
-        if (alive) setBody('Failed to load tips.');
-      }
-    })();
-    return () => { alive = false; };
-  }, [docHref]);
+  const close = useCallback(() => setOpen(false), []);
 
-  // Close on escape / outside click
+  // Load markdown when opened
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
-    const onClick = (e: MouseEvent) => {
-      if (!containerRef.current) return;
-      if (!containerRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    window.addEventListener('keydown', onKey);
-    window.addEventListener('click', onClick);
+    let aborted = false;
+    (async () => {
+      try {
+        setError('');
+        setLoading(true);
+        const url = noCache ? `${docHref}${docHref.includes('?') ? '&' : '?'}v=${Date.now()}` : docHref;
+        const res = await fetch(url, { cache: noCache ? 'no-store' as RequestCache : 'force-cache' });
+        if (!res.ok) throw new Error(`Failed to load: ${res.status}`);
+        const txt = await res.text();
+        if (!aborted) setMd(txt);
+      } catch (e: any) {
+        if (!aborted) setError(e?.message || 'Failed to load document');
+      } finally {
+        if (!aborted) setLoading(false);
+      }
+    })();
+    return () => { aborted = true; };
+  }, [open, docHref, noCache]);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      if (!panelRef.current) return;
+      if (!panelRef.current.contains(e.target as Node)) {
+        close();
+      }
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') close();
+    }
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
     return () => {
-      window.removeEventListener('keydown', onKey);
-      window.removeEventListener('click', onClick);
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
     };
-  }, [open]);
+  }, [open, close]);
+
+  const modalWidth = widthClassName || 'md:w-[60vw]';
 
   return (
-    <div
-      ref={containerRef}
-      className={`relative inline-block ${className || ''}`}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-    >
+    <>
+      {/* Trigger */}
       <button
-        aria-describedby={open ? id : undefined}
-        aria-label="More info"
-        className="inline-flex items-center justify-center rounded-full p-1.5 border border-[#3D4F60]/30 dark:border-[#4B5A6B]/30 hover:bg-black/5 dark:hover:bg-white/10 transition"
-        onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
         type="button"
+        aria-label={title}
+        title={title}
+        className={['inline-flex items-center justify-center rounded-full p-1.5 border border-transparent hover:border-current transition', className].filter(Boolean).join(' ')}
+        onClick={() => setOpen(true)}
       >
-        <Info size={16} className="text-[#3D4F60] dark:text-[#E0C9A0]" />
+        <Info size={18} className="opacity-80" />
       </button>
 
-      {/* Popover */}
+      {/* Modal */}
       {open && (
         <div
-          id={id}
+          className="fixed inset-0 z-[1000] flex items-center justify-center"
+          aria-modal="true"
           role="dialog"
-          aria-label={title}
-          className={`absolute z-50 mt-2 ${align === 'right' ? 'right-0' : 'left-0'}`}
-          style={{ width: 'min(90vw, ' + maxWidth + 'px)' }}
         >
-          <div className="rounded-xl shadow-2xl border-2 border-[#CBBBA0] dark:border-[#4B5A6B] bg-[#FFFBF5] dark:bg-[#1E2A36] text-[#2c3947] dark:text-[#E0C9A0] overflow-hidden">
-            <div className="px-3 py-2 text-xs font-semibold bg-[#F3EADF] dark:bg-[#2A3645] border-b border-black/10 dark:border-white/10">
-              {title}
+          {/* Overlay (click to close) */}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px]" onClick={close} />
+
+          {/* Panel */}
+          <div
+            ref={panelRef}
+            className={[
+              'relative z-[1001] w-[90vw]',
+              modalWidth,
+              'max-h-[80vh] overflow-auto rounded-2xl shadow-2xl',
+              'bg-white text-slate-800',
+              'dark:bg-slate-900 dark:text-slate-100',
+              'p-5 md:p-7',
+            ].join(' ')}
+          >
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <h3 className="text-lg md:text-xl font-semibold">{title}</h3>
+              <button
+                onClick={close}
+                className="px-3 py-1.5 rounded-md border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-sm"
+              >
+                Close
+              </button>
             </div>
-            <div className="p-3 text-sm leading-relaxed">
-              {/* Image first, top-left, quarter width, with "square text wrap" (float) */}
-              <img
-                src="/info_tips/master_prompt_guidance.PNG"
-                alt="Prompt guidance"
-                className="float-left mr-3 mb-2"
-                style={{ width: '100%', shapeOutside: 'inset(0 round 6px)' }}
-              />
-              {/* We keep markdown as plain text for zero deps; preserve newlines */}
-              <pre className="whitespace-pre-wrap font-sans text-[13.5px] m-0">
-                {body}
-              </pre>
-              <div className="clear-both" />
+
+            <div className="prose prose-sm max-w-none dark:prose-invert">
+              {loading && <p className="opacity-70">Loading…</p>}
+              {error && <p className="text-red-600">{error}</p>}
+              {!loading && !error && <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      rehypePlugins={[rehypeRaw]} // remove if you don't need raw HTML
+                      >
+                        {md}
+                      </ReactMarkdown>}
             </div>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
-};
-
-export default InfoPopover;
+}
