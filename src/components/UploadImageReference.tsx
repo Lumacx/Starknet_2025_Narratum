@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { Trash2, Copy } from 'lucide-react';
+// MODIFIED: Added CheckCircle2 for the selection UI
+import { Trash2, Copy, CheckCircle2 } from 'lucide-react';
 import Image from 'next/image';
 import { storage } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
@@ -24,6 +25,7 @@ type AssetCategory =
   | 'others';
 type Mode = 'full' | 'uploaderOnly' | 'galleryOnly';
 
+// STEP 1: Define the new props for selection functionality
 type Props = {
   variant: 'character' | 'location' | 'cover';
   onSaved?: (item: GalleryItem) => void;
@@ -33,9 +35,13 @@ type Props = {
   onGenerateRequest?: (prompt: string) => void;
   isGenerating?: boolean;
   generatedImageUrl?: string;
+  // Props for multi-selection (Scene Composer)
+  selection?: string[];
+  onSelectionChange?: (newSelection: string[]) => void;
+  maxSelection?: number;
   // Original props
   nounOverride?: string;
-  onOpenTemplate?: () => void; // kept in type for compatibility, but no longer rendered
+  onOpenTemplate?: () => void;
   mainPromptLabel?: string;
   accept?: string;
   showInnerDescribe?: boolean;
@@ -78,7 +84,6 @@ function fileToDataUrl(file: File): Promise<string> {
 export default function UploadImageReference({
   variant,
   nounOverride,
-  onOpenTemplate, // not used anymore (kept for API compatibility)
   onSaved,
   mainPromptLabel,
   assetCategory,
@@ -88,6 +93,10 @@ export default function UploadImageReference({
   onGenerateRequest,
   isGenerating,
   generatedImageUrl,
+  // STEP 2: Destructure new props with safe defaults
+  selection = [],
+  onSelectionChange,
+  maxSelection = 1,
 }: Props) {
   const { user: currentUser } = useAuth();
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -96,17 +105,15 @@ export default function UploadImageReference({
     nounOverride ?? (variant === 'character' ? 'Character' : variant === 'location' ? 'Location' : 'Cover');
   const generateCta = `Generate ${noun} Image (AI)`;
 
-  // tooltip docs
   const tipDocForOne =
     assetCategory === 'locations'
       ? '/info_tips/Location Generation.md'
       : assetCategory === 'characters'
       ? '/info_tips/Character Creation.md'
-      : null; // only show #1 on character/location
+      : null;
 
-  const tipDocForTwo = '/info_tips/Pro Tips for Prompting.md'; // always for #2 (when image category)
+  const tipDocForTwo = '/info_tips/Pro Tips for Prompting.md';
 
-  // state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState('');
   const [nameToSave, setNameToSave] = useState('');
@@ -115,8 +122,8 @@ export default function UploadImageReference({
   const [isDescribing, setIsDescribing] = useState(false);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [err, setErr] = useState('');
-
   const [localGeneratedUrl, setLocalGeneratedUrl] = useState('');
+
   useEffect(() => {
     setLocalGeneratedUrl(generatedImageUrl || '');
     if (generatedImageUrl && !nameToSave.trim()) {
@@ -158,7 +165,6 @@ export default function UploadImageReference({
     const objectUrl = URL.createObjectURL(f);
     setPreviewUrl(objectUrl);
     setNameToSave(f.name.replace(/\.[^.]+$/, ''));
-
     if (isImageCategory(assetCategory)) {
       const dataUrl = await fileToDataUrl(f);
       onSaved?.({ name: f.name, url: dataUrl, fullPath: 'local://selected', contentType: f.type });
@@ -229,6 +235,28 @@ export default function UploadImageReference({
       alert(e?.message || 'Delete failed');
     }
   }
+
+// STEP 3: Create the new click handler for the gallery
+const handleGalleryItemClick = (item: GalleryItem) => {
+  // If onSelectionChange is provided, we are in multi-select mode
+  if (onSelectionChange) {
+    const isSelected = selection.includes(item.url);
+    let newSelection: string[];
+    if (isSelected) {
+      newSelection = selection.filter((url) => url !== item.url);
+    } else {
+      if (selection.length >= maxSelection) {
+        alert(`You can only select up to ${maxSelection} items.`);
+        return;
+      }
+      newSelection = [...selection, item.url];
+    }
+    onSelectionChange(newSelection);
+  } else {
+    // Otherwise, fall back to the original single-select behavior
+    onSaved?.(item);
+  }
+};
 
   function PreviewBlock() {
     if (!previewUrl || !selectedFile) return null;
@@ -416,40 +444,56 @@ export default function UploadImageReference({
     );
   }
 
+  // STEP 4: Modify the GalleryUI to use the new handler and styles
   function GalleryUI() {
     return (
-      <div className="border rounded-xl p-3">
-        <h4 className="font-semibold mb-3">Select a saved asset?</h4>
+      <div /* The parent div is now in page.tsx, so we don't need the border here */>
         {gallery.length === 0 ? (
           <p className="text-sm text-neutral-500">No files yet.</p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {gallery.map((it) => (
-              <div
-                key={it.fullPath}
-                className="relative group border rounded-md overflow-hidden p-1 cursor-pointer"
-                onClick={() => onSaved?.(it)}
-              >
-                <Image src={it.url} alt={it.name} width={150} height={150} className="w-full h-32 object-cover rounded" />
-                <button
-                  title="Delete"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(it);
+            {gallery.map((it) => {
+              const isSelected = selection.includes(it.url);
+              const isSelectionMode = !!onSelectionChange;
+
+              return (
+                <div
+                  key={it.fullPath}
+                  className="relative group border rounded-md overflow-hidden p-1 cursor-pointer transition-all duration-200"
+                  onClick={() => handleGalleryItemClick(it)}
+                  style={{
+                    borderColor: isSelected ? '#3b82f6' : 'transparent', // blue-500
+                    borderWidth: isSelected ? '3px' : '1px',
+                    opacity: isSelectionMode && selection.length > 0 && !isSelected ? 0.6 : 1,
                   }}
-                  className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition bg-white/90 rounded-full p-1 shadow"
                 >
-                  <Trash2 size={16} className="text-red-600" />
-                </button>
-                <div className="px-2 py-1 text-xs truncate">{it.name}</div>
-              </div>
-            ))}
+                  <Image src={it.url} alt={it.name} width={150} height={150} className="w-full h-32 object-cover rounded" />
+                  <button
+                    title="Delete"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(it);
+                    }}
+                    className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition bg-white/90 rounded-full p-1 shadow"
+                  >
+                    <Trash2 size={16} className="text-red-600" />
+                  </button>
+                  {isSelected && (
+                    <div className="absolute top-1 left-1 bg-blue-500 text-white rounded-full p-0.5 shadow">
+                      <CheckCircle2 size={20} />
+                    </div>
+                  )}
+                  <div className="px-2 py-1 text-xs truncate">{it.name}</div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
     );
   }
 
+  // The final render logic based on mode remains the same
   if (mode === 'uploaderOnly') {
     return <div className="p-4 bg-white border rounded-xl">{UploaderUI()}</div>;
   }

@@ -10,7 +10,7 @@ import { ImageIcon, Music, Upload, Wand2, Loader2, Info, PlusCircle, Quote, Volu
 import { useAuth } from '@/context/AuthContext';
 import { db, storage } from '@/lib/firebase';
 import {
-  setDoc,        // <-- usaremos setDoc merge:true
+  setDoc,
   getDoc,
   updateDoc,
   doc as fsDoc,
@@ -105,20 +105,77 @@ type StoryDoc = {
   synopsis?: string;
   genres?: string[];
   language?: LangCode;
-  voiceId?: string;          // story-level default voice (optional)
+  voiceId?: string;
   reader?: { avatarUrl?: string; backgroundUrl?: string };
   scenes?: Scene[];
   status?: 'draft' | 'published';
   isPublic?: boolean;
   publishedAt?: any;
   updatedAt?: any;
-  pageCount?: number;        // <- Begin sets this (1–10 short, up to 20 long)
+  pageCount?: number;
 };
 
 /* ----- helpers ----- */
 
 function classNames(...xs: (string | false | null | undefined)[]) {
   return xs.filter(Boolean).join(' ');
+}
+
+/** NUEVO: mapa de avatar por voz + override por Children's */
+function resolveAvatarForVoiceAndGenre(voice: string | null | undefined, genres?: string[]): string {
+  const g = (genres || []).map(s => s.toLowerCase());
+  const isChildren = g.some(s => s.includes("children"));
+  if (isChildren) return '/story_reader_avatars/Rain Bunny.png';
+
+  switch ((voice || '').trim()) {
+    case 'Nuna':
+    case 'Kore':                      return '/story_reader_avatars/Nuna.png';
+    case 'Juniper':
+    case 'Leda':                      return '/story_reader_avatars/Juniper.png';
+    case 'Argus':
+    case 'Sadachbia':                 return '/story_reader_avatars/Argus.png';
+    case 'en-IN-Chirp3-HD-Achird':    return '/story_reader_avatars/Raj.png';
+    case 'Zephyr':                    return '/story_reader_avatars/Belle.png';
+    case 'Puck':                      return '/story_reader_avatars/Scythe.png';
+    default:                          return DEFAULTS.avatarUrl;
+  }
+}
+
+/** Construye SSML fuerte según “tone” */
+function buildSSML(text: string, tone: string, lang: LangCode = 'en'): { ssml: string; style: string } {
+  const clean = (text || '').trim();
+  const safeText = clean
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // Prosody presets
+  let rate = '100%';
+  let pitch = '0st';
+  let volume = 'medium';
+  let style = 'normal';
+
+  switch (tone) {
+    case 'a cheerful':
+      rate = '110%'; pitch = '+2st'; volume = 'loud'; style = 'cheerful'; break;
+    case 'a sad':
+      rate = '90%';  pitch = '-2st'; volume = 'medium'; style = 'sad'; break;
+    case 'an excited':
+      rate = '108%'; pitch = '+1st'; volume = 'x-loud'; style = 'excited'; break;
+    case 'a whispering':
+      rate = '95%';  pitch = '-1st'; volume = 'x-soft'; style = 'whispering'; break;
+    default:
+      style = 'normal';
+  }
+
+  const ssml =
+`<speak xml:lang="${lang}">
+  <prosody rate="${rate}" pitch="${pitch}" volume="${volume}">
+    ${safeText}
+  </prosody>
+</speak>`;
+
+  return { ssml, style };
 }
 
 /** NUEVO: escena por defecto sin undefined */
@@ -140,7 +197,7 @@ function makeDefaultScene(index = 0): Scene {
   };
 }
 
-/** Firestore-safe deep clean (sin undefined / objetos raros) */
+/** Deep clean for Firestore */
 function deepClean(value: any): any {
   if (value === undefined) return null;
   if (value === null) return null;
@@ -157,7 +214,6 @@ function deepClean(value: any): any {
   try { return JSON.parse(JSON.stringify(value)); } catch { return null; }
 }
 
-/** Firestore SAFE: replace undefined with null and strip unknowns */
 function serializeScene(s: Scene, i: number) {
   const base = {
     id: s?.id || (typeof crypto?.randomUUID === 'function' ? crypto.randomUUID() : String(Math.random()).slice(2)),
@@ -282,7 +338,7 @@ export default function ScenesPage() {
   const [imagePrompt, setImagePrompt] = useState('');
   const [imageDesc, setImageDesc] = useState('');
   const [narrationText, setNarrationText] = useState('');
-  const [voice, setVoice] = useState('Kore');
+  const [voice, setVoice] = useState('Kore'); // maps to Nuna avatar per rules
   const [tone, setTone] = useState<'a normal' | 'a cheerful' | 'a sad' | 'an excited' | 'a whispering'>('a normal');
 
   const [isGenImage, setIsGenImage] = useState(false);
@@ -302,8 +358,8 @@ export default function ScenesPage() {
   const currentScene = scenes[currentIndex] || null;
   const langLabel = useMemo(() => LANG_LABELS[(story?.language || 'en') as LangCode] || 'English', [story?.language]);
 
-  // ----- Page limit logic (from Begin/pageCount) -----
-  const selectedPages = Math.max(1, Math.min( (story?.pageCount ?? 10), 20 )); // cap 20
+  // ----- Page limit logic -----
+  const selectedPages = Math.max(1, Math.min( (story?.pageCount ?? 10), 20 ));
   const progressLabel = `Scene ${Math.min(currentIndex + 1, selectedPages)} / ${selectedPages}`;
 
   /* -------- Load story + scenes from Firestore -------- */
@@ -334,6 +390,11 @@ export default function ScenesPage() {
 
         const ensured = fixedScenes.length > 0 ? fixedScenes : [makeDefaultScene(0)];
 
+        // Choose avatar based on rules (don't clobber a custom avatar; only override if default)
+        const existingAvatar = docData.reader?.avatarUrl || DEFAULTS.avatarUrl;
+        const computedAvatar = resolveAvatarForVoiceAndGenre(docData.voiceId || ensured[0]?.voiceId || voice, docData.genres);
+        const finalAvatar = (existingAvatar === DEFAULTS.avatarUrl) ? computedAvatar : existingAvatar;
+
         setStory({
           title: docData.title || '',
           synopsis: docData.synopsis || '',
@@ -341,7 +402,7 @@ export default function ScenesPage() {
           language: (docData.language as LangCode) || 'en',
           voiceId: docData.voiceId || undefined,
           reader: {
-            avatarUrl: docData.reader?.avatarUrl || DEFAULTS.avatarUrl,
+            avatarUrl: finalAvatar || DEFAULTS.avatarUrl,
             backgroundUrl: docData.reader?.backgroundUrl || DEFAULTS.backgroundUrl,
           },
           status: docData.status || 'draft',
@@ -351,13 +412,12 @@ export default function ScenesPage() {
         });
 
         setReaderUI({
-          avatarUrl: docData.reader?.avatarUrl || DEFAULTS.avatarUrl,
+          avatarUrl: finalAvatar || DEFAULTS.avatarUrl,
           backgroundUrl: docData.reader?.backgroundUrl || DEFAULTS.backgroundUrl,
         });
 
         setScenes(ensured);
 
-        // Initialize index
         const fromUrl = Number.parseInt(searchParams.get('scene') || '', 10);
         const fromLs  = Number.parseInt(localStorage.getItem('reader:lastScene') || '', 10);
         const initial = Number.isFinite(fromUrl) ? fromUrl : (Number.isFinite(fromLs) ? fromLs : 0);
@@ -439,6 +499,19 @@ export default function ScenesPage() {
   }
   function updateStoryPatch(patch: Partial<StoryDoc>) {
     setStory(prev => (prev ? { ...prev, ...patch } : prev));
+  }
+
+  /* Voice change => enforce avatar rule */
+  function applyVoiceAvatarUpdate(newVoice: string) {
+    const avatarPath = resolveAvatarForVoiceAndGenre(newVoice, story?.genres);
+    setVoice(newVoice);
+    setReaderUI(prev => ({ ...prev, avatarUrl: avatarPath }));
+    updateStoryPatch({
+      reader: {
+        avatarUrl: avatarPath,
+        backgroundUrl: story?.reader?.backgroundUrl || DEFAULTS.backgroundUrl,
+      }
+    });
   }
 
   /* -------- Select/Describe/Reference -------- */
@@ -683,7 +756,6 @@ export default function ScenesPage() {
     try {
       const storyRef = fsDoc(db, 'stories', storyId);
       const safeDoc = serializeStoryForWrite(story, nextScenes);
-      // importante: setDoc con merge (reemplaza arrays completos sin quejarse)
       await setDoc(storyRef, safeDoc, { merge: true });
       return true;
     } catch (e: any) {
@@ -923,6 +995,20 @@ export default function ScenesPage() {
                     <div className="text-xs opacity-70">{progressLabel}</div>
                   </div>
 
+                  {/* Avatar + voice/tone chip */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <Image
+                      src={readerUI.avatarUrl || DEFAULTS.avatarUrl}
+                      alt="Narrator Avatar"
+                      width={36}
+                      height={36}
+                      className="rounded-full border border-black/10 bg-white"
+                    />
+                    <div className="text-xs opacity-80">
+                      <span className="font-medium">{voice}</span> • <span>{tone.replace(/^a[n]? /, '').toUpperCase()}</span>
+                    </div>
+                  </div>
+
                   <div className="aspect-[4/3] w-full rounded-xl overflow-hidden bg-white/60 dark:bg-[#0f1620]/60 grid place-items-center">
                     {currentScene?.imageUrl ? (
                       <Image
@@ -1036,14 +1122,14 @@ export default function ScenesPage() {
                     <select
                       className="w-full p-2 rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-white text-[#3D4F60]"
                       value={voice}
-                      onChange={e => setVoice(e.target.value)}
+                      onChange={e => applyVoiceAvatarUpdate(e.target.value)}
                     >
-                      <option value="Kore">Nuna (Female, Firm)</option>
+                      <option value="Nuna">Nuna (Female, Firm)</option>
                       <option value="Puck">Scythe (Male, Upbeat)</option>
                       <option value="Zephyr">Belle (Female, Youthful)</option>
                       <option value="en-IN-Chirp3-HD-Achird">Raj (Male, Scholar)</option>
-                      <option value="Leda">Juniper (Female, Elegant)</option>
-                      <option value="Sadachbia">Argus (Male, Mysterious)</option>
+                      <option value="Juniper">Juniper (Female, Elegant)</option>
+                      <option value="Argus">Argus (Male, Mysterious)</option>
                     </select>
                     <select
                       className="w-full p-2 rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-white text-[#3D4F60]"
@@ -1060,19 +1146,28 @@ export default function ScenesPage() {
                   <div className="flex gap-2 mt-2">
                     <button
                       onClick={async () => {
-                        const text = (narrationText || currentScene?.text || '').trim();
-                        if (!text || !currentScene) { alert('Enter narration text first.'); return; }
+                        const base = (narrationText || currentScene?.text || '').trim();
+                        if (!base || !currentScene) { alert('Enter narration text first.'); return; }
                         setIsGenAudio(true);
                         try {
+                          const lang = (story?.language || 'en') as LangCode;
+                          const { ssml, style } = buildSSML(base, tone, lang);
+
                           const r = await fetch('/api/generate-audio', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                              text,
-                              voice,
-                              tone,
-                              language: (story?.language || 'en'),
+                              text: base,                // plaintext fallback
+                              ssml,                      // SSML for engines that support it
+                              useSsml: true,
+                              voice,                     // logical voice id/name you map in the API
+                              tone,                      // keep original tone string
+                              style,                     // normalized style for engines (cheerful, sad, excited, whispering, normal)
+                              toneHint: `[TONE=${tone}]`,// extra hint if engine ignores SSML
+                              language: lang,
                               model: 'gemini-2.5-flash-preview-tts',
+                              sceneIndex: currentIndex + 1,
+                              storyId,
                             }),
                           });
                           const json = await r.json();
@@ -1081,9 +1176,10 @@ export default function ScenesPage() {
                           updateCurrentScene({
                             audioUrl: json.audioUrl,
                             audioName: `scene-${currentIndex + 1}-narration`,
+                            voiceId: voice,
                           });
                         } catch (e: any) {
-                          alert((e?.message || 'TTS failed') + '\n\nTip: ensure /api/generate-audio returns { audioUrl }.');
+                          alert((e?.message || 'TTS failed') + '\n\nTip: ensure /api/generate-audio reads { ssml, tone, style, toneHint } to bias delivery.');
                         } finally {
                           setIsGenAudio(false);
                         }

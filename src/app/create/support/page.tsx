@@ -164,6 +164,13 @@ export default function SupportPage() {
   const [descLoading, setDescLoading] = useState(false);
   const [descError, setDescError] = useState('');
   
+  // ▼▼ NEW STATE for image combination ▼▼
+  const [selectedCharacters, setSelectedCharacters] = useState<string[]>([]); // URLs of selected characters
+  const [selectedLocations, setSelectedLocations] = useState<string[]>([]); // URLs of selected locations
+  const [composerPrompt, setComposerPrompt] = useState('');
+  const [isComposing, setIsComposing] = useState(false);
+  // ▲▲ END NEW STATE ▲▲
+
   // NEW state for managing generation logic which now lives here
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImageUrlForChild, setGeneratedImageUrlForChild] = useState('');
@@ -240,6 +247,49 @@ export default function SupportPage() {
     finally { setDescLoading(false); }
   }
 
+    const handleSceneGeneration = async () => {
+      if (!composerPrompt.trim() || (selectedCharacters.length === 0 && selectedLocations.length === 0)) {
+          alert('Please select at least one image and provide a prompt.');
+          return;
+      }
+      setIsComposing(true);
+      setGeneratedImageUrlForChild(''); // Clear previous generation
+
+      try {
+          const imagesToCombine = [...selectedCharacters, ...selectedLocations];
+
+          // The API now expects an 'images' array of data URLs
+          const res = await fetch('/api/generate-image', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  prompt: composerPrompt,
+                  images: imagesToCombine, // Send the array of selected image URLs
+              }),
+          });
+          
+          const json = await res.json();
+          if (!res.ok) throw new Error(json?.error || 'AI scene generation failed');
+
+          const { dataUrl, modelUsed } = extractImageAndModel(json);
+          if (!dataUrl) throw new Error('No image was returned by the generator.');
+
+          console.log(`Scene generated with model: ${modelUsed}`);
+          setGeneratedImageUrlForChild(dataUrl); // This will pass it to the uploader component
+          handleSaved({ url: dataUrl, contentType: 'image/png' }); // This will update the main display
+          
+          // Clear the composer after success
+          setSelectedCharacters([]);
+          setSelectedLocations([]);
+          setComposerPrompt('');
+
+      } catch (e: any) {
+          alert(e?.message || 'Scene generation error');
+      } finally {
+          setIsComposing(false);
+      }
+  };
+
    // Decide which doc to show for the #1 icon based on the active tab
    const tipDocForOne =
    active === 'locations'
@@ -295,6 +345,7 @@ export default function SupportPage() {
                   : kind === 'video' ? <video controls src={displayUrl} className="absolute inset-0 w-full h-full object-contain" />
                   : <div className="text-xs opacity-70">Unsupported media</div>}
                 </div>
+              </div>
               </div>
               {isImageTab(activeTab.key) && (
                 <div className="rounded-xl border-2 border-[#3D4F60] dark:border-[#4B5A6B] bg-[#F3EADF] dark:bg-[#2A3645] p-4">
@@ -359,16 +410,76 @@ export default function SupportPage() {
                 />
               </div>
             </div>
+
+            {/* This is the right column of your grid */}
+            <div className="space-y-6">
+
+            {/* =================================== */}
+            {/* START: NEW SCENE COMPOSER UI      */}
+            {/* =================================== */}
+            {(selectedCharacters.length > 0 || selectedLocations.length > 0) && (
+              <div className="border-2 border-dashed border-[#E97451] rounded-xl p-4 bg-[#F3EADF] dark:bg-[#2A3645]">
+                <h3 className="font-semibold mb-3 text-lg">AI Scene Composer</h3>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {[...selectedCharacters, ...selectedLocations].map(url => (
+                    <img key={url} src={url} className="w-16 h-16 rounded object-cover border" alt="Selected Asset" />
+                  ))}
+                </div>
+                <textarea
+                  className="w-full p-2 border rounded dark:bg-white dark:text-[#3D4F60]"
+                  rows={3}
+                  placeholder="e.g., Make the character stand in front of the castle at sunset..."
+                  value={composerPrompt}
+                  onChange={(e) => setComposerPrompt(e.target.value)}
+                />
+                <div className="flex items-center gap-4 mt-2">
+                  <button
+                    onClick={handleSceneGeneration}
+                    disabled={isComposing || !composerPrompt.trim()}
+                    className="px-4 py-2 rounded bg-[#E97451] text-white disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {isComposing ? <Loader2 className="animate-spin" size={16} /> : <Wand2 size={16} />}
+                    {isComposing ? 'Generating...' : 'Generate Scene'}
+                  </button>
+                  <button
+                      onClick={() => {
+                          setSelectedCharacters([]);
+                          setSelectedLocations([]);
+                          setComposerPrompt('');
+                      }}
+                      className="text-xs underline"
+                  >
+                      Clear Selection
+                  </button>
+                </div>
+              </div>
+            )}
+            {/* =================================== */}
+            {/* END: NEW SCENE COMPOSER UI        */}
+            {/* =================================== */}
+
+
+            {/* =================================== */}
+            {/* START: MY GALLERY UI              */}
+            {/* =================================== */}
             <div className="border-2 border-[#3D4F60] dark:border-[#4B5A6B] rounded-xl p-3 bg-white/60 dark:bg-transparent">
               <h4 className="font-semibold mb-3">My Gallery — <span className="opacity-80">{activeTab.label}</span></h4>
+              <p className="text-xs text-gray-500 mb-2">Select up to 3 characters and 2 locations to combine them.</p>
               <UploadImageReference
                 mode="galleryOnly"
                 variant={activeTab.variant}
                 assetCategory={activeTab.key}
                 onSaved={handleSaved}
+                selection={activeTab.key === 'characters' ? selectedCharacters : selectedLocations}
+                onSelectionChange={activeTab.key === 'characters' ? setSelectedCharacters : setSelectedLocations}
+                maxSelection={activeTab.key === 'characters' ? 3 : 2}
               />
             </div>
-          </div>
+            {/* =================================== */}
+            {/* END: MY GALLERY UI                */}
+            {/* =================================== */}
+
+                    </div> {/* <-- THIS IS THE IMPORTANT CLOSING TAG FOR THE RIGHT COLUMN */}
         </section>
         <div className="flex justify-end gap-3 p-6 border-t-2 border-[#3D4F60]/10 dark:border-[#4B5A6B]/20">
           <Link className="px-4 py-2 rounded-md border border-[#3D4F60] text-[#3D4F60] bg-white dark:border-[#4B5A6B] dark:text-[#E0C9A0] dark:bg-[#2A3645]" href="/create/begin">
