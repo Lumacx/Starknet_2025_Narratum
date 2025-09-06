@@ -3,13 +3,13 @@ import { onRequest } from "firebase-functions/v2/https";
 import type { Request, Response } from "express";
 import { GoogleAuth } from "google-auth-library";
 
-const HOST = "https://aiplatform.googleapis.com";
+const HOST = "https://us-central1-aiplatform.googleapis.com";
 const PROJECT_ID = process.env.GCLOUD_PROJECT || "narratum";
 
-// Regiones donde tengas habilitado Imagen
-const LOCATIONS = ["us-central1"];
+const GEMINI_MODEL = "gemini-2.5-flash-image-preview";
+const GEMINI_LOCATION = "us-central1";
 
-// Orden de fallback (puedes reordenar por calidad/velocidad)
+const IMAGEN_LOCATIONS = ["us-central1"];
 const IMAGEN_MODELS = [
   "imagen-4.0-fast-generate-001",
   "imagen-4.0-generate-001",
@@ -27,24 +27,43 @@ async function getToken(): Promise<string> {
   return token;
 }
 
-async function callImagen(opts: {
+// =======================================================================
+// MODIFIED: Function to call the Gemini API with correct types
+// =======================================================================
+
+// ▼▼ FIX STEP 1: Define a union type for the different kinds of parts. ▼▼
+type Part =
+  | { text: string }
+  | { inlineData: { mimeType: string; data: string } };
+
+async function callGemini(opts: {
   prompt: string;
-  count?: number;
-  aspectRatio?: string;
-  model: string;
-  location: string;
+  images?: string[];
   token: string;
 }): Promise<
   | { ok: true; modelUsed: string; images: string[] }
   | { ok: false; status: number; error: string }
 > {
-  const { prompt, count = 1, aspectRatio, model, location, token } = opts;
+  const { prompt, images: inputImages, token } = opts;
+  const url = `${HOST}/v1/projects/${PROJECT_ID}/locations/${GEMINI_LOCATION}/publishers/google/models/${GEMINI_MODEL}:generateContent`;
 
-  const url = `${HOST}/v1/projects/${PROJECT_ID}/locations/${location}/publishers/google/models/${model}:predict`;
-  const body = {
-    instances: [{ prompt, ...(aspectRatio ? { aspectRatio } : {}) }],
-    parameters: { sampleCount: Math.min(Math.max(Number(count) || 1, 1), 4) },
-  };
+  // ▼▼ FIX STEP 2: Apply the new `Part` type to the `parts` array. ▼▼
+  const parts: Part[] = [{ text: prompt }];
+
+  if (Array.isArray(inputImages) && inputImages.length > 0) {
+    for (const imgDataUrl of inputImages) {
+      if (typeof imgDataUrl !== 'string' || !imgDataUrl.startsWith('data:image/')) {
+        console.warn('callGemini: Skipping invalid image data URL');
+        continue;
+      }
+      const [header, data] = imgDataUrl.split(',');
+      const mimeType = header.match(/:(.*?);/)?.[1] || 'image/png';
+      // Now this push is type-safe because Part allows for `inlineData`
+      parts.push({ inlineData: { mimeType, data } });
+    }
+  }
+
+  const body = { contents: [{ parts }] };
 
   const r = await fetch(url, {
     method: "POST",
@@ -62,32 +81,66 @@ async function callImagen(opts: {
 
   try {
     const data = JSON.parse(text);
-    const preds = data.predictions || [];
-
-    // Path A: bytesBase64Encoded (Imagen 4.x)
-    let images: string[] = preds.map((p: any) => p?.bytesBase64Encoded).filter(Boolean);
-
-    // Path B: generatedImages[].image.imageBytes (algunas variantes 3.x)
-    if (!images.length && preds[0]?.generatedImages) {
-      images = (preds[0].generatedImages || [])
-        .map((g: any) => g?.image?.imageBytes)
-        .filter(Boolean);
+    const imageParts =
+      data.candidates?.[0]?.content?.parts?.filter((p: any) => p.inlineData) || [];
+    const images = imageParts.map((p: any) => p.inlineData.data).filter(Boolean);
+    if (!images.length) {
+      return { ok: false, status: 502, error: "No image data in Gemini response" };
     }
+    return { ok: true, modelUsed: `${GEMINI_MODEL}@${GEMINI_LOCATION}`, images };
+  } catch (e: any) {
+    return { ok: false, status: 500, error: `Invalid JSON from Gemini: ${e.message}` };
+  }
+}
 
+// =======================================================================
+// UNCHANGED: Function to call Imagen models
+// =======================================================================
+async function callImagen(opts: {
+  prompt: string;
+  count?: number;
+  aspectRatio?: string;
+  model: string;
+  location: string;
+  token: string;
+}): Promise<
+  | { ok: true; modelUsed: string; images: string[] }
+  | { ok: false; status: number; error: string }
+> {
+  const { prompt, count = 1, aspectRatio, model, location, token } = opts;
+  const url = `${HOST}/v1/projects/${PROJECT_ID}/locations/${location}/publishers/google/models/${model}:predict`;
+  const body = {
+    instances: [{ prompt, ...(aspectRatio ? { aspectRatio } : {}) }],
+    parameters: { sampleCount: Math.min(Math.max(Number(count) || 1, 1), 4) },
+  };
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const text = await r.text();
+  if (!r.ok) {
+    return { ok: false, status: r.status, error: text };
+  }
+  try {
+    const data = JSON.parse(text);
+    const preds = data.predictions || [];
+    let images: string[] = preds.map((p: any) => p?.bytesBase64Encoded).filter(Boolean);
+    if (!images.length && preds[0]?.generatedImages) {
+      images = (preds[0].generatedImages || []).map((g: any) => g?.image?.imageBytes).filter(Boolean);
+    }
     if (!images.length) {
       return { ok: false, status: 502, error: "No image bytes in response" };
     }
-
     return { ok: true, modelUsed: `${model}@${location}`, images };
   } catch {
     return { ok: false, status: 500, error: "Invalid JSON from Vertex" };
   }
 }
 
-/**
- * HTTP v2: SOLO imágenes con fallback 4.0 → 3.0
- * GET/POST /smartGenerateImage?prompt=...&count=1&aspectRatio=4:3
- */
+// =======================================================================
+// MODIFIED: Main handler to try Gemini first, then fall back to Imagen
+// =======================================================================
 export const smartGenerateImage = onRequest(
   {
     region: "us-central1",
@@ -97,10 +150,12 @@ export const smartGenerateImage = onRequest(
   },
   async (req: Request, res: Response): Promise<void> => {
     try {
-      const prompt = (req.query.prompt || (req.body as any)?.prompt || "").toString();
-      const count = Number(req.query.count || (req.body as any)?.count || 1);
-      const arRaw = (req.query.aspectRatio || (req.body as any)?.aspectRatio || "").toString().trim();
+      const body = req.body as any;
+      const prompt = (req.query.prompt || body?.prompt || "").toString();
+      const count = Number(req.query.count || body?.count || 1);
+      const arRaw = (req.query.aspectRatio || body?.aspectRatio || "").toString().trim();
       const aspectRatio = arRaw || undefined;
+      const inputImages = body?.images as string[] | undefined;
 
       if (!prompt) {
         res.status(400).json({ error: "Missing prompt" });
@@ -109,18 +164,31 @@ export const smartGenerateImage = onRequest(
 
       const token = await getToken();
 
-      // Prueba en cascada: regiones × modelos
-      for (const location of LOCATIONS) {
+      console.log("Attempting primary generation with Gemini...");
+      const geminiResult = await callGemini({ prompt, images: inputImages, token });
+      if (geminiResult.ok) {
+        console.log("Success with Gemini:", geminiResult.modelUsed);
+        res.status(200).json({
+          model: geminiResult.modelUsed,
+          images: geminiResult.images,
+        });
+        return;
+      } else {
+        console.warn(`Gemini attempt failed: ${geminiResult.status} ${String(geminiResult.error).slice(0, 200)}`);
+      }
+
+      console.log("Falling back to Imagen models...");
+      for (const location of IMAGEN_LOCATIONS) {
         for (const model of IMAGEN_MODELS) {
           const out = await callImagen({ prompt, count, aspectRatio, model, location, token });
           if (out.ok) {
+            console.log("Success with Imagen fallback:", out.modelUsed);
             res.status(200).json({
               model: out.modelUsed,
-              images: out.images, // base64 sin data-url
+              images: out.images,
             });
             return;
           }
-          // Ignora 403/404 (modelo no habilitado) y sigue probando
           if (![403, 404].includes(out.status)) {
             console.warn(`Imagen failed ${model}@${location}: ${out.status} ${String(out.error).slice(0, 200)}`);
           }
@@ -128,13 +196,12 @@ export const smartGenerateImage = onRequest(
       }
 
       res.status(503).json({
-        error: "No image-generation model available for this project/region.",
+        error: "All image-generation models failed or were unavailable for this project/region.",
       });
-      return;
+
     } catch (e: any) {
-      console.error(e);
+      console.error("Critical error in smartGenerateImage:", e);
       res.status(500).json({ error: e?.message || "Internal error" });
-      return;
     }
   }
 );

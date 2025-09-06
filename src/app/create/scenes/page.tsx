@@ -128,13 +128,13 @@ function resolveAvatarForVoiceAndGenre(voice: string | null | undefined, genres?
   if (isChildren) return '/story_reader_avatars/Rain Bunny.png';
 
   switch ((voice || '').trim()) {
-    case 'Nuna':
+    case 'Nuna':                      return '/story_reader_avatars/Nuna.png';
     case 'Kore':                      return '/story_reader_avatars/Nuna.png';
-    case 'Juniper':
+    case 'Juniper':                   return '/story_reader_avatars/Juniper.png';
     case 'Leda':                      return '/story_reader_avatars/Juniper.png';
-    case 'Argus':
+    case 'Argus':                     return '/story_reader_avatars/Argus.png';
     case 'Sadachbia':                 return '/story_reader_avatars/Argus.png';
-    case 'en-IN-Chirp3-HD-Achird':    return '/story_reader_avatars/Raj.png';
+    case 'Achird':                    return '/story_reader_avatars/Raj.png';
     case 'Zephyr':                    return '/story_reader_avatars/Belle.png';
     case 'Puck':                      return '/story_reader_avatars/Scythe.png';
     default:                          return DEFAULTS.avatarUrl;

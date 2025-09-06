@@ -664,46 +664,57 @@ const CatalogPage: React.FC = () => {
             CATALOG OF STORIES
           </h2>
 
-          {/* Interactive legend pills (now strongly typed) */}
-          <div className="mt-4 flex flex-wrap gap-3 justify-center text-sm">
-            {/* Story Type Pills */}
-            {TYPE_PILLS.map((k) => {
-              const Ico = TYPE_STYLES[k].Icon;
-              const active = storyTypeFilter === k;
-              return (
-                <FilterPill
-                  key={k}
-                  active={active}
-                  onClick={() => setStoryTypeFilter((cur) => (cur === k ? 'all' : k))}
-                  ringClass="ring-2 ring-teal-300"
-                >
-                  <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full ${TYPE_STYLES[k].badgeBg}`}>
-                    <Ico size={14}/>
-                  </span>
-                  {TYPE_STYLES[k].label}
-                </FilterPill>
-              );
-            })}
+          {/* Interactive legend pills with vertical separator */}
+          <div className="mt-4 flex flex-wrap items-center gap-3 justify-center text-sm">
+            {/* Left group: Story Type Pills */}
+            <div className="flex flex-wrap items-center gap-3">
+              {TYPE_PILLS.map((k) => {
+                const Ico = TYPE_STYLES[k].Icon;
+                const active = storyTypeFilter === k;
+                return (
+                  <FilterPill
+                    key={k}
+                    active={active}
+                    onClick={() => setStoryTypeFilter((cur) => (cur === k ? 'all' : k))}
+                    ringClass="ring-2 ring-teal-300"
+                  >
+                    <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full ${TYPE_STYLES[k].badgeBg}`}>
+                      <Ico size={14}/>
+                    </span>
+                    {TYPE_STYLES[k].label}
+                  </FilterPill>
+                );
+              })}
+            </div>
 
-            {/* Plan Pills */}
-            {PLAN_PILLS.map((k) => {
-              const Ico = PLAN_STYLES[k].Icon;
-              const active = planFilter === k;
-              return (
-                <FilterPill
-                  key={k}
-                  active={active}
-                  onClick={() => setPlanFilter((cur) => (cur === k ? 'all' : k))}
-                  ringClass="ring-2 ring-amber-300"
-                >
-                  <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full ${PLAN_STYLES[k].badgeBg}`}>
-                    <Ico size={14}/>
-                  </span>
-                  {PLAN_STYLES[k].label}
-                </FilterPill>
-              );
-            })}
-          </div>
+            {/* Vertical separator */}
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              className="h-6 w-px mx-2 sm:mx-3 bg-[#3A4B5C]/30 dark:bg-white/30"
+            />
+
+            {/* Right group: Plan Pills (Premium / Free) */}
+            <div className="flex flex-wrap items-center gap-3">
+              {PLAN_PILLS.map((k) => {
+                const Ico = PLAN_STYLES[k].Icon;
+                const active = planFilter === k;
+                return (
+                  <FilterPill
+                    key={k}
+                    active={active}
+                    onClick={() => setPlanFilter((cur) => (cur === k ? 'all' : k))}
+                    ringClass="ring-2 ring-amber-300"
+                  >
+                    <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full ${PLAN_STYLES[k].badgeBg}`}>
+                      <Ico size={14}/>
+                    </span>
+                    {PLAN_STYLES[k].label}
+                  </FilterPill>
+                );
+              })}
+            </div>
+           </div>
         </header>
 
         {/* Row 1 */}
