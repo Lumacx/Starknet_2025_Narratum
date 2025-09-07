@@ -1,12 +1,31 @@
 import type { NextConfig } from 'next';
 
+const isDev = process.env.NODE_ENV !== 'production';
+
+// Optional: put one origin in DEV_ORIGIN or a comma-separated list in ALLOWED_DEV_ORIGINS
+const cloudWorkstationsOrigin = process.env.DEV_ORIGIN; // e.g. https://3000-idx-...cloudworkstations.dev
+const extraOrigins = (process.env.ALLOWED_DEV_ORIGINS || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 const nextConfig: NextConfig = {
-  // Mantén esto si ya lo necesitas
+  // Keep these if you need them
   typescript: { ignoreBuildErrors: true },
   eslint: { ignoreDuringBuilds: true },
 
-  // <Image/> podrá servir imágenes remotas desde estos hosts
   images: {
+    /**
+     * Fix timeouts in dev by skipping the optimizer.
+     * You can force it on any env with NEXT_IMAGE_UNOPTIMIZED=true
+     */
+    unoptimized: isDev || process.env.NEXT_IMAGE_UNOPTIMIZED === 'true',
+
+    // Small perf wins when optimization IS enabled (prod)
+    formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 60, // cache successful fetches for a minute
+
+    // Allow Next/Image to fetch from these CDNs
     remotePatterns: [
       { protocol: 'https', hostname: 'firebasestorage.googleapis.com', pathname: '/v0/b/**' },
       { protocol: 'https', hostname: 'storage.googleapis.com', pathname: '/**' },
@@ -16,21 +35,25 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'picsum.photos', pathname: '/**' },
       { protocol: 'https', hostname: 'placehold.co', pathname: '/**' },
     ],
+
+    // (Optional) tighten CSP for the image optimizer route
+    contentSecurityPolicy: "script-src 'none'; frame-src 'none'; worker-src 'self';",
   },
 
   experimental: {
     /**
-     * Habilita abrir la app desde dominios externos de dev (Cloud Workstations).
-     * Usa orígenes completos. Si cambia el subdominio, añade el nuevo aquí.
+     * Allow dev access from external origins (e.g., Cloud Workstations).
+     * Add/update without editing code by setting DEV_ORIGIN or ALLOWED_DEV_ORIGINS.
      */
     allowedDevOrigins: [
       'http://localhost:3000',
-      'http://10.88.0.3:3000', // la IP que te muestra Next en consola
-      'https://3000-idx-studio-1746560064210.cluster-f4iwdviaqvc2ct6pgytzw4xqy4.cloudworkstations.dev'
-      // Si tu instancia cambia mucho de subdominio, añade el nuevo valor cuando aparezca en el warning
+      'http://127.0.0.1:3000',
+      'http://10.88.0.3:3000', // the LAN IP Next printed
+      ...(cloudWorkstationsOrigin ? [cloudWorkstationsOrigin] : []),
+      ...extraOrigins,
     ],
-    // Si llegas a usar Server Actions cross-origin, podrías necesitar:
-    // serverActions: { allowedOrigins: ['https://3000-idx-studio-...cloudworkstations.dev'] },
+    // If you end up using server actions cross-origin, you may also need:
+    // serverActions: { allowedOrigins: [cloudWorkstationsOrigin!, ...extraOrigins] },
   },
 };
 

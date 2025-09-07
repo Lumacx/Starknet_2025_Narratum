@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-// MODIFIED: Added CheckCircle2 for the selection UI
 import { Trash2, Copy, CheckCircle2 } from 'lucide-react';
 import Image from 'next/image';
 import { storage } from '@/lib/firebase';
@@ -25,21 +24,20 @@ type AssetCategory =
   | 'others';
 type Mode = 'full' | 'uploaderOnly' | 'galleryOnly';
 
-// STEP 1: Define the new props for selection functionality
 type Props = {
   variant: 'character' | 'location' | 'cover';
   onSaved?: (item: GalleryItem) => void;
   assetCategory: AssetCategory;
   mode?: Mode;
-  // Props from parent to control generation
+  // Generation controls (parent provides)
   onGenerateRequest?: (prompt: string) => void;
   isGenerating?: boolean;
   generatedImageUrl?: string;
-  // Props for multi-selection (Scene Composer)
+  // Multi-selection (Scene Composer)
   selection?: string[];
   onSelectionChange?: (newSelection: string[]) => void;
   maxSelection?: number;
-  // Original props
+  // Originals
   nounOverride?: string;
   onOpenTemplate?: () => void;
   mainPromptLabel?: string;
@@ -93,7 +91,6 @@ export default function UploadImageReference({
   onGenerateRequest,
   isGenerating,
   generatedImageUrl,
-  // STEP 2: Destructure new props with safe defaults
   selection = [],
   onSelectionChange,
   maxSelection = 1,
@@ -105,14 +102,15 @@ export default function UploadImageReference({
     nounOverride ?? (variant === 'character' ? 'Character' : variant === 'location' ? 'Location' : 'Cover');
   const generateCta = `Generate ${noun} Image (AI)`;
 
+  // ✅ Use the kebab-case file names in /public/info_tips
   const tipDocForOne =
     assetCategory === 'locations'
-      ? '/info_tips/Location Generation.md'
+      ? '/info_tips/location-generation-template.md'
       : assetCategory === 'characters'
-      ? '/info_tips/Character Creation.md'
+      ? '/info_tips/character-creation-template.md'
       : null;
 
-  const tipDocForTwo = '/info_tips/Pro Tips for Prompting.md';
+  const tipDocForTwo = '/info_tips/pro-tips-for-prompting-images.md';
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState('');
@@ -123,6 +121,19 @@ export default function UploadImageReference({
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [err, setErr] = useState('');
   const [localGeneratedUrl, setLocalGeneratedUrl] = useState('');
+
+  // 🔗 Allow InfoPopover (or parent) to inject a prompt into this component
+  useEffect(() => {
+    const handler = (e: Event) => {
+      try {
+        const ce = e as CustomEvent<{ text?: string }>;
+        const txt = ce?.detail?.text ?? '';
+        if (txt) setMainPrompt(txt);
+      } catch {}
+    };
+    window.addEventListener('set-uploader-prompt', handler as EventListener);
+    return () => window.removeEventListener('set-uploader-prompt', handler as EventListener);
+  }, []);
 
   useEffect(() => {
     setLocalGeneratedUrl(generatedImageUrl || '');
@@ -174,7 +185,6 @@ export default function UploadImageReference({
   }
 
   async function handleDescribe() {
-    // keep placeholder; description handled by parent page’s button (AI Describe — Selected Image)
     if (!selectedFile) return;
     setIsDescribing(true);
     try {
@@ -236,27 +246,24 @@ export default function UploadImageReference({
     }
   }
 
-// STEP 3: Create the new click handler for the gallery
-const handleGalleryItemClick = (item: GalleryItem) => {
-  // If onSelectionChange is provided, we are in multi-select mode
-  if (onSelectionChange) {
-    const isSelected = selection.includes(item.url);
-    let newSelection: string[];
-    if (isSelected) {
-      newSelection = selection.filter((url) => url !== item.url);
-    } else {
-      if (selection.length >= maxSelection) {
-        alert(`You can only select up to ${maxSelection} items.`);
-        return;
+  const handleGalleryItemClick = (item: GalleryItem) => {
+    if (onSelectionChange) {
+      const isSelected = selection.includes(item.url);
+      let newSelection: string[];
+      if (isSelected) {
+        newSelection = selection.filter((url) => url !== item.url);
+      } else {
+        if (selection.length >= maxSelection) {
+          alert(`You can only select up to ${maxSelection} items.`);
+          return;
+        }
+        newSelection = [...selection, item.url];
       }
-      newSelection = [...selection, item.url];
+      onSelectionChange(newSelection);
+    } else {
+      onSaved?.(item);
     }
-    onSelectionChange(newSelection);
-  } else {
-    // Otherwise, fall back to the original single-select behavior
-    onSaved?.(item);
-  }
-};
+  };
 
   function PreviewBlock() {
     if (!previewUrl || !selectedFile) return null;
@@ -269,6 +276,7 @@ const handleGalleryItemClick = (item: GalleryItem) => {
             width={240}
             height={240}
             className="mx-auto max-h-48 rounded-md border object-contain"
+            unoptimized
           />
         </div>
       );
@@ -329,22 +337,20 @@ const handleGalleryItemClick = (item: GalleryItem) => {
           <>
             <div className="border-t my-4" />
 
-            {/* Suggested Prompt (from AI) — with tooltip #1 */}
+            {/* Suggested Prompt (from AI) — with template helper */}
             {showInnerDescribe && (
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <h4 className="font-semibold">Suggested Prompt Description (from AI)</h4>
 
-                  {/* Tooltip #1: Character/Location template (yellow) */}
                   {tipDocForOne && (
                     <InfoPopover
                       title={assetCategory === 'locations' ? 'Location Template' : 'Character Template'}
                       docHref={tipDocForOne}
-                      align="right"
+                      // When user clicks "Use in App" inside the popover, prefill this component's prompt box
+                      onUsePrompt={(text) => setMainPrompt(text)}
                     />
                   )}
-
-                  {/* Removed the gray Info button to keep only yellow tooltips */}
 
                   {!!suggestedPrompt && (
                     <button
@@ -376,12 +382,15 @@ const handleGalleryItemClick = (item: GalleryItem) => {
               </div>
             )}
 
-            {/* User main prompt — with tooltip #2 (yellow) */}
+            {/* User main prompt — with Pro Tips helper */}
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <h4 className="font-semibold">{mainPromptLabel ?? `${noun} Description`}</h4>
-
-                <InfoPopover title="Pro Tips for Prompting" docHref={tipDocForTwo} align="right" />
+                <InfoPopover
+                  title="Pro Tips for Prompting"
+                  docHref={tipDocForTwo}
+                  onUsePrompt={(text) => setMainPrompt(text)}
+                />
               </div>
 
               <textarea
@@ -444,10 +453,9 @@ const handleGalleryItemClick = (item: GalleryItem) => {
     );
   }
 
-  // STEP 4: Modify the GalleryUI to use the new handler and styles
   function GalleryUI() {
     return (
-      <div /* The parent div is now in page.tsx, so we don't need the border here */>
+      <div>
         {gallery.length === 0 ? (
           <p className="text-sm text-neutral-500">No files yet.</p>
         ) : (
@@ -462,12 +470,19 @@ const handleGalleryItemClick = (item: GalleryItem) => {
                   className="relative group border rounded-md overflow-hidden p-1 cursor-pointer transition-all duration-200"
                   onClick={() => handleGalleryItemClick(it)}
                   style={{
-                    borderColor: isSelected ? '#3b82f6' : 'transparent', // blue-500
+                    borderColor: isSelected ? '#3b82f6' : 'transparent',
                     borderWidth: isSelected ? '3px' : '1px',
                     opacity: isSelectionMode && selection.length > 0 && !isSelected ? 0.6 : 1,
                   }}
                 >
-                  <Image src={it.url} alt={it.name} width={150} height={150} className="w-full h-32 object-cover rounded" />
+                  <Image
+                    src={it.url}
+                    alt={it.name}
+                    width={150}
+                    height={150}
+                    className="w-full h-32 object-cover rounded"
+                    unoptimized
+                  />
                   <button
                     title="Delete"
                     onClick={(e) => {
@@ -493,7 +508,6 @@ const handleGalleryItemClick = (item: GalleryItem) => {
     );
   }
 
-  // The final render logic based on mode remains the same
   if (mode === 'uploaderOnly') {
     return <div className="p-4 bg-white border rounded-xl">{UploaderUI()}</div>;
   }

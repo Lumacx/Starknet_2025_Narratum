@@ -143,7 +143,6 @@ export default function SupportPage() {
         const snap = await getDoc(ref);
         if (!snap.exists()) return;
         const s = snap.data() as any;
-
         let langFromDoc = s?.language as LangCode | undefined;
         if (!langFromDoc) {
           try {
@@ -152,7 +151,6 @@ export default function SupportPage() {
             langFromDoc = (parsed?.language as LangCode) || 'en';
           } catch {}
         }
-
         setContext((prev) => ({ ...prev, title: s?.title || prev.title, genres: Array.isArray(s?.genres) ? s.genres : prev.genres, synopsis: s?.synopsis || prev.synopsis, language: (langFromDoc || prev.language) as LangCode }));
       } catch (e) { console.error('Failed to fetch story for context', e); }
     })();
@@ -187,7 +185,6 @@ export default function SupportPage() {
     params.set('tab', active);
     if (storyId) params.set('storyId', storyId);
     window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
-
     localStorage.setItem('supportTab', active);
     setDisplayUrl('');
     setDisplayContentType(undefined);
@@ -248,7 +245,6 @@ export default function SupportPage() {
       const lang = (context.language || 'en') as LangCode;
       const langLabel = LANG_LABELS[lang] || 'English';
       const promptText = lang === 'es' ? 'Describe esta imagen en un solo párrafo claro y conciso...' : `Describe this image in one clear, concise paragraph... Respond only in ${langLabel}.`;
-     
       const res = await fetch('/api/describe-image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body, prompt: promptText, language: lang, targetLanguage: lang, context: { title: context.title, genres: context.genres, synopsis: context.synopsis, }, responseModalities: ['TEXT'], }), });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Describe failed');
@@ -257,68 +253,86 @@ export default function SupportPage() {
     finally { setDescLoading(false); }
   }
 
-    const handleSceneGeneration = async () => {
-      if (!composerPrompt.trim() || (selectedCharacters.length === 0 && selectedLocations.length === 0)) {
-          alert('Please select at least one image and provide a prompt.');
-          return;
-      }
-      setIsComposing(true);
-      setGeneratedImageUrlForChild(''); // Clear previous generation
+  const handleSceneGeneration = async () => {
+    if (!composerPrompt.trim() || (selectedCharacters.length === 0 && selectedLocations.length === 0)) {
+      alert('Please select at least one image and provide a prompt.');
+      return;
+    }
+    setIsComposing(true);
+    setGeneratedImageUrlForChild(''); // Clear previous generation
+    try {
+      const imagesToCombine = [...selectedCharacters, ...selectedLocations];
+      const res = await fetch('/api/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: composerPrompt, images: imagesToCombine }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'AI scene generation failed');
 
-      try {
-          const imagesToCombine = [...selectedCharacters, ...selectedLocations];
+      const { dataUrl, modelUsed } = extractImageAndModel(json);
+      setLastModelUsed(modelUsed || 'Unknown');
+      if (!dataUrl) throw new Error('No image was returned by the generator.');
 
-          // The API now expects an 'images' array of data URLs
-          const res = await fetch('/api/generate-image', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                  prompt: composerPrompt,
-                  images: imagesToCombine, // Send the array of selected image URLs
-              }),
-          });
-          
-          const json = await res.json();
-          if (!res.ok) throw new Error(json?.error || 'AI scene generation failed');
-
-          // MODIFIED: Capture modelUsed here
-          const { dataUrl, modelUsed } = extractImageAndModel(json);
-          setLastModelUsed(modelUsed || 'Unknown'); // <-- ADD THIS LINE
-
-          if (!dataUrl) throw new Error('No image was returned by the generator.');
-
-          console.log(`Scene generated with model: ${modelUsed}`);
-          setGeneratedImageUrlForChild(dataUrl); // This will pass it to the uploader component
-          handleSaved({ url: dataUrl, contentType: 'image/png' }); // This will update the main display
-          
-          // Clear the composer after success
-          setSelectedCharacters([]);
-          setSelectedLocations([]);
-          setComposerPrompt('');
-
-      } catch (e: any) {
-          alert(e?.message || 'Scene generation error');
-      } finally {
-          setIsComposing(false);
-      }
+      setGeneratedImageUrlForChild(dataUrl);
+      handleSaved({ url: dataUrl, contentType: 'image/png' });
+      setSelectedCharacters([]);
+      setSelectedLocations([]);
+      setComposerPrompt('');
+    } catch (e: any) {
+      alert(e?.message || 'Scene generation error');
+    } finally {
+      setIsComposing(false);
+    }
   };
 
-   // Decide which doc to show for the #1 icon based on the active tab
-   const tipDocForOne =
-   active === 'locations'
-     ? '/info_tips/Location Generation Template.md'
-     : '/info_tips/Character Creation template.md';
+  // Decide which doc to show for the #1 icon based on the active tab
+  // ★ NEW: use kebab-case paths in /public/info_tips
+  const tipDocForOne =
+    active === 'locations'
+      ? '/info_tips/location-generation-template.md'
+      : '/info_tips/character-creation-template.md';
+  const tipDocForTwo = '/info_tips/pro-tips-for-prompting-images.md';
 
-    // #2 is the same for both tabs
-    const tipDocForTwo = '/info_tips/Pro Tips for Prompting Images.md';
+  // ★ NEW: receive prompts from InfoPopover and route them to inputs
+  const handleUsePromptFromInfo = useCallback((text: string) => {
+    // 1) Prefill the Scene Composer prompt box on this page
+    setComposerPrompt(text);
 
-  if (loading) { return ( <div className="min-h-screen grid place-items-center"><div className="flex items-center gap-3"><Loader2 className="animate-spin" /><span>Checking your session…</span></div></div> ); }
-  if (!user) { return ( <div className="min-h-screen p-6"><div className="max-w-xl mx-auto bg-[#F3EADF] rounded-xl p-8"><h1 className="text-2xl font-bold mb-2">Sign in required</h1><p className="mb-6">Please sign in to upload or view your reference gallery.</p><div className="flex gap-3"><Link href="/login" className="px-5 py-2 rounded-md bg-[#3D4F60] text-white">Go to Login</Link><button onClick={() => router.back()} className="px-5 py-2 rounded-md border-2">← Back</button></div></div></div> ); }
+    // 2) Ask UploadImageReference to prefill its internal prompt (Character Description)
+    //    Add a small listener inside that component to consume this event (snippet below).
+    window.dispatchEvent(new CustomEvent('set-uploader-prompt', { detail: { text } }));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen grid place-items-center">
+        <div className="flex items-center gap-3"><Loader2 className="animate-spin" /><span>Checking your session…</span></div>
+      </div>
+    );
+  }
+  if (!user) {
+    return (
+      <div className="min-h-screen p-6">
+        <div className="max-w-xl mx-auto bg-[#F3EADF] rounded-xl p-8">
+          <h1 className="text-2xl font-bold mb-2">Sign in required</h1>
+          <p className="mb-6">Please sign in to upload or view your reference gallery.</p>
+          <div className="flex gap-3">
+            <Link href="/login" className="px-5 py-2 rounded-md bg-[#3D4F60] text-white">Go to Login</Link>
+            <button onClick={() => router.back()} className="px-5 py-2 rounded-md border-2">← Back</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen p-6 bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26] text-[#3A4B5C] dark:text-[#E0C9A0] font-sans">
       <div className="max-w-6xl mx-auto bg-[#F3EADF] border-2 border-[#CBBBA0] text-[#3A4B5C] dark:bg-[#2A3645] dark:border-[#4B5A6B] dark:text-[#E0C9A0] rounded-xl shadow-2xl">
-        <style jsx global>{`.dark .uploader-scope input[type="text"], .dark .uploader-scope textarea { color: #3D4F60 !important; background: #ffffff !important; }`}</style>
+        <style jsx global>{`
+          .dark .uploader-scope input[type="text"],
+          .dark .uploader-scope textarea { color: #3D4F60 !important; background: #ffffff !important; }
+        `}</style>
         
         {/* --- HEADER --- */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-6 border-b-2 border-[#3D4F60]/10 dark:border-[#4B5A6B]/20">
@@ -333,8 +347,8 @@ export default function SupportPage() {
           </div>
         </div>
         
-         {/* --- TABS --- */}
-         <div className="px-4 sm:px-6 pt-4">
+        {/* --- TABS --- */}
+        <div className="px-4 sm:px-6 pt-4">
           <div role="tablist" aria-label="Reference categories" className="flex flex-wrap gap-2 sm:gap-3">
             {TABS.map(({ key, label, icon: Icon }) => (
               <button
@@ -349,8 +363,7 @@ export default function SupportPage() {
                     : 'bg-white text-[#3D4F60] border-[#3D4F60]/20 hover:border-[#3D4F60]/40 dark:bg-[#1A2533] dark:text-[#F0D1B0] dark:border-[#4B5A6B]/20 dark:hover:border-[#4B5A6B]/40'
                 )}
               >
-                <Icon size={16} />
-                <span className="text-sm font-semibold">{label}</span>
+                <Icon size={16} /><span className="text-sm font-semibold">{label}</span>
               </button>
             ))}
           </div>
@@ -417,49 +430,34 @@ export default function SupportPage() {
                 </div>
               )}
               
-               {/* --- 3. UPLOAD / GENERATE COMPONENT --- */}
-                    <div className="uploader-scope">
-                      <div className="flex items-center gap-3 text-xs mb-2">
-                        <span className="opacity-70">Generation Tips:</span>
-                        <div className="inline-flex items-center gap-1">
-                          <span className="opacity-60">#1</span>
-                          <InfoPopover
-                            title={active === 'locations' ? 'Location Template' : 'Character Template'}
-                            docHref={active === 'locations'
-                              ? '/info_tips/Location Generation Template.md'
-                              : '/info_tips/Character Creation template.md'}
-                            noCache
-                            onInsertPrompt={(text) => setComposerPrompt(text)}
-                            insertLabel="Insert to Scene Composer"
-                          />
-                        </div>
-                        <div className="inline-flex items-center gap-1">
-                          <span className="opacity-60">#2</span>
-                          <InfoPopover
-                            title="Pro Tips for Prompting Images"
-                            docHref="/info_tips/Pro Tips for Prompting Images.md"
-                            noCache
-                            onInsertPrompt={(text) => setComposerPrompt(text)}
-                            insertLabel="Insert to Scene Composer"
-                          />
-                        </div>
-                    <div className="inline-flex items-center gap-1">
+              {/* --- 3. UPLOAD / GENERATE COMPONENT --- */}
+              <div className="uploader-scope">
+                <div className="flex items-center gap-3 text-xs mb-2">
+                  <span className="opacity-70">Generation Tips:</span>
+                  <div className="inline-flex items-center gap-1">
+                    <span className="opacity-60">#1</span>
+                    {/* ★ NEW: modal InfoPopover with “Use in App” */}
+                    <InfoPopover
+                      title={active === 'locations' ? 'Location Template' : 'Character Template'}
+                      docHref={tipDocForOne}
+                      onUsePrompt={handleUsePromptFromInfo}
+                    />
+                  </div>
+                  <div className="inline-flex items-center gap-1">
                     <span className="opacity-60">#2</span>
                     <InfoPopover
                       title="Pro Tips for Prompting Images"
-                      docHref="/info_tips/Pro Tips for Prompting Images.md"
-                      noCache
-                      onInsertPrompt={(text) => setComposerPrompt(text)}
-                      insertLabel="Insert to Scene Composer"
+                      docHref={tipDocForTwo}
+                      onUsePrompt={handleUsePromptFromInfo}
                     />
-                    </div>
+                  </div>
                 </div>
                 <UploadImageReference
                   mode="uploaderOnly"
                   variant={activeTab.variant}
                   assetCategory={activeTab.key}
                   accept={acceptByTab[activeTab.key]}
-                  showInnerDescribe={false} // Describe is now a separate component
+                  showInnerDescribe={false}
                   onSaved={handleSaved}
                   onGenerateRequest={handleGenerateRequest}
                   isGenerating={isGenerating}
@@ -479,7 +477,7 @@ export default function SupportPage() {
                   <h3 className="font-semibold mb-3 text-lg">AI Scene Composer</h3>
                   
                   {selectedCharacters.length === 0 && selectedLocations.length === 0 ? (
-                     <p className="text-sm text-gray-500">Select images from your gallery below to begin combining them.</p>
+                    <p className="text-sm text-gray-500">Select images from your gallery below to begin combining them.</p>
                   ) : (
                     <>
                       <div className="flex flex-wrap gap-2 mb-3">
@@ -488,7 +486,6 @@ export default function SupportPage() {
                         ))}
                       </div>
                       <textarea
-                        id="composer-box"  // <-- add this
                         className="w-full p-2 border rounded dark:bg-white dark:text-[#3D4F60]"
                         rows={3}
                         placeholder="e.g., Make the character stand in front of the castle at sunset..."
