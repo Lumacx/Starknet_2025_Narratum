@@ -10,15 +10,11 @@ const GEMINI_MODEL = "gemini-2.5-flash-image-preview";
 const GEMINI_LOCATION = "us-central1";
 const IMAGEN_LOCATIONS = ["us-central1"];
 const IMAGEN_MODELS = [
-    "imagen-4.0-fast-generate-001",
-    "imagen-4.0-generate-001",
-    "imagen-3.0-fast-generate-001",
-    "imagen-3.0-generate-002",
+    "imagen-4.0-fast-generate-001", "imagen-4.0-generate-001",
+    "imagen-3.0-fast-generate-001", "imagen-3.0-generate-002",
 ];
 async function getToken() {
-    const auth = new google_auth_library_1.GoogleAuth({
-        scopes: ["https://www.googleapis.com/auth/cloud-platform"],
-    });
+    const auth = new google_auth_library_1.GoogleAuth({ scopes: ["https://www.googleapis.com/auth/cloud-platform"], });
     const client = await auth.getClient();
     const { token } = await client.getAccessToken();
     if (!token)
@@ -27,62 +23,45 @@ async function getToken() {
 }
 async function callGemini(opts) {
     const { prompt, images: inputImages, token } = opts;
-    const url = `${HOST}/v1/projects/${PROJECT_ID}/locations/${GEMINI_LOCATION}/publishers/google/models/${GEMINI_MODEL}:generateContent`;
-    // ▼▼ FIX STEP 2: Apply the new `Part` type to the `parts` array. ▼▼
-    const parts = [{ text: prompt }];
+    const url = `${HOST}/v1/projects/${PROJECT_ID}/locations/${GEMINI_LOCATION}/publishers/google/models/${GEMINI_MODEL}:predict`; // NOTE: Using :predict endpoint for consistency
+    const parts = [];
     if (Array.isArray(inputImages) && inputImages.length > 0) {
         for (const imgDataUrl of inputImages) {
             if (typeof imgDataUrl !== 'string' || !imgDataUrl.startsWith('data:image/')) {
-                console.warn('callGemini: Skipping invalid image data URL');
                 continue;
             }
             const [header, data] = imgDataUrl.split(',');
             const mimeType = header.match(/:(.*?);/)?.[1] || 'image/png';
-            // Now this push is type-safe because Part allows for `inlineData`
             parts.push({ inlineData: { mimeType, data } });
         }
     }
-    const body = { contents: [{ parts }] };
-    const r = await fetch(url, {
-        method: "POST",
-        headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-    });
+    parts.push({ text: prompt });
+    // ▼▼▼ THE ONE-LINE FIX IS HERE ▼▼▼
+    // We must wrap the contents payload in the "instances" array for the Vertex AI endpoint.
+    const body = { instances: [{ contents: [{ parts }] }] };
+    const r = await fetch(url, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", }, body: JSON.stringify(body), });
     const text = await r.text();
     if (!r.ok) {
         return { ok: false, status: r.status, error: text };
     }
     try {
         const data = JSON.parse(text);
-        const imageParts = data.candidates?.[0]?.content?.parts?.filter((p) => p.inlineData) || [];
-        const images = imageParts.map((p) => p.inlineData.data).filter(Boolean);
-        if (!images.length) {
-            return { ok: false, status: 502, error: "No image data in Gemini response" };
+        // The response structure for the :predict endpoint is different
+        const imageBase64 = data.predictions?.[0]?.bytesBase64Encoded;
+        if (!imageBase64) {
+            return { ok: false, status: 502, error: "No image data in Gemini predict response" };
         }
-        return { ok: true, modelUsed: `${GEMINI_MODEL}@${GEMINI_LOCATION}`, images };
+        return { ok: true, modelUsed: `${GEMINI_MODEL}@${GEMINI_LOCATION}`, images: [imageBase64] };
     }
     catch (e) {
         return { ok: false, status: 500, error: `Invalid JSON from Gemini: ${e.message}` };
     }
 }
-// =======================================================================
-// UNCHANGED: Function to call Imagen models
-// =======================================================================
 async function callImagen(opts) {
     const { prompt, count = 1, aspectRatio, model, location, token } = opts;
     const url = `${HOST}/v1/projects/${PROJECT_ID}/locations/${location}/publishers/google/models/${model}:predict`;
-    const body = {
-        instances: [{ prompt, ...(aspectRatio ? { aspectRatio } : {}) }],
-        parameters: { sampleCount: Math.min(Math.max(Number(count) || 1, 1), 4) },
-    };
-    const r = await fetch(url, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-    });
+    const body = { instances: [{ prompt, ...(aspectRatio ? { aspectRatio } : {}) }], parameters: { sampleCount: Math.min(Math.max(Number(count) || 1, 1), 4) }, };
+    const r = await fetch(url, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(body), });
     const text = await r.text();
     if (!r.ok) {
         return { ok: false, status: r.status, error: text };
@@ -103,15 +82,7 @@ async function callImagen(opts) {
         return { ok: false, status: 500, error: "Invalid JSON from Vertex" };
     }
 }
-// =======================================================================
-// MODIFIED: Main handler to try Gemini first, then fall back to Imagen
-// =======================================================================
-exports.smartGenerateImage = (0, https_1.onRequest)({
-    region: "us-central1",
-    timeoutSeconds: 120,
-    memory: "1GiB",
-    serviceAccount: "vertex-runner@narratum.iam.gserviceaccount.com",
-}, async (req, res) => {
+exports.smartGenerateImage = (0, https_1.onRequest)({ region: "us-central1", timeoutSeconds: 120, memory: "1GiB", serviceAccount: "vertex-runner@narratum.iam.gserviceaccount.com", }, async (req, res) => {
     try {
         const body = req.body;
         const prompt = (req.query.prompt || body?.prompt || "").toString();
@@ -128,10 +99,7 @@ exports.smartGenerateImage = (0, https_1.onRequest)({
         const geminiResult = await callGemini({ prompt, images: inputImages, token });
         if (geminiResult.ok) {
             console.log("Success with Gemini:", geminiResult.modelUsed);
-            res.status(200).json({
-                model: geminiResult.modelUsed,
-                images: geminiResult.images,
-            });
+            res.status(200).json({ model: geminiResult.modelUsed, images: geminiResult.images, });
             return;
         }
         else {
@@ -143,10 +111,7 @@ exports.smartGenerateImage = (0, https_1.onRequest)({
                 const out = await callImagen({ prompt, count, aspectRatio, model, location, token });
                 if (out.ok) {
                     console.log("Success with Imagen fallback:", out.modelUsed);
-                    res.status(200).json({
-                        model: out.modelUsed,
-                        images: out.images,
-                    });
+                    res.status(200).json({ model: out.modelUsed, images: out.images, });
                     return;
                 }
                 if (![403, 404].includes(out.status)) {
@@ -154,9 +119,7 @@ exports.smartGenerateImage = (0, https_1.onRequest)({
                 }
             }
         }
-        res.status(503).json({
-            error: "All image-generation models failed or were unavailable for this project/region.",
-        });
+        res.status(503).json({ error: "All image-generation models failed or were unavailable for this project/region.", });
     }
     catch (e) {
         console.error("Critical error in smartGenerateImage:", e);

@@ -125,6 +125,17 @@ function inferKind(url?: string, contentType?: string): 'image' | 'audio' | 'vid
   return 'unknown';
 }
 
+async function urlToDataUrl(url: string): Promise<string> {
+  const response = await fetch(url);
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 /* ============================== Component ============================== */
 export default function SupportPage() {
   const { user, loading } = useAuth();
@@ -259,27 +270,47 @@ export default function SupportPage() {
       return;
     }
     setIsComposing(true);
-    setGeneratedImageUrlForChild(''); // Clear previous generation
+    setGeneratedImageUrlForChild('');
+  
     try {
-      const imagesToCombine = [...selectedCharacters, ...selectedLocations];
+      // Step 1: Get the original Firebase Storage URLs
+      const imageUrls = [...selectedCharacters, ...selectedLocations];
+  
+      // Step 2: Convert all storage URLs to data: URLs
+      console.log('Converting image URLs to data URLs...');
+      const imagesAsDataUrls = await Promise.all(
+        imageUrls.map(url => urlToDataUrl(url))
+      );
+      console.log('Conversion complete. Sending to API.');
+  
+      // Step 3: Send the correctly formatted data to the API
       const res = await fetch('/api/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: composerPrompt, images: imagesToCombine }),
+        body: JSON.stringify({
+          prompt: composerPrompt,
+          images: imagesAsDataUrls, // Send the array of data: URLs
+        }),
       });
+  
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'AI scene generation failed');
-
+  
       const { dataUrl, modelUsed } = extractImageAndModel(json);
       setLastModelUsed(modelUsed || 'Unknown');
+  
       if (!dataUrl) throw new Error('No image was returned by the generator.');
-
+  
+      console.log(`Scene generated with model: ${modelUsed}`);
       setGeneratedImageUrlForChild(dataUrl);
       handleSaved({ url: dataUrl, contentType: 'image/png' });
+  
       setSelectedCharacters([]);
       setSelectedLocations([]);
       setComposerPrompt('');
+  
     } catch (e: any) {
+      console.error('Scene generation error:', e);
       alert(e?.message || 'Scene generation error');
     } finally {
       setIsComposing(false);
