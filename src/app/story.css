@@ -1,449 +1,465 @@
 /* --- Basic Setup & Fonts --- */
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap'); /* Example Font */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
 
-:root {
-  /* Global caps (you can tweak these) */
-  --app-max-w: 80vw;
-  --app-max-h: 80vh;
+:root{
+  /* App frame size */
+  --reader-w: 90vw;
+  --reader-h: 90vh;
 
-  /* Image frame caps */
-  --image-max-vw: 80vw;
-  --image-max-vh: 45vh;
+  /* Panels */
+  --avatar-w: 26%;
+  --gap: 18px;
 
-  /* Text sizing */
-  --font-size-multiplier: 1.0; /* JS can update this */
-  --text-max-width: 72ch;
+  /* Text bubble scaling hook (used by JS if desired) */
+  --font-size-multiplier: 1;
 }
 
+/* Global background */
 html, body {
-  min-height: 100%;
+  height: 100%;
   margin: 0;
   padding: 0;
-
-  /* IMPORTANT: allow scrollbars so nothing gets cut off on small screens */
-  overflow: auto;
-
-  font-family: 'Poppins', sans-serif; /* New font */
-  background-color: #1a2e2a; /* Default dark background */
-  background-image: url('../../public/story_reader_backgrounds/dream-background.png'); /* Default BG Image */
+  overflow: auto; /* allow scrollbars when content exceeds viewport */
+  font-family: 'Poppins', sans-serif;
+  background-color: #1a2e2a;
+  background-image: url('../../public/story_reader_backgrounds/dream-background.png');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
 }
 
-body {
+/* avoid flex centering that can hide scrollbars on small screens */
+body { display: block; }
+
+/* --- Main App Container --- */
+#app-container{
+  width: min(1200px, var(--reader-w));
+  height: min(900px, var(--reader-h));
+  margin: 5vh auto;            /* 5% vertical margin; horizontal is auto with 90vw width -> 5% per side */
+  background-color: rgba(26,46,42,0.85);
+  backdrop-filter: blur(5px);
+  border-radius: 24px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.3);
   display: flex;
-  justify-content: center;
-  align-items: center;
+  flex-direction: column;
+  padding: clamp(12px, 2vw, 20px);
+  box-sizing: border-box;
+  color: #f0f0f0;
+  overflow: auto; /* internal scrolling if needed */
   position: relative;
 }
 
-/* --- Reader Mode: hide site chrome when reader is mounted --- */
+/* --- Header --- */
+#app-header{
+  display: flex;
+  flex-wrap: wrap;             /* allow two rows when narrow */
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 12px;              /* row/column gaps */
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+  position: sticky;
+  top: 8px;
+  z-index: 40;
+  background: transparent;
+}
+
+#app-header > div:first-child{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width: 0;
+}
+
+#welcome-text{
+  font-size: clamp(1.1rem, 2vw, 1.6rem);
+  font-weight: 700;
+  color: #fff;
+}
+
+/* Header control cluster (wraps to a second row on smaller widths) */
+#header-icons{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 220px;
+}
+
+#header-icons .header-icon-btn{
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: #eee;
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: clamp(0.95rem, 1.5vw, 1.05rem);
+  min-width: 42px;
+  min-height: 38px;
+  display: grid;
+  place-items: center;
+  transition: background-color .2s, transform .1s;
+}
+#header-icons .header-icon-btn:hover{ background: rgba(255,255,255,0.22); }
+#header-icons .header-icon-btn:active{ transform: scale(.98); }
+
+/* Tiny settings popover (from React) */
+#options-button-new + .header-icon-btn{} /* (placeholder to keep order consistent) */
+
+/* --- Navigation Bar (transport controls) --- */
+#navigation-controls-bar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-top:10px;
+  width: 100%;
+  padding: 6px 0;
+  box-sizing:border-box;
+  flex-wrap: nowrap;      /* never wrap; keep arrows accessible */
+}
+
+.nav-arrow{
+  background: rgba(255,255,255,0.12);
+  border: none;
+  color: #eee;
+  padding: 8px 12px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: clamp(0.95rem, 1.5vw, 1.1rem);
+  transition: background-color .2s, transform .1s;
+  width: 42px; height: 42px;
+  display:flex; justify-content:center; align-items:center;
+}
+.nav-arrow:hover{ background: rgba(255,255,255,0.22); }
+.nav-arrow:active{ transform: scale(.98); }
+.nav-arrow.hidden{ visibility:hidden; opacity:0; }
+
+/* Glow when narration ends */
+.arrow-glow{
+  box-shadow: 0 0 12px 4px #76FF03, 0 0 20px 7px rgba(118,255,3,.7);
+  animation: pulse-glow 1.2s infinite alternate;
+}
+@keyframes pulse-glow{
+  from{ box-shadow: 0 0 10px 2px #76FF03, 0 0 15px 5px rgba(118,255,3,.6); }
+  to{   box-shadow: 0 0 18px 6px #76FF03, 0 0 25px 10px rgba(118,255,3,.8); }
+}
+
+/* Audio progress */
+#audio-progress-container{
+  flex: 1 1 auto;
+  height: 8px;
+  background: rgba(0,0,0,.35);
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+#audio-progress-bar{
+  width: 0%;
+  height: 100%;
+  background: #76FF03;
+  border-radius: 4px;
+  transition: width .1s linear;
+}
+
+/* --- Main Content Area (Grid) --- */
+#app-main{
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: minmax(220px, var(--avatar-w)) 1fr;
+  gap: var(--gap);
+  padding: 12px 0;
+  min-height: 0; /* allow children to size/scroll */
+}
+
+/* Sidebar / Avatar panel */
+#avatar-panel{
+  background: rgba(20,60,60,0.35);
+  border-radius: 14px;
+  padding: clamp(12px, 2vw, 16px);
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  min-height: 160px;
+  overflow: hidden;
+}
+#avatar-image{
+  width: clamp(80px, 12vw, 130px);
+  height: clamp(80px, 12vw, 130px);
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid rgba(255,255,255,.45);
+}
+
+#start-story-button{
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: #2d3f50;
+  color: #fff;
+  font-weight: 700;
+  border: 0;
+  cursor: pointer;
+}
+
+/* Nicer "Overview Index" chips under the avatar */
+.chip-btn{
+  --chip-bg: rgba(255,255,255,0.10);
+  --chip-brd: rgba(255,255,255,0.25);
+  --chip-bg-active: rgba(255,255,255,0.25);
+
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--chip-brd);
+  background: var(--chip-bg);
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background .2s, transform .08s;
+}
+.chip-btn:hover{ background: rgba(255,255,255,0.18); }
+.chip-btn:active{ transform: scale(.98); }
+.chip-btn.active{ background: var(--chip-bg-active); }
+
+/* Image panel with LETTERBOX container */
+#image-panel{
+  background: rgba(0,0,0,0.25);
+  border-radius: 16px;
+  padding: clamp(8px, 1.5vw, 14px);
+  display: grid;
+  place-items: center;
+  min-height: 180px;
+}
+
+/* The visible letterbox area: cap height/width, keep image contained */
+#story-background{
+  width: 100%;
+  height: 45vh;             /* requested cap; responsive to viewport */
+  max-height: calc(var(--reader-h) * .5);
+  border-radius: 14px;
+  background-size: cover;
+  background-position: center;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+/* Contained (no cropping) image; letterboxing handled by container bg */
+#story-image{
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;       /* never crop; handle 1:1, 2:3, tall, etc. */
+  display: block;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.12);
+}
+
+/* --- Text Area --- */
+#text-area{
+  padding: 10px 0 16px;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* Centered, max width, scroll if long; scale from CENTER when font grows */
+#text-bubble{
+  width: min(80vw, 60ch);
+  max-width: min(80vw, 60ch);
+  max-height: 22vh;          /* prevent overlapping the footer */
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  background: #fff9e6;
+  color: #4d4122;
+  padding: 12px 22px;
+  border-radius: 26px;
+  text-align: center;
+  font-weight: 600;
+  font-size: calc( clamp(0.95rem, 1.8vw, 1.25rem) * var(--font-size-multiplier) );
+  box-shadow: 0 2px 5px rgba(0,0,0,.10);
+  margin: 0 auto;
+  transform-origin: center center !important;  /* keep centered when scaled by inline styles */
+}
+
+#read-again-button{
+  padding: 8px 18px;
+  font-size: clamp(.85rem, 1.3vw, 1rem);
+  background: #3a5f5a;
+  color: #fff;
+  border: 0;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background-color .2s;
+}
+#read-again-button:hover{ background:#4a7f7a; }
+#read-again-button i{ margin-right: 6px; }
+
+/* --- Footer --- */
+#app-footer{
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:10px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,.1);
+  flex-shrink:0;
+}
+
+#page-info{
+  font-size: clamp(.85rem, 1.2vw, 1rem);
+  color:#ccc;
+  margin: 0 10px;
+  text-align:center;
+}
+
+/* --- Options Pop-up (if used) --- */
+#options-popup{
+  position: fixed;
+  top: 70px;
+  right: 20px;
+  background-color: #2c4a44;
+  color: #f0f0f0;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.15);
+  box-shadow: 0 10px 24px rgba(0,0,0,.25);
+  display: none;
+  flex-direction: column;
+  gap: 14px;
+  z-index: 999;
+  min-width: 240px;
+}
+#options-popup.visible{ display:flex !important; }
+#close-popup-button{
+  position:absolute; top:10px; right:10px;
+  background:none; border:none; color:#eee;
+  font-size:1.2rem; cursor:pointer; line-height:1;
+}
+#options-popup h4{
+  margin: 0 0 8px 0;
+  text-align:center;
+  font-size:1.2rem; color:#fff;
+  border-bottom:1px solid rgba(255,255,255,.12);
+  padding-bottom:8px;
+}
+.popup-option{ display:flex; align-items:center; gap:10px; }
+.popup-option label{ color:#eee; flex-basis:35%; }
+.popup-option select{
+  flex:1; padding:8px 10px;
+  background:#3a5f5a; color:#fff;
+  border:1px solid #5a7f7a; border-radius:6px;
+  font-size:.95rem;
+}
+.popup-nav-button{
+  padding:10px 14px; font-weight:700;
+  background:#3a5f5a; color:#fff; border:1px solid #5a7f7a;
+  border-radius:8px; cursor:pointer;
+}
+.popup-nav-button:hover{ background:#4a7f7a; border-color:#6a9f9a; }
+
+/* --- Loading Screen --- */
+#loading-screen{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.8);
+  display: flex; justify-content:center; align-items:center;
+  font-size: 1.8rem; color:#fff; z-index: 200;
+}
+
+/* --- Reader Mode: hide external chrome --- */
 html.reader-mode .site-header,
 html.reader-mode .site-footer,
 html.reader-mode .site-chrome,
 html.reader-mode .global-footer,
 html.reader-mode .floating-toolbar,
-html.reader-mode .subscriptions-bar {
-  display: none !important;
-}
-
-/* --- Main App Container --- */
-#app-container {
-  /* Use your responsive look, but cap to 80vw / 80vh as requested */
-  max-width: var(--app-max-w);
-  max-height: var(--app-max-h);
-
-  width: clamp(300px, 90%, 1200px);
-  height: clamp(450px, 90%, 800px);
-
-  background-color: rgba(26, 46, 42, 0.85); /* Dark semi-transparent bg */
-  backdrop-filter: blur(5px); /* Blur effect for background */
-  border-radius: 25px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  display: flex;
-  flex-direction: column;
-  padding: 20px;
-  box-sizing: border-box;
-  color: #f0f0f0; /* Light default text */
-  position: relative; /* For absolute children like popup */
-}
-
-/* --- Header --- */
-#app-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 15px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  flex-shrink: 0; /* Prevent shrinking */
-  gap: 12px;
-
-  /* Prevent overlap: allow wrapping into two rows */
-  flex-wrap: wrap;
-
-  /* keep accessible while scrolling if you want */
-  position: sticky;
-  top: 8px;
-  z-index: 10;
-  background: transparent;
-}
-
-#welcome-text {
-  font-size: clamp(1.2em, 2vw, 1.8em);
-  font-weight: 600;
-  color: #fff;
-}
-
-#header-icons {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;           /* allow icon row to wrap */
-  row-gap: 8px;              /* nice vertical gap when wrapped */
-  justify-content: flex-end; /* align to the right by default */
-}
-
-#header-icons button.header-icon-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  color: #eee;
-  padding: 8px 10px;
-  margin-left: 0; /* we use gap now */
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: clamp(1em, 1.5vw, 1.2em);
-  transition: background-color 0.2s;
-  min-width: 40px; /* Ensure minimum clickable area */
-  text-align: center;
-}
-
-#header-icons button.header-icon-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-#header-icons button.header-icon-btn i { /* Style icons */
-  font-size: 1.1em; /* Adjust icon size if needed */
-}
-
-/* --- Transport / Nav bar (kept from your layout) --- */
-.nav-arrow {
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  color: #eee;
-  padding: 8px 12px;
-  border-radius: 50%; /* Circle */
-  cursor: pointer;
-  font-size: clamp(0.9em, 1.5vw, 1.1em);
-  transition: background-color 0.2s;
-  width: 40px; /* Fixed size */
-  height: 40px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-.nav-arrow:hover { background: rgba(255, 255, 255, 0.2); }
-.nav-arrow.hidden { visibility: hidden; opacity: 0; } /* Hide but keep space */
-
-/* New Arrow Glow Effect */
-.arrow-glow {
-  box-shadow: 0 0 12px 4px #76FF03, 0 0 20px 7px rgba(118, 255, 3, 0.7); /* Brighter green glow */
-  animation: pulse-glow 1.2s infinite alternate;
-}
-@keyframes pulse-glow {
-  from { box-shadow: 0 0 10px 2px #76FF03, 0 0 15px 5px rgba(118, 255, 3, 0.6); }
-  to   { box-shadow: 0 0 18px 6px #76FF03, 0 0 25px 10px rgba(118, 255, 3, 0.8); }
-}
-
-#page-info {
-  font-size: clamp(0.8em, 1.2vw, 1em);
-  color: #ccc;
-  margin: 0 10px; /* Add some margin */
-  text-align: center; /* Center text if it wraps */
-}
-
-/* New Audio Progress Bar Styles */
-#audio-progress-container {
-  flex-grow: 1; /* Allows it to take available space */
-  height: 8px;
-  background-color: rgba(0, 0, 0, 0.3); /* Darker background for contrast */
-  border-radius: 4px;
-  margin: 0 15px; /* Spacing between page info and arrow */
-  overflow: hidden;
-  display: flex; /* To align the inner bar */
-  align-items: center; /* Vertical alignment */
-}
-#audio-progress-bar {
-  width: 0%; /* Initial width */
-  height: 100%;
-  background-color: #76FF03; /* Bright green, matching glow */
-  border-radius: 4px;
-  transition: width 0.1s linear; /* Smooth progress update */
-}
-
-/* --- Main Content Area --- */
-#app-main {
-  flex-grow: 1; /* Take up remaining vertical space */
-  display: grid;
-  grid-template-columns: minmax(220px, 30%) 1fr; /* sidebar + content */
-  gap: 20px;
-  padding: 20px 0;
-
-  /* IMPORTANT: allow content to flow; no clipping */
-  overflow: visible;
-}
-
-/* Sidebar */
-#avatar-panel {
-  background-color: #3a5f5a; /* Dark teal */
-  border-radius: 15px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center; /* Center vertically */
-  padding: 20px;
-  box-sizing: border-box;
-  min-height: 180px;
-}
-
-#avatar-image {
-  width: clamp(80px, 15vw, 150px); /* Responsive size */
-  height: clamp(80px, 15vw, 150px);
-  border-radius: 50%;
-  object-fit: cover;
-  border: 4px solid rgba(255, 255, 255, 0.5);
-  margin-bottom: 20px; /* Space below avatar */
-}
-
-#start-story-button {
-  padding: 12px 25px;
-  font-size: clamp(0.9em, 1.5vw, 1.1em);
-  font-weight: 600;
-  background-color: #f0f0f0; /* Light button */
-  color: #333; /* Dark text */
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  white-space: nowrap;
-}
-#start-story-button:hover { background-color: #ddd; }
-
-/* Image panel becomes a stable frame */
-#image-panel {
-  background-color: #ece4d4; /* Light beige */
-  border-radius: 15px;
-  display: grid;
-  place-items: center;
-  padding: 15px;
-  box-sizing: border-box;
-
-  /* Fixed-but-responsive canvas so images never push layout */
-  width: 100%;
-  max-width: var(--image-max-vw);
-  max-height: var(--image-max-vh);
-
-  /* Base aspect; change to 4/3 if you prefer */
-  aspect-ratio: 16 / 9;
-
-  /* ensure the panel itself never overflows its grid cell */
-  overflow: hidden;
-}
-
-/* The image always letterboxes/pillarboxes (never crops or stretches).
-   NOTE: we let the frame control the canvas; image fills inside it. */
-#story-image {
-  width: 100%;
-  height: 100%;
-  object-fit: contain; /* Fit image within panel without cropping */
-  border-radius: 8px; /* Slight rounding for image itself */
-  display: block;
-}
-
-/* --- Text Area --- */
-#text-area {
-  padding: 15px 0;
-  display: flex;
-  flex-direction: column; /* Stack bubble and button */
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-}
-
-#text-bubble {
-  /* Keep it centered and balanced */
-  max-width: var(--text-max-width);
-  width: clamp(250px, 70%, 600px);
-  margin: 0 auto;
-
-  background-color: #fff9e6; /* Light yellow */
-  color: #4d4122; /* Dark text */
-  padding: 12px 25px;
-  border-radius: 30px; /* Pill shape */
-  text-align: center;
-
-  /* BASE font size plus multiplier (true resizing, centered) */
-  font-size: calc( clamp(0.9em, 1.8vw, 1.3em) * var(--font-size-multiplier, 1.0) );
-  transition: font-size 0.3s ease;
-  font-weight: 600;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-
-  /* If content is long, scroll inside bubble, not the whole layout */
-  max-height: 28vh;
-  overflow: auto;
-}
-
-#read-again-button {
-  padding: 8px 20px;
-  font-size: clamp(0.8em, 1.3vw, 1em);
-  background-color: #3a5f5a; /* Dark teal */
-  color: white;
-  border: none;
-  border-radius: 20px; /* Pill shape */
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-#read-again-button:hover { background-color: #4a7f7a; }
-#read-again-button i { margin-right: 5px; } /* Space for icon */
-
-/* --- Footer Navigation --- */
-#app-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 15px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  flex-shrink: 0;
-}
-
-/* --- Options Pop-up (yours, just color-adjusted) --- */
-#options-popup {
-  background-color: #2c4a44; /* Slightly lighter teal */
-  color: #f0f0f0;
-  padding: 25px;
-  display: none; /* JS toggle */
-  flex-direction: column;
-  gap: 18px; /* Increased gap */
-  position: absolute;
-  right: 20px;
-  top: 70px;
-  width: 320px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.15);
-  box-shadow: 0 12px 24px rgba(0,0,0,0.3);
-  z-index: 200;
-}
-#options-popup.visible { display: flex !important; }
-
-#close-popup-button {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: none;
-  border: none;
-  color: #3d0b0b;
-  font-size: 1.5em;
-  cursor: pointer;
-  padding: 5px;
-  line-height: 1;
-}
-#close-popup-button:hover { color: rgb(3, 3, 3); }
-
-#options-popup h4 {
-  margin-top: 0;
-  margin-bottom: 10px;
-  text-align: center;
-  font-size: 1.4em;
-  color: #fff;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-  padding-bottom: 10px;
-}
-.popup-option {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.popup-option label { color: #eee; flex-basis: 35%; }
-.popup-option select {
-  flex-grow: 1;
-  padding: 8px 10px;
-  background-color: #3a5f5a;
-  color: white;
-  border: 1px solid #5a7f7a;
-  border-radius: 6px;
-  font-size: 0.9em;
-}
-.popup-nav-button {
-  padding: 10px 15px;
-  font-size: 1em;
-  font-weight: 600;
-  background-color: #3a5f5a;
-  color: rgb(255, 255, 255);
-  border: 1px solid #5a7f7a;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.2s, border-color 0.2s;
-  text-align: center;
-}
-.popup-nav-button:hover { background-color: #4a7f7a; border-color: #6a9f9a; }
-
-/* --- Loading Screen --- */
-#loading-screen {
-  position: fixed; /* Cover everything */
-  top: 0; left: 0; width: 100%; height: 100%;
-  background-color: rgba(0, 0, 0, 0.8);
-  display: flex; justify-content: center; align-items: center;
-  font-size: 2em; color: white; z-index: 200;
+html.reader-mode .subscriptions-bar{
+  display:none !important;
 }
 
 /* --- Responsive --- */
-@media (max-width: 1079px) {
-  /* Stack into one column on tablet/phone */
-  #app-main {
+@media (max-width: 1080px){
+  :root{ --avatar-w: 28%; }
+  #story-background{ height: 42vh; }
+}
+
+@media (max-width: 900px){
+  :root{ --avatar-w: 30%; }
+  #story-background{ height: 40vh; }
+  #text-bubble{ max-height: 24vh; }
+}
+
+@media (max-width: 768px){
+  /* Collapse sidebar/accordion feel */
+  #app-main{
     grid-template-columns: 1fr;
-    gap: 15px;
-    padding: 15px 0;
+    gap: 12px;
   }
-
-  /* Let image frame grow a bit taller on mobile for visibility */
-  #image-panel {
-    aspect-ratio: 16 / 10;
-    max-height: min(50vh, var(--image-max-vh));
+  #avatar-panel{
+    padding: 12px;
+    border-radius: 12px;
   }
+  #avatar-image{ width: clamp(64px, 18vw, 100px); height: clamp(64px, 18vw, 100px); }
+  #story-background{ height: 38vh; }
 
-  #avatar-panel { padding: 15px; min-height: 120px; }
-  #avatar-image { width: clamp(60px, 18vw, 100px); height: clamp(60px, 18vw, 100px); margin-bottom: 15px; }
-  #start-story-button { padding: 10px 20px; font-size: 1em; }
-  #text-area { padding: 10px 0;}
-  #text-bubble { width: 90%; padding: 10px 20px; }
-  #read-again-button { padding: 7px 15px; font-size: 0.9em; }
-  #app-footer { padding-top: 10px; }
+  /* Header icons wrap to ensure tappable access */
+  #header-icons{ width: 100%; justify-content: flex-end; }
 
-  /* header icons smaller padding; keep wrap */
-  #header-icons button.header-icon-btn { padding: 6px 8px; }
+  #text-bubble{
+    width: 92vw;
+    max-width: 92vw;
+    max-height: 28vh;
+    padding: 10px 16px;
+  }
+  .nav-arrow{ width: 38px; height: 38px; }
 }
 
-@media (max-width: 768px) {
-  #app-container { width: 95%; height: 95%; padding: 15px; }
-  .nav-arrow { width: 35px; height: 35px; font-size: 0.9em; }
-  #page-info { font-size: 0.8em; }
-  #welcome-text { font-size: 1.2em; }
+@media (max-width: 480px){
+  #app-container{
+    width: 100vw; height: 100vh; margin: 0;
+    border-radius: 0;           /* edge-to-edge on tiny screens */
+  }
+  #app-header{ padding-bottom: 10px; }
+  #story-background{ height: 36vh; }
+  #image-panel{ padding: 10px; }
+  #text-bubble{
+    width: 95vw; max-width: 95vw; max-height: 30vh;
+    font-size: calc(1rem * var(--font-size-multiplier));
+  }
+  .nav-arrow{ width: 34px; height: 34px; }
+  #options-popup{ width: 90%; right: 5%; }
 }
 
-@media (max-width: 480px) {
-  #app-container { border-radius: 0; width: 100%; height: 100%; padding: 10px; }
-  #app-header { padding-bottom: 10px; }
-  #welcome-text { font-size: 1em; }
-  #header-icons button.header-icon-btn { padding: 5px 7px; font-size: 0.9em;}
-  #app-main { gap: 10px; padding: 10px 0; }
-  #avatar-panel { padding: 10px; }
-  #avatar-image { width: 60px; height: 60px; border-width: 2px; margin-bottom: 10px;}
-  #start-story-button { padding: 8px 15px; font-size: 0.9em; }
-  #image-panel { padding: 10px; }
-  #text-area { padding: 8px 0; gap: 8px; }
-  #text-bubble { width: 95%; padding: 8px 15px; }
-  #read-again-button { padding: 6px 12px; font-size: 0.8em; }
-  #app-footer { padding-top: 8px; }
-  .nav-arrow { width: 30px; height: 30px; font-size: 0.8em; }
-  #page-info { font-size: 0.7em; }
-  #options-popup { width: 90%; right: 5%; } /* Adjust popup */
+/* Ensure extra vertical breathing room so text never overlaps image */
+#image-panel { margin-bottom: min(2.2vh, 18px); }
+#text-area   { padding-top: min(1.8vh, 16px); }
+
+/* Strong order and separation on small screens */
+@media (max-width: 768px){
+  #avatar-image { width: 64px; height: 64px; } /* keep avatar small */
+  #story-background { height: 38vh; }
+  #text-bubble { max-height: 30vh; }           /* room for footer */
+}
+
+/* Nice index styling (if not already present) */
+.index-box{
+  margin-top: 8px;
+  background: rgba(0,0,0,0.20);
+  border-radius: 10px;
+  padding: 8px;
+  max-height: 240px;
+  overflow: auto;
+}
+.index-title{
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: #fff;
+  opacity: .9;
+}
+.index-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  gap: 6px;
 }

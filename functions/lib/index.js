@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.listMyModels = exports.generateWithImagen = exports.generateWithGemini = exports.removeIndexOnDelete = exports.indexAssetOnFinalize = exports.incrementCommentCount = exports.createuserprofile = exports.generateNarratumImage = void 0;
+exports.generateWithImagen = exports.generateWithGemini = exports.removeIndexOnDelete = exports.indexAssetOnFinalize = exports.incrementCommentCount = exports.createuserprofile = exports.generateNarratumImage = void 0;
 // functions/src/index.ts
 const imageGeneration_1 = require("./imageGeneration");
 Object.defineProperty(exports, "generateNarratumImage", { enumerable: true, get: function () { return imageGeneration_1.generateNarratumImage; } });
@@ -15,5 +15,4 @@ Object.defineProperty(exports, "removeIndexOnDelete", { enumerable: true, get: f
 const smartGenerateImage_1 = require("./smartGenerateImage");
 Object.defineProperty(exports, "generateWithGemini", { enumerable: true, get: function () { return smartGenerateImage_1.generateWithGemini; } });
 Object.defineProperty(exports, "generateWithImagen", { enumerable: true, get: function () { return smartGenerateImage_1.generateWithImagen; } });
-Object.defineProperty(exports, "listMyModels", { enumerable: true, get: function () { return smartGenerateImage_1.listMyModels; } });
 //# sourceMappingURL=index.js.map

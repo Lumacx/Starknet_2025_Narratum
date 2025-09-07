@@ -12,7 +12,6 @@ import {
   faChevronRight,
   faPause,
   faRedo,
-  faBars,
 } from "@fortawesome/free-solid-svg-icons";
 import "../app/story.css";
 
@@ -71,10 +70,14 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
   /** UI / estado */
   const [musicPlaying, setMusicPlaying] = useState(false);
   const [userInteracted, setUserInteracted] = useState(false);
-  const [fontScale, setFontScale] = useState(1);
-  const [bgIdx, setBgIdx] = useState(0);
+
+  // font size multiplier (drives CSS var --font-size-multiplier)
+  const [fontScale, setFontScale] = useState<number>(1);
+
+  // background index cycles: 0 = story’s default (if any), 1..N = BG_CHOICES
+  const [bgIdx, setBgIdx] = useState<number>(0);
+
   const [showSettings, setShowSettings] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false); // mobile accordion
 
   /** Responsive: narrow cuando <1080 */
   const [isNarrow, setIsNarrow] = useState(false);
@@ -85,10 +88,11 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  /** Audio refs */
+  /** Refs */
   const backgroundMusicRef = useRef<HTMLAudioElement | null>(null);
   const narrationRef = useRef<HTMLAudioElement | null>(null);
   const pageTurnSoundRef = useRef<HTMLAudioElement | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
 
   const hasFreeNav = !!story?.premium?.freeNavigationIndex;
 
@@ -125,6 +129,14 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
     root.classList.add("reader-mode");
     return () => root.classList.remove("reader-mode");
   }, []);
+
+  // keep CSS var in sync with fontScale (so the "A" button works)
+  useEffect(() => {
+    rootRef.current?.style.setProperty(
+      "--font-size-multiplier",
+      String(fontScale)
+    );
+  }, [fontScale]);
 
   const handleUserInteraction = () => {
     if (!userInteracted) setUserInteracted(true);
@@ -163,6 +175,17 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
     nextPage();
   };
 
+  const bumpFont = () => {
+    setFontScale((s) => (s >= 1.6 ? 1 : +(s + 0.1).toFixed(1)));
+  };
+
+  // cycle through backgrounds: 0 = default (story.readerBackgroundUrl || first choice), then choices
+  const cycleBackground = () => {
+    // total states = default + choices
+    const total = BG_CHOICES.length + 1;
+    setBgIdx((i) => (i + 1) % total);
+  };
+
   const currentPageContent =
     currentPageIndex > 0 ? sortedStoryContent[currentPageIndex - 1] : null;
 
@@ -170,51 +193,39 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
   const avatarUrl =
     story.readerAvatarUrl || story.creator?.avatarUrl || DEFAULT_AVATAR;
 
+  // compute background prioritizing story default when bgIdx=0
+  const defaultBg = story.readerBackgroundUrl || BG_CHOICES[0];
   const backgroundUrl =
-    story.readerBackgroundUrl || BG_CHOICES[bgIdx] || BG_CHOICES[0];
+    bgIdx === 0 ? defaultBg : BG_CHOICES[((bgIdx - 1) % BG_CHOICES.length + BG_CHOICES.length) % BG_CHOICES.length];
 
   /* Portada */
   const coverImage = story.coverImageUrl || sortedStoryContent[0]?.imageUrl || "";
   const storyImageSrc = currentPageContent?.imageUrl || coverImage || "";
 
   return (
-    <div
-      id="app-container"
-      onClick={handleUserInteraction}
-      className="reader-app"
-      style={
-        {
-          // CSS vars drive sizing from CSS; inline fallback here:
-          // @ts-ignore
-          "--app-max-w": "80vw",
-          "--app-max-h": "80vh",
-          "--image-max-vw": "80vw",
-          "--image-max-vh": "45vh",
-          "--text-max-width": "72ch",
-          "--text-font-scale": String(fontScale),
-        } as React.CSSProperties
-      }
-    >
+    <div id="app-container" ref={rootRef}>
       {/* Header */}
-      <header id="app-header" className="reader-header">
-        <div className="reader-header__left">
+      <header id="app-header">
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {onBack && (
-            <button onClick={onBack} className="btn back-btn" aria-label="Back">
+            <button
+              onClick={onBack}
+              className="header-icon-btn"
+              aria-label="Back"
+              title="Back"
+            >
               ← Back
             </button>
           )}
-          <div className="reader-title">{story.title ?? "Untitled"}</div>
+          <div id="welcome-text">{story.title ?? "Untitled"}</div>
         </div>
 
-        {/* Controls wrap automatically; hamburger toggles sidebar on small screens */}
-        <div className="reader-header__right">
+        <div id="header-icons">
           <button
             className="header-icon-btn"
             aria-label="Font size"
             title="Font size"
-            onClick={() =>
-              setFontScale((s) => (s >= 1.6 ? 1 : +(s + 0.1).toFixed(1)))
-            }
+            onClick={bumpFont}
           >
             <FontAwesomeIcon icon={faFont} />
           </button>
@@ -223,7 +234,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
             className="header-icon-btn"
             aria-label="Change background"
             title="Change background"
-            onClick={() => setBgIdx((i) => (i + 1) % BG_CHOICES.length)}
+            onClick={cycleBackground}
           >
             <FontAwesomeIcon icon={faPaintBrush} />
           </button>
@@ -247,83 +258,42 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
           >
             <FontAwesomeIcon icon={faCog} />
           </button>
-
-          {/* Mobile menu button */}
-          <button
-            className="header-icon-btn show-on-narrow"
-            aria-label="Menu"
-            title="Menu"
-            onClick={() => setMenuOpen((v) => !v)}
-          >
-            <FontAwesomeIcon icon={faBars} />
-          </button>
         </div>
       </header>
 
       {/* Tiny settings */}
       {showSettings && (
-        <div className="settings-pop">
-          <div className="settings-pop__title">Reader Settings</div>
-          <div className="settings-pop__row">• Font scale: {fontScale.toFixed(1)}</div>
-          <div className="settings-pop__row">• Background: {bgIdx + 1}/{BG_CHOICES.length}</div>
-        </div>
-      )}
-
-      {/* Mobile accordion: Avatar + Free Index */}
-      {isNarrow && menuOpen && (
-        <div className="mobile-accordion">
-          {/* Avatar */}
-          {avatarUrl ? (
-            <img
-              src={avatarUrl}
-              alt="Narrator Avatar"
-              className="avatar-img"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).src = DEFAULT_AVATAR;
-              }}
-            />
-          ) : null}
-
-          {/* Start on cover only */}
-          {currentPageIndex === 0 && (
-            <button id="start-story-button" className="btn primary" onClick={startStory}>
-              Start Story
-            </button>
-          )}
-
-          {/* Free Navigation Index */}
-          {hasFreeNav && sortedStoryContent.length > 0 && (
-            <>
-              <div className="acc-title">Overview Index</div>
-              <div className="chip-row">
-                <button
-                  onClick={() => goToIndex(0)}
-                  className={`chip-btn ${currentPageIndex === 0 ? "active" : ""}`}
-                >
-                  Cover
-                </button>
-                {sortedStoryContent.map((p, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => goToIndex(idx + 1)}
-                    className={`chip-btn ${currentPageIndex === idx + 1 ? "active" : ""}`}
-                    title={p.textContent?.slice(0, 50) || `Page ${idx + 1}`}
-                  >
-                    {idx + 1}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
+        <div
+          id="options-popup"
+          className="visible"
+          role="dialog"
+          aria-label="Reader Settings"
+        >
+          <button id="close-popup-button" onClick={() => setShowSettings(false)}>
+            ×
+          </button>
+          <h4>Reader Settings</h4>
+          <div className="popup-option">
+            <label>Font scale</label>
+            <div>{fontScale.toFixed(1)}</div>
+          </div>
+          <div className="popup-option">
+            <label>Background</label>
+            <div>
+              {bgIdx === 0
+                ? "Story default"
+                : `Choice ${((bgIdx - 1 + BG_CHOICES.length) % BG_CHOICES.length) + 1}/${BG_CHOICES.length}`}
+            </div>
+          </div>
         </div>
       )}
 
       {/* Barra de transporte superior */}
-      <div id="navigation-controls-bar" className="nav-bar">
+      <div id="navigation-controls-bar">
         <button
           id="arrow-left"
           onClick={previousPage}
-          className={`arrow nav-arrow ${currentPageIndex === 0 ? "hidden" : ""}`}
+          className={`nav-arrow ${currentPageIndex === 0 ? "hidden" : ""}`}
           aria-label="Previous Page"
           title="Previous Page"
         >
@@ -332,7 +302,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
 
         <button
           id="narration-pause-play-button"
-          className="arrow nav-arrow"
+          className="nav-arrow"
           aria-label="Pause/Play Narration"
           title="Pause/Play Narration"
           onClick={() => {
@@ -344,14 +314,14 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
           <FontAwesomeIcon icon={faPause} />
         </button>
 
-        <div id="audio-progress-container" className="audio-progress-wrap">
+        <div id="audio-progress-container">
           <div id="audio-progress-bar"></div>
         </div>
 
         <button
           id="arrow-right"
           onClick={nextPage}
-          className={`arrow nav-arrow ${
+          className={`nav-arrow ${
             currentPageIndex === sortedStoryContent.length ? "hidden" : ""
           }`}
           aria-label="Next Page"
@@ -361,80 +331,73 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
         </button>
       </div>
 
-      {/* Main: grid on desktop, single column on mobile */}
-      <main id="app-main" className={`reader-main ${isNarrow ? "single" : ""}`}>
-        {/* Sidebar (desktop/tablet only) */}
-        {!isNarrow && (
-          <aside id="avatar-panel" className="avatar-panel">
-            {avatarUrl ? (
-              <img
-                id="avatar-image"
-                src={avatarUrl}
-                alt="Narrator Avatar"
-                className="avatar-img"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = DEFAULT_AVATAR;
-                }}
-              />
-            ) : null}
+      {/* Main grid */}
+      <main id="app-main">
+        {/* Sidebar / Avatar */}
+        <aside id="avatar-panel">
+          {avatarUrl ? (
+            <img
+              id="avatar-image"
+              src={avatarUrl}
+              alt="Narrator Avatar"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = DEFAULT_AVATAR;
+              }}
+            />
+          ) : null}
 
-            {currentPageIndex === 0 && (
-              <button id="start-story-button" className="btn primary" onClick={startStory}>
-                Start Story
-              </button>
-            )}
+          {currentPageIndex === 0 && (
+            <button id="start-story-button" onClick={startStory}>
+              Start Story
+            </button>
+          )}
 
-            {/* Free Navigation Index */}
-            {hasFreeNav && sortedStoryContent.length > 0 && (
-              <div className="index-box">
-                <div className="index-title">Overview Index</div>
-                <div className="index-grid">
+          {/* Overview Index (chips) */}
+          {hasFreeNav && sortedStoryContent.length > 0 && (
+            <div className="index-box" style={{ width: "100%" }}>
+              <div className="index-title">Overview Index</div>
+              <div className="index-grid">
+                <button
+                  onClick={() => goToIndex(0)}
+                  className={`chip-btn ${currentPageIndex === 0 ? "active" : ""}`}
+                >
+                  Cover
+                </button>
+                {sortedStoryContent.map((p, idx) => (
                   <button
-                    onClick={() => goToIndex(0)}
-                    className={`chip-btn ${currentPageIndex === 0 ? "active" : ""}`}
+                    key={idx}
+                    onClick={() => goToIndex(idx + 1)}
+                    className={`chip-btn ${
+                      currentPageIndex === idx + 1 ? "active" : ""
+                    }`}
+                    title={p.textContent?.slice(0, 50) || `Page ${idx + 1}`}
                   >
-                    Cover
+                    {idx + 1}
                   </button>
-                  {sortedStoryContent.map((p, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => goToIndex(idx + 1)}
-                      className={`chip-btn ${currentPageIndex === idx + 1 ? "active" : ""}`}
-                      title={p.textContent?.slice(0, 50) || `Page ${idx + 1}`}
-                    >
-                      {idx + 1}
-                    </button>
-                  ))}
-                </div>
+                ))}
               </div>
-            )}
-          </aside>
-        )}
+            </div>
+          )}
+        </aside>
 
-        {/* Image frame (always letterboxed / never overlaps) */}
-        <section id="image-panel" className="image-panel">
+        {/* Image frame */}
+        <section id="image-panel">
           <div
             id="story-background"
-            className="story-bg"
-            style={{ backgroundImage: `url(${backgroundUrl})` }}
+            style={{
+              backgroundImage: `url(${backgroundUrl})`,
+            }}
           >
-            <div className="image-frame">
-              {storyImageSrc ? (
-                <img
-                  id="story-image"
-                  src={storyImageSrc}
-                  alt="Story Image"
-                  className="story-img"
-                />
-              ) : null}
-            </div>
+            {storyImageSrc ? (
+              <img id="story-image" src={storyImageSrc} alt="Story Image" />
+            ) : null}
           </div>
         </section>
       </main>
 
-      {/* Texto (centered, max-width, scrollable if long) */}
-      <div id="text-area" className="text-area">
-        <div id="text-bubble" className="text-bubble">
+      {/* Texto */}
+      <div id="text-area" style={{ marginTop: "min(2.4vh, 20px)" }}>
+        <div id="text-bubble">
           {currentPageIndex === 0
             ? 'Click "Start Story" to begin.'
             : currentPageContent?.textContent || ""}
@@ -443,7 +406,6 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
         {currentPageIndex > 0 && currentPageContent?.audioUrl && (
           <button
             id="read-again-button"
-            className="btn"
             onClick={() => playNarration(currentPageContent.audioUrl!)}
           >
             <FontAwesomeIcon icon={faRedo} /> Read it again
@@ -452,10 +414,10 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
       </div>
 
       {/* Footer */}
-      <footer id="app-footer" className="reader-footer">
+      <footer id="app-footer">
         <div id="page-info">
           {currentPageIndex === 0
-            ? "Cover"
+            ? "Page 0 of " + sortedStoryContent.length
             : `Page ${currentPageIndex} of ${sortedStoryContent.length}`}
         </div>
       </footer>
