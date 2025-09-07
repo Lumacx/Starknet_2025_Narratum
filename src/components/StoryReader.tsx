@@ -15,7 +15,9 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import "../app/story.css";
 
-/** Mínimo que necesita el reader (sirve para preview y DB). */
+/* ------------------------------------------------------------------ */
+/* Types                                                              */
+/* ------------------------------------------------------------------ */
 type ReaderPage = {
   id?: string | null;
   pageNumber?: number | null;
@@ -30,7 +32,7 @@ type StoryView = {
   coverImageUrl?: string | null;
   backgroundMusicUrl?: string | null;
 
-  /** Skin global del reader (no por escena) */
+  /* Global reader skin (not per scene) */
   readerAvatarUrl?: string | null;
   readerBackgroundUrl?: string | null;
 
@@ -46,11 +48,12 @@ type StoryView = {
 
 interface StoryReaderProps {
   story: StoryView;
-  /** Para volver desde el lector */
   onBack?: () => void;
 }
 
-/* Fondos disponibles */
+/* ------------------------------------------------------------------ */
+/* Constants                                                          */
+/* ------------------------------------------------------------------ */
 const BG_CHOICES = [
   "/story_reader_backgrounds/dream-background.png",
   "/story_reader_backgrounds/blockchain-background.png",
@@ -63,23 +66,26 @@ const DEFAULT_AVATAR = "/story_reader_avatars/Default.png";
 const DEFAULT_BGM = "/story_reader_audio/background-music.mp3";
 const PAGE_FLIP_SFX = "/story_reader_audio/page-flip.mp3";
 
+/* ------------------------------------------------------------------ */
+/* Component                                                           */
+/* ------------------------------------------------------------------ */
 const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
-  /** 0 = portada */
+  /** 0 = cover */
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
 
-  /** UI / estado */
+  /** UI state */
   const [musicPlaying, setMusicPlaying] = useState(false);
   const [userInteracted, setUserInteracted] = useState(false);
 
-  // font size multiplier (drives CSS var --font-size-multiplier)
-  const [fontScale, setFontScale] = useState<number>(1);
+  /* (2) Text: start a bit smaller (0.8) and cap increases at 1.4 */
+  const [fontScale, setFontScale] = useState<number>(0.8);
 
-  // background index cycles: 0 = story’s default (if any), 1..N = BG_CHOICES
+  /* (4) Background: 0 = story default (if any), 1..N cycle built-ins */
   const [bgIdx, setBgIdx] = useState<number>(0);
 
   const [showSettings, setShowSettings] = useState(false);
 
-  /** Responsive: narrow cuando <1080 */
+  /* Responsive helper */
   const [isNarrow, setIsNarrow] = useState(false);
   useEffect(() => {
     const onResize = () => setIsNarrow(window.innerWidth < 1080);
@@ -88,15 +94,98 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  /** Refs */
+  /* Audio refs */
   const backgroundMusicRef = useRef<HTMLAudioElement | null>(null);
   const narrationRef = useRef<HTMLAudioElement | null>(null);
   const pageTurnSoundRef = useRef<HTMLAudioElement | null>(null);
+
+// progress bar fill + rAF book-keeping
+const progressFillRef = useRef<HTMLDivElement | null>(null);
+const rafIdRef = useRef<number | null>(null);
+const wiredAudioRef = useRef<HTMLAudioElement | null>(null);
+
+// compute % and set width of the green bar
+const updateProgress = React.useCallback(() => {
+  const a = narrationRef.current;
+  const fill = progressFillRef.current;
+  if (!a || !fill) return;
+  const pct = a.duration > 0 ? (a.currentTime / a.duration) * 100 : 0;
+  fill.style.width = `${pct}%`;
+}, []);
+
+// smooth updates while playing
+const startRaf = React.useCallback(() => {
+  const tick = () => {
+    updateProgress();
+    rafIdRef.current = requestAnimationFrame(tick);
+  };
+  if (rafIdRef.current == null) rafIdRef.current = requestAnimationFrame(tick);
+}, [updateProgress]);
+
+const stopRaf = React.useCallback(() => {
+  if (rafIdRef.current != null) {
+    cancelAnimationFrame(rafIdRef.current);
+    rafIdRef.current = null;
+  }
+}, []);
+
+const onEnded = React.useCallback(() => {
+  stopRaf();
+  updateProgress(); // ensure it ends at 100%
+}, [stopRaf, updateProgress]);
+
+// attach listeners to the *current* narration element
+function wireNarration(audio: HTMLAudioElement) {
+  // remove from previous
+  if (wiredAudioRef.current) {
+    const prev = wiredAudioRef.current;
+    prev.removeEventListener("play", startRaf);
+    prev.removeEventListener("pause", stopRaf);
+    prev.removeEventListener("loadedmetadata", updateProgress);
+    prev.removeEventListener("ended", onEnded);
+  }
+  wiredAudioRef.current = audio;
+
+  // attach to new
+  audio.addEventListener("play", startRaf);
+  audio.addEventListener("pause", stopRaf);
+  audio.addEventListener("loadedmetadata", updateProgress);
+  audio.addEventListener("ended", onEnded);
+
+  // reset bar (0% until metadata lands, then we update)
+  updateProgress();
+}
+
+// allow click-to-seek on the bar
+const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+  const a = narrationRef.current;
+  if (!a || !a.duration) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  const ratio = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
+  a.currentTime = ratio * a.duration;
+  updateProgress();
+};
+
+// cleanup on unmount
+useEffect(() => {
+  return () => {
+    stopRaf();
+    if (wiredAudioRef.current) {
+      const a = wiredAudioRef.current;
+      a.removeEventListener("play", startRaf);
+      a.removeEventListener("pause", stopRaf);
+      a.removeEventListener("loadedmetadata", updateProgress);
+      a.removeEventListener("ended", onEnded);
+    }
+  };
+}, [stopRaf, startRaf, updateProgress, onEnded]);
+
+  /* Root ref to expose CSS var for font scale */
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   const hasFreeNav = !!story?.premium?.freeNavigationIndex;
 
-  /* Ordena páginas por pageNumber */
+  /* Sort pages by pageNumber */
   const sortedStoryContent = useMemo(
     () =>
       [...(story.storyContent || [])].sort(
@@ -105,7 +194,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
     [story.storyContent]
   );
 
-  /* Init audios una sola vez */
+  /* Init SFX once */
   useEffect(() => {
     backgroundMusicRef.current = new Audio(
       story.backgroundMusicUrl || DEFAULT_BGM
@@ -123,14 +212,14 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Ocultar chrome del sitio mientras el reader está montado
+  /* Hide host app chrome while mounted */
   useEffect(() => {
     const root = document.documentElement;
     root.classList.add("reader-mode");
     return () => root.classList.remove("reader-mode");
   }, []);
 
-  // keep CSS var in sync with fontScale (so the "A" button works)
+  /* Keep CSS var synced with state so the text grows from center */
   useEffect(() => {
     rootRef.current?.style.setProperty(
       "--font-size-multiplier",
@@ -138,6 +227,31 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
     );
   }, [fontScale]);
 
+  /* (4) Apply background image to the PAGE (html & body), not the inner box */
+  const defaultBg = story.readerBackgroundUrl || BG_CHOICES[0];
+  const backgroundUrl =
+    bgIdx === 0
+      ? defaultBg
+      : BG_CHOICES[(bgIdx - 1 + BG_CHOICES.length) % BG_CHOICES.length];
+
+  useEffect(() => {
+    const htmlEl = document.documentElement;
+    const bodyEl = document.body;
+
+    const prevHtmlBg = htmlEl.style.backgroundImage;
+    const prevBodyBg = bodyEl.style.backgroundImage;
+
+    const url = `url("${backgroundUrl}")`;
+    htmlEl.style.backgroundImage = url;
+    bodyEl.style.backgroundImage = url;
+
+    return () => {
+      htmlEl.style.backgroundImage = prevHtmlBg;
+      bodyEl.style.backgroundImage = prevBodyBg;
+    };
+  }, [backgroundUrl]);
+
+  /* Helpers */
   const handleUserInteraction = () => {
     if (!userInteracted) setUserInteracted(true);
   };
@@ -153,6 +267,9 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
     if (!audioUrl) return;
     if (narrationRef.current) narrationRef.current.pause();
     narrationRef.current = new Audio(audioUrl);
+
+    wireNarration(narrationRef.current); // ← hook up progress listeners
+
     narrationRef.current
       .play()
       .catch((e) => console.error("Narration play failed:", e));
@@ -175,17 +292,21 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
     nextPage();
   };
 
+  /* (2) Font grow button: cycle 0.8 → 1.4 then wrap */
   const bumpFont = () => {
-    setFontScale((s) => (s >= 1.6 ? 1 : +(s + 0.1).toFixed(1)));
+    setFontScale((s) => {
+      const next = +(Math.min(1.4, s + 0.1)).toFixed(1);
+      return next >= 1.4 ? 0.8 : next;
+    });
   };
 
-  // cycle through backgrounds: 0 = default (story.readerBackgroundUrl || first choice), then choices
+  /* Background cycle button */
   const cycleBackground = () => {
-    // total states = default + choices
-    const total = BG_CHOICES.length + 1;
+    const total = BG_CHOICES.length + 1; // +1 for default
     setBgIdx((i) => (i + 1) % total);
   };
 
+  /* Page model */
   const currentPageContent =
     currentPageIndex > 0 ? sortedStoryContent[currentPageIndex - 1] : null;
 
@@ -193,18 +314,55 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
   const avatarUrl =
     story.readerAvatarUrl || story.creator?.avatarUrl || DEFAULT_AVATAR;
 
-  // compute background prioritizing story default when bgIdx=0
-  const defaultBg = story.readerBackgroundUrl || BG_CHOICES[0];
-  const backgroundUrl =
-    bgIdx === 0 ? defaultBg : BG_CHOICES[((bgIdx - 1) % BG_CHOICES.length + BG_CHOICES.length) % BG_CHOICES.length];
-
-  /* Portada */
-  const coverImage = story.coverImageUrl || sortedStoryContent[0]?.imageUrl || "";
+  /* Cover vs current page image */
+  const coverImage =
+    story.coverImageUrl || sortedStoryContent[0]?.imageUrl || "";
   const storyImageSrc = currentPageContent?.imageUrl || coverImage || "";
 
+  /* ------------------------------------------------------------------ */
+  /* Inline frame styles (to guarantee “no crop & no spill”)             */
+  /* ------------------------------------------------------------------ */
+  // Outer image panel remains your light card.
+  const imagePanelStyle: React.CSSProperties = {
+    borderRadius: 16,
+    background: "rgba(0,0,0,0.25)",
+    padding: "clamp(8px, 1.5vw, 14px)",
+  };
+
+  // (1 & 3) Strict, letterboxed frame with NO CROP and NO BLEED.
+  // - Fixed canvas via aspect-ratio + caps (maxHeight = 45vh)
+  // - The <img> will be object-fit: contain; centered; never cropped.
+  const imageFrameStyle: React.CSSProperties = {
+    position: "relative",
+    width: "100%",
+    aspectRatio: "16 / 9",
+    maxHeight: "45vh",
+    display: "grid",
+    placeItems: "center",
+    background: "rgba(0,0,0,0.55)", // translucent black “display box”
+    borderRadius: 14,
+    overflow: "hidden", // ensure the image never projects outside
+  };
+
+  const imageStyle: React.CSSProperties = {
+    maxWidth: "100%",
+    maxHeight: "100%",
+    width: "auto",           // keep natural proportions
+    height: "auto",
+    objectFit: "contain",    // (3) NEVER crop
+    objectPosition: "center",
+    display: "block",
+    borderRadius: 10,
+  };
+
+  // Give some breathing room so text never bumps the image
+  const textAreaExtraMargin: React.CSSProperties = {
+    marginTop: "min(2.4vh, 20px)",
+  };
+
   return (
-    <div id="app-container" ref={rootRef}>
-      {/* Header */}
+    <div id="app-container" ref={rootRef} onClick={handleUserInteraction}>
+      {/* ----------------------- Header ----------------------- */}
       <header id="app-header">
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {onBack && (
@@ -261,34 +419,29 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
         </div>
       </header>
 
-      {/* Tiny settings */}
+      {/* -------------------- Settings Pop -------------------- */}
       {showSettings && (
-        <div
-          id="options-popup"
-          className="visible"
-          role="dialog"
-          aria-label="Reader Settings"
-        >
+        <div id="options-popup" className="visible" role="dialog" aria-label="Reader Settings">
           <button id="close-popup-button" onClick={() => setShowSettings(false)}>
             ×
           </button>
           <h4>Reader Settings</h4>
           <div className="popup-option">
             <label>Font scale</label>
-            <div>{fontScale.toFixed(1)}</div>
+            <div>{fontScale.toFixed(1)} (max 1.4)</div>
           </div>
           <div className="popup-option">
             <label>Background</label>
             <div>
               {bgIdx === 0
                 ? "Story default"
-                : `Choice ${((bgIdx - 1 + BG_CHOICES.length) % BG_CHOICES.length) + 1}/${BG_CHOICES.length}`}
+                : `Choice ${(bgIdx - 1 + BG_CHOICES.length) % BG_CHOICES.length + 1}/${BG_CHOICES.length}`}
             </div>
           </div>
         </div>
       )}
 
-      {/* Barra de transporte superior */}
+      {/* --------------- Top transport controls --------------- */}
       <div id="navigation-controls-bar">
         <button
           id="arrow-left"
@@ -314,8 +467,12 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
           <FontAwesomeIcon icon={faPause} />
         </button>
 
-        <div id="audio-progress-container">
-          <div id="audio-progress-bar"></div>
+        <div
+          id="audio-progress-container"
+          onClick={handleSeek}
+          style={{ flexGrow: 1, margin: "0 3px" }}
+              >
+          <div id="audio-progress-bar" ref={progressFillRef}></div>
         </div>
 
         <button
@@ -331,9 +488,9 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
         </button>
       </div>
 
-      {/* Main grid */}
+      {/* -------------------- Main (Grid) --------------------- */}
       <main id="app-main">
-        {/* Sidebar / Avatar */}
+        {/* Left: avatar + index */}
         <aside id="avatar-panel">
           {avatarUrl ? (
             <img
@@ -352,7 +509,6 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
             </button>
           )}
 
-          {/* Overview Index (chips) */}
           {hasFreeNav && sortedStoryContent.length > 0 && (
             <div className="index-box" style={{ width: "100%" }}>
               <div className="index-title">Overview Index</div>
@@ -367,9 +523,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
                   <button
                     key={idx}
                     onClick={() => goToIndex(idx + 1)}
-                    className={`chip-btn ${
-                      currentPageIndex === idx + 1 ? "active" : ""
-                    }`}
+                    className={`chip-btn ${currentPageIndex === idx + 1 ? "active" : ""}`}
                     title={p.textContent?.slice(0, 50) || `Page ${idx + 1}`}
                   >
                     {idx + 1}
@@ -380,23 +534,18 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
           )}
         </aside>
 
-        {/* Image frame */}
-        <section id="image-panel">
-          <div
-            id="story-background"
-            style={{
-              backgroundImage: `url(${backgroundUrl})`,
-            }}
-          >
+        {/* Right: image display box (strict, letterboxed) */}
+        <section id="image-panel" style={imagePanelStyle}>
+          <div style={imageFrameStyle}>
             {storyImageSrc ? (
-              <img id="story-image" src={storyImageSrc} alt="Story Image" />
+              <img id="story-image" src={storyImageSrc} alt="Story Image" style={imageStyle} />
             ) : null}
           </div>
         </section>
       </main>
 
-      {/* Texto */}
-      <div id="text-area" style={{ marginTop: "min(2.4vh, 20px)" }}>
+      {/* ---------------- Text (centered, scrollable) --------- */}
+      <div id="text-area" style={textAreaExtraMargin}>
         <div id="text-bubble">
           {currentPageIndex === 0
             ? 'Click "Start Story" to begin.'
@@ -413,16 +562,16 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
         )}
       </div>
 
-      {/* Footer */}
+      {/* ------------------------ Footer ---------------------- */}
       <footer id="app-footer">
         <div id="page-info">
           {currentPageIndex === 0
-            ? "Page 0 of " + sortedStoryContent.length
+            ? `Page 0 of ${sortedStoryContent.length}`
             : `Page ${currentPageIndex} of ${sortedStoryContent.length}`}
         </div>
       </footer>
 
-      {/* Optional: Convai widget via agent id */}
+      {/* Optional: ElevenLabs Convai */}
       {story?.premium?.convaiAgentId && (
         <>
           <elevenlabs-convai agent-id={story.premium.convaiAgentId}></elevenlabs-convai>
