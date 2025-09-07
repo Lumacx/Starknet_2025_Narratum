@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.smartGenerateImage = exports.removeIndexOnDelete = exports.indexAssetOnFinalize = exports.incrementCommentCount = exports.createuserprofile = exports.generateNarratumImage = void 0;
+exports.generateWithImagen = exports.generateWithGemini = exports.removeIndexOnDelete = exports.indexAssetOnFinalize = exports.incrementCommentCount = exports.createuserprofile = exports.generateNarratumImage = void 0;
 // functions/src/index.ts
 const imageGeneration_1 = require("./imageGeneration");
 Object.defineProperty(exports, "generateNarratumImage", { enumerable: true, get: function () { return imageGeneration_1.generateNarratumImage; } });
@@ -13,5 +13,6 @@ Object.defineProperty(exports, "indexAssetOnFinalize", { enumerable: true, get: 
 Object.defineProperty(exports, "removeIndexOnDelete", { enumerable: true, get: function () { return assetsIndex_1.removeIndexOnDelete; } });
 // 👇 importa y exporta la HTTP v2
 const smartGenerateImage_1 = require("./smartGenerateImage");
-Object.defineProperty(exports, "smartGenerateImage", { enumerable: true, get: function () { return smartGenerateImage_1.smartGenerateImage; } });
+Object.defineProperty(exports, "generateWithGemini", { enumerable: true, get: function () { return smartGenerateImage_1.generateWithGemini; } });
+Object.defineProperty(exports, "generateWithImagen", { enumerable: true, get: function () { return smartGenerateImage_1.generateWithImagen; } });
 //# sourceMappingURL=index.js.map

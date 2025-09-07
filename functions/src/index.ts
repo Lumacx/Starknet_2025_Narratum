@@ -5,7 +5,7 @@ import { incrementCommentCount } from './commentCounter';
 import { indexAssetOnFinalize, removeIndexOnDelete } from './assetsIndex';
 
 // 👇 importa y exporta la HTTP v2
-import { smartGenerateImage } from './smartGenerateImage';
+import { generateWithGemini, generateWithImagen } from './smartGenerateImage';
 
 export {
   generateNarratumImage,
@@ -13,5 +13,6 @@ export {
   incrementCommentCount,
   indexAssetOnFinalize,
   removeIndexOnDelete,
-  smartGenerateImage, // <-- NUEVA
+  generateWithGemini,
+  generateWithImagen,
 };
