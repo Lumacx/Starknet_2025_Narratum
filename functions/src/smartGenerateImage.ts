@@ -25,10 +25,15 @@ async function getToken(): Promise<string> {
 
 type Part = | { text: string } | { inlineData: { mimeType: string; data: string } };
 
+// =======================================================================
+// REVERTED & CORRECTED: Function to call the Gemini API
+// =======================================================================
 async function callGemini(opts: { prompt: string; images?: string[]; token: string; }): Promise< | { ok: true; modelUsed: string; images: string[] } | { ok: false; status: number; error: string } > {
     const { prompt, images: inputImages, token } = opts;
-    const url = `${HOST}/v1/projects/${PROJECT_ID}/locations/${GEMINI_LOCATION}/publishers/google/models/${GEMINI_MODEL}:predict`; // NOTE: Using :predict endpoint for consistency
     
+    // REVERTED to the correct :generateContent endpoint
+    const url = `${HOST}/v1/projects/${PROJECT_ID}/locations/${GEMINI_LOCATION}/publishers/google/models/${GEMINI_MODEL}:generateContent`;
+
     const parts: Part[] = [];
     if (Array.isArray(inputImages) && inputImages.length > 0) {
         for (const imgDataUrl of inputImages) {
@@ -40,75 +45,61 @@ async function callGemini(opts: { prompt: string; images?: string[]; token: stri
     }
     parts.push({ text: prompt });
 
-    // ▼▼▼ THE ONE-LINE FIX IS HERE ▼▼▼
-    // We must wrap the contents payload in the "instances" array for the Vertex AI endpoint.
-    const body = { instances: [{ contents: [{ parts }] }] };
-    
+    // REVERTED to the correct body format for :generateContent (no "instances" wrapper)
+    const body = { contents: [{ parts }] };
+
     const r = await fetch(url, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", }, body: JSON.stringify(body), });
     const text = await r.text();
     if (!r.ok) { return { ok: false, status: r.status, error: text }; }
+    
     try {
         const data = JSON.parse(text);
-        // The response structure for the :predict endpoint is different
-        const imageBase64 = data.predictions?.[0]?.bytesBase64Encoded;
-        if (!imageBase64) {
-            return { ok: false, status: 502, error: "No image data in Gemini predict response" };
-        }
-        return { ok: true, modelUsed: `${GEMINI_MODEL}@${GEMINI_LOCATION}`, images: [imageBase64] };
+        // REVERTED to the correct response parsing for :generateContent
+        const imageParts = data.candidates?.[0]?.content?.parts?.filter((p: any) => p.inlineData) || [];
+        const images = imageParts.map((p: any) => p.inlineData.data).filter(Boolean);
+        if (!images.length) { return { ok: false, status: 502, error: "No image data in Gemini response" }; }
+        return { ok: true, modelUsed: `${GEMINI_MODEL}@${GEMINI_LOCATION}`, images };
     } catch (e: any) { return { ok: false, status: 500, error: `Invalid JSON from Gemini: ${e.message}` }; }
 }
 
-async function callImagen(opts: { prompt: string; count?: number; aspectRatio?: string; model: string; location: string; token: string; }): Promise< | { ok: true; modelUsed: string; images: string[] } | { ok: false; status: number; error: string } > {
-    const { prompt, count = 1, aspectRatio, model, location, token } = opts;
-    const url = `${HOST}/v1/projects/${PROJECT_ID}/locations/${location}/publishers/google/models/${model}:predict`;
-    const body = { instances: [{ prompt, ...(aspectRatio ? { aspectRatio } : {}) }], parameters: { sampleCount: Math.min(Math.max(Number(count) || 1, 1), 4) }, };
-    const r = await fetch(url, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(body), });
-    const text = await r.text();
-    if (!r.ok) { return { ok: false, status: r.status, error: text }; }
-    try {
-        const data = JSON.parse(text);
-        const preds = data.predictions || [];
-        let images: string[] = preds.map((p: any) => p?.bytesBase64Encoded).filter(Boolean);
-        if (!images.length && preds[0]?.generatedImages) { images = (preds[0].generatedImages || []).map((g: any) => g?.image?.imageBytes).filter(Boolean); }
-        if (!images.length) { return { ok: false, status: 502, error: "No image bytes in response" }; }
-        return { ok: true, modelUsed: `${model}@${location}`, images };
-    } catch { return { ok: false, status: 500, error: "Invalid JSON from Vertex" }; }
-}
-
+// =======================================================================
+// Main handler with FALLBACK DISABLED
+// =======================================================================
 export const smartGenerateImage = onRequest( { region: "us-central1", timeoutSeconds: 120, memory: "1GiB", serviceAccount: "vertex-runner@narratum.iam.gserviceaccount.com", }, async (req: Request, res: Response): Promise<void> => {
     try {
         const body = req.body as any;
         const prompt = (req.query.prompt || body?.prompt || "").toString();
-        const count = Number(req.query.count || body?.count || 1);
-        const arRaw = (req.query.aspectRatio || body?.aspectRatio || "").toString().trim();
-        const aspectRatio = arRaw || undefined;
         const inputImages = body?.images as string[] | undefined;
         if (!prompt) { res.status(400).json({ error: "Missing prompt" }); return; }
         const token = await getToken();
-        console.log("Attempting primary generation with Gemini...");
+        
+        console.log("Forcing primary generation with Gemini (fallback disabled)...");
         const geminiResult = await callGemini({ prompt, images: inputImages, token });
+        
         if (geminiResult.ok) {
             console.log("Success with Gemini:", geminiResult.modelUsed);
-            res.status(200).json({ model: geminiResult.modelUsed, images: geminiResult.images, });
+            res.status(200).json({
+                model: geminiResult.modelUsed,
+                images: geminiResult.images,
+            });
             return;
-        } else {
-            console.warn(`Gemini attempt failed: ${geminiResult.status} ${String(geminiResult.error).slice(0, 200)}`);
+        } 
+        
+        console.error("--- GEMINI API CALL FAILED (NO FALLBACK) ---");
+        console.error("Status Code:", geminiResult.status);
+        try {
+            const errorJson = JSON.parse(geminiResult.error);
+            console.error("Full Error Response (JSON):", JSON.stringify(errorJson, null, 2));
+        } catch {
+            console.error("Full Error Response (Raw Text):", geminiResult.error);
         }
-        console.log("Falling back to Imagen models...");
-        for (const location of IMAGEN_LOCATIONS) {
-            for (const model of IMAGEN_MODELS) {
-                const out = await callImagen({ prompt, count, aspectRatio, model, location, token });
-                if (out.ok) {
-                    console.log("Success with Imagen fallback:", out.modelUsed);
-                    res.status(200).json({ model: out.modelUsed, images: out.images, });
-                    return;
-                }
-                if (![403, 404].includes(out.status)) {
-                    console.warn(`Imagen failed ${model}@${location}: ${out.status} ${String(out.error).slice(0, 200)}`);
-                }
-            }
-        }
-        res.status(503).json({ error: "All image-generation models failed or were unavailable for this project/region.", });
+        console.error("--------------------------------------------");
+        
+        res.status(500).json({
+            error: "Primary Gemini model failed and fallback is disabled.",
+            details: geminiResult.error
+        });
+
     } catch (e: any) {
         console.error("Critical error in smartGenerateImage:", e);
         res.status(500).json({ error: e?.message || "Internal error" });
