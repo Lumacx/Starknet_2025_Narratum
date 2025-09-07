@@ -3,15 +3,20 @@ import { onRequest } from "firebase-functions/v2/https";
 import type { Request, Response } from "express";
 import { GoogleAuth } from "google-auth-library";
 
+// --- Common Configuration ---
 const HOST = "https://us-central1-aiplatform.googleapis.com";
 const PROJECT_ID = process.env.GCLOUD_PROJECT || "narratum";
 const SERVICE_ACCOUNT = "vertex-runner@narratum.iam.gserviceaccount.com";
 
+// --- Type Definitions for API Payloads ---
 type GeminiPart = { text: string } | { inlineData: { mimeType: string; data: string } };
 interface VertexPredictResponse {
-  predictions?: [{ bytesBase64Encoded?: string }];
+  predictions?: [{ 
+    bytesBase64Encoded?: string 
+  }];
 }
 
+// --- Authentication Helper ---
 async function getToken(): Promise<string> {
   const auth = new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/cloud-platform"] });
   const client = await auth.getClient();
@@ -32,11 +37,9 @@ export const generateWithGemini = onRequest(
         res.status(400).json({ error: "Missing prompt" });
         return;
       }
+
       const token = await getToken();
-      
-      // Using the specific, versioned model ID that we proved works for your project.
       const model = "gemini-2.5-flash-image-preview-001";
-      
       const url = `${HOST}/v1/projects/${PROJECT_ID}/locations/us-central1/publishers/google/models/${model}:predict`;
       
       const parts: GeminiPart[] = [];
@@ -50,25 +53,36 @@ export const generateWithGemini = onRequest(
         }
       }
       parts.push({ text: prompt });
-      const body = { instances: [{ contents: [{ parts }] }] };
+
+      const body = { 
+        instances: [{ contents: [{ parts }] }],
+        parameters: {
+            responseModalities: ["IMAGE"] 
+        }
+      };
+      
       const r = await fetch(url, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+
       if (!r.ok) {
         const errorText = await r.text();
         console.error(`Gemini API error ${r.status}:`, errorText);
         res.status(r.status).json({ error: "Gemini API failed", details: errorText });
         return;
       }
+      
       const data = await r.json() as VertexPredictResponse;
       const imageBase64 = data.predictions?.[0]?.bytesBase64Encoded;
+
       if (!imageBase64) {
         throw new Error("No image data in Gemini response");
       }
-      // Return a clean model name to the UI for display consistency.
+
       res.status(200).json({ model: "gemini-2.5-flash-image-preview", images: [imageBase64] });
+
     } catch (e: any) {
       console.error("Critical error in generateWithGemini:", e);
       res.status(500).json({ error: e.message || "Internal server error" });
@@ -88,10 +102,7 @@ export const generateWithImagen = onRequest(
   async (req: Request, res: Response): Promise<void> => {
     try {
       const { prompt, count = 1, aspectRatio } = req.body as { prompt: string; count?: number; aspectRatio?: string };
-      if (!prompt) {
-        res.status(400).json({ error: "Missing prompt" });
-        return;
-      }
+      if (!prompt) { res.status(400).json({ error: "Missing prompt" }); return; }
       const token = await getToken();
       for (const model of IMAGEN_MODELS) {
         const url = `${HOST}/v1/projects/${PROJECT_ID}/locations/us-central1/publishers/google/models/${model}:predict`;
@@ -99,11 +110,7 @@ export const generateWithImagen = onRequest(
           instances: [{ prompt, ...(aspectRatio ? { aspectRatio } : {}) }],
           parameters: { sampleCount: Math.min(Math.max(Number(count) || 1, 1), 4) },
         };
-        const r = await fetch(url, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
+        const r = await fetch(url, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(body), });
         if (r.ok) {
           const data = await r.json() as VertexPredictResponse;
           const images = data.predictions?.map((p: any) => p?.bytesBase64Encoded).filter(Boolean);
@@ -117,6 +124,40 @@ export const generateWithImagen = onRequest(
     } catch (e: any) {
       console.error("Critical error in generateWithImagen:", e);
       res.status(500).json({ error: e.message || "Internal server error" });
+    }
+  }
+);
+
+// =======================================================================
+// 3. DIAGNOSTIC FUNCTION
+// =======================================================================
+export const listMyModels = onRequest(
+  { region: "us-central1", serviceAccount: SERVICE_ACCOUNT },
+  async (req: Request, res: Response): Promise<void> => {
+    console.log("Listing available models in us-central1...");
+    try {
+      const { ModelServiceClient } = await import("@google-cloud/aiplatform");
+      const client = new ModelServiceClient({
+          apiEndpoint: "us-central1-aiplatform.googleapis.com",
+      });
+      const [models] = await client.listModels({
+        parent: `projects/${PROJECT_ID}/locations/us-central1`,
+      });
+      if (!models || models.length === 0) {
+        res.status(404).send("No models found.");
+        return;
+      }
+      const modelList = models.map(model => ({
+          displayName: model.displayName,
+          name: model.name,
+      }));
+      console.log("========= AVAILABLE MODELS =========");
+      modelList.forEach(m => console.log(m));
+      console.log("====================================");
+      res.status(200).json(modelList);
+    } catch (e: any) {
+      console.error("Failed to list models:", e);
+      res.status(500).json({ error: e.message });
     }
   }
 );
