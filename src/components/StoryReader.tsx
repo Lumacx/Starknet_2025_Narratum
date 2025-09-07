@@ -535,14 +535,14 @@ useEffect(() => {
         </aside>
 
         {/* Right: image display box (strict, letterboxed) */}
-        <section id="image-panel" style={imagePanelStyle}>
-          <div style={imageFrameStyle}>
+        <section id="image-panel" className="image-panel">
+          <div className="image-frame">
             {storyImageSrc ? (
-              <img id="story-image" src={storyImageSrc} alt="Story Image" style={imageStyle} />
+              <img id="story-image" className="story-img" src={storyImageSrc} alt="Story Image" />
             ) : null}
           </div>
         </section>
-      </main>
+        </main>
 
       {/* ---------------- Text (centered, scrollable) --------- */}
       <div id="text-area" style={textAreaExtraMargin}>
