@@ -789,7 +789,7 @@ const CatalogPage: React.FC = () => {
               const count = (story as any).ratingCount as number | undefined;
               const my = userRatings[story.id!];
 
-              const readHref = `/ereader?storyId=${encodeURIComponent(story.id!)}&back=%2Fdiscover`;
+              const readHref = `/ereader?storyId=${encodeURIComponent(story.id!)}&from=discover`;
 
               const typeKey = getStoryType(story);
               const planKey = getPlan(story);

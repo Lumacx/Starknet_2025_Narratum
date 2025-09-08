@@ -798,7 +798,9 @@ export default function ScenesPage() {
   function goPrev() { setCurrentIndex(i => Math.max(0, i - 1)); }
   function goNext() { setCurrentIndex(i => Math.min(scenes.length - 1, i + 1)); }
 
-  const readerHref = storyId ? `/ereader?storyId=${encodeURIComponent(storyId)}` : '#';
+  const readerHref = storyId
+  ? `/ereader?storyId=${encodeURIComponent(storyId)}&from=scenes`
+  : '#';
 
   async function persistScenes(nextScenes: Scene[]) {
     if (!storyId) return;

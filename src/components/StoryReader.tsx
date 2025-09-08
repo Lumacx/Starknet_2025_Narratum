@@ -15,6 +15,8 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import "../app/story.css";
 
+import { useRouter, useSearchParams } from 'next/navigation';
+
 /* ------------------------------------------------------------------ */
 /* Types                                                              */
 /* ------------------------------------------------------------------ */
@@ -165,6 +167,34 @@ const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
   updateProgress();
 };
 
+const router = useRouter();
+const sp = useSearchParams();
+
+const handleBackClick = React.useCallback(() => {
+  const back = sp?.get("back") ? decodeURIComponent(sp.get("back")!) : null;
+  const storyIdQ = sp?.get("storyId");
+
+  if (back === "/discover") {
+    router.push("/discover");
+    return;
+  }
+  if (back === "/create/scenes") {
+    const q = storyIdQ ? `?storyId=${encodeURIComponent(storyIdQ)}` : "";
+    router.push(`/create/scenes${q}`);
+    return;
+  }
+
+  // fallback: use any parent-provided onBack, else browser history
+  if (onBack) { onBack(); return; }
+  router.back();
+}, [router, sp, onBack]);
+
+
+
+/* ------------------------------------------------------------------ */
+/*Use Effects and Use States                                                           */
+/* ------------------------------------------------------------------ */
+
 // cleanup on unmount
 useEffect(() => {
   return () => {
@@ -250,6 +280,46 @@ useEffect(() => {
     };
   }, [backgroundUrl]);
 
+// ===== Overview Index pagination (2 rows) =====
+const [indexPage, setIndexPage] = useState(0);
+const [indexCols, setIndexCols] = useState(4); // desktop default
+
+// compute number of columns from window width so we can get pageSize = cols * 2 rows
+useEffect(() => {
+  const compute = () => {
+    const w = window.innerWidth;
+    // responsive columns: 4 (desktop), 3 (tablet), 2 (small phones)
+    setIndexCols(w <= 380 ? 2 : w <= 768 ? 3 : 4);
+  };
+  compute();
+  window.addEventListener("resize", compute);
+  return () => window.removeEventListener("resize", compute);
+}, []);
+
+const pageSize = indexCols * 2; // exactly 2 rows
+// build items: Cover (index 0) + pages (1..N)
+const indexItems = useMemo(
+  () => [
+    { label: "Cover", idx: 0 },
+    ...sortedStoryContent.map((_, i) => ({ label: String(i + 1), idx: i + 1 })),
+  ],
+  [sortedStoryContent]
+);
+const totalIndexPages = Math.max(1, Math.ceil(indexItems.length / pageSize));
+const pageStart = indexPage * pageSize;
+const visibleIndexItems = indexItems.slice(pageStart, pageStart + pageSize);
+const canPrevIndex = indexPage > 0;
+const canNextIndex = indexPage < totalIndexPages - 1;
+
+// keep the current page's chip visible if user navigates via arrows
+useEffect(() => {
+  const cur = currentPageIndex; // 0..N
+  const requiredPage = Math.floor(cur / pageSize);
+  if (requiredPage !== indexPage) setIndexPage(requiredPage);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [currentPageIndex, pageSize]);
+
+
   /* Helpers */
   const handleUserInteraction = () => {
     if (!userInteracted) setUserInteracted(true);
@@ -294,8 +364,8 @@ useEffect(() => {
   /* (2) Font grow button: cycle 0.8 → 1.4 then wrap */
   const bumpFont = () => {
     setFontScale((s) => {
-      const next = +(Math.min(1.4, s + 0.1)).toFixed(1);
-      return next >= 1.4 ? 0.8 : next;
+      const next = +(Math.min(1.2, s + 0.1)).toFixed(1);
+      return next >= 1.2 ? 0.8 : next;
     });
   };
 
@@ -364,16 +434,15 @@ useEffect(() => {
       {/* ----------------------- Header ----------------------- */}
       <header id="app-header">
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {onBack && (
             <button
-              onClick={onBack}
+              onClick={handleBackClick}
               className="header-icon-btn"
               aria-label="Back"
               title="Back"
             >
               ← Back
             </button>
-          )}
+          
           <div id="welcome-text">{story.title ?? "Untitled"}</div>
         </div>
 
@@ -511,26 +580,51 @@ useEffect(() => {
           {hasFreeNav && sortedStoryContent.length > 0 && (
             <div className="index-box" style={{ width: "100%" }}>
               <div className="index-title">Overview Index</div>
-              <div className="index-grid">
-                <button
-                  onClick={() => goToIndex(0)}
-                  className={`chip-btn ${currentPageIndex === 0 ? "active" : ""}`}
-                >
-                  Cover
-                </button>
-                {sortedStoryContent.map((p, idx) => (
+
+              {totalIndexPages > 1 && (
+                <div className="index-pager">
                   <button
-                    key={idx}
-                    onClick={() => goToIndex(idx + 1)}
-                    className={`chip-btn ${currentPageIndex === idx + 1 ? "active" : ""}`}
-                    title={p.textContent?.slice(0, 50) || `Page ${idx + 1}`}
+                    className="index-nav"
+                    disabled={!canPrevIndex}
+                    onClick={() => setIndexPage(p => Math.max(0, p - 1))}
+                    aria-label="Previous index page"
+                    title="Previous"
                   >
-                    {idx + 1}
+                    ‹
+                  </button>
+                  <div className="index-page-indicator">
+                    {indexPage + 1} / {totalIndexPages}
+                  </div>
+                  <button
+                    className="index-nav"
+                    disabled={!canNextIndex}
+                    onClick={() => setIndexPage(p => Math.min(totalIndexPages - 1, p + 1))}
+                    aria-label="Next index page"
+                    title="Next"
+                  >
+                    ›
+                  </button>
+                </div>
+              )}
+
+              <div
+                className="index-grid"
+                style={{ gridTemplateColumns: `repeat(${indexCols}, minmax(0, 1fr))` }}
+              >
+                {visibleIndexItems.map(it => (
+                  <button
+                    key={it.idx}
+                    onClick={() => goToIndex(it.idx)}
+                    className={`chip-btn ${currentPageIndex === it.idx ? "active" : ""}`}
+                    title={it.idx === 0 ? "Cover" : `Page ${it.idx}`}
+                  >
+                    {it.label}
                   </button>
                 ))}
               </div>
             </div>
           )}
+
         </aside>
 
         {/* Right: image display box (strict, letterboxed) */}

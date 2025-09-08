@@ -271,6 +271,47 @@
      .index-grid{ grid-template-columns: 1fr; }
    }
    
+   /* Compact pager above the grid when there are multiple index pages */
+.index-pager{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 6px 0 10px;
+}
+
+.index-nav{
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
+  color: #fff;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.index-nav:disabled{
+  opacity: .4;
+  cursor: default;
+}
+.index-page-indicator{
+  font-size: 12px;
+  opacity: .9;
+}
+
+/* Ensure the index block itself never grows too tall on tiny screens.
+   With pagination we rarely hit this, but it's a safe guard. */
+@media (max-width: 768px){
+  .index-box{
+    max-height: none;   /* let the two rows render fully */
+  }
+}
+
+/* The app container may scroll when content stacks vertically */
+#app-container{
+  overflow-y: auto;   /* already present in your file; keep it */
+}
+
+
    /* ────────────────────────────────
       Image panel + strict letterboxed frame (no crop, no overflow)
       ──────────────────────────────── */
@@ -285,32 +326,33 @@
      overflow: hidden;                  /* panel itself never scrolls */
    }
    
+   
    /* The frame that centers content; fixed responsive height */
-   #story-background{
-     width: 100%;
-     height: clamp(260px, 45vh, 720px); /* single source of truth for frame height */
-     display: flex;
-     align-items: center;
-     justify-content: center;
-   
-     background: rgba(0,0,0,0.65);      /* dark letterbox */
-     border-radius: 14px;
-     overflow: hidden;                  /* nothing can extend past the frame */
-   }
-   
-   /* The image SHRINKS TO FIT inside the frame (no crop) */
-   #story-image,
-   .story-img{
-     width: auto;                        /* <-- key: don't force to fill frame */
-     height: auto;
-     max-width: 100%;
-     max-height: 100%;
-     object-fit: contain;                /* preserve ratio, never crop */
-     object-position: center;
-     display: block;
-     border-radius: 10px;
-     background: transparent;            /* letterbox color provided by #story-background */
-   }
+    .image-frame,
+      #story-background {                 /* keep alias in case some code still uses the id */
+        width: 100%;
+        height: clamp(260px, 45vh, 720px);  /* single source of truth for frame height */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0,0,0,0.65);      /* dark letterbox */
+        border-radius: 14px;
+        overflow: hidden;                  /* nothing can extend past the frame */
+      }
+
+      /* The image SHRINKS TO FIT inside the frame (no crop) */
+      #story-image,
+      .story-img {
+        width: auto;                       /* don’t force to fill the frame */
+        height: auto;
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;               /* preserve ratio, never crop */
+        object-position: center;
+        display: block;
+        border-radius: 10px;
+        background: transparent;
+      }
    
    /* ────────────────────────────────
       Text Area (centered, scrollable if long)
@@ -326,7 +368,7 @@
    
    /* ⬇️ UPDATED: 10% margins left/right from app edges → bubble is 80% wide */
       #text-bubble{
-        width: 80%;                         /* 10% side margins inside the reader */
+        width: 98%;                         /* 1% side margins inside the reader */
         max-width: 1100px;                  /* optional hard cap to avoid ultra-wide text */
         max-height: 22vh;                   /* prevents colliding with footer */
         overflow-y: auto;
