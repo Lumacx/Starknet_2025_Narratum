@@ -1,0 +1,3 @@
+env:
+-   variable: FIREBASE_FUNCTIONS_BASE_URL
+    value: https://us-central1-narratum.cloudfunctions.net

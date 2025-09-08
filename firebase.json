@@ -5,15 +5,8 @@
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
     ]
   },
-  
   "functions": {
     "source": "functions",
     "predeploy": [
@@ -21,7 +14,6 @@
       "npm --prefix \"$RESOURCE_DIR\" run build:deploy"
     ]
   },
-
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
@@ -61,5 +53,29 @@
   },
   "dataconnect": {
     "source": "dataconnect"
-  }
+  },
+  "apphosting": [
+    {
+      "backendId": "studio",
+      "rootDir": "/home/user/studio/firebase.json",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "functions"
+      ]
+    },
+    {
+      "backendId": "studio",
+      "rootDir": "firebase.json",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "functions"
+      ]
+    }
+  ]
 }
