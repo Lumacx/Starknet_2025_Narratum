@@ -799,7 +799,7 @@ export default function ScenesPage() {
   function goNext() { setCurrentIndex(i => Math.min(scenes.length - 1, i + 1)); }
 
   const readerHref = storyId
-  ? `/ereader?storyId=${encodeURIComponent(storyId)}&from=scenes`
+  ? `/ereader?storyId=${encodeURIComponent(storyId)}&back=%2Fcreate%2Fscenes`
   : '#';
 
   async function persistScenes(nextScenes: Scene[]) {
