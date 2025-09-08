@@ -55,6 +55,13 @@ const nextConfig: NextConfig = {
     // If you end up using server actions cross-origin, you may also need:
     // serverActions: { allowedOrigins: [cloudWorkstationsOrigin!, ...extraOrigins] },
   },
+
+  // Add these environment variables for the server-side build
+  env: {
+    FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID as string,
+    FIREBASE_CLIENT_EMAIL: process.env.FIREBASE_CLIENT_EMAIL as string,
+    FIREBASE_PRIVATE_KEY: process.env.FIREBASE_PRIVATE_KEY as string,
+  },
 };
 
 export default nextConfig;
