@@ -55,7 +55,6 @@ interface StoryReaderProps {
 /* Constants                                                          */
 /* ------------------------------------------------------------------ */
 const BG_CHOICES = [
-  "/story_reader_backgrounds/dream-background.png",
   "/story_reader_backgrounds/blockchain-background.png",
   "/story_reader_backgrounds/fantasy-background.png",
   "/story_reader_backgrounds/forest-background.png",

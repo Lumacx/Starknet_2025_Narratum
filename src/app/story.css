@@ -209,19 +209,27 @@
      cursor: pointer;
    }
    
-   /* Overview Index chips (supports up to 21 comfortably) */
+   /* ────────────────────────────────
+      Overview Index chips (uniform size & centered)
+      ──────────────────────────────── */
    .chip-btn{
      --chip-bg: rgba(255,255,255,0.10);
      --chip-brd: rgba(255,255,255,0.25);
      --chip-bg-active: rgba(255,255,255,0.25);
    
-     padding: 6px 10px;
+     display: flex;                   /* center text perfectly */
+     align-items: center;
+     justify-content: center;
+     width: 100%;                     /* fills the grid cell for uniform widths */
+     height: 42px;                    /* consistent height for all */
+     padding: 0 10px;                 /* inner spacing */
      border-radius: 10px;
      border: 1px solid var(--chip-brd);
      background: var(--chip-bg);
      color: #fff;
      font-size: 12px;
      cursor: pointer;
+     text-align: center;
      transition: background .2s, transform .08s;
    }
    .chip-btn:hover{ background: rgba(255,255,255,0.18); }
@@ -243,14 +251,28 @@
      color: #fff;
      opacity: .9;
    }
+   
+   /* Up to 4 buttons per row; wraps automatically */
    .index-grid{
      display: grid;
-     grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
-     gap: 6px;
+     grid-template-columns: repeat(4, minmax(0, 1fr));  /* max 4 per row */
+     gap: 8px;
+     justify-items: stretch;   /* buttons fill the cell width */
+   }
+   
+   /* ───────── Responsive columns for the index grid ───────── */
+   @media (max-width: 900px){
+     .index-grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
+   }
+   @media (max-width: 768px){
+     .index-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+   }
+   @media (max-width: 380px){
+     .index-grid{ grid-template-columns: 1fr; }
    }
    
    /* ────────────────────────────────
-      Image Panel (strict letterboxed frame, never crops)
+      Image panel + strict letterboxed frame (no crop, no overflow)
       ──────────────────────────────── */
    #image-panel{
      background: rgba(0,0,0,0.25);
@@ -260,31 +282,34 @@
      place-items: center;
      min-height: 180px;
      margin-bottom: min(2.2vh, 18px);   /* breathing room above text */
+     overflow: hidden;                  /* panel itself never scrolls */
    }
    
-   /* We reuse #story-background as the *frame* (not the wallpaper). */
+   /* The frame that centers content; fixed responsive height */
    #story-background{
      width: 100%;
-     aspect-ratio: 16 / 9;             /* stable canvas; change if you prefer 4/3 etc. */
-     max-height: 45vh;                  /* cap to avoid pushing the layout */
-     display: grid;
-     place-items: center;
-     background: rgba(0,0,0,0.65);      /* black-ish letterbox behind the image */
+     height: clamp(260px, 45vh, 720px); /* single source of truth for frame height */
+     display: flex;
+     align-items: center;
+     justify-content: center;
+   
+     background: rgba(0,0,0,0.65);      /* dark letterbox */
      border-radius: 14px;
-     overflow: hidden;                  /* ensure the <img> never spills outside */
+     overflow: hidden;                  /* nothing can extend past the frame */
    }
    
-   /* The image always fits fully (no crop), centered inside the frame */
-   #story-image{
-     width: 100%;
-     height: 100%;
+   /* The image SHRINKS TO FIT inside the frame (no crop) */
+   #story-image,
+   .story-img{
+     width: auto;                        /* <-- key: don't force to fill frame */
+     height: auto;
      max-width: 100%;
      max-height: 100%;
-     object-fit: contain;               /* ← key: show full image */
+     object-fit: contain;                /* preserve ratio, never crop */
      object-position: center;
      display: block;
      border-radius: 10px;
-     background: transparent;           /* letterbox color comes from #story-background */
+     background: transparent;            /* letterbox color provided by #story-background */
    }
    
    /* ────────────────────────────────
@@ -299,24 +324,24 @@
      padding-top: min(1.8vh, 16px);     /* extra guard against image overlap */
    }
    
-   /* Balanced bubble; font grows from center via --font-size-multiplier */
-   #text-bubble{
-     width: min(80vw, 60ch);
-     max-width: min(80vw, 60ch);
-     max-height: 22vh;                  /* prevents colliding with footer */
-     overflow-y: auto;
-     scrollbar-gutter: stable;
-     background: #fff9e6;
-     color: #4d4122;
-     padding: 12px 22px;
-     border-radius: 26px;
-     text-align: center;
-     font-weight: 600;
-     font-size: calc( clamp(0.95rem, 1.8vw, 1.25rem) * var(--font-size-multiplier) );
-     box-shadow: 0 2px 5px rgba(0,0,0,.10);
-     margin: 0 auto;
-     transform-origin: center center !important;  /* keeps bubble centered when scaled */
-   }
+   /* ⬇️ UPDATED: 10% margins left/right from app edges → bubble is 80% wide */
+      #text-bubble{
+        width: 80%;                         /* 10% side margins inside the reader */
+        max-width: 1100px;                  /* optional hard cap to avoid ultra-wide text */
+        max-height: 22vh;                   /* prevents colliding with footer */
+        overflow-y: auto;
+        scrollbar-gutter: stable;
+        background: #fff9e6;
+        color: #4d4122;
+        padding: 12px 22px;
+        border-radius: 26px;
+        text-align: center;
+        font-weight: 600;
+        font-size: calc( clamp(0.95rem, 1.8vw, 1.25rem) * var(--font-size-multiplier) );
+        box-shadow: 0 2px 5px rgba(0,0,0,.10);
+        margin: 0 auto;
+        transform-origin: center center !important;  /* keeps bubble centered when scaled */
+      }
    
    #read-again-button{
      padding: 8px 18px;
@@ -422,17 +447,17 @@
    }
    
    /* ────────────────────────────────
-      Responsive
+      Responsive (other areas)
       ──────────────────────────────── */
    @media (max-width: 1080px){
      :root{ --avatar-w: 28%; }
-     /* Frame can be slightly taller on midsize screens if you like: */
-     #story-background{ max-height: 46vh; }
+     /* adjust the frame height slightly on midsize screens */
+     #story-background{ height: clamp(260px, 46vh, 720px); }
    }
    
    @media (max-width: 900px){
      :root{ --avatar-w: 30%; }
-     #story-background{ max-height: 44vh; }
+     #story-background{ height: clamp(240px, 44vh, 680px); }
      #text-bubble{ max-height: 24vh; }
    }
    
@@ -448,23 +473,21 @@
      }
      #avatar-image{ width: clamp(64px, 18vw, 100px); height: clamp(64px, 18vw, 100px); }
    
-     /* Slightly taller frame on mobile for visibility */
-     #story-background{
-       aspect-ratio: 16 / 10;
-       max-height: 48vh;
-     }
+     /* slightly taller frame on mobile for visibility */
+     #story-background{ height: clamp(220px, 48vh, 640px); }
    
      /* Header icons wrap to ensure tappable access */
      #header-icons{ width: 100%; justify-content: flex-end; }
    
-     #text-bubble{
-       width: 92vw;
-       max-width: 92vw;
-       max-height: 28vh;
-       padding: 10px 16px;
-     }
-     .nav-arrow{ width: 38px; height: 38px; }
-   }
+      /* keep the 10% margins concept on mobile too (80% width) */
+      #text-bubble{
+      width: 80%;
+      max-width: none;
+      max-height: 28vh;
+      padding: 10px 16px;
+      }
+      .nav-arrow{ width: 38px; height: 38px; }
+      }
    
    @media (max-width: 480px){
      #app-container{
@@ -472,16 +495,14 @@
        border-radius: 0;                   /* edge-to-edge on tiny screens */
      }
      #app-header{ padding-bottom: 10px; }
-     #image-panel{ padding: 10px; }
-     #story-background{
-       aspect-ratio: 16 / 10;
-       max-height: 50vh;
-     }
-     #text-bubble{
-       width: 95vw; max-width: 95vw; max-height: 30vh;
-       font-size: calc(1rem * var(--font-size-multiplier));
-     }
-     .nav-arrow{ width: 34px; height: 34px; }
-     #options-popup{ width: 90%; right: 5%; }
-   }
-   
+      #image-panel{ padding: 10px; }
+      #story-background{ height: clamp(200px, 50vh, 560px); }
+      #text-bubble{
+        width: 80%;
+        max-width: none;
+        max-height: 30vh;
+        font-size: calc(1rem * var(--font-size-multiplier));
+      }
+      .nav-arrow{ width: 34px; height: 34px; }
+      #options-popup{ width: 90%; right: 5%; }
+      }
