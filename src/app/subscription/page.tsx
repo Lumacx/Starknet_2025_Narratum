@@ -1,9 +1,20 @@
 // src/app/subscription/page.tsx
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { X } from 'lucide-react';
+
+/* ───────────────────────────────────────────
+   Types to fix: window.paypal.Buttons typing
+   ─────────────────────────────────────────── */
+declare global {
+  interface Window {
+    paypal?: {
+      Buttons: (opts: any) => { render: (selector: string) => Promise<void> };
+    };
+  }
+}
 
 /* ----------------------------- Types & Data ----------------------------- */
 type BillingCycle = 'monthly' | 'yearly';
@@ -32,7 +43,6 @@ function computePrice(
 
   const base = BASE_PRICES[plan][cycle];
 
-  // Default (no code)
   if (!code) {
     return {
       display: cycle === 'monthly' ? `${formatUSD(base)} / month` : `${formatUSD(base)} / year`,
@@ -40,17 +50,15 @@ function computePrice(
     };
   }
 
-  // Cartaguito0925 → 1 month free (first month $0 for monthly, or minus 1 month value from yearly)
   if (code.kind === 'free_month') {
     if (cycle === 'monthly') {
-      const nextCharge = base; // after the free month
+      const nextCharge = base;
       return {
         display: `${formatUSD(0)} now, then ${formatUSD(nextCharge)}/mo`,
         raw: 0,
         explainer: 'First month free. Billed monthly afterward.',
       };
     } else {
-      // Yearly: subtract single-month value from yearly total
       const monthValue = BASE_PRICES[plan].monthly;
       const discounted = Math.max(0, base - monthValue);
       return {
@@ -61,7 +69,6 @@ function computePrice(
     }
   }
 
-  // Beta2025 → 25% off the purchase (monthly first charge or yearly total)
   if (code.kind === 'percent') {
     const discounted = +(base * (1 - code.pct)).toFixed(2);
     if (cycle === 'monthly') {
@@ -79,7 +86,6 @@ function computePrice(
     }
   }
 
-  // Fallback
   return {
     display: cycle === 'monthly' ? `${formatUSD(base)} / month` : `${formatUSD(base)} / year`,
     raw: base,
@@ -93,9 +99,48 @@ const SubscriptionPage: React.FC = () => {
   const [referralInput, setReferralInput] = useState('');
   const [applied, setApplied] = useState<AppliedCode | undefined>(undefined);
   const [codeError, setCodeError] = useState<string | null>(null);
+  const [paypalClientId, setPaypalClientId] = useState<string | null>(null);
+  const [sdkReady, setSdkReady] = useState(false);
 
   const fanPrice = useMemo(() => computePrice('Fan', billing, applied), [billing, applied]);
   const premiumPrice = useMemo(() => computePrice('Premium', billing, applied), [billing, applied]);
+
+  useEffect(() => {
+    async function fetchPaypalClientId() {
+      try {
+        const response = await fetch('/api/paypal-config');
+        const data = await response.json();
+        if (response.ok) {
+          setPaypalClientId(data.clientId);
+        } else {
+          console.error('Failed to fetch PayPal Client ID:', data.error);
+          setMessage(`Error: ${data.error}`);
+        }
+      } catch (error) {
+        console.error('Error fetching PayPal Client ID:', error);
+        setMessage('Error connecting to payment services.');
+      }
+    }
+    fetchPaypalClientId();
+  }, []);
+
+  useEffect(() => {
+    if (paypalClientId && !sdkReady) {
+      const script = document.createElement('script');
+      // Note: components=buttons is helpful when you rely on Buttons UI
+      script.src = `https://www.paypal.com/sdk/js?client-id=${paypalClientId}&components=buttons&vault=true&intent=subscription`;
+      script.onload = () => setSdkReady(true);
+      script.onerror = () => {
+        console.error('PayPal SDK failed to load.');
+        setMessage('Failed to load PayPal payment system.');
+      };
+      document.body.appendChild(script);
+
+      return () => {
+        document.body.removeChild(script);
+      };
+    }
+  }, [paypalClientId, sdkReady]);
 
   function handleApplyCode() {
     const code = referralInput.trim();
@@ -106,7 +151,6 @@ const SubscriptionPage: React.FC = () => {
       return;
     }
 
-    // Normalize case-insensitive
     const c = code.toLowerCase();
 
     if (c === 'cartaguito0925'.toLowerCase()) {
@@ -140,14 +184,8 @@ const SubscriptionPage: React.FC = () => {
 
     const p = computePrice(planName, billing, applied);
 
-    // This is where you’ll integrate your checkout.
-    // For now we just show a confirmation message with the computed pricing.
-    const note = applied
-      ? ` (${applied.code}${p.explainer ? ` — ${p.explainer}` : ''})`
-      : '';
-
     setMessage(
-      `Proceeding to subscribe to ${planName} — ${billing.toUpperCase()} at ${p.display}${note}. (Checkout not yet wired)`
+      `Proceeding to subscribe to ${planName} — ${billing.toUpperCase()} at ${p.display}${applied ? ` (${applied.code}${p.explainer ? ` — ${p.explainer}` : ''})` : ''}. (PayPal checkout will be initiated here)`
     );
   }
 
@@ -155,9 +193,7 @@ const SubscriptionPage: React.FC = () => {
     <div className="inline-flex items-center rounded-full bg-white/70 dark:bg-black/30 border border-[#C1A98A] overflow-hidden shadow-sm">
       <button
         className={`px-4 py-2 text-sm font-semibold transition ${
-          billing === 'monthly'
-            ? 'bg-[#C1A98A] text-white'
-            : 'text-[#3A4B5C] dark:text-[#E0C9A0]'
+          billing === 'monthly' ? 'bg-[#C1A98A] text-white' : 'text-[#3A4B5C] dark:text-[#E0C9A0]'
         }`}
         onClick={() => setBilling('monthly')}
         aria-pressed={billing === 'monthly'}
@@ -166,9 +202,7 @@ const SubscriptionPage: React.FC = () => {
       </button>
       <button
         className={`px-4 py-2 text-sm font-semibold transition ${
-          billing === 'yearly'
-            ? 'bg-[#C1A98A] text-white'
-            : 'text-[#3A4B5C] dark:text-[#E0C9A0]'
+          billing === 'yearly' ? 'bg-[#C1A98A] text-white' : 'text-[#3A4B5C] dark:text-[#E0C9A0]'
         }`}
         onClick={() => setBilling('yearly')}
         aria-pressed={billing === 'yearly'}
@@ -178,10 +212,77 @@ const SubscriptionPage: React.FC = () => {
     </div>
   );
 
+  // PayPal button container will be rendered only when SDK is ready
+  const PayPalButton = ({
+    planName,
+    price,
+  }: {
+    planName: PlanName;
+    price: { display: string; raw: number; explainer?: string };
+  }) => {
+    const buttonId = `paypal-button-container-${planName}`;
+
+    useEffect(() => {
+      // Strong runtime guard to avoid undefined access
+      const hasButtons =
+        typeof window !== 'undefined' &&
+        !!window.paypal &&
+        typeof window.paypal.Buttons === 'function';
+
+      if (sdkReady && hasButtons) {
+        const container = document.getElementById(buttonId);
+        if (container) container.innerHTML = '';
+
+        window.paypal!
+          .Buttons({
+            createSubscription: function (data: any, actions: any) {
+              let planId: string | undefined;
+              if (planName === 'Fan') {
+                planId = billing === 'monthly' ? 'YOUR_FAN_MONTHLY_PLAN_ID' : 'YOUR_FAN_YEARLY_PLAN_ID';
+              } else if (planName === 'Premium') {
+                planId = billing === 'monthly' ? 'YOUR_PREMIUM_MONTHLY_PLAN_ID' : 'YOUR_PREMIUM_YEARLY_PLAN_ID';
+              }
+              if (!planId) return Promise.reject('Invalid plan selected');
+
+              return actions.subscription.create({
+                plan_id: planId,
+              });
+            },
+            onApprove: function (data: any) {
+              setMessage('Subscription approved! Verifying payment...');
+              console.log('Subscription Approved:', data.subscriptionID);
+              // TODO: call backend to verify and activate
+            },
+            onError: function (err: any) {
+              console.error('PayPal error:', err);
+              setMessage('PayPal checkout error. Please try again.');
+            },
+            onCancel: function () {
+              setMessage('PayPal checkout cancelled.');
+            },
+          })
+          .render(`#${buttonId}`);
+      }
+    }, [sdkReady, planName, billing, price, buttonId]);
+
+    if (!sdkReady) {
+      return (
+        <button
+          className="mt-2 font-['Lato'] bg-[#5D6D7E] text-[#FDFCFB] border-none rounded-lg py-3 px-6 text-base font-bold uppercase tracking-wide cursor-pointer transition-all duration-300 ease-in-out w-4/5 shadow-md hover:bg-[#4E5C6A] hover:translate-y-[-2px] opacity-50 cursor-not-allowed"
+          disabled
+        >
+          Loading PayPal...
+        </button>
+      );
+    }
+
+    return <div id={buttonId} className="w-full mt-2"></div>;
+  };
+
   return (
     <div
-      className="min-h-screen relative flex flex-col items-center justify-center p-5 md:p-10 
-      bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26] 
+      className="min-h-screen relative flex flex-col items-center justify-center p-5 md:p-10
+      bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26]
       text-[#3A4B5C] dark:text-[#E0C9A0] font-sans"
     >
       {/* Back */}
@@ -218,7 +319,7 @@ const SubscriptionPage: React.FC = () => {
               value={referralInput}
               onChange={(e) => setReferralInput(e.target.value)}
               placeholder="Enter Referral Code"
-              className="flex-1 rounded-lg border border-[#C1A98A] bg-white/80 dark:bg-black/30 px-4 py-2 outline-none focus:ring-2 focus:ring-[#C1A98A]"
+              className="flex-1 rounded-lg border border-[#C1A98A] bg-white/80 dark:bg:black/30 px-4 py-2 outline-none focus:ring-2 focus:ring-[#C1A98A]"
             />
             <button
               onClick={handleApplyCode}
@@ -233,9 +334,7 @@ const SubscriptionPage: React.FC = () => {
             {applied ? (
               <div className="inline-flex items-center gap-2 rounded-full border border-[#C1A98A] bg-white/70 dark:bg-black/30 px-3 py-1 text-sm">
                 <span className="font-semibold">Code:</span>
-                <span className="uppercase tracking-wide">
-                  {applied.code}
-                </span>
+                <span className="uppercase tracking-wide">{applied.code}</span>
                 <button
                   onClick={clearCode}
                   className="p-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition"
@@ -246,30 +345,20 @@ const SubscriptionPage: React.FC = () => {
                 </button>
               </div>
             ) : codeError ? (
-              <div className="text-sm text-red-700 bg-red-100 px-3 py-1 rounded-lg">
-                {codeError}
-              </div>
+              <div className="text-sm text-red-700 bg-red-100 px-3 py-1 rounded-lg">{codeError}</div>
             ) : null}
           </div>
         </div>
 
-        {message && (
-          <div className="mb-6 p-3 rounded-lg text-sm bg-blue-100 text-blue-700">
-            {message}
-          </div>
-        )}
+        {message && <div className="mb-6 p-3 rounded-lg text-sm bg-blue-100 text-blue-700">{message}</div>}
 
         {/* Plans */}
         <main className="pricing-plans flex justify-center gap-8 md:gap-10 flex-wrap">
           {/* Free */}
           <div className="plan-card bg-[#F9F6F0] border-2 border-[#C1A98A] rounded-xl p-8 md:p-10 w-64 flex flex-col items-center shadow-lg transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-xl">
             <i className="fas fa-feather-alt text-6xl text-[#A9834F] mb-6" />
-            <h3 className="font-['Merriweather'] text-2xl font-extrabold uppercase text-[#4A3B31] mb-2">
-              FREE
-            </h3>
-            <p className="font-['Merriweather'] text-3xl font-bold text-[#3D2B1F] mb-6">
-              Free
-            </p>
+            <h3 className="font-['Merriweather'] text-2xl font-extrabold uppercase text-[#4A3B31] mb-2">FREE</h3>
+            <p className="font-['Merriweather'] text-3xl font-bold text-[#3D2B1F] mb-6">Free</p>
             <button
               onClick={() => handleSubscribe('Free')}
               className="font-['Lato'] bg-[#5D6D7E] text-[#FDFCFB] border-none rounded-lg py-3 px-6 text-base font-bold uppercase tracking-wide cursor-pointer transition-all duration-300 ease-in-out w-4/5 shadow-md hover:bg-[#4E5C6A] hover:translate-y-[-2px]"
@@ -281,9 +370,7 @@ const SubscriptionPage: React.FC = () => {
           {/* Fan */}
           <div className="plan-card featured-plan bg-[#F9F6F0] border-2 border-[#A9834F] rounded-xl p-8 md:p-10 w-64 flex flex-col items-center shadow-lg transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-xl">
             <i className="fas fa-star text-6xl text-[#A9834F] mb-6" />
-            <h3 className="font-['Merriweather'] text-2xl font-extrabold uppercase text-[#4A3B31] mb-2">
-              Fan
-            </h3>
+            <h3 className="font-['Merriweather'] text-2xl font-extrabold uppercase text-[#4A3B31] mb-2">Fan</h3>
 
             <p className="font-['Merriweather'] text-3xl font-bold text-[#3D2B1F] mb-1">
               {billing === 'monthly' ? formatUSD(BASE_PRICES.Fan.monthly) : formatUSD(BASE_PRICES.Fan.yearly)}
@@ -292,27 +379,18 @@ const SubscriptionPage: React.FC = () => {
               </span>
             </p>
 
-            {/* Effective price preview with referral */}
             {applied && (
               <p className="text-sm text-[#5C4B3E] mb-2">
                 Now: <span className="font-semibold">{fanPrice.display}</span>
               </p>
             )}
-
-            <button
-              onClick={() => handleSubscribe('Fan')}
-              className="mt-2 font-['Lato'] bg-[#5D6D7E] text-[#FDFCFB] border-none rounded-lg py-3 px-6 text-base font-bold uppercase tracking-wide cursor-pointer transition-all duration-300 ease-in-out w-4/5 shadow-md hover:bg-[#4E5C6A] hover:translate-y-[-2px]"
-            >
-              SUBSCRIBE
-            </button>
+            <PayPalButton planName="Fan" price={fanPrice} />
           </div>
 
           {/* Premium */}
           <div className="plan-card bg-[#F9F6F0] border-2 border-[#C1A98A] rounded-xl p-8 md:p-10 w-64 flex flex-col items-center shadow-lg transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-xl">
             <i className="fas fa-dragon text-6xl text-[#A9834F] mb-6" />
-            <h3 className="font-['Merriweather'] text-2xl font-extrabold uppercase text-[#4A3B31] mb-2">
-              Premium
-            </h3>
+            <h3 className="font-['Merriweather'] text-2xl font-extrabold uppercase text-[#4A3B31] mb-2">Premium</h3>
 
             <p className="font-['Merriweather'] text-3xl font-bold text-[#3D2B1F] mb-1">
               {billing === 'monthly' ? formatUSD(BASE_PRICES.Premium.monthly) : formatUSD(BASE_PRICES.Premium.yearly)}
@@ -321,25 +399,18 @@ const SubscriptionPage: React.FC = () => {
               </span>
             </p>
 
-            {/* Effective price preview with referral */}
             {applied && (
               <p className="text-sm text-[#5C4B3E] mb-2">
                 Now: <span className="font-semibold">{premiumPrice.display}</span>
               </p>
             )}
-
-            <button
-              onClick={() => handleSubscribe('Premium')}
-              className="mt-2 font-['Lato'] bg-[#5D6D7E] text-[#FDFCFB] border-none rounded-lg py-3 px-6 text-base font-bold uppercase tracking-wide cursor-pointer transition-all duration-300 ease-in-out w-4/5 shadow-md hover:bg-[#4E5C6A] hover:translate-y-[-2px]"
-            >
-              SUBSCRIBE
-            </button>
+            <PayPalButton planName="Premium" price={premiumPrice} />
           </div>
         </main>
 
-        {/* Fine print */}
         <p className="mt-8 text-xs text-[#5C4B3E]/80 dark:text-[#E0C9A0]/70">
-          * Referral usage limits (e.g., “one time only”) must be enforced during checkout on the server or payment provider.
+          * Referral usage limits (e.g., “one time only”) must be enforced during checkout on the server or payment
+          provider.
         </p>
       </div>
     </div>
