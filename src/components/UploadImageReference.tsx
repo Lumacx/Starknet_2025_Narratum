@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { Trash2, Copy, CheckCircle2 } from 'lucide-react';
 import Image from 'next/image';
 import { storage } from '@/lib/firebase';
@@ -41,7 +41,7 @@ type Props = {
   nounOverride?: string;
   onOpenTemplate?: () => void;
   mainPromptLabel?: string;
-  accept?: string;
+  accept?: string; // This prop will be overridden for image categories
   showInnerDescribe?: boolean;
   preferredLanguage?: LangCode;
 };
@@ -55,6 +55,9 @@ const MB = 1024 * KB;
 const LIMITS: Record<string, { min: number; max: number }> = {
   'image/png': { min: 50 * KB, max: 10 * MB },
   'image/jpeg': { min: 50 * KB, max: 10 * MB },
+  'image/jpg': { min: 50 * KB, max: 10 * MB }, // Added JPG
+  'image/gif': { min: 50 * KB, max: 10 * MB }, // Added GIF
+  'image/webp': { min: 50 * KB, max: 10 * MB }, // Added WebP
   'audio/mpeg': { min: 50 * KB, max: 15 * MB },
   'audio/mp3': { min: 50 * KB, max: 15 * MB },
   'video/mp4': { min: 1 * MB, max: 50 * MB },
@@ -64,7 +67,7 @@ function fmt(bytes: number) {
 }
 function validate(file: File) {
   const l = LIMITS[file.type];
-  if (!l) return { ok: false, msg: `Unsupported type: ${file.type}. Use PNG/JPG, MP3, or MP4.` };
+  if (!l) return { ok: false, msg: `Unsupported type: ${file.type}. Use PNG, JPG, GIF, WebP, MP3, or MP4.` }; // Updated error message
   if (file.size < l.min) return { ok: false, msg: `File too small. Min ${fmt(l.min)}.` };
   if (file.size > l.max) return { ok: false, msg: `File too large. Max ${fmt(l.max)}.` };
   return { ok: true as const };
@@ -85,7 +88,7 @@ export default function UploadImageReference({
   onSaved,
   mainPromptLabel,
   assetCategory,
-  accept,
+  accept: propAccept, // Renamed to avoid conflict with local const
   mode = 'full',
   showInnerDescribe = true,
   onGenerateRequest,
@@ -121,6 +124,14 @@ export default function UploadImageReference({
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [err, setErr] = useState('');
   const [localGeneratedUrl, setLocalGeneratedUrl] = useState('');
+
+  // Determine the 'accept' attribute for the file input based on category or prop
+  const accept = useMemo(() => {
+    if (isImageCategory(assetCategory)) {
+      return 'image/png, image/jpeg, image/jpg, image/gif, image/webp'; // Explicitly set for image categories
+    }
+    return propAccept; // Use the prop if not an image category
+  }, [assetCategory, propAccept]);
 
   // 🔗 Allow InfoPopover (or parent) to inject a prompt into this component
   useEffect(() => {

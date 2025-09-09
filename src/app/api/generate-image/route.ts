@@ -27,12 +27,21 @@ async function callFirebaseFunction(functionName: string, body: any) {
 }
 
 export async function POST(req: Request) {
-  const body = await req.json();
+  const originalBody = await req.json();
+  const bodyWithAspectRatio = { ...originalBody };
+
+  // Set default aspect ratio to 16:9 and add to the prompt
+  const aspectRatio = "16:9";
+  if (bodyWithAspectRatio.prompt) {
+    bodyWithAspectRatio.prompt = `${bodyWithAspectRatio.prompt} --ar ${aspectRatio}`;
+  } else {
+    bodyWithAspectRatio.prompt = `--ar ${aspectRatio}`;
+  }
 
   // --- ATTEMPT 1: Try the dedicated Gemini (Nano Banana) function ---
   try {
     console.log("Attempting primary generation via generateWithGemini function...");
-    const result = await callFirebaseFunction('generateWithGemini', body);
+    const result = await callFirebaseFunction('generateWithGemini', bodyWithAspectRatio);
     console.log("Success with generateWithGemini.");
     return NextResponse.json(result);
   } catch (e: any) {
@@ -42,7 +51,7 @@ export async function POST(req: Request) {
   // --- ATTEMPT 2: Fallback to the dedicated Imagen function ---
   try {
     console.log("Falling back to generateWithImagen function...");
-    const result = await callFirebaseFunction('generateWithImagen', body);
+    const result = await callFirebaseFunction('generateWithImagen', bodyWithAspectRatio);
     console.log("Success with generateWithImagen fallback.");
     return NextResponse.json(result);
   } catch (e: any) {
