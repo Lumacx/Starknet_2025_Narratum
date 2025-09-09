@@ -110,7 +110,7 @@ export default function UploadImageReference({
       ? '/info_tips/character-creation-template.md'
       : null;
 
-  const tipDocForTwo = '/info_tips/pro-tips-for-prompting-images.md';
+  const tipDocForTwo = '/info_tips/master_prompt_guidance.PNG';
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState('');

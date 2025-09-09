@@ -658,7 +658,7 @@ export default function BeginPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             {/* Title */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-bold mb-2">Title</label>
+              <label className="block text-sm font-bold mb-2">Title (* = mandatory)</label>
               <input
                 className="
                   w-full p-3 border-2 rounded-md
@@ -674,7 +674,7 @@ export default function BeginPage() {
 
             {/* Genres */}
             <div className="md:col-span-1">
-              <label className="block text-sm font-bold mb-2">Genres</label>
+              <label className="block text-sm font-bold mb-2">Genres (*)</label>
               <GenreMultiSelect
                 genresList={GENRES as any}
                 selectedGenres={draft.genres}
@@ -758,7 +758,7 @@ export default function BeginPage() {
 
           {/* Synopsis */}
           <div className="mb-6">
-            <label className="block text-sm font-bold mb-2">Brief Synopsis</label>
+            <label className="block text-sm font-bold mb-2">Brief Synopsis (* = Mandatory)</label>
             <textarea
               rows={4}
               className="
@@ -775,7 +775,7 @@ export default function BeginPage() {
           {/* Current Story (Category + Pages + Campaign Name) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-bold mb-2">Current Story</label>
+              <label className="block text-sm font-bold mb-2">Current Story (*)</label>
               <select
                 className="
                   w-full p-3 border-2 rounded-md
@@ -857,7 +857,7 @@ export default function BeginPage() {
                   <label className="block text-sm font-bold mb-2">ElevenLabs Convai Agent ID</label>
                   <input
                     className="w-full p-3 border-2 rounded-md bg-white text-slate-900 border-slate-300 dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]"
-                    placeholder="agent_01jz5wvvenep3awvc2d65kfq0a"
+                    placeholder="agent_01jz5wxyxyxyxyxyxyxyxyxyxy"
                     value={draft.premium?.convaiAgentId || ''}
                     onChange={async (e) => {
                       const v = e.target.value;
@@ -1082,7 +1082,7 @@ export default function BeginPage() {
                     dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55] dark:focus:ring-[#2c3f55]
                   "
                   value={draft.premium?.convaiAgentId ?? ''}
-                  placeholder="e.g., agent_01jz5wvvenep3awvc2d65kfq0a"
+                  placeholder="e.g., agent_01jz5xyxyxyxyxyxyxyxyxyxy"
                   onChange={(e) =>
                     setDraft((d) => ({
                       ...d,

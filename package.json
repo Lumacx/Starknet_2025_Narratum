@@ -24,6 +24,7 @@
     "@argent/x-ui": "^1.87.0",
     "@chakra-ui/react": "^2.8.2",
     "@chakra-ui/styled-system": "^2.9.2",
+    "@elevenlabs/elevenlabs-js": "^2.15.0",
     "@emotion/react": "^11.13.0",
     "@emotion/styled": "^11.13.0",
     "@firebasegen/default-connector": "file:dataconnect-generated/js/default-connector",
