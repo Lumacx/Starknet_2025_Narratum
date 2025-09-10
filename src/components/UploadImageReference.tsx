@@ -3,9 +3,10 @@
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { Trash2, Copy, CheckCircle2 } from 'lucide-react';
 import Image from 'next/image';
-import { storage } from '@/lib/firebase';
+import { storage, db } from '@/lib/firebase'; // ⬅️ pull db too
 import { useAuth } from '@/context/AuthContext';
 import { ref, uploadString, getDownloadURL, listAll, deleteObject } from 'firebase/storage';
+import { doc as fsDoc, setDoc, serverTimestamp } from 'firebase/firestore'; // ⬅️ Firestore
 import InfoPopover from '@/components/InfoPopover';
 
 /* ---------- Types ---------- */
@@ -46,22 +47,22 @@ type Props = {
   accept?: string; // This prop will be overridden for image categories
   showInnerDescribe?: boolean;
   preferredLanguage?: LangCode;
-  storyId?: string; // CHANGED: storyId is now optional for uncategorized assets
-  disableSaveButtons?: boolean; // NEW: Prop to disable save buttons
+  storyId?: string; // story-scoped when defined; otherwise uncategorized
+  disableSaveButtons?: boolean; // disable save actions (e.g., when no story selected on Scenes page)
 };
 
 /* ---------- Helpers ---------- */
 const isImageCategory = (c: AssetCategory) =>
-  ['covers', 'avatars', 'characters', 'locations', 'backgrounds', 'generatedImages'].includes(c); // Updated
+  ['covers', 'avatars', 'characters', 'locations', 'backgrounds', 'generatedImages'].includes(c);
 
 const KB = 1024;
 const MB = 1024 * KB;
 const LIMITS: Record<string, { min: number; max: number }> = {
   'image/png': { min: 50 * KB, max: 15 * MB },
   'image/jpeg': { min: 50 * KB, max: 15 * MB },
-  'image/jpg': { min: 50 * KB, max: 15 * MB }, // Added JPG
-  'image/gif': { min: 50 * KB, max: 15 * MB }, // Added GIF
-  'image/webp': { min: 50 * KB, max: 15 * MB }, // Added WebP
+  'image/jpg': { min: 50 * KB, max: 15 * MB },
+  'image/gif': { min: 50 * KB, max: 15 * MB },
+  'image/webp': { min: 50 * KB, max: 15 * MB },
   'audio/mpeg': { min: 50 * KB, max: 15 * MB },
   'audio/mp3': { min: 50 * KB, max: 15 * MB },
   'video/mp4': { min: 0.5 * MB, max: 50 * MB },
@@ -71,7 +72,7 @@ function fmt(bytes: number) {
 }
 function validate(file: File) {
   const l = LIMITS[file.type];
-  if (!l) return { ok: false, msg: `Unsupported type: ${file.type}. Use PNG, JPG, GIF, WebP, MP3, or MP4.` }; // Updated error message
+  if (!l) return { ok: false, msg: `Unsupported type: ${file.type}. Use PNG, JPG, GIF, WebP, MP3, or MP4.` };
   if (file.size < l.min) return { ok: false, msg: `File too small. Min ${fmt(l.min)}.` };
   if (file.size > l.max) return { ok: false, msg: `File too large. Max ${fmt(l.max)}.` };
   return { ok: true as const };
@@ -85,6 +86,30 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
+// 🔧 keep Firestore doc ids clean and consistent
+function sanitizeId(name: string) {
+  return (name || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9._-]/g, '') // allow simple safe chars
+    .slice(0, 120) || 'asset';
+}
+
+// Build the index doc path where we store metadata for quick lookups
+function buildIndexTarget(params: {
+  uid: string;
+  storyId?: string;
+  category: string;
+  docId: string;
+}) {
+  const base = params.storyId
+    ? `users/${params.uid}/assetIndex/stories/${params.storyId}/${params.category}`
+    : `users/${params.uid}/assetIndex/uncategorized/${params.category}`;
+  const path = `${base}/${params.docId}`;
+  return { path };
+}
+
 /* ---------- Component ---------- */
 export default function UploadImageReference({
   variant,
@@ -92,7 +117,7 @@ export default function UploadImageReference({
   onSaved,
   mainPromptLabel,
   assetCategory,
-  accept: propAccept, // Renamed to avoid conflict with local const
+  accept: propAccept,
   mode = 'full',
   showInnerDescribe = true,
   onGenerateRequest,
@@ -101,7 +126,7 @@ export default function UploadImageReference({
   selection = [],
   onSelectionChange,
   maxSelection = 1,
-  storyId, // CHANGED: now optional
+  storyId,
   disableSaveButtons,
 }: Props) {
   const { user: currentUser } = useAuth();
@@ -111,14 +136,13 @@ export default function UploadImageReference({
     nounOverride ?? (variant === 'character' ? 'Character' : variant === 'location' ? 'Location' : 'Cover');
   const generateCta = `Generate ${noun} Image (AI)`;
 
-  // ✅ Use the kebab-case file names in /public/info_tips
+  // kebab-case info tip docs
   const tipDocForOne =
     assetCategory === 'locations'
       ? '/info_tips/location-generation-template.md'
       : assetCategory === 'characters'
       ? '/info_tips/character-creation-template.md'
       : null;
-
   const tipDocForTwo = '/info_tips/master_prompt_guidance.PNG';
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -134,12 +158,12 @@ export default function UploadImageReference({
   // Determine the 'accept' attribute for the file input based on category or prop
   const accept = useMemo(() => {
     if (isImageCategory(assetCategory)) {
-      return 'image/png, image/jpeg, image/jpg, image/gif, image/webp'; // Explicitly set for image categories
+      return 'image/png, image/jpeg, image/jpg, image/gif, image/webp';
     }
-    return propAccept; // Use the prop if not an image category
+    return propAccept;
   }, [assetCategory, propAccept]);
 
-  // 🔗 Allow InfoPopover (or parent) to inject a prompt into this component
+  // Inject prompt from InfoPopover/global event
   useEffect(() => {
     const handler = (e: Event) => {
       try {
@@ -170,8 +194,8 @@ export default function UploadImageReference({
       setGallery([]);
       return;
     }
-    
-    // Construct the base path dynamically based on whether storyId is provided
+
+    // Build path: story-scoped or uncategorized
     const basePath = storyId
       ? `users/${currentUser.uid}/assetIndex/stories/${storyId}/${assetCategory}/`
       : `users/${currentUser.uid}/assetIndex/uncategorized/${assetCategory}/`;
@@ -180,7 +204,11 @@ export default function UploadImageReference({
       const base = ref(storage, basePath);
       const res = await listAll(base);
       const items = await Promise.all(
-        res.items.map(async (i) => ({ name: i.name, fullPath: i.fullPath, url: await getDownloadURL(i) }))
+        res.items.map(async (i) => ({
+          name: i.name,
+          fullPath: i.fullPath,
+          url: await getDownloadURL(i),
+        }))
       );
       setGallery(items.sort((a, b) => (a.name < b.name ? 1 : -1)));
       setErr('');
@@ -189,7 +217,7 @@ export default function UploadImageReference({
       setErr(`Failed to load gallery: ${(e as Error)?.message || 'Unknown error'}`);
       setGallery([]);
     }
-  }, [assetCategory, currentUser, storyId]); // ADDED storyId to dependencies
+  }, [assetCategory, currentUser, storyId]);
 
   useEffect(() => {
     loadGallery();
@@ -208,11 +236,7 @@ export default function UploadImageReference({
     const objectUrl = URL.createObjectURL(f);
     setPreviewUrl(objectUrl);
     setNameToSave(f.name.replace(/\.[^.]+$/, ''));
-    if (isImageCategory(assetCategory)) {
-      onSaved?.({ name: f.name, url: objectUrl, fullPath: 'local://selected', contentType: f.type });
-    } else {
-      onSaved?.({ name: f.name, url: objectUrl, fullPath: 'local://selected', contentType: f.type });
-    }
+    onSaved?.({ name: f.name, url: objectUrl, fullPath: 'local://selected', contentType: f.type });
   }
 
   async function handleDescribe() {
@@ -227,37 +251,65 @@ export default function UploadImageReference({
 
   async function handleSaveOriginal() {
     if (!currentUser || !selectedFile || !nameToSave.trim()) return;
-  
+
     try {
       const ext = selectedFile.type.split('/')[1] || 'png';
+      const cleanName = sanitizeId(nameToSave);
+      const filename = `${cleanName}.${ext}`;
       const path = storyId
-        ? `users/${currentUser.uid}/assetIndex/stories/${storyId}/${assetCategory}/${nameToSave}.${ext}`
-        : `users/${currentUser.uid}/assetIndex/uncategorized/${assetCategory}/${nameToSave}.${ext}`;
-  
+        ? `users/${currentUser.uid}/assetIndex/stories/${storyId}/${assetCategory}/${filename}`
+        : `users/${currentUser.uid}/assetIndex/uncategorized/${assetCategory}/${filename}`;
+
       const storageRef = ref(storage, path);
       const dataUrl = await fileToDataUrl(selectedFile);
-  
+
       const meta: Record<string, string> = {
-        displayName: nameToSave,
+        displayName: cleanName,
         category: assetCategory,
         source: 'uploaded',
         createdAt: String(Date.now()),
         'narratum:role': variant,
       };
-      if (storyId) meta['narratum:storyId'] = storyId; // ✅ only add when defined
-  
+      if (storyId) meta['narratum:storyId'] = storyId;
+
       await uploadString(storageRef, dataUrl, 'data_url', { customMetadata: meta });
-  
+
       const downloadUrl = await getDownloadURL(storageRef);
-      const item = { name: `${nameToSave}.${ext}`, url: downloadUrl, fullPath: path, contentType: selectedFile.type };
+      const item = { name: filename, url: downloadUrl, fullPath: path, contentType: selectedFile.type };
       setGallery((g) => [item, ...g]);
       onSaved?.(item);
+
+      // 🔎 Firestore index doc (for quick lookups and StoryWorkspace usage)
+      try {
+        const { path: docPath } = buildIndexTarget({
+          uid: currentUser.uid,
+          storyId,
+          category: assetCategory,
+          docId: cleanName,
+        });
+        await setDoc(
+          fsDoc(db, docPath),
+          {
+            url: downloadUrl,
+            name: cleanName,
+            fileName: filename,
+            contentType: selectedFile.type || 'application/octet-stream',
+            createdAt: serverTimestamp(),
+            source: 'uploaded',
+            storyId: storyId ?? null,
+            role: variant,
+          },
+          { merge: true }
+        );
+      } catch (err) {
+        console.warn('Failed to write index doc for original upload:', err);
+      }
+
       alert('Saved to gallery!');
     } catch (e: any) {
       alert(e?.message || 'Save failed');
     }
   }
-  
 
   function handleGenerate() {
     onGenerateRequest?.(mainPrompt);
@@ -265,35 +317,63 @@ export default function UploadImageReference({
 
   async function handleSaveGenerated() {
     if (!currentUser || !localGeneratedUrl || !nameToSave.trim()) return;
-  
+
     try {
+      const cleanName = sanitizeId(nameToSave);
+      const filename = `${cleanName}.png`;
       const path = storyId
-        ? `users/${currentUser.uid}/assetIndex/stories/${storyId}/${assetCategory}/${nameToSave}.png`
-        : `users/${currentUser.uid}/assetIndex/uncategorized/${assetCategory}/${nameToSave}.png`;
-  
+        ? `users/${currentUser.uid}/assetIndex/stories/${storyId}/${assetCategory}/${filename}`
+        : `users/${currentUser.uid}/assetIndex/uncategorized/${assetCategory}/${filename}`;
+
       const storageRef = ref(storage, path);
-  
+
       const meta: Record<string, string> = {
-        displayName: nameToSave,
+        displayName: cleanName,
         category: assetCategory,
         source: 'ai-generated',
         createdAt: String(Date.now()),
         'narratum:role': variant,
       };
-      if (storyId) meta['narratum:storyId'] = storyId; // ✅ only add when defined
-  
+      if (storyId) meta['narratum:storyId'] = storyId;
+
       await uploadString(storageRef, localGeneratedUrl, 'data_url', { customMetadata: meta });
-  
+
       const downloadUrl = await getDownloadURL(storageRef);
-      const item = { name: `${nameToSave}.png`, url: downloadUrl, fullPath: path, contentType: 'image/png' };
+      const item = { name: filename, url: downloadUrl, fullPath: path, contentType: 'image/png' };
       setGallery((g) => [item, ...g]);
       onSaved?.(item);
+
+      // 🔎 Firestore index doc
+      try {
+        const { path: docPath } = buildIndexTarget({
+          uid: currentUser.uid,
+          storyId,
+          category: assetCategory,
+          docId: cleanName,
+        });
+        await setDoc(
+          fsDoc(db, docPath),
+          {
+            url: downloadUrl,
+            name: cleanName,
+            fileName: filename,
+            contentType: 'image/png',
+            createdAt: serverTimestamp(),
+            source: 'ai-generated',
+            storyId: storyId ?? null,
+            role: variant,
+          },
+          { merge: true }
+        );
+      } catch (err) {
+        console.warn('Failed to write index doc for generated upload:', err);
+      }
+
       alert('Generated image saved!');
     } catch (e: any) {
       alert(e?.message || 'Save failed');
     }
   }
-  
 
   function handleRegenerate() {
     setLocalGeneratedUrl('');
@@ -304,6 +384,8 @@ export default function UploadImageReference({
     try {
       await deleteObject(ref(storage, item.fullPath));
       setGallery((g) => g.filter((x) => x.fullPath !== item.fullPath));
+      // (Optional) Also delete the index doc by docId (name without extension)
+      // You can add that later if you want strict parity between Storage & Firestore.
     } catch (e: any) {
       alert(e?.message || 'Delete failed');
     }
@@ -388,12 +470,12 @@ export default function UploadImageReference({
               placeholder="Name to save"
               value={nameToSave}
               onChange={(e) => setNameToSave(e.target.value)}
-              disabled={disableSaveButtons} // NEW: Disable input if save buttons are disabled
+              disabled={disableSaveButtons}
             />
             <button
               onClick={handleSaveOriginal}
               className="px-4 py-2 rounded-md bg-[#3D4F60] text-white disabled:opacity-50"
-              disabled={disableSaveButtons} // NEW: Disable save button
+              disabled={disableSaveButtons}
             >
               Save to My Gallery
             </button>
@@ -415,7 +497,6 @@ export default function UploadImageReference({
                     <InfoPopover
                       title={assetCategory === 'locations' ? 'Location Template' : 'Character Template'}
                       docHref={tipDocForOne}
-                      // When user clicks "Use in App" inside the popover, prefill this component's prompt box
                       onUsePrompt={(text) => setMainPrompt(text)}
                     />
                   )}
@@ -466,7 +547,7 @@ export default function UploadImageReference({
                 placeholder={`Describe the ${noun.toLowerCase()} you want the AI to generate…`}
                 value={mainPrompt}
                 onChange={(e) => setMainPrompt(e.target.value)}
-                disabled={disableSaveButtons} // NEW: Disable prompt input if save is disabled
+                disabled={disableSaveButtons}
               />
             </div>
 
@@ -474,7 +555,7 @@ export default function UploadImageReference({
             {!localGeneratedUrl ? (
               <button
                 onClick={handleGenerate}
-                disabled={isGenerating || !mainPrompt.trim() || disableSaveButtons} // NEW: Disable generate button
+                disabled={isGenerating || !mainPrompt.trim() || disableSaveButtons}
                 className="w-full py-3 rounded-md bg-[#E97451] text-white font-semibold disabled:opacity-50 transition"
               >
                 {isGenerating ? (
@@ -493,12 +574,12 @@ export default function UploadImageReference({
                   placeholder="Name to save"
                   value={nameToSave}
                   onChange={(e) => setNameToSave(e.target.value)}
-                  disabled={disableSaveButtons} // NEW: Disable input if save buttons are disabled
+                  disabled={disableSaveButtons}
                 />
                 <button
                   className="px-4 py-2 rounded-md bg-[#3D4F60] text-white disabled:opacity-50"
                   onClick={handleSaveGenerated}
-                  disabled={disableSaveButtons} // NEW: Disable save button
+                  disabled={disableSaveButtons}
                 >
                   Save to My Gallery
                 </button>
