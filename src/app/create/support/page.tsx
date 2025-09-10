@@ -567,11 +567,7 @@ const canSaveAssets = !!selectedStoryId || showUncategorized;
                 </label>
                 <select
                   id="story-selector"
-                  className="
-                    w-full max-w-xs p-2 border-2 rounded-md
-                    bg-white text-slate-900 border-slate-300
-                    dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]
-                  "
+                  className="w-full max-w-xs p-2 border-2 rounded-md bg-white text-slate-900 border-slate-300 dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]"
                   value={storySelectValue}
                   onChange={(e) => {
                     const v = e.target.value;

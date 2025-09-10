@@ -1161,11 +1161,7 @@ export default function ScenesPage() {
               </label>
               <select
                 id="scene-story-selector"
-                className="
-                  p-1.5 rounded-md border-2 text-sm
-                  bg-white text-slate-900 border-slate-300
-                  dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]
-                "
+                className="p-1.5 rounded-md border-2 text-sm bg-white text-slate-900 border-slate-300 dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]"
                 value={storySelectValue}
                 onChange={(e) => {
                   const v = e.target.value;
