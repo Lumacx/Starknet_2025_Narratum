@@ -2,16 +2,25 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 
+import { storage, db } from '@/lib/firebase';
+import { ref as sref, uploadString, getDownloadURL } from 'firebase/storage';
+import { doc as fsDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 type Body = {
   text: string;
-  voice?: 'Kore' | 'Puck' | 'Zephyr' | 'Achird' |'Leda' | 'Sadachbia' | string;
+  voice?: 'Kore' | 'Puck' | 'Zephyr' | 'Achird' | 'Leda' | 'Sadachbia' | string;
   tone?: string;        // e.g. 'a cheerful', 'an excited'
   language?: string;    // 'en' | 'es' | ...
   model?: string;       // default below
-  format?: 'wav' | 'mp3' | 'both' | 'auto'; // qué formato regresar
+  format?: 'wav' | 'mp3' | 'both' | 'auto';
+
+  // NEW: where to save
+  userId?: string;      // required to save to Storage
+  storyId?: string;     // required to save to Storage
+  sceneIndex?: number;  // optional; helps build the filename
 };
 
 const DEFAULT_MODEL = 'gemini-2.5-flash-preview-tts';
@@ -51,7 +60,7 @@ function buildPrompt(text: string, language: string, tone?: string | null) {
   return `Language: ${language}. Read naturally as a narrator${tone ? `, ${tone}` : ''}.\n\nText:\n${text}`;
 }
 
-/* ----------- Opción 1 (estable): SDK -> PCM -> WAV (data URL) ----------- */
+/* ----------- Option 1: SDK -> PCM -> WAV (data URL) ----------- */
 async function generateWithSDKWav(opts: {
   apiKey: string;
   modelId: string;
@@ -64,9 +73,7 @@ async function generateWithSDKWav(opts: {
     contents: [{ parts: [{ text: opts.prompt }] }],
     config: {
       responseModalities: ['AUDIO'],
-      speechConfig: {
-        voiceConfig: { prebuiltVoiceConfig: { voiceName: opts.voiceName } },
-      },
+      speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: opts.voiceName } } },
     },
   });
 
@@ -82,8 +89,7 @@ async function generateWithSDKWav(opts: {
   };
 }
 
-/* ----------- Opción 2 (si funciona en tu proyecto): REST MP3/WAV ----------- */
-/** Intenta pedir al endpoint público que ya te devuelva MP3 o WAV directo */
+/* ----------- Option 2: REST MP3/WAV (if available) ----------- */
 async function generateViaREST(opts: {
   apiKey: string;
   modelId: string;
@@ -92,22 +98,15 @@ async function generateViaREST(opts: {
   responseMime: 'audio/mp3' | 'audio/wav';
 }) {
   const { apiKey, modelId, prompt, voiceName, responseMime } = opts;
-  const url = `https://generativelanguage.googleapis.com/v1/models/${encodeURIComponent(
-    modelId
-  )}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const url = `https://generativelanguage.googleapis.com/v1/models/${encodeURIComponent(modelId)}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
-  // Esta combinación puede variar por versión; si falla, haremos fallback al SDK
   const body = {
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { response_mime_type: responseMime }, // algunos backends aceptan snake_case aquí
-    voiceConfig: { prebuiltVoiceConfig: { voiceName } },     // y esta ubicación top-level
+    generationConfig: { response_mime_type: responseMime },
+    voiceConfig: { prebuiltVoiceConfig: { voiceName } },
   };
 
-  const r = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
   if (!r.ok) {
     const msg = await r.text();
@@ -120,13 +119,84 @@ async function generateViaREST(opts: {
       (p: any) => p?.inlineData?.data && typeof p?.inlineData?.mimeType === 'string'
     ) ?? null;
 
-  if (!part) {
-    return { ok: false as const, status: 502, error: 'No inlineData audio part' };
-  }
+  if (!part) return { ok: false as const, status: 502, error: 'No inlineData audio part' };
 
   const mime: string = String(part.inlineData.mimeType);
   const b64: string = String(part.inlineData.data);
   return { ok: true as const, mimeType: mime, audioUrl: `data:${mime};base64,${b64}` };
+}
+
+/* ------------------------- Upload helpers ------------------------- */
+function dataUrlToParts(dataUrl: string): { mime: string; base64: string; ext: 'mp3' | 'wav' | 'bin' } {
+  const m = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+  if (!m) return { mime: 'application/octet-stream', base64: '', ext: 'bin' };
+  const mime = m[1];
+  const base64 = m[2];
+  const ext = mime.includes('wav') ? 'wav' : mime.includes('mp3') ? 'mp3' : 'bin';
+  return { mime, base64, ext };
+}
+
+async function saveAudioToStorageAndIndex(params: {
+  userId: string;
+  storyId: string;
+  sceneIndex?: number;
+  voiceName: string;
+  tone?: string | null;
+  language: string;
+  audioDataUrl: string; // data:audio/xxx;base64,...
+  modelUsed: string;
+}) {
+  const { userId, storyId, sceneIndex, voiceName, tone, language, audioDataUrl, modelUsed } = params;
+
+  const { mime, base64, ext } = dataUrlToParts(audioDataUrl);
+  if (!base64) throw new Error('Invalid audio data URL for upload.');
+
+  const ts = Date.now();
+  const indexStr = typeof sceneIndex === 'number' && Number.isFinite(sceneIndex) ? `scene-${sceneIndex}` : 'scene';
+  const filename = `${indexStr}-${ts}.${ext}`;
+  const category = 'audioNarrations' as const;
+
+  const path = `users/${userId}/assetIndex/stories/${storyId}/${category}/${filename}`;
+  const r = sref(storage, path);
+
+  await uploadString(r, base64, 'base64', {
+    contentType: mime,
+    customMetadata: {
+      'narratum:storyId': storyId,
+      'narratum:assetCategory': category,
+      'narratum:source': 'ai-generated-tts',
+      'narratum:voice': voiceName,
+      'narratum:tone': tone ?? '',
+      'narratum:language': language,
+      'modelUsed': modelUsed,
+      displayName: filename,
+      createdAt: String(ts),
+    },
+  });
+
+  const https = await getDownloadURL(r);
+
+  // Firestore index doc
+  const docId = filename.replace(/\.[^.]+$/, '');
+  await setDoc(
+    fsDoc(db, `users/${userId}/assetIndex/stories/${storyId}/${category}/${docId}`),
+    {
+      url: https,
+      name: docId,
+      fileName: filename,
+      contentType: mime,
+      createdAt: serverTimestamp(),
+      source: 'ai-generated-tts',
+      storyId,
+      voice: voiceName,
+      tone: tone ?? null,
+      language,
+      modelUsed,
+    },
+    { merge: true }
+  );
+
+  return { https, fullPath: r.fullPath, filename, mime };
 }
 
 /* ------------------------------- Handler ------------------------------ */
@@ -142,10 +212,7 @@ export async function POST(req: Request) {
       process.env.GENAI_API_KEY;
 
     if (!apiKey) {
-      return NextResponse.json(
-        { error: 'Missing GEMINI_API_KEY / GOOGLE_API_KEY' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Missing GEMINI_API_KEY / GOOGLE_API_KEY' }, { status: 500 });
     }
 
     const language = (body.language || 'en').trim();
@@ -156,10 +223,10 @@ export async function POST(req: Request) {
 
     const prompt = buildPrompt(text, language, tone);
 
+    // Try MP3 via REST; WAV via SDK (fallback to REST WAV)
     let mp3: { ok: true; audioUrl: string; mimeType: string } | null = null;
     let wav: { ok: true; audioUrl: string; mimeType: string } | null = null;
 
-    // 1) Si el cliente pide MP3 (o auto/both), intentamos REST con MP3
     if (format === 'mp3' || format === 'both' || format === 'auto') {
       const r = await generateViaREST({
         apiKey,
@@ -171,13 +238,11 @@ export async function POST(req: Request) {
       if (r.ok) mp3 = { ok: true, audioUrl: r.audioUrl, mimeType: r.mimeType };
     }
 
-    // 2) Si el cliente pide WAV (o auto/both) — SDK es robusto
     if (format === 'wav' || format === 'both' || format === 'auto') {
       try {
         const s = await generateWithSDKWav({ apiKey, modelId, prompt, voiceName });
         wav = { ok: true, audioUrl: s.audioUrl, mimeType: s.mimeType };
       } catch {
-        // fallback REST WAV si SDK fallara (raro)
         const r2 = await generateViaREST({
           apiKey,
           modelId,
@@ -189,7 +254,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // Determina la mejor salida para "audioUrl" principal
+    // Choose primary
     let primary: { audioUrl: string; mimeType: string } | null = null;
     if (format === 'mp3') primary = mp3;
     else if (format === 'wav') primary = wav;
@@ -197,18 +262,38 @@ export async function POST(req: Request) {
     else /* both */ primary = mp3 || wav;
 
     if (!primary) {
-      // Nada funcionó
-      const msg = 'TTS failed: neither MP3 nor WAV could be generated.';
-      return NextResponse.json({ error: msg }, { status: 502 });
+      return NextResponse.json({ error: 'TTS failed: neither MP3 nor WAV could be generated.' }, { status: 502 });
+    }
+
+    // NEW: Save to Firebase Storage + Firestore if storyId + userId are provided
+    let persistedUrl: string | null = null;
+    if (body.userId && body.storyId) {
+      try {
+        const saved = await saveAudioToStorageAndIndex({
+          userId: body.userId,
+          storyId: body.storyId,
+          sceneIndex: body.sceneIndex,
+          voiceName,
+          tone,
+          language,
+          audioDataUrl: primary.audioUrl,
+          modelUsed: modelId,
+        });
+        persistedUrl = saved.https;
+      } catch (err) {
+        // If saving fails, we still return the data URL so the user isn't blocked
+        console.warn('Audio upload/index failed; returning data URL instead:', err);
+      }
     }
 
     return NextResponse.json({
-      audioUrl: primary.audioUrl,
+      audioUrl: persistedUrl || primary.audioUrl, // prefer HTTPS if uploaded
       mimeType: primary.mimeType,
       modelUsed: modelId,
-      // devolvemos variantes si se pidieron ambas
+      // pass-through variants when available
       audioUrlMp3: mp3?.audioUrl || null,
       audioUrlWav: wav?.audioUrl || null,
+      savedToStorage: Boolean(persistedUrl),
     });
   } catch (e: any) {
     console.error('generate-audio error:', e);

@@ -357,6 +357,23 @@ async function uploadDataUrlToStorage(userId: string, storyId: string, dataUrl: 
     }
   });
   const https = await getDownloadURL(r);
+  await setDoc(
+    fsDoc(
+      db,
+      `users/${userId}/assetIndex/stories/${storyId}/generatedImages/${filename.replace(/\.[^.]+$/, '')}`
+    ),
+    {
+      url: https,
+      name: filename.replace(/\.[^.]+$/, ''),
+      fileName: filename,
+      contentType: 'image/png',
+      createdAt: serverTimestamp(),
+      source: 'ai-generated-scene',
+      storyId,
+      role: 'cover', // or 'location'/'character' if you later specialize
+    },
+    { merge: true }
+  );
   return { https, fullPath: r.fullPath };
 }
 
@@ -561,6 +578,21 @@ export default function ScenesPage() {
     localStorage.setItem('reader:lastScene', String(currentIndex));
   }, [currentIndex, selectedStoryId, showUncategorized, searchParams]);
   
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    if (showUncategorized) {
+      sp.set('uncat', '1');
+      sp.delete('storyId');
+    } else {
+      sp.delete('uncat');
+      if (selectedStoryId) sp.set('storyId', selectedStoryId);
+      else sp.delete('storyId');
+    }
+    sp.set('scene', String(currentIndex));
+    window.history.replaceState({}, '', `?${sp.toString()}`);
+    localStorage.setItem('reader:lastScene', String(currentIndex));
+  }, [currentIndex, selectedStoryId, showUncategorized]);
+  
 
   /* -------- Fetch user's stories for dropdown -------- */
   useEffect(() => {
@@ -608,29 +640,30 @@ export default function ScenesPage() {
 
   /* -------- Gallery loader (UPDATED path + selectedStoryId requirement) -------- */
   const loadGallery = useCallback(async (category: AssetCategory) => {
-    if (!user || (!selectedStoryId && !showUncategorized)) {
-      setGallery([]);
-      return;
-    }
+    if (!user) { setGallery([]); return; }
     setLoadingGallery(true);
     try {
       const basePath = showUncategorized
         ? `users/${user.uid}/assetIndex/uncategorized/${category}/`
-        : `users/${user.uid}/assetIndex/stories/${selectedStoryId}/${category}/`;
+        : selectedStoryId
+          ? `users/${user.uid}/assetIndex/stories/${selectedStoryId}/${category}/`
+          : null;
+  
+      if (!basePath) { setGallery([]); return; }
+  
       const base = sref(storage, basePath);
       const res = await listAll(base);
-      const items = await Promise.all(
-        res.items.map(async (i) => {
-          const [url, meta] = await Promise.all([getDownloadURL(i), getMetadata(i).catch(() => null)]);
-          return {
-            name: i.name,
-            fullPath: i.fullPath,
-            url,
-            contentType: meta?.contentType,
-            size: typeof meta?.size === 'number' ? meta.size : undefined,
-          } as GalleryItem;
-        })
-      );
+      const items = await Promise.all(res.items.map(async (i) => {
+        const [url, meta] = await Promise.all([getDownloadURL(i), getMetadata(i).catch(() => null)]);
+        return {
+          name: i.name,
+          fullPath: i.fullPath,
+          url,
+          contentType: meta?.contentType || undefined,
+          size: typeof meta?.size === 'number' ? meta.size : undefined,
+          meta: meta?.customMetadata || undefined,
+        } as GalleryItem;
+      }));
       setGallery(items.sort((a, b) => (a.name < b.name ? 1 : -1)));
     } catch (e) {
       console.error('Failed to load storage gallery:', e);
@@ -639,6 +672,7 @@ export default function ScenesPage() {
       setLoadingGallery(false);
     }
   }, [user, selectedStoryId, showUncategorized]);
+  
   
   useEffect(() => {
     if (!user || (!selectedStoryId && !showUncategorized)) {
@@ -1399,8 +1433,10 @@ export default function ScenesPage() {
                               toneHint: `[TONE=${tone}]`,
                               language: lang,
                               model: 'gemini-2.5-flash-preview-tts',
-                              sceneIndex: currentIndex + 1,
+                              format: 'auto',          // or 'mp3' | 'wav'
                               storyId: selectedStoryId,
+                              userId: user.uid,        // <— add this
+                              sceneIndex: currentIndex + 1,
                             }),
                           });
                           const json = await r.json();
