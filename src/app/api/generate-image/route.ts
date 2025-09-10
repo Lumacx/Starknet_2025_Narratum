@@ -28,7 +28,9 @@ async function callFirebaseFunction(functionName: string, body: any) {
 
 export async function POST(req: Request) {
   const originalBody = await req.json();
-  const bodyWithAspectRatio = { ...originalBody };
+  const { storyId, ...restOfBody } = originalBody; // Extract storyId
+
+  const bodyWithAspectRatio = { ...restOfBody };
 
   // Set default aspect ratio to 16:9 and add to the prompt
   const aspectRatio = "16:9";
@@ -36,6 +38,10 @@ export async function POST(req: Request) {
     bodyWithAspectRatio.prompt = `${bodyWithAspectRatio.prompt} --ar ${aspectRatio}`;
   } else {
     bodyWithAspectRatio.prompt = `--ar ${aspectRatio}`;
+  }
+
+  if (storyId) {
+    bodyWithAspectRatio.storyId = storyId; // Add storyId to the body if present
   }
 
   // --- ATTEMPT 1: Try the dedicated Gemini (Nano Banana) function ---

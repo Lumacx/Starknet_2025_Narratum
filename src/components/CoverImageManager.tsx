@@ -137,12 +137,8 @@ type PromptContext = {
 interface CoverImageManagerProps {
   onCoverImageSaved: (url: string) => void;
   initialCoverUrl?: string;
-
-  /** Optional: tag files so Support/Scenes can filter */
-  storyId?: string;
+  storyId: string; // CHANGED: storyId is now mandatory for proper indexing
   assetRole?: 'cover' | 'reference' | 'character' | 'location' | 'scene' | string;
-
-  /** Grounding context for AI prompt (Title/Genres/Synopsis/Language) */
   promptContext?: PromptContext;
 }
 
@@ -288,7 +284,7 @@ export default function CoverImageManager({
     if (!currentUser) return;
     setIsLoadingGallery(true);
     try {
-      const base = ref(storage, `users/${currentUser.uid}/assets/${assetCategory}`);
+      const base = ref(storage, `users/${currentUser.uid}/assetIndex/stories/${storyId}/${assetCategory}`);
       const res = await listAll(base);
       const items = await Promise.all(
         res.items.map(async (i) => {
@@ -480,7 +476,7 @@ export default function CoverImageManager({
 
       // Keep original extension/type
       const ext = mimeToExt(uploadedFile.type);
-      const path = `users/${currentUser.uid}/assets/${assetCategory}/${uploadNameToSave}.${ext}`;
+      const path = `users/${currentUser.uid}/assetIndex/stories/${storyId}/${assetCategory}/${uploadNameToSave}.${ext}`;
       const storageRef = ref(storage, path);
 
       // Use data_url so Firebase sets the correct contentType from the data URL header
@@ -527,7 +523,7 @@ export default function CoverImageManager({
       if (!aiNameToSave.trim()) return alert('Please enter a name for the AI generated image before saving to gallery.');
 
       setIsUploading(true);
-      const path = `users/${currentUser.uid}/assets/${assetCategory}/${aiNameToSave}.png`;
+      const path = `users/${currentUser.uid}/assetIndex/stories/${storyId}/${assetCategory}/${aiNameToSave}.png`;
       const storageRef = ref(storage, path);
 
       const blob = dataURLtoBlob(generatedImageUrl);

@@ -54,6 +54,11 @@ exports.generateNarratumImage = functions
     const uid = context.auth.uid;
     const description = data.description?.trim() || '';
     const sketchDataUrl = data.sketchDataUrl?.trim();
+    const storyId = data.storyId?.trim(); // NEW: Extract storyId
+    // Ensure storyId is provided if we want to store it under a story
+    // For now, let's make it optional for backward compatibility,
+    // but default to a 'general' or 'uncategorized' path if not provided.
+    const assetCategoryFolder = 'generatedImages'; // This is the 'assetType' from your proposal
     try {
         // 1) Build prompt
         const promptParts = [{ text: 'Generate an image for Narratum.' }];
@@ -86,26 +91,45 @@ exports.generateNarratumImage = functions
         if (!base64) {
             throw new functions.https.HttpsError('internal', 'No image returned by the model.');
         }
-        // 4) Save to Storage
+        // 4) Save to Storage - UPDATED PATH
         const buf = node_buffer_1.Buffer.from(base64, 'base64');
         const ext = (mime.split('/')[1] || 'png').toLowerCase();
         const imageId = (0, uuid_1.v4)();
-        const filePath = `narratum_images/${uid}/${imageId}.${ext}`;
+        // Construct the new Firebase Storage path with storyId
+        const filePath = storyId
+            ? `users/${uid}/assetIndex/stories/${storyId}/${assetCategoryFolder}/${imageId}.${ext}`
+            : `users/${uid}/assetIndex/uncategorized/${assetCategoryFolder}/${imageId}.${ext}`; // Fallback for no storyId
         const file = bucket.file(filePath);
-        await file.save(buf, { metadata: { contentType: mime } });
+        await file.save(buf, {
+            metadata: {
+                contentType: mime,
+                // Add custom metadata for storyId if available
+                ...(storyId && { 'narratum:storyId': storyId }),
+                'narratum:assetCategory': assetCategoryFolder,
+                'narratum:source': 'ai-generated',
+            },
+        });
         // Best-effort make public (emulator may ignore)
         try {
             await file.makePublic();
         }
         catch { /* ignore */ }
         const publicUrl = file.publicUrl();
-        // 5) Optional: index minimal metadata in Firestore (no Data Connect)
-        await db.collection('users').doc(uid).collection('aiGeneratedImages').doc(imageId).set({
+        // 5) Index minimal metadata in Firestore - UPDATED PATH
+        const newFirestorePath = storyId
+            ? db.collection("users").doc(uid)
+                .collection("assetIndex").doc("stories")
+                .collection(storyId).doc(assetCategoryFolder)
+                .collection("assets").doc(imageId)
+            : db.collection('users').doc(uid).collection('assetIndex').doc('uncategorized').collection(assetCategoryFolder).doc(imageId);
+        await newFirestorePath.set({
             path: filePath,
             url: publicUrl,
             promptText: description,
             mediaType: mime,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            storyId: storyId || null,
+            assetCategory: assetCategoryFolder,
         });
         return { imageUrl: publicUrl, imageId };
     }

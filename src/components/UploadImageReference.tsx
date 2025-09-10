@@ -21,7 +21,9 @@ type AssetCategory =
   | 'audioNarrations'
   | 'audioEffects'
   | 'videos'
+  | 'generatedImages' // Added for clarity with the new backend structure
   | 'others';
+
 type Mode = 'full' | 'uploaderOnly' | 'galleryOnly';
 
 type Props = {
@@ -44,11 +46,13 @@ type Props = {
   accept?: string; // This prop will be overridden for image categories
   showInnerDescribe?: boolean;
   preferredLanguage?: LangCode;
+  storyId?: string; // CHANGED: storyId is now optional for uncategorized assets
+  disableSaveButtons?: boolean; // NEW: Prop to disable save buttons
 };
 
 /* ---------- Helpers ---------- */
 const isImageCategory = (c: AssetCategory) =>
-  ['covers', 'avatars', 'characters', 'locations', 'backgrounds'].includes(c);
+  ['covers', 'avatars', 'characters', 'locations', 'backgrounds', 'generatedImages'].includes(c); // Updated
 
 const KB = 1024;
 const MB = 1024 * KB;
@@ -97,6 +101,8 @@ export default function UploadImageReference({
   selection = [],
   onSelectionChange,
   maxSelection = 1,
+  storyId, // CHANGED: now optional
+  disableSaveButtons,
 }: Props) {
   const { user: currentUser } = useAuth();
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -160,15 +166,30 @@ export default function UploadImageReference({
   }, [previewUrl]);
 
   const loadGallery = useCallback(async () => {
-    if (!currentUser) return;
-    const base = ref(storage, `users/${currentUser.uid}/assets/${assetCategory}/`);
-    const res = await listAll(base);
-    const items = await Promise.all(
-      res.items.map(async (i) => ({ name: i.name, fullPath: i.fullPath, url: await getDownloadURL(i) }))
-    );
-    setGallery(items.sort((a, b) => (a.name < b.name ? 1 : -1)));
-    setErr('');
-  }, [assetCategory, currentUser]);
+    if (!currentUser) {
+      setGallery([]);
+      return;
+    }
+    
+    // Construct the base path dynamically based on whether storyId is provided
+    const basePath = storyId
+      ? `users/${currentUser.uid}/assetIndex/stories/${storyId}/${assetCategory}/`
+      : `users/${currentUser.uid}/assetIndex/uncategorized/${assetCategory}/`;
+
+    try {
+      const base = ref(storage, basePath);
+      const res = await listAll(base);
+      const items = await Promise.all(
+        res.items.map(async (i) => ({ name: i.name, fullPath: i.fullPath, url: await getDownloadURL(i) }))
+      );
+      setGallery(items.sort((a, b) => (a.name < b.name ? 1 : -1)));
+      setErr('');
+    } catch (e) {
+      console.error(`Failed to load gallery for ${storyId ? `story ${storyId}` : 'uncategorized'}:`, e);
+      setErr(`Failed to load gallery: ${(e as Error)?.message || 'Unknown error'}`);
+      setGallery([]);
+    }
+  }, [assetCategory, currentUser, storyId]); // ADDED storyId to dependencies
 
   useEffect(() => {
     loadGallery();
@@ -188,8 +209,7 @@ export default function UploadImageReference({
     setPreviewUrl(objectUrl);
     setNameToSave(f.name.replace(/\.[^.]+$/, ''));
     if (isImageCategory(assetCategory)) {
-      const dataUrl = await fileToDataUrl(f);
-      onSaved?.({ name: f.name, url: dataUrl, fullPath: 'local://selected', contentType: f.type });
+      onSaved?.({ name: f.name, url: objectUrl, fullPath: 'local://selected', contentType: f.type });
     } else {
       onSaved?.({ name: f.name, url: objectUrl, fullPath: 'local://selected', contentType: f.type });
     }
@@ -207,12 +227,27 @@ export default function UploadImageReference({
 
   async function handleSaveOriginal() {
     if (!currentUser || !selectedFile || !nameToSave.trim()) return;
+  
     try {
       const ext = selectedFile.type.split('/')[1] || 'png';
-      const path = `users/${currentUser.uid}/assets/${assetCategory}/${nameToSave}.${ext}`;
+      const path = storyId
+        ? `users/${currentUser.uid}/assetIndex/stories/${storyId}/${assetCategory}/${nameToSave}.${ext}`
+        : `users/${currentUser.uid}/assetIndex/uncategorized/${assetCategory}/${nameToSave}.${ext}`;
+  
       const storageRef = ref(storage, path);
       const dataUrl = await fileToDataUrl(selectedFile);
-      await uploadString(storageRef, dataUrl, 'data_url');
+  
+      const meta: Record<string, string> = {
+        displayName: nameToSave,
+        category: assetCategory,
+        source: 'uploaded',
+        createdAt: String(Date.now()),
+        'narratum:role': variant,
+      };
+      if (storyId) meta['narratum:storyId'] = storyId; // ✅ only add when defined
+  
+      await uploadString(storageRef, dataUrl, 'data_url', { customMetadata: meta });
+  
       const downloadUrl = await getDownloadURL(storageRef);
       const item = { name: `${nameToSave}.${ext}`, url: downloadUrl, fullPath: path, contentType: selectedFile.type };
       setGallery((g) => [item, ...g]);
@@ -222,6 +257,7 @@ export default function UploadImageReference({
       alert(e?.message || 'Save failed');
     }
   }
+  
 
   function handleGenerate() {
     onGenerateRequest?.(mainPrompt);
@@ -229,10 +265,25 @@ export default function UploadImageReference({
 
   async function handleSaveGenerated() {
     if (!currentUser || !localGeneratedUrl || !nameToSave.trim()) return;
+  
     try {
-      const path = `users/${currentUser.uid}/assets/${assetCategory}/${nameToSave}.png`;
+      const path = storyId
+        ? `users/${currentUser.uid}/assetIndex/stories/${storyId}/${assetCategory}/${nameToSave}.png`
+        : `users/${currentUser.uid}/assetIndex/uncategorized/${assetCategory}/${nameToSave}.png`;
+  
       const storageRef = ref(storage, path);
-      await uploadString(storageRef, localGeneratedUrl, 'data_url');
+  
+      const meta: Record<string, string> = {
+        displayName: nameToSave,
+        category: assetCategory,
+        source: 'ai-generated',
+        createdAt: String(Date.now()),
+        'narratum:role': variant,
+      };
+      if (storyId) meta['narratum:storyId'] = storyId; // ✅ only add when defined
+  
+      await uploadString(storageRef, localGeneratedUrl, 'data_url', { customMetadata: meta });
+  
       const downloadUrl = await getDownloadURL(storageRef);
       const item = { name: `${nameToSave}.png`, url: downloadUrl, fullPath: path, contentType: 'image/png' };
       setGallery((g) => [item, ...g]);
@@ -242,6 +293,7 @@ export default function UploadImageReference({
       alert(e?.message || 'Save failed');
     }
   }
+  
 
   function handleRegenerate() {
     setLocalGeneratedUrl('');
@@ -336,8 +388,13 @@ export default function UploadImageReference({
               placeholder="Name to save"
               value={nameToSave}
               onChange={(e) => setNameToSave(e.target.value)}
+              disabled={disableSaveButtons} // NEW: Disable input if save buttons are disabled
             />
-            <button onClick={handleSaveOriginal} className="px-4 py-2 rounded-md bg-[#3D4F60] text-white">
+            <button
+              onClick={handleSaveOriginal}
+              className="px-4 py-2 rounded-md bg-[#3D4F60] text-white disabled:opacity-50"
+              disabled={disableSaveButtons} // NEW: Disable save button
+            >
               Save to My Gallery
             </button>
           </div>
@@ -409,6 +466,7 @@ export default function UploadImageReference({
                 placeholder={`Describe the ${noun.toLowerCase()} you want the AI to generate…`}
                 value={mainPrompt}
                 onChange={(e) => setMainPrompt(e.target.value)}
+                disabled={disableSaveButtons} // NEW: Disable prompt input if save is disabled
               />
             </div>
 
@@ -416,7 +474,7 @@ export default function UploadImageReference({
             {!localGeneratedUrl ? (
               <button
                 onClick={handleGenerate}
-                disabled={isGenerating || !mainPrompt.trim()}
+                disabled={isGenerating || !mainPrompt.trim() || disableSaveButtons} // NEW: Disable generate button
                 className="w-full py-3 rounded-md bg-[#E97451] text-white font-semibold disabled:opacity-50 transition"
               >
                 {isGenerating ? (
@@ -435,8 +493,13 @@ export default function UploadImageReference({
                   placeholder="Name to save"
                   value={nameToSave}
                   onChange={(e) => setNameToSave(e.target.value)}
+                  disabled={disableSaveButtons} // NEW: Disable input if save buttons are disabled
                 />
-                <button className="px-4 py-2 rounded-md bg-[#3D4F60] text-white" onClick={handleSaveGenerated}>
+                <button
+                  className="px-4 py-2 rounded-md bg-[#3D4F60] text-white disabled:opacity-50"
+                  onClick={handleSaveGenerated}
+                  disabled={disableSaveButtons} // NEW: Disable save button
+                >
                   Save to My Gallery
                 </button>
                 <button className="px-4 py-2 rounded-md border" onClick={handleRegenerate}>
@@ -465,10 +528,14 @@ export default function UploadImageReference({
   }
 
   function GalleryUI() {
+    const galleryMessage = storyId
+      ? (gallery.length === 0 ? 'No files yet for this story. Upload or generate one!' : null)
+      : (gallery.length === 0 ? 'No uncategorized files found. Upload or generate one with no story selected!' : null);
+
     return (
       <div>
-        {gallery.length === 0 ? (
-          <p className="text-sm text-neutral-500">No files yet.</p>
+        {galleryMessage ? (
+          <p className="text-sm text-neutral-500">{galleryMessage}</p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {gallery.map((it) => {

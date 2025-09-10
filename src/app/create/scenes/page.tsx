@@ -15,13 +15,20 @@ import {
   updateDoc,
   doc as fsDoc,
   serverTimestamp,
+  // NEW IMPORTS FOR STORY LISTING
+  collection,
+  query,
+  where,
+  orderBy,
+  limit,
+  getDocs,
 } from 'firebase/firestore';
 import {
   ref as sref,
   listAll,
   getDownloadURL,
   getMetadata,
-  uploadString,            // 👈 NEW
+  uploadString,
 } from 'firebase/storage';
 
 /* ------------------------------------------------------------------ */
@@ -58,7 +65,7 @@ type GalleryItem = {
   fullPath: string;
   contentType?: string;
   meta?: GalleryMeta;
-  size?: number;                  // ✅ shows size badges
+  size?: number;
 };
 
 type LangCode =
@@ -98,7 +105,7 @@ type Scene = {
   imageName?: string | null;
   audioUrl?: string | null;
   audioName?: string | null;
-  voiceId?: string | null;          // per-scene override (optional)
+  voiceId?: string | null;
   durationMs?: number | null;
 };
 
@@ -115,6 +122,18 @@ type StoryDoc = {
   publishedAt?: any;
   updatedAt?: any;
   pageCount?: number;
+};
+
+/* NEW: StorySummary type (for dropdown) */
+type StorySummary = {
+  id: string;
+  title: string;
+  synopsis: string;
+  genres: string[];
+  category: string;
+  pageCount: number;
+  coverImageUrl: string | null;
+  updatedAt?: any; // Firestore Timestamp
 };
 
 /* ----- helpers ----- */
@@ -322,22 +341,29 @@ function extractImageAndModel(json: any): { dataUrl?: string; modelUsed?: string
 }
 
 /* ------------------------------------------------------------------ */
-/* Storage upload helpers (NEW)                                       */
+/* Storage upload helpers (UPDATED)                                    */
 /* ------------------------------------------------------------------ */
 
-async function uploadDataUrlToStorage(userId: string, storyId: string | undefined, dataUrl: string, filename: string) {
-  const safeStory = storyId || 'no-story';
-  const path = `users/${userId}/stories/${safeStory}/images/${filename}`;
+async function uploadDataUrlToStorage(userId: string, storyId: string, dataUrl: string, filename: string) {
+  // Use the new path structure for generated scene images
+  const path = `users/${userId}/assetIndex/stories/${storyId}/generatedImages/${filename}`;
   const r = sref(storage, path);
-  await uploadString(r, dataUrl, 'data_url');
+  await uploadString(r, dataUrl, 'data_url', {
+    customMetadata: {
+      'narratum:storyId': storyId,
+      'narratum:assetCategory': 'generatedImages',
+      'narratum:source': 'ai-generated-scene',
+      'displayName': filename,
+    }
+  });
   const https = await getDownloadURL(r);
   return { https, fullPath: r.fullPath };
 }
 
-/** Ensure no scene carries a data: URL before saving to Firestore */
+/** Ensure no scene carries a data: URL before saving to Firestore (UPDATED) */
 async function normalizeScenesBeforeSave(
   userId: string | undefined,
-  storyId: string | undefined,
+  storyId: string, // now required
   raw: Scene[]
 ): Promise<Scene[]> {
   if (!userId) return raw;
@@ -355,7 +381,6 @@ async function normalizeScenesBeforeSave(
         s.imageUrl = null;
       }
     }
-    // (If you ever store audio as data URLs, normalize here similarly.)
     out.push(s);
   }
   return out;
@@ -375,6 +400,11 @@ export default function ScenesPage() {
   const [readerUI, setReaderUI] = useState({ avatarUrl: DEFAULTS.avatarUrl, backgroundUrl: DEFAULTS.backgroundUrl });
   const [scenes, setScenes] = useState<Scene[]>([makeDefaultScene(0)]);
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  // NEW: Story selection for dropdown
+  const [userStories, setUserStories] = useState<StorySummary[]>([]);
+  const [userStoriesLoading, setUserStoriesLoading] = useState(false);
+  const [selectedStoryId, setSelectedStoryId] = useState<string | undefined>(storyId);
 
   // UI locals
   const [imagePrompt, setImagePrompt] = useState('');
@@ -404,13 +434,23 @@ export default function ScenesPage() {
   const selectedPages = Math.max(1, Math.min( (story?.pageCount ?? 10), 20 ));
   const progressLabel = `Scene ${Math.min(currentIndex + 1, selectedPages)} / ${selectedPages}`;
 
-  /* -------- Load story + scenes from Firestore -------- */
+  // Permission flag
+  const canManageAssets = !!selectedStoryId;
+
+  /* -------- Load story + scenes from Firestore (UPDATED to selectedStoryId) -------- */
   useEffect(() => {
     (async () => {
-      if (!storyId) return;
+      if (!selectedStoryId) {
+        // Clear if nothing is selected
+        setStory(null);
+        setScenes([makeDefaultScene(0)]);
+        setCurrentIndex(0);
+        setReaderUI({ avatarUrl: DEFAULTS.avatarUrl, backgroundUrl: DEFAULTS.backgroundUrl });
+        return;
+      }
 
       try {
-        const storyRef = fsDoc(db, 'stories', storyId);
+        const storyRef = fsDoc(db, 'stories', selectedStoryId);
         const snap = await getDoc(storyRef);
         let docData: StoryDoc = {};
         if (snap.exists()) docData = (snap.data() as StoryDoc) || {};
@@ -471,23 +511,80 @@ export default function ScenesPage() {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storyId]);
+  }, [selectedStoryId]);
 
-  // keep URL + lastScene
+  // keep URL + lastScene (UPDATED to sync selectedStoryId)
   useEffect(() => {
     const sp2 = new URLSearchParams(window.location.search);
-    if (storyId) sp2.set('storyId', storyId);
+
+    const urlStoryId = searchParams.get('storyId');
+    if (urlStoryId && urlStoryId !== selectedStoryId) {
+      setSelectedStoryId(urlStoryId);
+    } else if (!urlStoryId && selectedStoryId) {
+      setSelectedStoryId(undefined);
+    }
+
+    if (selectedStoryId) sp2.set('storyId', selectedStoryId);
+    else sp2.delete('storyId');
+
     sp2.set('scene', String(currentIndex));
     window.history.replaceState({}, '', `?${sp2.toString()}`);
     localStorage.setItem('reader:lastScene', String(currentIndex));
-  }, [currentIndex, storyId]);
+  }, [currentIndex, selectedStoryId, searchParams]);
 
-  /* -------- Gallery loader -------- */
+  /* -------- Fetch user's stories for dropdown -------- */
+  useEffect(() => {
+    const fetchUserStories = async () => {
+      if (!user) {
+        setUserStories([]);
+        return;
+      }
+      setUserStoriesLoading(true);
+      try {
+        const qy = query(
+          collection(db, 'stories'),
+          where('ownerUid', '==', user.uid),
+          orderBy('updatedAt', 'desc'),
+          limit(100)
+        );
+        const snap = await getDocs(qy);
+        const storiesData: StorySummary[] = snap.docs.map((doc) => {
+          const d = doc.data() as any;
+          return {
+            id: doc.id,
+            title: d?.title || '(untitled)',
+            synopsis: d?.synopsis || '',
+            genres: d?.genres || [],
+            category: d?.category || 'short',
+            pageCount: d?.pageCount || 1,
+            coverImageUrl: d?.coverImageUrl ?? null,
+            updatedAt: d?.updatedAt,
+          };
+        });
+        setUserStories(storiesData);
+
+        if (!selectedStoryId && storiesData.length > 0) {
+          setSelectedStoryId(storiesData[0].id);
+        }
+      } catch (e) {
+        console.error('Failed to load user stories for dropdown in ScenesPage:', e);
+      } finally {
+        setUserStoriesLoading(false);
+      }
+    };
+
+    fetchUserStories();
+  }, [user, selectedStoryId]);
+
+  /* -------- Gallery loader (UPDATED path + selectedStoryId requirement) -------- */
   const loadGallery = useCallback(async (category: AssetCategory) => {
-    if (!user) return;
+    if (!user || !selectedStoryId) {
+      setGallery([]);
+      return;
+    }
     setLoadingGallery(true);
     try {
-      const base = sref(storage, `users/${user.uid}/assets/${category}/`);
+      const base = sref(storage, `users/${user.uid}/assetIndex/stories/${selectedStoryId}/${category}/`);
       const res = await listAll(base);
       const items = await Promise.all(
         res.items.map(async (i) => {
@@ -498,7 +595,7 @@ export default function ScenesPage() {
             fullPath: i.fullPath,
             url,
             contentType: meta?.contentType || undefined,
-            size: typeof meta?.size === 'number' ? meta.size : undefined,   // ✅ size
+            size: typeof meta?.size === 'number' ? meta.size : undefined,
             meta: {
               modelUsed: (cm['narratum:model'] || cm['modelUsed'] || cm['model'] || null) as string | null,
               provider: (cm['narratum:provider'] || cm['provider'] || null) as string | null,
@@ -523,13 +620,16 @@ export default function ScenesPage() {
     } finally {
       setLoadingGallery(false);
     }
-  }, [user]);
+  }, [user, selectedStoryId]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !selectedStoryId) {
+      setGallery([]);
+      return;
+    }
     const tab = activeTab as AssetCategory;
     void loadGallery(tab);
-  }, [user, activeTab, loadGallery]);
+  }, [user, activeTab, loadGallery, selectedStoryId]);
 
   /* -------- Helpers to update local state -------- */
   function updateCurrentScene(patch: Partial<Scene>) {
@@ -596,8 +696,12 @@ export default function ScenesPage() {
     setReferences((prev) => [...prev, { url: item.url, name: item.name, category: activeTab as AssetCategory }]);
   }
 
-  /* -------- AI: Generate Image -------- */
+  /* -------- AI: Generate Image (UPDATED uses selectedStoryId) -------- */
   const handleGenerateImage = useCallback(async () => {
+    if (!selectedStoryId) {
+      alert('Please select an active story from the dropdown to generate an image.');
+      return;
+    }
     if (!story) return;
     if (!imagePrompt.trim() && !story.synopsis && !(story.genres?.length)) {
       alert('Please write an image description or fill the story synopsis/genres on the Begin page.');
@@ -618,17 +722,17 @@ export default function ScenesPage() {
       const r = await fetch('/api/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: promptWithRefs, negativePrompt, count: 1 }),
+        body: JSON.stringify({ prompt: promptWithRefs, negativePrompt, count: 1, storyId: selectedStoryId }),
       });
       const json = await r.json();
       if (!r.ok) throw new Error(json?.error || 'Image generation failed');
       const { dataUrl } = extractImageAndModel(json);
       if (!dataUrl) throw new Error('No image returned by generator.');
 
-      // ✅ Immediately upload the data URL to Storage; keep only HTTPS URL in state
+      // upload to Storage; keep only HTTPS URL in state
       if (!user) throw new Error('You must be signed in to save generated images.');
       const fname = `scene-${currentIndex + 1}-${Date.now()}.png`;
-      const uploaded = await uploadDataUrlToStorage(user.uid, storyId, dataUrl, fname);
+      const uploaded = await uploadDataUrlToStorage(user.uid, selectedStoryId, dataUrl, fname);
 
       updateCurrentScene({ imageUrl: uploaded.https, imageName: fname });
     } catch (e: any) {
@@ -636,10 +740,14 @@ export default function ScenesPage() {
     } finally {
       setIsGenImage(false);
     }
-  }, [story, imagePrompt, references, currentIndex, user, storyId]);
+  }, [story, imagePrompt, references, currentIndex, user, selectedStoryId]);
 
-  /* -------- AI: Suggest -------- */
+  /* -------- AI: Suggest (UPDATED to require/pass selectedStoryId) -------- */
   async function handleSuggestForScene() {
+    if (!selectedStoryId) {
+      alert('Please select an active story from the dropdown to get scene suggestions.');
+      return;
+    }
     if (!story) return;
     setIsSuggesting(true);
     try {
@@ -649,6 +757,7 @@ export default function ScenesPage() {
         synopsis: story.synopsis,
         language: story.language,
         sceneIndex: currentIndex + 1,
+        storyId: selectedStoryId, // passed for future-proofing
       };
 
       const res = await fetch('/api/suggest-scene', {
@@ -671,8 +780,12 @@ export default function ScenesPage() {
     }
   }
 
-  /* -------- AI: Outline Ideas -------- */
+  /* -------- AI: Outline Ideas (UPDATED to require/pass selectedStoryId) -------- */
   async function handleGenerateIdeas() {
+    if (!selectedStoryId) {
+      alert('Please select an active story from the dropdown to generate outline ideas.');
+      return;
+    }
     if (!story) return;
     setIdeasLoading(true);
     setIdeas([]);
@@ -684,6 +797,7 @@ export default function ScenesPage() {
           idea: story.synopsis || story.title || 'Story',
           pages: selectedPages,
           language: story.language || 'en',
+          storyId: selectedStoryId, // passed for future-proofing
         }),
       });
 
@@ -798,16 +912,19 @@ export default function ScenesPage() {
   function goPrev() { setCurrentIndex(i => Math.max(0, i - 1)); }
   function goNext() { setCurrentIndex(i => Math.min(scenes.length - 1, i + 1)); }
 
-  const readerHref = storyId
-  ? `/ereader?storyId=${encodeURIComponent(storyId)}&back=%2Fcreate%2Fscenes`
-  : '#';
+  const readerHref = selectedStoryId
+    ? `/ereader?storyId=${encodeURIComponent(selectedStoryId)}&back=%2Fcreate%2Fscenes`
+    : '#';
 
   async function persistScenes(nextScenes: Scene[]) {
-    if (!storyId) return;
+    if (!selectedStoryId) {
+      alert('Please select a story before saving scenes.');
+      return false;
+    }
     try {
-      // ✅ ensure no base64 gets saved inside the document
-      const normalized = await normalizeScenesBeforeSave(user?.uid, storyId, nextScenes);
-      const storyRef = fsDoc(db, 'stories', storyId);
+      // ensure no base64 gets saved inside the document
+      const normalized = await normalizeScenesBeforeSave(user?.uid, selectedStoryId, nextScenes);
+      const storyRef = fsDoc(db, 'stories', selectedStoryId);
       const safeDoc = serializeStoryForWrite(story, normalized);
       await setDoc(storyRef, safeDoc, { merge: true });
       return true;
@@ -851,9 +968,12 @@ export default function ScenesPage() {
   }
 
   async function handlePublishStory() {
-    if (!storyId) return;
+    if (!selectedStoryId) {
+      alert('Please select a story before publishing.');
+      return;
+    }
     try {
-      const storyRef = fsDoc(db, 'stories', storyId);
+      const storyRef = fsDoc(db, 'stories', selectedStoryId);
       await updateDoc(storyRef, {
         status: 'published',
         isPublic: true,
@@ -982,10 +1102,33 @@ export default function ScenesPage() {
             <span className="text-sm opacity-60">/ Create /</span>
             <span className="text-sm font-semibold">Scenes</span>
             <span className="ml-3 text-xs opacity-70 px-2 py-1 rounded bg-white/60 border">{progressLabel}</span>
+
+            {/* NEW: Story Selector Dropdown */}
+            <div className="flex items-center gap-2 ml-4">
+              <label htmlFor="scene-story-selector" className="text-sm font-semibold whitespace-nowrap hidden sm:inline">
+                Story:
+              </label>
+              <select
+                id="scene-story-selector"
+                className="
+                  p-1.5 rounded-md border-2 text-sm
+                  bg-white text-slate-900 border-slate-300
+                  dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]
+                "
+                value={selectedStoryId || ''}
+                onChange={(e) => setSelectedStoryId(e.target.value || undefined)}
+                disabled={userStoriesLoading}
+              >
+                <option value="">{userStoriesLoading ? 'Loading stories...' : 'Select a story...'}</option>
+                {userStories.map((s) => (
+                  <option key={s.id} value={s.id}>{s.title || '(untitled)'}</option>
+                ))}
+              </select>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Link href="/create/begin" className="text-xs px-3 py-1.5 rounded-lg bg-white border-2 border-[#3D4F60]/20 dark:bg-[#1A2533] dark:border-[#4B5A6B]/20">Begin</Link>
-            <Link href="/create/support" className="text-xs px-3 py-1.5 rounded-lg bg-white border-2 border-[#3D4F60]/20 dark:bg-[#1A2533] dark:border-[#4B5A6B]/20">Support</Link>
+            <Link href={selectedStoryId ? `/create/support?storyId=${selectedStoryId}` : '/create/support'} className="text-xs px-3 py-1.5 rounded-lg bg-white border-2 border-[#3D4F60]/20 dark:bg-[#1A2533] dark:border-[#4B5A6B]/20">Support</Link>
             <span className="text-xs px-3 py-1.5 rounded-lg bg-[#E97451] text-white">Scenes</span>
           </div>
         </div>
@@ -1009,17 +1152,20 @@ export default function ScenesPage() {
               <button onClick={goPrev} disabled={currentIndex <= 0} className="rounded-lg border px-3 py-2 text-sm bg-white/70 dark:bg-[#1A2533] disabled:opacity-50">← Previous</button>
               <button onClick={goNext} disabled={currentIndex >= Math.max(0, scenes.length - 1)} className="rounded-lg border px-3 py-2 text-sm bg-white/70 dark:bg-[#1A2533] disabled:opacity-50">Next →</button>
 
-              <button onClick={handleSaveScene} className="rounded-lg border border-emerald-600/60 bg-emerald-600/20 px-3 py-2 text-sm text-emerald-900 dark:text-emerald-200 hover:bg-emerald-600/30">
+              <button onClick={handleSaveScene} disabled={!canManageAssets} className="rounded-lg border border-emerald-600/60 bg-emerald-600/20 px-3 py-2 text-sm text-emerald-900 dark:text-emerald-200 hover:bg-emerald-600/30 disabled:opacity-50">
                 Save Scene
               </button>
-              <button onClick={handleSaveSceneAndNext} className="rounded-lg border border-teal-600/60 bg-teal-600/20 px-3 py-2 text-sm text-teal-900 dark:text-teal-200 hover:bg-teal-600/30">
+              <button onClick={handleSaveSceneAndNext} disabled={!canManageAssets} className="rounded-lg border border-teal-600/60 bg-teal-600/20 px-3 py-2 text-sm text-teal-900 dark:text-teal-200 hover:bg-teal-600/30 disabled:opacity-50">
                 Save Scene & Next
               </button>
 
-              <Link href={readerHref} className="rounded-lg border border-indigo-600/60 bg-indigo-600/20 px-3 py-2 text-sm text-indigo-900 dark:text-indigo-200 hover:bg-indigo-600/30">
+              <Link href={readerHref} className={classNames(
+                'rounded-lg border border-indigo-600/60 bg-indigo-600/20 px-3 py-2 text-sm',
+                canManageAssets ? 'text-indigo-900 dark:text-indigo-200 hover:bg-indigo-600/30' : 'opacity-60 pointer-events-none text-indigo-900 dark:text-indigo-200'
+              )}>
                 Preview Story
               </Link>
-              <button onClick={handlePublishStory} className="rounded-lg border border-amber-600/60 bg-amber-600/20 px-3 py-2 text-sm text-amber-900 dark:text-amber-200 hover:bg-amber-600/30">
+              <button onClick={handlePublishStory} disabled={!canManageAssets} className="rounded-lg border border-amber-600/60 bg-amber-600/20 px-3 py-2 text-sm text-amber-900 dark:text-amber-200 hover:bg-amber-600/30 disabled:opacity-50">
                 Publish
               </button>
             </div>
@@ -1140,7 +1286,7 @@ export default function ScenesPage() {
                     />
                     <button
                       onClick={handleGenerateImage}
-                      disabled={isGenImage}
+                      disabled={isGenImage || !canManageAssets}
                       className="mt-2 inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[#E97451] text-white disabled:opacity-60"
                     >
                       {isGenImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
@@ -1200,6 +1346,7 @@ export default function ScenesPage() {
                     <button
                       onClick={async () => {
                         const base = (narrationText || currentScene?.text || '').trim();
+                        if (!canManageAssets) { alert('Please select an active story from the dropdown to generate narration.'); return; }
                         if (!base || !currentScene) { alert('Enter narration text first.'); return; }
                         setIsGenAudio(true);
                         try {
@@ -1210,17 +1357,17 @@ export default function ScenesPage() {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                              text: base,                // plaintext fallback
-                              ssml,                      // SSML for engines that support it
+                              text: base,
+                              ssml,
                               useSsml: true,
-                              voice,                     // logical voice id/name you map in the API
-                              tone,                      // keep original tone string
-                              style,                     // normalized style for engines (cheerful, sad, excited, whispering, normal)
-                              toneHint: `[TONE=${tone}]`,// extra hint if engine ignores SSML
+                              voice,
+                              tone,
+                              style,
+                              toneHint: `[TONE=${tone}]`,
                               language: lang,
                               model: 'gemini-2.5-flash-preview-tts',
                               sceneIndex: currentIndex + 1,
-                              storyId,
+                              storyId: selectedStoryId,
                             }),
                           });
                           const json = await r.json();
@@ -1237,7 +1384,7 @@ export default function ScenesPage() {
                           setIsGenAudio(false);
                         }
                       }}
-                      disabled={isGenAudio}
+                      disabled={isGenAudio || !canManageAssets}
                       className="px-4 py-2 rounded-md bg-[#3D4F60] text-white disabled:opacity-60"
                     >
                       {isGenAudio ? <Loader2 className="w-4 h-4 animate-spin inline mr-2" /> : null}
@@ -1258,7 +1405,7 @@ export default function ScenesPage() {
                   <h3 className="text-sm font-semibold">Scene-Outline Ideas (AI)</h3>
                   <button
                     onClick={handleGenerateIdeas}
-                    disabled={ideasLoading}
+                    disabled={ideasLoading || !canManageAssets}
                     className="rounded-lg border border-fuchsia-600/60 bg-fuchsia-600/20 px-3 py-2 text-xs text-fuchsia-900 dark:text-fuchsia-200 hover:bg-fuchsia-600/30 disabled:opacity-50"
                   >
                     {ideasLoading ? 'Generating…' : 'Generate ideas'}
@@ -1423,17 +1570,20 @@ export default function ScenesPage() {
               Next
             </button>
 
-            <button onClick={handleSaveScene} className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600/20 border-2 border-emerald-600/40 text-emerald-900 dark:text-emerald-200">
+            <button onClick={handleSaveScene} disabled={!canManageAssets} className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600/20 border-2 border-emerald-600/40 text-emerald-900 dark:text-emerald-200 disabled:opacity-50">
               Save Scene
             </button>
-            <button onClick={handleSaveSceneAndNext} className="text-xs px-3 py-1.5 rounded-lg bg-teal-600/20 border-2 border-teal-600/40 text-teal-900 dark:text-teal-200">
+            <button onClick={handleSaveSceneAndNext} disabled={!canManageAssets} className="text-xs px-3 py-1.5 rounded-lg bg-teal-600/20 border-2 border-teal-600/40 text-teal-900 dark:text-teal-200 disabled:opacity-50">
               Save Scene & Next
             </button>
 
-            <Link href={readerHref} className="text-xs px-3 py-1.5 rounded-lg bg-white border-2 border-[#3D4F60]/20 dark:bg-[#1A2533] dark:border-[#4B5A6B]/20">
+            <Link href={readerHref} className={classNames(
+              'text-xs px-3 py-1.5 rounded-lg bg-white border-2 border-[#3D4F60]/20 dark:bg-[#1A2533] dark:border-[#4B5A6B]/20',
+              canManageAssets ? '' : 'opacity-60 pointer-events-none'
+            )}>
               Preview
             </Link>
-            <button onClick={handlePublishStory} className="text-xs px-3 py-1.5 rounded-lg bg-amber-600/20 border-2 border-amber-600/40 text-amber-900 dark:text-amber-200">
+            <button onClick={handlePublishStory} disabled={!canManageAssets} className="text-xs px-3 py-1.5 rounded-lg bg-amber-600/20 border-2 border-amber-600/40 text-amber-900 dark:text-amber-200 disabled:opacity-50">
               Publish
             </button>
           </div>

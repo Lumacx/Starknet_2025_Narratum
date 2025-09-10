@@ -8,9 +8,32 @@ import { useAuth } from '@/context/AuthContext';
 import UploadImageReference from '@/components/UploadImageReference';
 import { ImageIcon, MapPin, User, Music, Wand2, Film, Loader2 } from 'lucide-react';
 
-// 🔹 Firestore (para leer contexto de la historia)
+// ────────────────────────────────────────────────────────────────────────────────
+// Re-using or adapting from src/app/create/begin/page.tsx
+type StorySummary = {
+  id: string;
+  title: string;
+  synopsis: string;
+  genres: string[];
+  category: string;
+  pageCount: number;
+  coverImageUrl: string | null;
+  updatedAt?: any; // Firestore Timestamp
+};
+// ────────────────────────────────────────────────────────────────────────────────
+
+// 🔹 Firestore (para leer contexto de la historia y lista de historias)
 import { db } from '@/lib/firebase';
-import { doc as fsDoc, getDoc } from 'firebase/firestore';
+import {
+  doc as fsDoc,
+  getDoc,
+  collection,  // NEW
+  query,       // NEW
+  where,       // NEW
+  orderBy,     // NEW
+  limit,       // NEW
+  getDocs,     // NEW
+} from 'firebase/firestore';
 
 import InfoPopover from '@/components/InfoPopover';
 
@@ -18,7 +41,12 @@ import InfoPopover from '@/components/InfoPopover';
 function extractImageAndModel(json: any): { dataUrl?: string; modelUsed?: string } {
   if (Array.isArray(json?.images) && json.images.length) {
     const first = json.images[0];
-    const dataUrl = typeof first === 'string' ? (first.startsWith('data:') ? first : `data:image/png;base64,${first}`) : undefined;
+    const dataUrl =
+      typeof first === 'string'
+        ? first.startsWith('data:')
+          ? first
+          : `data:image/png;base64,${first}`
+        : undefined;
     return { dataUrl, modelUsed: json.modelUsed || json.model || json.modelName };
   }
   if (typeof json?.imageBase64 === 'string') {
@@ -51,16 +79,25 @@ function composePromptForImagen(
   ctx?: { title?: string; genres?: string[]; synopsis?: string; language?: string }
 ) {
   const lines: string[] = [];
-  lines.push(`Use ${ctx?.language || 'English'} to interpret all descriptive concepts. Do not render any textual characters in the image.`);
-  lines.push('Create a professional, illustration-style image (no text). Use a single striking composition with a clear focal subject, cinematic lighting, and a cohesive palette.');
+  lines.push(
+    `Use ${ctx?.language || 'English'} to interpret all descriptive concepts. Do not render any textual characters in the image.`
+  );
+  lines.push(
+    'Create a professional, illustration-style image (no text). Use a single striking composition with a clear focal subject, cinematic lighting, and a cohesive palette.'
+  );
   if (ctx?.synopsis) lines.push(`PRIMARY GUIDANCE (Story Synopsis — highest priority): ${ctx.synopsis}`);
   if (ctx?.genres?.length) {
     const desc = genreDescriptors(ctx.genres);
-    lines.push(`SECONDARY GUIDANCE (Genre atmosphere): ${ctx.genres.join(', ')}.` + (desc.length ? ` Visual tone cues: ${desc.join('; ')}.` : ''));
+    lines.push(
+      `SECONDARY GUIDANCE (Genre atmosphere): ${ctx.genres.join(', ')}.` +
+        (desc.length ? ` Visual tone cues: ${desc.join('; ')}.` : '')
+    );
   }
   if (userPrompt) lines.push(`TERTIARY GUIDANCE (Additional creative direction): ${userPrompt}`);
-  if (ctx?.title) lines.push(`LIGHT INFLUENCE (Title motif — do NOT add text): ${ctx.title}. Use it only as thematic inspiration.`);
-  const negativesBase = 'text, watermark, logo, low-res, blurry, jpeg artifacts, malformed anatomy, extra limbs, cropped face';
+  if (ctx?.title)
+    lines.push(`LIGHT INFLUENCE (Title motif — do NOT add text): ${ctx.title}. Use it only as thematic inspiration.`);
+  const negativesBase =
+    'text, watermark, logo, low-res, blurry, jpeg artifacts, malformed anatomy, extra limbs, cropped face';
   return { prompt: lines.join('\n'), negativePrompt: negativesBase };
 }
 /* --- END OF MOVED LOGIC --- */
@@ -143,14 +180,27 @@ export default function SupportPage() {
   const router = useRouter();
 
   const storyId = search.get('storyId') || undefined;
-  const [context, setContext] = useState<PromptContext>({ title: '', genres: [], synopsis: '', language: 'en' });
+
+  // Existing context state
+  const [context, setContext] = useState<PromptContext>({
+    title: '',
+    genres: [],
+    synopsis: '',
+    language: 'en',
+  });
   const langLabel = LANG_LABELS[context.language] || 'English';
 
+  // NEW: list of user stories + selection
+  const [userStories, setUserStories] = useState<StorySummary[]>([]);
+  const [userStoriesLoading, setUserStoriesLoading] = useState(false);
+  const [selectedStoryId, setSelectedStoryId] = useState<string | undefined>(storyId); // primary source of truth
+
+  // fetch story context (title/genres/synopsis/lang) based on selectedStoryId
   useEffect(() => {
     (async () => {
-      if (!user || !storyId) return;
+      if (!user || !selectedStoryId) return;
       try {
-        const ref = fsDoc(db, 'stories', storyId);
+        const ref = fsDoc(db, 'stories', selectedStoryId);
         const snap = await getDoc(ref);
         if (!snap.exists()) return;
         const s = snap.data() as any;
@@ -162,39 +212,114 @@ export default function SupportPage() {
             langFromDoc = (parsed?.language as LangCode) || 'en';
           } catch {}
         }
-        setContext((prev) => ({ ...prev, title: s?.title || prev.title, genres: Array.isArray(s?.genres) ? s.genres : prev.genres, synopsis: s?.synopsis || prev.synopsis, language: (langFromDoc || prev.language) as LangCode }));
-      } catch (e) { console.error('Failed to fetch story for context', e); }
+        setContext(prev => ({
+          ...prev,
+          title: s?.title || prev.title,
+          genres: Array.isArray(s?.genres) ? s.genres : prev.genres,
+          synopsis: s?.synopsis || prev.synopsis,
+          language: (langFromDoc || prev.language) as LangCode,
+        }));
+      } catch (e) {
+        console.error('Failed to fetch story for context', e);
+      }
     })();
-  }, [user, storyId]);
+  }, [user, selectedStoryId]);
 
-  const initialKey = (search.get('tab') as TabKey) || (typeof window !== 'undefined' ? (localStorage.getItem('supportTab') as TabKey) : undefined) || 'characters';
+  // NEW: fetch list of user stories for dropdown
+  useEffect(() => {
+    const fetchUserStories = async () => {
+      if (!user) {
+        setUserStories([]);
+        return;
+      }
+      setUserStoriesLoading(true);
+      try {
+        const qy = query(
+          collection(db, 'stories'),
+          where('ownerUid', '==', user.uid),
+          orderBy('updatedAt', 'desc'),
+          limit(100)
+        );
+        const snap = await getDocs(qy);
+        const storiesData: StorySummary[] = snap.docs.map((doc) => {
+          const d = doc.data() as any;
+          return {
+            id: doc.id,
+            title: d?.title || '(untitled)',
+            synopsis: d?.synopsis || '',
+            genres: d?.genres || [],
+            category: d?.category || 'short',
+            pageCount: d?.pageCount || 1,
+            coverImageUrl: d?.coverImageUrl ?? null,
+            updatedAt: d?.updatedAt,
+          };
+        });
+        setUserStories(storiesData);
+
+        if (!selectedStoryId && storiesData.length > 0) {
+          setSelectedStoryId(storiesData[0].id);
+        }
+      } catch (e) {
+        console.error('Failed to load user stories for dropdown:', e);
+      } finally {
+        setUserStoriesLoading(false);
+      }
+    };
+
+    fetchUserStories();
+  }, [user, selectedStoryId]);
+
+  const initialKey =
+    (search.get('tab') as TabKey) ||
+    (typeof window !== 'undefined' ? (localStorage.getItem('supportTab') as TabKey) : undefined) ||
+    'characters';
   const [active, setActive] = useState<TabKey>(initialKey);
   const [displayUrl, setDisplayUrl] = useState<string>('');
   const [displayContentType, setDisplayContentType] = useState<string | undefined>(undefined);
   const [desc, setDesc] = useState('');
   const [descLoading, setDescLoading] = useState(false);
   const [descError, setDescError] = useState('');
-  
-  // ▼▼ NEW STATE for image combination ▼▼
-  const [selectedCharacters, setSelectedCharacters] = useState<string[]>([]); // URLs of selected characters
-  const [selectedLocations, setSelectedLocations] = useState<string[]>([]); // URLs of selected locations
+
+  // ▼▼ For image combination ▼▼
+  const [selectedCharacters, setSelectedCharacters] = useState<string[]>([]);
+  const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [composerPrompt, setComposerPrompt] = useState('');
   const [isComposing, setIsComposing] = useState(false);
-  // ▼▼ NEW: Add state for the model flag ▼▼
   const [lastModelUsed, setLastModelUsed] = useState<string>('');
-  // ▲▲ END NEW STATE ▲▲
-
-  // NEW state for managing generation logic which now lives here
+  // generation state
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImageUrlForChild, setGeneratedImageUrlForChild] = useState('');
 
-  const acceptByTab: Record<TabKey, string | undefined> = { characters: 'image/png,image/jpeg', locations:  'image/png,image/jpeg', audioNarrations: 'audio/mpeg,audio/mp3', audioEffects:    'audio/mpeg,audio/mp3', videos:          'video/mp4' };
+  const acceptByTab: Record<TabKey, string | undefined> = {
+    characters:      'image/png,image/jpeg',
+    locations:       'image/png,image/jpeg',
+    audioNarrations: 'audio/mpeg,audio/mp3',
+    audioEffects:    'audio/mpeg,audio/mp3',
+    videos:          'video/mp4',
+  };
 
+  // NEW: Sync URL <-> selectedStoryId and other resets
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     params.set('tab', active);
-    if (storyId) params.set('storyId', storyId);
+
+    const urlStoryId = search.get('storyId');
+
+    // sync state from URL if needed
+    if (urlStoryId && urlStoryId !== selectedStoryId) {
+      setSelectedStoryId(urlStoryId);
+    } else if (!urlStoryId && selectedStoryId) {
+      setSelectedStoryId(undefined);
+    }
+
+    // always reflect selectedStoryId to URL
+    if (selectedStoryId) {
+      params.set('storyId', selectedStoryId);
+    } else {
+      params.delete('storyId');
+    }
+
     window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
     localStorage.setItem('supportTab', active);
     setDisplayUrl('');
@@ -202,16 +327,26 @@ export default function SupportPage() {
     setDesc('');
     setDescError('');
     setDescLoading(false);
-    setGeneratedImageUrlForChild(''); // Also reset the generated image
-    setLastModelUsed(''); // <-- ADD THIS LINE
-  }, [active, storyId]);
+    setGeneratedImageUrlForChild('');
+    setLastModelUsed('');
+  }, [active, search, selectedStoryId]);
 
-  useEffect(() => { if (!TABS.some((t) => t.key === active)) setActive('characters'); }, [active]);
+  useEffect(() => {
+    if (!TABS.some((t) => t.key === active)) setActive('characters');
+  }, [active]);
 
   const activeTab = useMemo(() => TABS.find((t) => t.key === active)!, [active]);
   const kind = inferKind(displayUrl, displayContentType);
   const canDescribeSelected = isImageTab(activeTab.key) && kind === 'image' && !!displayUrl;
-  const memoizedPromptContext = useMemo(() => ({ title: context.title, genres: context.genres, synopsis: context.synopsis, language: context.language }), [context.title, context.genres, context.synopsis, context.language]);
+  const memoizedPromptContext = useMemo(
+    () => ({
+      title: context.title,
+      genres: context.genres,
+      synopsis: context.synopsis,
+      language: context.language,
+    }),
+    [context.title, context.genres, context.synopsis, context.language]
+  );
 
   const handleSaved = useCallback((item: { url?: string; contentType?: string } | undefined) => {
     const u = item?.url;
@@ -222,7 +357,12 @@ export default function SupportPage() {
     setDescError('');
   }, []);
 
+  // NEW: guard requires active story + prompt; uses selectedStoryId
   const handleGenerateRequest = async (userPrompt: string) => {
+    if (!selectedStoryId) {
+      alert('Please select an active story from the dropdown to generate an image.');
+      return;
+    }
     if (!userPrompt.trim()) {
       alert('Please enter a description to generate an image.');
       return;
@@ -231,19 +371,25 @@ export default function SupportPage() {
     setGeneratedImageUrlForChild('');
     try {
       const { prompt, negativePrompt } = composePromptForImagen(userPrompt, memoizedPromptContext);
-      const res = await fetch('/api/generate-image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, negativePrompt, count: 1 }) });
+      const res = await fetch('/api/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, negativePrompt, count: 1, storyId: selectedStoryId }),
+      });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'AI image generation failed');
 
-       // MODIFIED: Capture modelUsed here
       const { dataUrl, modelUsed } = extractImageAndModel(json);
-      setLastModelUsed(modelUsed || 'Unknown'); // <-- ADD THIS LINE
+      setLastModelUsed(modelUsed || 'Unknown');
 
       if (!dataUrl) throw new Error('No image was returned by the generator.');
       setGeneratedImageUrlForChild(dataUrl);
       handleSaved({ url: dataUrl, contentType: 'image/png' });
-    } catch (e: any) { alert(e?.message || 'Image generation error'); } 
-    finally { setIsGenerating(false); }
+    } catch (e: any) {
+      alert(e?.message || 'Image generation error');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   async function handleDescribeSelected() {
@@ -255,60 +401,74 @@ export default function SupportPage() {
       const body = displayUrl.startsWith('data:') ? { dataUrl: displayUrl } : { imageUrl: displayUrl };
       const lang = (context.language || 'en') as LangCode;
       const langLabel = LANG_LABELS[lang] || 'English';
-      const promptText = lang === 'es' ? 'Describe esta imagen en un solo párrafo claro y conciso...' : `Describe this image in one clear, concise paragraph... Respond only in ${langLabel}.`;
-      const res = await fetch('/api/describe-image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body, prompt: promptText, language: lang, targetLanguage: lang, context: { title: context.title, genres: context.genres, synopsis: context.synopsis, }, responseModalities: ['TEXT'], }), });
+      const promptText =
+        lang === 'es'
+          ? 'Describe esta imagen en un solo párrafo claro y conciso...'
+          : `Describe this image in one clear, concise paragraph... Respond only in ${langLabel}.`;
+      const res = await fetch('/api/describe-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...body,
+          prompt: promptText,
+          language: lang,
+          targetLanguage: lang,
+          context: { title: context.title, genres: context.genres, synopsis: context.synopsis },
+          responseModalities: ['TEXT'],
+        }),
+      });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Describe failed');
       setDesc(json.description || '');
-    } catch (e: any) { setDescError(e?.message || 'Describe failed'); } 
-    finally { setDescLoading(false); }
+    } catch (e: any) {
+      setDescError(e?.message || 'Describe failed');
+    } finally {
+      setDescLoading(false);
+    }
   }
 
+  // NEW: guard requires active story; uses selectedStoryId
   const handleSceneGeneration = async () => {
+    if (!selectedStoryId) {
+      alert('Please select an active story from the dropdown to generate a scene.');
+      return;
+    }
     if (!composerPrompt.trim() || (selectedCharacters.length === 0 && selectedLocations.length === 0)) {
       alert('Please select at least one image and provide a prompt.');
       return;
     }
     setIsComposing(true);
     setGeneratedImageUrlForChild('');
-  
+
     try {
-      // Step 1: Get the original Firebase Storage URLs
       const imageUrls = [...selectedCharacters, ...selectedLocations];
-  
-      // Step 2: Convert all storage URLs to data: URLs
-      console.log('Converting image URLs to data URLs...');
-      const imagesAsDataUrls = await Promise.all(
-        imageUrls.map(url => urlToDataUrl(url))
-      );
-      console.log('Conversion complete. Sending to API.');
-  
-      // Step 3: Send the correctly formatted data to the API
+
+      const imagesAsDataUrls = await Promise.all(imageUrls.map(url => urlToDataUrl(url)));
+
       const res = await fetch('/api/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: composerPrompt,
-          images: imagesAsDataUrls, // Send the array of data: URLs
+          images: imagesAsDataUrls,
+          storyId: selectedStoryId,
         }),
       });
-  
+
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'AI scene generation failed');
-  
+
       const { dataUrl, modelUsed } = extractImageAndModel(json);
       setLastModelUsed(modelUsed || 'Unknown');
-  
+
       if (!dataUrl) throw new Error('No image was returned by the generator.');
-  
-      console.log(`Scene generated with model: ${modelUsed}`);
+
       setGeneratedImageUrlForChild(dataUrl);
       handleSaved({ url: dataUrl, contentType: 'image/png' });
-  
+
       setSelectedCharacters([]);
       setSelectedLocations([]);
       setComposerPrompt('');
-  
     } catch (e: any) {
       console.error('Scene generation error:', e);
       alert(e?.message || 'Scene generation error');
@@ -318,27 +478,26 @@ export default function SupportPage() {
   };
 
   // Decide which doc to show for the #1 icon based on the active tab
-  // ★ NEW: use kebab-case paths in /public/info_tips
+  // ★ kebab-case paths in /public/info_tips
   const tipDocForOne =
     active === 'locations'
       ? '/info_tips/location-generation-template.md'
       : '/info_tips/character-creation-template.md';
   const tipDocForTwo = '/info_tips/pro-tips-for-prompting-images.md';
 
-  // ★ NEW: receive prompts from InfoPopover and route them to inputs
+  // ★ receive prompts from InfoPopover and route them to inputs
   const handleUsePromptFromInfo = useCallback((text: string) => {
-    // 1) Prefill the Scene Composer prompt box on this page
     setComposerPrompt(text);
-
-    // 2) Ask UploadImageReference to prefill its internal prompt (Character Description)
-    //    Add a small listener inside that component to consume this event (snippet below).
     window.dispatchEvent(new CustomEvent('set-uploader-prompt', { detail: { text } }));
   }, []);
 
   if (loading) {
     return (
       <div className="min-h-screen grid place-items-center">
-        <div className="flex items-center gap-3"><Loader2 className="animate-spin" /><span>Checking your session…</span></div>
+        <div className="flex items-center gap-3">
+          <Loader2 className="animate-spin" />
+          <span>Checking your session…</span>
+        </div>
       </div>
     );
   }
@@ -357,6 +516,8 @@ export default function SupportPage() {
     );
   }
 
+  const canSaveAssets = !!selectedStoryId; // NEW: enable save only if a story is selected
+
   return (
     <div className="min-h-screen p-6 bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26] text-[#3A4B5C] dark:text-[#E0C9A0] font-sans">
       <div className="max-w-6xl mx-auto bg-[#F3EADF] border-2 border-[#CBBBA0] text-[#3A4B5C] dark:bg-[#2A3645] dark:border-[#4B5A6B] dark:text-[#E0C9A0] rounded-xl shadow-2xl">
@@ -364,20 +525,58 @@ export default function SupportPage() {
           .dark .uploader-scope input[type="text"],
           .dark .uploader-scope textarea { color: #3D4F60 !important; background: #ffffff !important; }
         `}</style>
-        
+
         {/* --- HEADER --- */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-6 border-b-2 border-[#3D4F60]/10 dark:border-[#4B5A6B]/20">
           <div>
+            {/* Existing header content */}
             <h1 className="text-2xl sm:text-3xl font-bold">Build References & AI Support</h1>
-            <p className="text-sm text-[#3A4B5C]/70 dark:text-[#E0C9A0]/70">Store image, audio, and video references used across your stories.</p>
-            <p className="text-xs mt-1 text-[#3A4B5C]/60 dark:text-[#E0C9A0]/60">AI language: <strong>{langLabel}</strong>{context.title ? ` • Context: ${context.title}` : ''}</p>
+            <p className="text-sm text-[#3A4B5C]/70 dark:text-[#E0C9A0]/70">
+              Store image, audio, and video references used across your stories.
+            </p>
+            <p className="text-xs mt-1 text-[#3A4B5C]/60 dark:text-[#E0C9A0]/60">
+              AI language: <strong>{langLabel}</strong>
+              {context.title ? ` • Context: ${context.title}` : ''}
+            </p>
+
+            {/* NEW: Story Selector Dropdown */}
+            <div className="flex items-center gap-4 mt-2">
+              <label htmlFor="story-selector" className="text-sm font-semibold whitespace-nowrap">
+                Active Story:
+              </label>
+              <select
+                id="story-selector"
+                className="
+                  w-full max-w-xs p-2 border-2 rounded-md
+                  bg-white text-slate-900 border-slate-300
+                  dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]
+                "
+                value={selectedStoryId || ''}
+                onChange={(e) => setSelectedStoryId(e.target.value || undefined)}
+                disabled={userStoriesLoading}
+              >
+                <option value="">
+                  {userStoriesLoading ? 'Loading stories...' : 'Select a story...'}
+                </option>
+                {userStories.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.title || '(untitled)'}
+                  </option>
+                ))}
+              </select>
+              {!selectedStoryId && (
+                <span className="text-sm text-red-600 font-medium">
+                  (No story selected for asset management)
+                </span>
+              )}
+            </div>
           </div>
           <div className="flex gap-3">
             <Link className="underline text-sm" href="/create/begin">← Back</Link>
             <Link className="underline text-sm" href="/create/scenes">Next: AI Story eReader →</Link>
           </div>
         </div>
-        
+
         {/* --- TABS --- */}
         <div className="px-4 sm:px-6 pt-4">
           <div role="tablist" aria-label="Reference categories" className="flex flex-wrap gap-2 sm:gap-3">
@@ -400,36 +599,40 @@ export default function SupportPage() {
           </div>
         </div>
 
-        {/* ======================================================================= */}
-        {/* ===================== MAIN CONTENT SECTION ============================ */}
-        {/* ======================================================================= */}
+        {/* =================================================================== */}
+        {/* ===================== MAIN CONTENT SECTION ======================== */}
+        {/* =================================================================== */}
         <section id={`panel-${activeTab.key}`} role="tabpanel" className="p-4 sm:p-6">
           <div className="flex items-start gap-3 mb-4">
-            <div className="shrink-0 mt-1">{React.createElement(activeTab.icon, { className: "text-[#3D4F60] dark:text-[#F0D1B0]" })}</div>
+            <div className="shrink-0 mt-1">
+              {React.createElement(activeTab.icon, { className: 'text-[#3D4F60] dark:text-[#F0D1B0]' })}
+            </div>
             <div>
               <h2 className="text-lg font-bold">{activeTab.label}</h2>
               <p className="text-sm text-[#3A4B5C]/80 dark:text-[#E0C9A0]/80">{activeTab.blurb}</p>
             </div>
           </div>
-          
+
           {/* --- CORRECTED TWO-COLUMN LAYOUT GRID --- */}
           <div className="grid md:grid-cols-2 gap-6">
-
-            {/* ---------------------------------------------------------------- */}
             {/* ------------------------- LEFT COLUMN -------------------------- */}
-            {/* ---------------------------------------------------------------- */}
             <div className="flex flex-col gap-6">
-            
               {/* --- 1. DISPLAY COMPONENT --- */}
               <div>
                 <h3 className="text-sm font-semibold mb-2">Display</h3>
                 <div className="relative w-full bg-white dark:bg-[#0f1620] border rounded-lg overflow-hidden aspect-square grid place-items-center">
-                  {!displayUrl ? <div className="text-xs opacity-70">Nothing selected</div>
-                  : kind === 'image' ? <img src={displayUrl} alt="Selected" className="absolute inset-0 w-full h-full object-contain" />
-                  : kind === 'audio' ? <audio controls src={displayUrl} className="w-11/12" />
-                  : kind === 'video' ? <video controls src={displayUrl} className="absolute inset-0 w-full h-full object-contain" />
-                  : <div className="text-xs opacity-70">Unsupported media</div>}
-                  
+                  {!displayUrl ? (
+                    <div className="text-xs opacity-70">Nothing selected</div>
+                  ) : kind === 'image' ? (
+                    <img src={displayUrl} alt="Selected" className="absolute inset-0 w-full h-full object-contain" />
+                  ) : kind === 'audio' ? (
+                    <audio controls src={displayUrl} className="w-11/12" />
+                  ) : kind === 'video' ? (
+                    <video controls src={displayUrl} className="absolute inset-0 w-full h-full object-contain" />
+                  ) : (
+                    <div className="text-xs opacity-70">Unsupported media</div>
+                  )}
+
                   {displayUrl && lastModelUsed && (
                     <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs font-mono rounded-md px-2 py-1 backdrop-blur-sm shadow-lg">
                       Model: {lastModelUsed}
@@ -443,7 +646,11 @@ export default function SupportPage() {
                 <div className="rounded-xl border-2 border-[#3D4F60] dark:border-[#4B5A6B] bg-[#F3EADF] dark:bg-[#2A3645] p-4">
                   <h3 className="font-semibold mb-2">AI Describe — Selected Image</h3>
                   <div className="flex gap-2 items-center mb-2">
-                    <button onClick={handleDescribeSelected} disabled={!canDescribeSelected || descLoading} className="px-4 py-2 rounded bg-[#E97451] text-white disabled:opacity-50">
+                    <button
+                      onClick={handleDescribeSelected}
+                      disabled={!canDescribeSelected || descLoading}
+                      className="px-4 py-2 rounded bg-[#E97451] text-white disabled:opacity-50"
+                    >
                       {descLoading ? 'Describing…' : 'Describe Selected'}
                     </button>
                     {descError && <span className="text-red-600 text-sm">{descError}</span>}
@@ -452,22 +659,39 @@ export default function SupportPage() {
                   {!!desc && (
                     <>
                       <label className="block text-sm font-bold mb-1">Description</label>
-                      <textarea className="w-full p-2 border rounded dark:bg-white dark:text-[#3D4F60]" rows={5} value={desc} onChange={(e) => setDesc(e.target.value)} />
+                      <textarea
+                        className="w-full p-2 border rounded dark:bg-white dark:text-[#3D4F60]"
+                        rows={5}
+                        value={desc}
+                        onChange={(e) => setDesc(e.target.value)}
+                      />
                       <div className="mt-2">
-                        <button onClick={() => navigator.clipboard.writeText(desc)} className="px-3 py-1 rounded border-2 border-[#3D4F60] text-[#3D4F60] bg-white hover:bg-[#EAF1F7] active:scale-95 dark:border-[#4B5A6B] dark:text-[#E0C9A0] dark:bg-[#2A3645] dark:hover:bg-[#334154]/60">Copy</button>
+                        <button
+                          onClick={() => navigator.clipboard.writeText(desc)}
+                          className="px-3 py-1 rounded border-2 border-[#3D4F60] text-[#3D4F60] bg-white hover:bg-[#EAF1F7] active:scale-95 dark:border-[#4B5A6B] dark:text-[#E0C9A0] dark:bg-[#2A3645] dark:hover:bg-[#334154]/60"
+                        >
+                          Copy
+                        </button>
                       </div>
                     </>
                   )}
                 </div>
               )}
-              
+
               {/* --- 3. UPLOAD / GENERATE COMPONENT --- */}
               <div className="uploader-scope">
+                {/* NEW: choose a story message */}
+                {!canSaveAssets && (
+                  <div className="mb-4 p-3 rounded-md bg-yellow-100 border border-yellow-300 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-600 dark:text-yellow-200">
+                    <p className="font-semibold">Choose a Story to enable asset management.</p>
+                    <p className="text-sm">Select a story from the dropdown above to upload, generate, or view its specific assets.</p>
+                  </div>
+                )}
+
                 <div className="flex items-center gap-3 text-xs mb-2">
                   <span className="opacity-70">Generation Tips:</span>
                   <div className="inline-flex items-center gap-1">
                     <span className="opacity-60">#1</span>
-                    {/* ★ NEW: modal InfoPopover with “Use in App” */}
                     <InfoPopover
                       title={active === 'locations' ? 'Location Template' : 'Character Template'}
                       docHref={tipDocForOne}
@@ -483,6 +707,7 @@ export default function SupportPage() {
                     />
                   </div>
                 </div>
+
                 <UploadImageReference
                   mode="uploaderOnly"
                   variant={activeTab.variant}
@@ -493,20 +718,19 @@ export default function SupportPage() {
                   onGenerateRequest={handleGenerateRequest}
                   isGenerating={isGenerating}
                   generatedImageUrl={generatedImageUrlForChild}
+                  storyId={selectedStoryId || ''}              // UPDATED: use selectedStoryId
+                  disableSaveButtons={!canSaveAssets}          // NEW
                 />
               </div>
             </div>
-            
-            {/* ----------------------------------------------------------------- */}
-            {/* ------------------------- RIGHT COLUMN -------------------------- */}
-            {/* ----------------------------------------------------------------- */}
-            <div className="flex flex-col gap-6">
 
+            {/* ------------------------- RIGHT COLUMN -------------------------- */}
+            <div className="flex flex-col gap-6">
               {/* --- 4. AI SCENE COMPOSER --- */}
               {isImageTab(activeTab.key) && (
                 <div className="border-2 border-dashed border-[#E97451] rounded-xl p-4 bg-[#F3EADF] dark:bg-[#2A3645]">
                   <h3 className="font-semibold mb-3 text-lg">AI Scene Composer</h3>
-                  
+
                   {selectedCharacters.length === 0 && selectedLocations.length === 0 ? (
                     <p className="text-sm text-gray-500">Select images from your gallery below to begin combining them.</p>
                   ) : (
@@ -524,11 +748,18 @@ export default function SupportPage() {
                         onChange={(e) => setComposerPrompt(e.target.value)}
                       />
                       <div className="flex items-center gap-4 mt-2">
-                        <button onClick={handleSceneGeneration} disabled={isComposing || !composerPrompt.trim()} className="px-4 py-2 rounded bg-[#E97451] text-white disabled:opacity-50 flex items-center gap-2">
+                        <button
+                          onClick={handleSceneGeneration}
+                          disabled={isComposing || !composerPrompt.trim()}
+                          className="px-4 py-2 rounded bg-[#E97451] text-white disabled:opacity-50 flex items-center gap-2"
+                        >
                           {isComposing ? <Loader2 className="animate-spin" size={16} /> : <Wand2 size={16} />}
                           {isComposing ? 'Generating...' : 'Generate Scene'}
                         </button>
-                        <button onClick={() => { setSelectedCharacters([]); setSelectedLocations([]); setComposerPrompt(''); }} className="text-xs underline">
+                        <button
+                          onClick={() => { setSelectedCharacters([]); setSelectedLocations([]); setComposerPrompt(''); }}
+                          className="text-xs underline"
+                        >
                           Clear Selection
                         </button>
                       </div>
@@ -536,11 +767,15 @@ export default function SupportPage() {
                   )}
                 </div>
               )}
-              
+
               {/* --- 5. MY GALLERY --- */}
               <div className="border-2 border-[#3D4F60] dark:border-[#4B5A6B] rounded-xl p-3 bg-white/60 dark:bg-transparent">
-                <h4 className="font-semibold mb-3">My Gallery — <span className="opacity-80">{activeTab.label}</span></h4>
-                {isImageTab(activeTab.key) && <p className="text-xs text-gray-500 mb-2">Select up to 3 characters and 2 locations to combine them.</p>}
+                <h4 className="font-semibold mb-3">
+                  My Gallery — <span className="opacity-80">{activeTab.label}</span>
+                </h4>
+                {isImageTab(activeTab.key) && (
+                  <p className="text-xs text-gray-500 mb-2">Select up to 3 characters and 2 locations to combine them.</p>
+                )}
                 {/* @ts-ignore */}
                 <UploadImageReference
                   mode="galleryOnly"
@@ -550,23 +785,29 @@ export default function SupportPage() {
                   selection={activeTab.key === 'characters' ? selectedCharacters : selectedLocations}
                   onSelectionChange={activeTab.key === 'characters' ? setSelectedCharacters : setSelectedLocations}
                   maxSelection={activeTab.key === 'characters' ? 3 : 2}
+                  storyId={selectedStoryId || ''}              // UPDATED: use selectedStoryId
+                  disableSaveButtons={!canSaveAssets}          // NEW
                 />
               </div>
-
             </div>
           </div>
         </section>
 
         {/* --- FOOTER --- */}
         <div className="flex justify-end gap-3 p-6 border-t-2 border-[#3D4F60]/10 dark:border-[#4B5A6B]/20">
-          <Link className="px-4 py-2 rounded-md border border-[#3D4F60] text-[#3D4F60] bg-white dark:border-[#4B5A6B] dark:text-[#E0C9A0] dark:bg-[#2A3645]" href="/create/begin">
+          <Link
+            className="px-4 py-2 rounded-md border border-[#3D4F60] text-[#3D4F60] bg-white dark:border-[#4B5A6B] dark:text-[#E0C9A0] dark:bg-[#2A3645]"
+            href="/create/begin"
+          >
             ← Back
           </Link>
-          <Link className="px-6 py-2 rounded-md bg-[#E97451] text-white" href={storyId ? `/create/scenes?storyId=${storyId}` : '/create/scenes'}>
+          <Link
+            className="px-6 py-2 rounded-md bg-[#E97451] text-white"
+            href={selectedStoryId ? `/create/scenes?storyId=${selectedStoryId}` : '/create/scenes'}
+          >
             Next: AI Story eReader →
           </Link>
         </div>
-        
       </div>
     </div>
   );

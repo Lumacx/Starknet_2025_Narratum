@@ -269,7 +269,7 @@ const DashboardPage: React.FC = () => {
         </section>
 
         <div className="flex items-center justify-center gap-3 pt-2">
-          <Link href="/create" className="px-6 py-2 rounded-md bg-blue-600 text-white font-semibold hover:bg-blue-700 transition">Create New Story</Link>
+          <Link href="/create/begin" className="px-6 py-2 rounded-md bg-blue-600 text-white font-semibold hover:bg-blue-700 transition">Create New Story</Link>
           <Link href="/discover" className="px-6 py-2 rounded-md bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition">Discover Stories</Link>
         </div>
       </div>
