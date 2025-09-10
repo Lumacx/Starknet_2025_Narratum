@@ -3,14 +3,21 @@
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { Trash2, Copy, CheckCircle2 } from 'lucide-react';
 import Image from 'next/image';
-import { storage, db } from '@/lib/firebase'; // ⬅️ pull db too
+import { storage, db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
-import { ref, uploadString, getDownloadURL, listAll, deleteObject } from 'firebase/storage';
-import { doc as fsDoc, setDoc, serverTimestamp } from 'firebase/firestore'; // ⬅️ Firestore
+import {
+  ref as sref,
+  uploadString,
+  getDownloadURL,
+  listAll,
+  deleteObject,
+} from 'firebase/storage';
+import { doc as fsDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import InfoPopover from '@/components/InfoPopover';
 
 /* ---------- Types ---------- */
-type LangCode = 'en' | 'es' | 'pt' | 'fr' | 'de' | 'it' | 'ja' | 'ko' | 'zh' | 'hi' | 'ar';
+type LangCode =
+  | 'en' | 'es' | 'pt' | 'fr' | 'de' | 'it' | 'ja' | 'ko' | 'zh' | 'hi' | 'ar';
 
 type GalleryItem = { name: string; url: string; fullPath: string; contentType?: string };
 type AssetCategory =
@@ -22,7 +29,7 @@ type AssetCategory =
   | 'audioNarrations'
   | 'audioEffects'
   | 'videos'
-  | 'generatedImages' // Added for clarity with the new backend structure
+  | 'generatedImages'
   | 'others';
 
 type Mode = 'full' | 'uploaderOnly' | 'galleryOnly';
@@ -32,23 +39,20 @@ type Props = {
   onSaved?: (item: GalleryItem) => void;
   assetCategory: AssetCategory;
   mode?: Mode;
-  // Generation controls (parent provides)
   onGenerateRequest?: (prompt: string) => void;
   isGenerating?: boolean;
   generatedImageUrl?: string;
-  // Multi-selection (Scene Composer)
   selection?: string[];
   onSelectionChange?: (newSelection: string[]) => void;
   maxSelection?: number;
-  // Originals
   nounOverride?: string;
   onOpenTemplate?: () => void;
   mainPromptLabel?: string;
-  accept?: string; // This prop will be overridden for image categories
+  accept?: string;
   showInnerDescribe?: boolean;
   preferredLanguage?: LangCode;
   storyId?: string; // story-scoped when defined; otherwise uncategorized
-  disableSaveButtons?: boolean; // disable save actions (e.g., when no story selected on Scenes page)
+  disableSaveButtons?: boolean;
 };
 
 /* ---------- Helpers ---------- */
@@ -57,26 +61,29 @@ const isImageCategory = (c: AssetCategory) =>
 
 const KB = 1024;
 const MB = 1024 * KB;
+
+// Align limits with Storage rules (images 10KB–12MB, MP3/WAV ≤16MB, MP4 1–64MB)
 const LIMITS: Record<string, { min: number; max: number }> = {
-  'image/png': { min: 50 * KB, max: 15 * MB },
-  'image/jpeg': { min: 50 * KB, max: 15 * MB },
-  'image/jpg': { min: 50 * KB, max: 15 * MB },
-  'image/gif': { min: 50 * KB, max: 15 * MB },
-  'image/webp': { min: 50 * KB, max: 15 * MB },
-  'audio/mpeg': { min: 50 * KB, max: 15 * MB },
-  'audio/mp3': { min: 50 * KB, max: 15 * MB },
-  'video/mp4': { min: 0.5 * MB, max: 50 * MB },
+  'image/png':  { min: 10 * KB, max: 12 * MB },
+  'image/jpeg': { min: 10 * KB, max: 12 * MB },
+  'image/jpg':  { min: 10 * KB, max: 12 * MB },
+  'image/gif':  { min: 10 * KB, max: 12 * MB },
+  'image/webp': { min: 10 * KB, max: 12 * MB },
+  'audio/mpeg': { min: 50 * KB, max: 16 * MB },
+  'audio/mp3':  { min: 50 * KB, max: 16 * MB },
+  'audio/wav':  { min: 50 * KB, max: 16 * MB },
+  'video/mp4':  { min: 1 * MB,  max: 64 * MB },
 };
-function fmt(bytes: number) {
-  return bytes >= MB ? `${(bytes / MB).toFixed(1)} MB` : `${Math.round(bytes / KB)} KB`;
-}
+const fmt = (bytes: number) => (bytes >= MB ? `${(bytes / MB).toFixed(1)} MB` : `${Math.round(bytes / KB)} KB`);
+
 function validate(file: File) {
   const l = LIMITS[file.type];
-  if (!l) return { ok: false, msg: `Unsupported type: ${file.type}. Use PNG, JPG, GIF, WebP, MP3, or MP4.` };
+  if (!l) return { ok: false, msg: `Unsupported type: ${file.type}. Use PNG/JPG/GIF/WebP/MP3/WAV/MP4.` };
   if (file.size < l.min) return { ok: false, msg: `File too small. Min ${fmt(l.min)}.` };
   if (file.size > l.max) return { ok: false, msg: `File too large. Max ${fmt(l.max)}.` };
   return { ok: true as const };
 }
+
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -86,28 +93,28 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-// 🔧 keep Firestore doc ids clean and consistent
 function sanitizeId(name: string) {
   return (name || '')
     .trim()
     .toLowerCase()
     .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9._-]/g, '') // allow simple safe chars
+    .replace(/[^a-z0-9._-]/g, '')
     .slice(0, 120) || 'asset';
 }
 
-// Build the index doc path where we store metadata for quick lookups
-function buildIndexTarget(params: {
-  uid: string;
-  storyId?: string;
-  category: string;
-  docId: string;
-}) {
+function extFromMime(mime: string) {
+  if (mime === 'image/jpeg') return 'jpg';
+  if (mime === 'audio/mpeg') return 'mp3';
+  const parts = mime.split('/');
+  return parts[1] || 'bin';
+}
+
+// Firestore index path
+function buildIndexTarget(params: { uid: string; storyId?: string; category: string; docId: string }) {
   const base = params.storyId
     ? `users/${params.uid}/assetIndex/stories/${params.storyId}/${params.category}`
     : `users/${params.uid}/assetIndex/uncategorized/${params.category}`;
-  const path = `${base}/${params.docId}`;
-  return { path };
+  return { path: `${base}/${params.docId}` };
 }
 
 /* ---------- Component ---------- */
@@ -132,11 +139,22 @@ export default function UploadImageReference({
   const { user: currentUser } = useAuth();
   const inputRef = useRef<HTMLInputElement | null>(null);
 
+  // keep latest storyId available to async callbacks
+  const storyIdRef = useRef<string | undefined>(storyId);
+  useEffect(() => { storyIdRef.current = storyId; }, [storyId]);
+
+  // build storage path (no leading or trailing slash)
+  const pathFor = useCallback((uid: string, sid: string | undefined, category: string, name?: string) => {
+    const base = sid
+      ? `users/${uid}/assetIndex/stories/${sid}/${category}`
+      : `users/${uid}/assetIndex/uncategorized/${category}`;
+    return name ? `${base}/${name}` : base;
+  }, []);
+
   const noun =
     nounOverride ?? (variant === 'character' ? 'Character' : variant === 'location' ? 'Location' : 'Cover');
   const generateCta = `Generate ${noun} Image (AI)`;
 
-  // kebab-case info tip docs
   const tipDocForOne =
     assetCategory === 'locations'
       ? '/info_tips/location-generation-template.md'
@@ -155,7 +173,6 @@ export default function UploadImageReference({
   const [err, setErr] = useState('');
   const [localGeneratedUrl, setLocalGeneratedUrl] = useState('');
 
-  // Determine the 'accept' attribute for the file input based on category or prop
   const accept = useMemo(() => {
     if (isImageCategory(assetCategory)) {
       return 'image/png, image/jpeg, image/jpg, image/gif, image/webp';
@@ -163,7 +180,6 @@ export default function UploadImageReference({
     return propAccept;
   }, [assetCategory, propAccept]);
 
-  // Inject prompt from InfoPopover/global event
   useEffect(() => {
     const handler = (e: Event) => {
       try {
@@ -184,9 +200,7 @@ export default function UploadImageReference({
   }, [generatedImageUrl, noun, nameToSave]);
 
   useEffect(() => {
-    return () => {
-      if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
-    };
+    return () => { if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl); };
   }, [previewUrl]);
 
   const loadGallery = useCallback(async () => {
@@ -194,14 +208,10 @@ export default function UploadImageReference({
       setGallery([]);
       return;
     }
-
-    // Build path: story-scoped or uncategorized
-    const basePath = storyId
-      ? `users/${currentUser.uid}/assetIndex/stories/${storyId}/${assetCategory}/`
-      : `users/${currentUser.uid}/assetIndex/uncategorized/${assetCategory}/`;
+    const sid = storyIdRef.current;
 
     try {
-      const base = ref(storage, basePath);
+      const base = sref(storage, pathFor(currentUser.uid, sid, assetCategory));
       const res = await listAll(base);
       const items = await Promise.all(
         res.items.map(async (i) => ({
@@ -212,12 +222,17 @@ export default function UploadImageReference({
       );
       setGallery(items.sort((a, b) => (a.name < b.name ? 1 : -1)));
       setErr('');
-    } catch (e) {
-      console.error(`Failed to load gallery for ${storyId ? `story ${storyId}` : 'uncategorized'}:`, e);
-      setErr(`Failed to load gallery: ${(e as Error)?.message || 'Unknown error'}`);
+    } catch (e: any) {
+      console.error(`Failed to load gallery for ${sid ? `story ${sid}` : 'uncategorized'}:`, e);
+      const msg = String(e?.message || e);
+      if (msg.includes('storage/unauthorized')) {
+        setErr('Permission error listing your gallery. Check Storage rules: allow list on users/{uid}/assetIndex/(stories|uncategorized)/{category}.');
+      } else {
+        setErr(`Failed to load gallery: ${msg}`);
+      }
       setGallery([]);
     }
-  }, [assetCategory, currentUser, storyId]);
+  }, [assetCategory, currentUser, pathFor]);
 
   useEffect(() => {
     loadGallery();
@@ -253,14 +268,13 @@ export default function UploadImageReference({
     if (!currentUser || !selectedFile || !nameToSave.trim()) return;
 
     try {
-      const ext = selectedFile.type.split('/')[1] || 'png';
+      const ext = extFromMime(selectedFile.type);
       const cleanName = sanitizeId(nameToSave);
       const filename = `${cleanName}.${ext}`;
-      const path = storyId
-        ? `users/${currentUser.uid}/assetIndex/stories/${storyId}/${assetCategory}/${filename}`
-        : `users/${currentUser.uid}/assetIndex/uncategorized/${assetCategory}/${filename}`;
+      const sid = storyIdRef.current;
+      const path = pathFor(currentUser.uid, sid, assetCategory, filename);
 
-      const storageRef = ref(storage, path);
+      const storageRef = sref(storage, path);
       const dataUrl = await fileToDataUrl(selectedFile);
 
       const meta: Record<string, string> = {
@@ -270,20 +284,19 @@ export default function UploadImageReference({
         createdAt: String(Date.now()),
         'narratum:role': variant,
       };
-      if (storyId) meta['narratum:storyId'] = storyId;
+      if (sid) meta['narratum:storyId'] = sid;
 
       await uploadString(storageRef, dataUrl, 'data_url', { customMetadata: meta });
-
       const downloadUrl = await getDownloadURL(storageRef);
       const item = { name: filename, url: downloadUrl, fullPath: path, contentType: selectedFile.type };
       setGallery((g) => [item, ...g]);
       onSaved?.(item);
 
-      // 🔎 Firestore index doc (for quick lookups and StoryWorkspace usage)
+      // Firestore index doc
       try {
         const { path: docPath } = buildIndexTarget({
           uid: currentUser.uid,
-          storyId,
+          storyId: sid,
           category: assetCategory,
           docId: cleanName,
         });
@@ -296,7 +309,7 @@ export default function UploadImageReference({
             contentType: selectedFile.type || 'application/octet-stream',
             createdAt: serverTimestamp(),
             source: 'uploaded',
-            storyId: storyId ?? null,
+            storyId: sid ?? null,
             role: variant,
           },
           { merge: true }
@@ -307,7 +320,12 @@ export default function UploadImageReference({
 
       alert('Saved to gallery!');
     } catch (e: any) {
-      alert(e?.message || 'Save failed');
+      const msg = String(e?.message || e);
+      if (msg.includes('storage/unauthorized')) {
+        alert('Upload blocked by Storage rules. Confirm allow list for users/{uid}/assetIndex/... and that UID matches request.auth.uid.');
+      } else {
+        alert(e?.message || 'Save failed');
+      }
     }
   }
 
@@ -321,11 +339,10 @@ export default function UploadImageReference({
     try {
       const cleanName = sanitizeId(nameToSave);
       const filename = `${cleanName}.png`;
-      const path = storyId
-        ? `users/${currentUser.uid}/assetIndex/stories/${storyId}/${assetCategory}/${filename}`
-        : `users/${currentUser.uid}/assetIndex/uncategorized/${assetCategory}/${filename}`;
+      const sid = storyIdRef.current;
+      const path = pathFor(currentUser.uid, sid, assetCategory, filename);
 
-      const storageRef = ref(storage, path);
+      const storageRef = sref(storage, path);
 
       const meta: Record<string, string> = {
         displayName: cleanName,
@@ -334,7 +351,7 @@ export default function UploadImageReference({
         createdAt: String(Date.now()),
         'narratum:role': variant,
       };
-      if (storyId) meta['narratum:storyId'] = storyId;
+      if (sid) meta['narratum:storyId'] = sid;
 
       await uploadString(storageRef, localGeneratedUrl, 'data_url', { customMetadata: meta });
 
@@ -343,11 +360,11 @@ export default function UploadImageReference({
       setGallery((g) => [item, ...g]);
       onSaved?.(item);
 
-      // 🔎 Firestore index doc
+      // Firestore index doc
       try {
         const { path: docPath } = buildIndexTarget({
           uid: currentUser.uid,
-          storyId,
+          storyId: sid,
           category: assetCategory,
           docId: cleanName,
         });
@@ -360,7 +377,7 @@ export default function UploadImageReference({
             contentType: 'image/png',
             createdAt: serverTimestamp(),
             source: 'ai-generated',
-            storyId: storyId ?? null,
+            storyId: sid ?? null,
             role: variant,
           },
           { merge: true }
@@ -371,7 +388,12 @@ export default function UploadImageReference({
 
       alert('Generated image saved!');
     } catch (e: any) {
-      alert(e?.message || 'Save failed');
+      const msg = String(e?.message || e);
+      if (msg.includes('storage/unauthorized')) {
+        alert('Save blocked by Storage rules. Verify allow list and path for assetIndex.');
+      } else {
+        alert(e?.message || 'Save failed');
+      }
     }
   }
 
@@ -382,10 +404,9 @@ export default function UploadImageReference({
   async function handleDelete(item: GalleryItem) {
     if (!confirm(`Delete "${item.name}"?`)) return;
     try {
-      await deleteObject(ref(storage, item.fullPath));
+      await deleteObject(sref(storage, item.fullPath));
       setGallery((g) => g.filter((x) => x.fullPath !== item.fullPath));
-      // (Optional) Also delete the index doc by docId (name without extension)
-      // You can add that later if you want strict parity between Storage & Firestore.
+      // (Optional) also delete Firestore index doc
     } catch (e: any) {
       alert(e?.message || 'Delete failed');
     }
@@ -487,7 +508,6 @@ export default function UploadImageReference({
           <>
             <div className="border-t my-4" />
 
-            {/* Suggested Prompt (from AI) — with template helper */}
             {showInnerDescribe && (
               <div>
                 <div className="flex items-center gap-2 mb-1">
@@ -531,7 +551,6 @@ export default function UploadImageReference({
               </div>
             )}
 
-            {/* User main prompt — with Pro Tips helper */}
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <h4 className="font-semibold">{mainPromptLabel ?? `${noun} Description`}</h4>
@@ -551,10 +570,9 @@ export default function UploadImageReference({
               />
             </div>
 
-            {/* Generate / Save generated */}
             {!localGeneratedUrl ? (
               <button
-                onClick={handleGenerate}
+                onClick={() => onGenerateRequest?.(mainPrompt)}
                 disabled={isGenerating || !mainPrompt.trim() || disableSaveButtons}
                 className="w-full py-3 rounded-md bg-[#E97451] text-white font-semibold disabled:opacity-50 transition"
               >
@@ -609,7 +627,7 @@ export default function UploadImageReference({
   }
 
   function GalleryUI() {
-    const galleryMessage = storyId
+    const galleryMessage = storyIdRef.current
       ? (gallery.length === 0 ? 'No files yet for this story. Upload or generate one!' : null)
       : (gallery.length === 0 ? 'No uncategorized files found. Upload or generate one with no story selected!' : null);
 

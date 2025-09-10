@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { Trash2, Loader2 } from 'lucide-react';
 import { storage } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import {
-  ref,
+  ref as sref,
   uploadString,
   getDownloadURL,
   listAll,
@@ -19,24 +19,27 @@ import { useRouter } from 'next/navigation';
 /* ------------------------ Helpers ------------------------ */
 const KB = 1024;
 const MB = 1024 * KB;
+
+// Align with Storage rules (images 10KB–12MB, audio up to 16MB, mp4 up to 64MB)
 const LIMITS: Record<string, { min: number; max: number }> = {
   // IMAGES
-  'image/png':  { min: 50 * KB, max: 15 * MB },
-  'image/jpeg': { min: 50 * KB, max: 15 * MB },
-  'image/jpg':  { min: 50 * KB, max: 15 * MB },
-  'image/gif':  { min: 50 * KB, max: 15 * MB },
-  'image/webp': { min: 50 * KB, max: 15 * MB },
+  'image/png':  { min: 10 * KB, max: 12 * MB },
+  'image/jpeg': { min: 10 * KB, max: 12 * MB },
+  'image/jpg':  { min: 10 * KB, max: 12 * MB },
+  'image/gif':  { min: 10 * KB, max: 12 * MB },
+  'image/webp': { min: 10 * KB, max: 12 * MB },
   // AUDIO
-  'audio/mpeg': { min: 50 * KB, max: 15 * MB },
+  'audio/mpeg': { min: 50 * KB, max: 16 * MB },
+  'audio/wav':  { min: 50 * KB, max: 16 * MB },
   // VIDEO
-  'video/mp4':  { min: 0.5 * MB,  max: 50 * MB },
+  'video/mp4':  { min: 1 * MB,  max: 64 * MB },
 };
 const fmt = (bytes: number) => (bytes >= MB ? `${(bytes / MB).toFixed(1)} MB` : `${Math.round(bytes / KB)} KB`);
 
 function validate(file: File) {
   const l = LIMITS[file.type];
   if (!l) {
-    return { ok: false, msg: `Unsupported type: ${file.type}. Use PNG/JPG/JPEG/GIF/WebP/MP3/MP4.` };
+    return { ok: false, msg: `Unsupported type: ${file.type}. Use PNG/JPG/JPEG/GIF/WebP/MP3/WAV/MP4.` };
   }
   if (file.size < l.min) return { ok: false, msg: `File too small. Min ${fmt(l.min)}.` };
   if (file.size > l.max) return { ok: false, msg: `File too large. Max ${fmt(l.max)}.` };
@@ -62,7 +65,6 @@ function dataURLtoBlob(dataurl: string) {
 }
 
 function mimeToExt(mime: string): string {
-  // Normalize jpeg to jpg for file names
   if (mime === 'image/jpeg') return 'jpg';
   if (mime === 'audio/mpeg') return 'mp3';
   const parts = mime.split('/');
@@ -115,7 +117,7 @@ type GalleryMeta = {
   provider?: string | null;
   location?: string | null;
   prompt?: string | null;
-  language?: string | null;      // NEW
+  language?: string | null;
   source?: string | null;
   displayName?: string | null;
   category?: string | null;
@@ -131,18 +133,19 @@ type PromptContext = {
   title?: string;
   genres?: string[];
   synopsis?: string;
-  language?: string;     // NEW
+  language?: string;
 };
 
 interface CoverImageManagerProps {
   onCoverImageSaved: (url: string) => void;
   initialCoverUrl?: string;
-  storyId: string; // CHANGED: storyId is now mandatory for proper indexing
+  storyId: string; // mandatory
   assetRole?: 'cover' | 'reference' | 'character' | 'location' | 'scene' | string;
   promptContext?: PromptContext;
 }
 
 /* ---------------- Imagen-oriented Prompt Composer ---------------- */
+// (composer unchanged; trimmed for brevity)
 function genreDescriptors(genres: string[] = []): string[] {
   const g = genres.map(s => s.toLowerCase().trim());
   const out: string[] = [];
@@ -188,39 +191,20 @@ function composePromptForImagen(
   lines.push('Create a professional, illustration-style book cover image (no text). Use a single striking composition with a clear focal subject, cinematic lighting, and a cohesive palette.');
 
   if (synopsis) {
-    lines.push(
-      `PRIMARY GUIDANCE (Story Synopsis — highest priority): ${synopsis}${
-        w.synopsis > 1.2 ? ' Focus on accurately reflecting this narrative context.' : ''
-      }`
-    );
+    lines.push(`PRIMARY GUIDANCE (Story Synopsis — highest priority): ${synopsis}${w.synopsis > 1.2 ? ' Focus on accurately reflecting this narrative context.' : ''}`);
   }
-
   if (genres.length) {
     const desc = genreDescriptors(genres);
-    lines.push(
-      `SECONDARY GUIDANCE (Genre atmosphere): ${genres.join(', ')}.` +
-      (desc.length ? ` Visual tone cues: ${desc.join('; ')}.` : '')
-    );
+    lines.push(`SECONDARY GUIDANCE (Genre atmosphere): ${genres.join(', ')}.` + (desc.length ? ` Visual tone cues: ${desc.join('; ')}.` : ''));
   }
-
   if (userDir) {
-    lines.push(
-      `TERTIARY GUIDANCE (Additional creative direction): ${userDir}${
-        w.user > 0.9 ? ' Use this to add tasteful detail while staying faithful to the synopsis.' : ''
-      }`
-    );
+    lines.push(`TERTIARY GUIDANCE (Additional creative direction): ${userDir}${w.user > 0.9 ? ' Use this to add tasteful detail while staying faithful to the synopsis.' : ''}`);
   }
-
   if (title) {
-    lines.push(
-      `LIGHT INFLUENCE (Title motif — do NOT add text): ${title}. Use it only as thematic inspiration; do not place typography.`
-    );
+    lines.push(`LIGHT INFLUENCE (Title motif — do NOT add text): ${title}. Use it only as thematic inspiration; do not place typography.`);
   }
-
   if (isAnimalStory) {
-    lines.push(
-      'SUBJECT SHEET: If the story references “Billy”, render Billy as a dog (zaguate / mixed-breed street canine) — four-legged, muzzle, fur, tail. Never a human.'
-    );
+    lines.push('SUBJECT SHEET: If the story references “Billy”, render Billy as a dog (zaguate / mixed-breed street canine) — four-legged, muzzle, fur, tail. Never a human.');
   }
 
   lines.push('Art Direction: painterly illustration, professional cover quality, detailed but not cluttered, readable negative space for future title placement.');
@@ -228,8 +212,7 @@ function composePromptForImagen(
   lines.push('Do NOT include text, logos, watermarks, or UI elements.');
   if (isAnimalStory) lines.push('Avoid depicting humans unless explicitly required by the synopsis.');
 
-  const negativesBase =
-    'text, watermark, logo, low-res, blurry, jpeg artifacts, malformed anatomy, extra limbs, cropped face';
+  const negativesBase = 'text, watermark, logo, low-res, blurry, jpeg artifacts, malformed anatomy, extra limbs, cropped face';
   const negativesHuman = 'human, person, people, man, woman, boy, girl, humanoid, biped, human hands';
   const negativePrompt = isAnimalStory ? `${negativesBase}, ${negativesHuman}` : negativesBase;
 
@@ -247,6 +230,16 @@ export default function CoverImageManager({
   const { user: currentUser } = useAuth();
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement | null>(null);
+
+  // --- keep latest storyId available to async callbacks to avoid stale captures
+  const storyIdRef = useRef<string>(storyId);
+  useEffect(() => { storyIdRef.current = storyId; }, [storyId]);
+
+  // Path builder (no leading slash)
+  const pathFor = useCallback((uid: string, sid: string, category: string, name?: string) => {
+    const base = `users/${uid}/assetIndex/stories/${sid}/${category}`;
+    return name ? `${base}/${name}` : base;
+  }, []);
 
   // Tabs / selection
   const [activeTab, setActiveTab] = useState<Tab>('my-gallery');
@@ -276,16 +269,19 @@ export default function CoverImageManager({
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [isLoadingGallery, setIsLoadingGallery] = useState(false);
 
-  // ✅ Declare ONCE
+  // Single category for this manager
   const assetCategory: 'covers' = 'covers';
 
   /* ------------------------ Gallery load ------------------------ */
   const loadGallery = useCallback(async () => {
     if (!currentUser) return;
+    const sid = storyIdRef.current;
+    if (!sid) return;
+
     setIsLoadingGallery(true);
     try {
-      const base = ref(storage, `users/${currentUser.uid}/assetIndex/stories/${storyId}/${assetCategory}`);
-      const res = await listAll(base);
+      const folderRef = sref(storage, pathFor(currentUser.uid, sid, assetCategory));
+      const res = await listAll(folderRef);
       const items = await Promise.all(
         res.items.map(async (i) => {
           const [url, meta] = await Promise.all([getDownloadURL(i), getMetadata(i).catch(() => null)]);
@@ -312,13 +308,18 @@ export default function CoverImageManager({
         })
       );
       setGallery(items.sort((a, b) => (a.name < b.name ? 1 : -1)));
-    } catch (e) {
+    } catch (e: any) {
       console.error('Failed to load gallery:', e);
+      const msg = String(e?.message || e);
+      if (msg.includes('storage/unauthorized') || msg.includes('permission')) {
+        alert('Cannot list your gallery. Check Storage rules (allow list) and confirm the storyId is correct.');
+      }
     } finally {
       setIsLoadingGallery(false);
     }
-  }, [currentUser, assetCategory]);
+  }, [currentUser, pathFor, assetCategory]);
 
+  // Reload when user or story changes
   useEffect(() => {
     loadGallery();
     if (initialCoverUrl) {
@@ -327,7 +328,7 @@ export default function CoverImageManager({
         setSelectedFileName(decodeURIComponent(fileNameMatch[1].replace(/\.[^.]+$/, '')));
       }
     }
-  }, [loadGallery, initialCoverUrl]);
+  }, [loadGallery, initialCoverUrl, storyId]);
 
   /* ------------------------ Handlers ------------------------ */
   const handleSelectFromGallery = (item: GalleryItem) => {
@@ -388,7 +389,7 @@ export default function CoverImageManager({
           language: promptContext?.language || 'en',
           targetLanguage: promptContext?.language || 'en',
         }),
-      });      
+      });
 
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'AI describe failed');
@@ -432,7 +433,7 @@ export default function CoverImageManager({
           count: 1,
           promptEcho: prompt,
           role: assetRole,
-          storyId,
+          storyId: storyIdRef.current,
           language: promptContext?.language || 'English',
         }),
       });
@@ -474,19 +475,19 @@ export default function CoverImageManager({
 
       setIsUploading(true);
 
-      // Keep original extension/type
+      const sid = storyIdRef.current!;
       const ext = mimeToExt(uploadedFile.type);
-      const path = `users/${currentUser.uid}/assetIndex/stories/${storyId}/${assetCategory}/${uploadNameToSave}.${ext}`;
-      const storageRef = ref(storage, path);
+      const path = pathFor(currentUser.uid, sid, assetCategory, `${uploadNameToSave}.${ext}`);
+      const storageRef = sref(storage, path);
 
-      // Use data_url so Firebase sets the correct contentType from the data URL header
+      // Upload using the preview data URL so contentType is preserved
       await uploadString(storageRef, uploadedPreviewUrl, 'data_url', {
         customMetadata: {
           displayName: uploadNameToSave,
           category: assetCategory,
           source: 'uploaded',
           createdAt: String(Date.now()),
-          'narratum:storyId': storyId || '',
+          'narratum:storyId': sid || '',
           'narratum:role': assetRole,
           'narratum:language': promptContext?.language || '',
         },
@@ -506,7 +507,12 @@ export default function CoverImageManager({
       alert('Image uploaded and saved to gallery!');
     } catch (e: any) {
       console.error('Upload to Gallery Error:', e);
-      alert(e?.message || 'Failed to upload image to gallery.');
+      const msg = String(e?.message || e);
+      if (msg.includes('storage/unauthorized')) {
+        alert('Upload blocked by Storage rules. Make sure you published the updated rules and the path matches users/{uid}/assetIndex/stories/{storyId}/covers.');
+      } else {
+        alert(e?.message || 'Failed to upload image to gallery.');
+      }
     } finally {
       setIsUploading(false);
     }
@@ -523,8 +529,9 @@ export default function CoverImageManager({
       if (!aiNameToSave.trim()) return alert('Please enter a name for the AI generated image before saving to gallery.');
 
       setIsUploading(true);
-      const path = `users/${currentUser.uid}/assetIndex/stories/${storyId}/${assetCategory}/${aiNameToSave}.png`;
-      const storageRef = ref(storage, path);
+      const sid = storyIdRef.current!;
+      const path = pathFor(currentUser.uid, sid, assetCategory, `${aiNameToSave}.png`);
+      const storageRef = sref(storage, path);
 
       const blob = dataURLtoBlob(generatedImageUrl);
       await uploadBytes(storageRef, blob, {
@@ -537,7 +544,7 @@ export default function CoverImageManager({
           'narratum:provider': lastGenMetaRef.current?.provider || 'vertex-ai',
           'narratum:location': lastGenMetaRef.current?.location || 'us-central1',
           'narratum:prompt': lastGenMetaRef.current?.prompt || aiPrompt,
-          'narratum:storyId': storyId || '',
+          'narratum:storyId': sid || '',
           'narratum:role': assetRole,
           'narratum:language': promptContext?.language || '',
         },
@@ -555,7 +562,12 @@ export default function CoverImageManager({
       alert('AI Generated image saved to gallery!');
     } catch (e: any) {
       console.error('Save Generated to Gallery Error:', e);
-      alert(e?.message || 'Failed to save generated image to gallery.');
+      const msg = String(e?.message || e);
+      if (msg.includes('storage/unauthorized')) {
+        alert('Save blocked by Storage rules. Verify allow list for users/{uid}/assetIndex/stories/{storyId}/covers and that the uid matches request.auth.uid.');
+      } else {
+        alert(e?.message || 'Failed to save generated image to gallery.');
+      }
     } finally {
       setIsUploading(false);
     }
@@ -573,7 +585,7 @@ export default function CoverImageManager({
   async function handleDeleteFromGallery(item: GalleryItem) {
     if (!confirm(`Delete "${item.name}"?`)) return;
     try {
-      await deleteObject(ref(storage, item.fullPath));
+      await deleteObject(sref(storage, item.fullPath));
       setGallery((g) => g.filter((x) => x.fullPath !== item.fullPath));
       if (selectedImageForCover === item.url) {
         setSelectedImageForCover(null);
@@ -809,7 +821,7 @@ export default function CoverImageManager({
           {activeTab === 'new-upload' && (
             <div className="space-y-4">
               <h4 className="font-semibold text-[#3D4F60]">Upload New Image</h4>
-              <p className="text-sm text-gray-700">Upload an image (PNG/JPG/JPEG/GIF/WebP, 100KB–5MB).</p>
+              <p className="text-sm text-gray-700">Upload an image (PNG/JPG/JPEG/GIF/WebP, 10KB–12MB).</p>
 
               <div className="border-2 border-dashed border-[#B0C4DE] rounded-md p-4 text-center bg-white">
                 <input
