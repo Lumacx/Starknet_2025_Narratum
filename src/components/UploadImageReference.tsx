@@ -53,14 +53,14 @@ const isImageCategory = (c: AssetCategory) =>
 const KB = 1024;
 const MB = 1024 * KB;
 const LIMITS: Record<string, { min: number; max: number }> = {
-  'image/png': { min: 50 * KB, max: 10 * MB },
-  'image/jpeg': { min: 50 * KB, max: 10 * MB },
-  'image/jpg': { min: 50 * KB, max: 10 * MB }, // Added JPG
-  'image/gif': { min: 50 * KB, max: 10 * MB }, // Added GIF
-  'image/webp': { min: 50 * KB, max: 10 * MB }, // Added WebP
+  'image/png': { min: 50 * KB, max: 15 * MB },
+  'image/jpeg': { min: 50 * KB, max: 15 * MB },
+  'image/jpg': { min: 50 * KB, max: 15 * MB }, // Added JPG
+  'image/gif': { min: 50 * KB, max: 15 * MB }, // Added GIF
+  'image/webp': { min: 50 * KB, max: 15 * MB }, // Added WebP
   'audio/mpeg': { min: 50 * KB, max: 15 * MB },
   'audio/mp3': { min: 50 * KB, max: 15 * MB },
-  'video/mp4': { min: 1 * MB, max: 50 * MB },
+  'video/mp4': { min: 0.5 * MB, max: 50 * MB },
 };
 function fmt(bytes: number) {
   return bytes >= MB ? `${(bytes / MB).toFixed(1)} MB` : `${Math.round(bytes / KB)} KB`;

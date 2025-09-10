@@ -4,6 +4,8 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { X } from 'lucide-react';
+import { useRouter } from 'next/navigation'; // Import useRouter for navigation
+import { auth } from '@/lib/firebase'; // Import auth from your central Firebase client setup
 
 /* ───────────────────────────────────────────
    Types to fix: window.paypal.Buttons typing
@@ -101,6 +103,7 @@ const SubscriptionPage: React.FC = () => {
   const [codeError, setCodeError] = useState<string | null>(null);
   const [paypalClientId, setPaypalClientId] = useState<string | null>(null);
   const [sdkReady, setSdkReady] = useState(false);
+  const router = useRouter(); // Initialize Next.js router
 
   const fanPrice = useMemo(() => computePrice('Fan', billing, applied), [billing, applied]);
   const premiumPrice = useMemo(() => computePrice('Premium', billing, applied), [billing, applied]);
@@ -127,7 +130,6 @@ const SubscriptionPage: React.FC = () => {
   useEffect(() => {
     if (paypalClientId && !sdkReady) {
       const script = document.createElement('script');
-      // Note: components=buttons is helpful when you rely on Buttons UI
       script.src = `https://www.paypal.com/sdk/js?client-id=${paypalClientId}&components=buttons&vault=true&intent=subscription`;
       script.onload = () => setSdkReady(true);
       script.onerror = () => {
@@ -223,7 +225,6 @@ const SubscriptionPage: React.FC = () => {
     const buttonId = `paypal-button-container-${planName}`;
 
     useEffect(() => {
-      // Strong runtime guard to avoid undefined access
       const hasButtons =
         typeof window !== 'undefined' &&
         !!window.paypal &&
@@ -238,20 +239,60 @@ const SubscriptionPage: React.FC = () => {
             createSubscription: function (data: any, actions: any) {
               let planId: string | undefined;
               if (planName === 'Fan') {
-                planId = billing === 'monthly' ? 'YOUR_FAN_MONTHLY_PLAN_ID' : 'YOUR_FAN_YEARLY_PLAN_ID';
+                planId = billing === 'monthly' ? 'P-060018922N140623RNC75AQI' : 'P-1J502793FF6508931NC75HHY';
               } else if (planName === 'Premium') {
-                planId = billing === 'monthly' ? 'YOUR_PREMIUM_MONTHLY_PLAN_ID' : 'YOUR_PREMIUM_YEARLY_PLAN_ID';
+                planId = billing === 'monthly' ? 'P-6DA52220W74986025NC75CUI' : 'P-0J155152P7353423PNC75EEI';
               }
               if (!planId) return Promise.reject('Invalid plan selected');
 
               return actions.subscription.create({
                 plan_id: planId,
+                // You could include custom_id here if desired, though server-side verification
+                // based on Firebase ID token handles user linking.
+                // custom_id: auth.currentUser?.uid, // Example: Link PayPal subscription to Firebase UID
               });
             },
-            onApprove: function (data: any) {
+            onApprove: async function (data: any) {
               setMessage('Subscription approved! Verifying payment...');
               console.log('Subscription Approved:', data.subscriptionID);
-              // TODO: call backend to verify and activate
+
+              try {
+                const user = auth.currentUser; // Get current Firebase user
+                if (!user) {
+                  setMessage('Error: User not logged in. Please log in to complete subscription.');
+                  router.push('/login'); // Redirect to login page
+                  return;
+                }
+
+                const idToken = await user.getIdToken(); // Get Firebase ID Token
+
+                // Call your backend to verify the subscription
+                const response = await fetch('/api/paypal-verify-subscription', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${idToken}`, // Send Firebase ID Token
+                  },
+                  body: JSON.stringify({
+                    subscriptionID: data.subscriptionID,
+                    planName,
+                    billingCycle: billing,
+                  }),
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                  setMessage('Subscription successfully activated!');
+                  router.push('/dashboard?subscription=success'); // Redirect to dashboard with success message
+                } else {
+                  setMessage(`Subscription verification failed: ${result.error}`);
+                  console.error('Server verification failed:', result.error);
+                }
+              } catch (error) {
+                setMessage('Error during subscription verification.');
+                console.error('Error calling backend for verification:', error);
+              }
             },
             onError: function (err: any) {
               console.error('PayPal error:', err);
@@ -263,7 +304,7 @@ const SubscriptionPage: React.FC = () => {
           })
           .render(`#${buttonId}`);
       }
-    }, [sdkReady, planName, billing, price, buttonId]);
+    }, [sdkReady, planName, billing, price, buttonId, router, auth]); // Add router and auth to dependencies
 
     if (!sdkReady) {
       return (

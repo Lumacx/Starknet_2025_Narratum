@@ -20,18 +20,29 @@ import { useRouter } from 'next/navigation';
 const KB = 1024;
 const MB = 1024 * KB;
 const LIMITS: Record<string, { min: number; max: number }> = {
-  'image/png':   { min: 100 * KB, max: 5 * MB },
-  'audio/mpeg':  { min: 100 * KB, max: 5 * MB },
-  'video/mp4':   { min: 1 * MB,  max: 50 * MB },
+  // IMAGES
+  'image/png':  { min: 50 * KB, max: 15 * MB },
+  'image/jpeg': { min: 50 * KB, max: 15 * MB },
+  'image/jpg':  { min: 50 * KB, max: 15 * MB },
+  'image/gif':  { min: 50 * KB, max: 15 * MB },
+  'image/webp': { min: 50 * KB, max: 15 * MB },
+  // AUDIO
+  'audio/mpeg': { min: 50 * KB, max: 15 * MB },
+  // VIDEO
+  'video/mp4':  { min: 0.5 * MB,  max: 50 * MB },
 };
 const fmt = (bytes: number) => (bytes >= MB ? `${(bytes / MB).toFixed(1)} MB` : `${Math.round(bytes / KB)} KB`);
+
 function validate(file: File) {
   const l = LIMITS[file.type];
-  if (!l) return { ok: false, msg: `Unsupported type: ${file.type}. Use PNG/MP3/MP4.` };
+  if (!l) {
+    return { ok: false, msg: `Unsupported type: ${file.type}. Use PNG/JPG/JPEG/GIF/WebP/MP3/MP4.` };
+  }
   if (file.size < l.min) return { ok: false, msg: `File too small. Min ${fmt(l.min)}.` };
   if (file.size > l.max) return { ok: false, msg: `File too large. Max ${fmt(l.max)}.` };
   return { ok: true as const };
 }
+
 const fileToDataUrl = (file: File) =>
   new Promise<string>((resolve, reject) => {
     const r = new FileReader();
@@ -48,6 +59,14 @@ function dataURLtoBlob(dataurl: string) {
   const u8arr = new Uint8Array(bstr.length);
   for (let i = 0; i < bstr.length; i++) u8arr[i] = bstr.charCodeAt(i);
   return new Blob([u8arr], { type: mime });
+}
+
+function mimeToExt(mime: string): string {
+  // Normalize jpeg to jpg for file names
+  if (mime === 'image/jpeg') return 'jpg';
+  if (mime === 'audio/mpeg') return 'mp3';
+  const parts = mime.split('/');
+  return parts[1] || 'bin';
 }
 
 /** Normalize /api/generate-image outputs into {dataUrl, modelUsed}. */
@@ -458,9 +477,13 @@ export default function CoverImageManager({
       if (!uploadNameToSave.trim()) return alert('Please enter a name for the image before saving to gallery.');
 
       setIsUploading(true);
-      const path = `users/${currentUser.uid}/assets/${assetCategory}/${uploadNameToSave}.png`;
+
+      // Keep original extension/type
+      const ext = mimeToExt(uploadedFile.type);
+      const path = `users/${currentUser.uid}/assets/${assetCategory}/${uploadNameToSave}.${ext}`;
       const storageRef = ref(storage, path);
 
+      // Use data_url so Firebase sets the correct contentType from the data URL header
       await uploadString(storageRef, uploadedPreviewUrl, 'data_url', {
         customMetadata: {
           displayName: uploadNameToSave,
@@ -474,7 +497,7 @@ export default function CoverImageManager({
       });
       const downloadUrl = await getDownloadURL(storageRef);
 
-      setGallery(g => [{ name: `${uploadNameToSave}.png`, url: downloadUrl, fullPath: path }, ...g]);
+      setGallery(g => [{ name: `${uploadNameToSave}.${ext}`, url: downloadUrl, fullPath: path }, ...g]);
 
       setActiveTab('my-gallery');
       setSelectedImageForCover(downloadUrl);
@@ -790,10 +813,16 @@ export default function CoverImageManager({
           {activeTab === 'new-upload' && (
             <div className="space-y-4">
               <h4 className="font-semibold text-[#3D4F60]">Upload New Image</h4>
-              <p className="text-sm text-gray-700">Upload a PNG image (100KB - 5MB).</p>
+              <p className="text-sm text-gray-700">Upload an image (PNG/JPG/JPEG/GIF/WebP, 100KB–5MB).</p>
 
               <div className="border-2 border-dashed border-[#B0C4DE] rounded-md p-4 text-center bg-white">
-                <input ref={inputRef} type="file" accept="image/png" className="hidden" onChange={onChooseFile} />
+                <input
+                  ref={inputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                  className="hidden"
+                  onChange={onChooseFile}
+                />
                 <button
                   className="cursor-pointer text-[#E97451] font-semibold hover:underline"
                   onClick={() => inputRef.current?.click()}
