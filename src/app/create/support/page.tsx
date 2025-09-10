@@ -195,6 +195,13 @@ export default function SupportPage() {
   const [userStoriesLoading, setUserStoriesLoading] = useState(false);
   const [selectedStoryId, setSelectedStoryId] = useState<string | undefined>(storyId); // primary source of truth
 
+    // NEW: toggle to show uncategorized assets
+    const [showUncategorized, setShowUncategorized] = useState(false);
+
+    // Helper: single source for the <select> value
+    const storySelectValue = showUncategorized ? '__UNCAT__' : (selectedStoryId || '');
+
+
   // fetch story context (title/genres/synopsis/lang) based on selectedStoryId
   useEffect(() => {
     (async () => {
@@ -301,27 +308,27 @@ export default function SupportPage() {
   // NEW: Sync URL <-> selectedStoryId and other resets
   useEffect(() => {
     if (typeof window === 'undefined') return;
+  
     const params = new URLSearchParams(window.location.search);
     params.set('tab', active);
-
-    const urlStoryId = search.get('storyId');
-
-    // sync state from URL if needed
-    if (urlStoryId && urlStoryId !== selectedStoryId) {
-      setSelectedStoryId(urlStoryId);
-    } else if (!urlStoryId && selectedStoryId) {
-      setSelectedStoryId(undefined);
-    }
-
-    // always reflect selectedStoryId to URL
-    if (selectedStoryId) {
+  
+    // Reflect selector state into URL:
+    if (showUncategorized) {
+      params.set('assets', 'uncategorized');
+      params.delete('storyId');
+    } else if (selectedStoryId) {
       params.set('storyId', selectedStoryId);
+      params.delete('assets');
     } else {
       params.delete('storyId');
+      params.delete('assets');
     }
-
+  
     window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+  
     localStorage.setItem('supportTab', active);
+  
+    // resets
     setDisplayUrl('');
     setDisplayContentType(undefined);
     setDesc('');
@@ -329,7 +336,8 @@ export default function SupportPage() {
     setDescLoading(false);
     setGeneratedImageUrlForChild('');
     setLastModelUsed('');
-  }, [active, search, selectedStoryId]);
+  }, [active, selectedStoryId, showUncategorized]);
+  
 
   useEffect(() => {
     if (!TABS.some((t) => t.key === active)) setActive('characters');
@@ -359,8 +367,8 @@ export default function SupportPage() {
 
   // NEW: guard requires active story + prompt; uses selectedStoryId
   const handleGenerateRequest = async (userPrompt: string) => {
-    if (!selectedStoryId) {
-      alert('Please select an active story from the dropdown to generate an image.');
+    if (!showUncategorized && !selectedStoryId) {
+      alert('Select a story or choose "All Uncategorized Assets" to generate an image.');
       return;
     }
     if (!userPrompt.trim()) {
@@ -369,13 +377,21 @@ export default function SupportPage() {
     }
     setIsGenerating(true);
     setGeneratedImageUrlForChild('');
+  
     try {
       const { prompt, negativePrompt } = composePromptForImagen(userPrompt, memoizedPromptContext);
       const res = await fetch('/api/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, negativePrompt, count: 1, storyId: selectedStoryId }),
+        body: JSON.stringify({
+          prompt,
+          negativePrompt,
+          count: 1,
+          // Pass undefined to mean "uncategorized"
+          storyId: showUncategorized ? undefined : selectedStoryId,
+        }),
       });
+
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'AI image generation failed');
 
@@ -429,31 +445,30 @@ export default function SupportPage() {
 
   // NEW: guard requires active story; uses selectedStoryId
   const handleSceneGeneration = async () => {
-    if (!selectedStoryId) {
-      alert('Please select an active story from the dropdown to generate a scene.');
-      return;
-    }
-    if (!composerPrompt.trim() || (selectedCharacters.length === 0 && selectedLocations.length === 0)) {
-      alert('Please select at least one image and provide a prompt.');
-      return;
-    }
-    setIsComposing(true);
-    setGeneratedImageUrlForChild('');
+      if (!showUncategorized && !selectedStoryId) {
+        alert('Select a story or choose "All Uncategorized Assets" to generate a scene.');
+        return;
+      }
+      if (!composerPrompt.trim() || (selectedCharacters.length === 0 && selectedLocations.length === 0)) {
+        alert('Please select at least one image and provide a prompt.');
+        return;
+      }
+      setIsComposing(true);
+      setGeneratedImageUrlForChild('');
 
-    try {
-      const imageUrls = [...selectedCharacters, ...selectedLocations];
+      try {
+        const imageUrls = [...selectedCharacters, ...selectedLocations];
+        const imagesAsDataUrls = await Promise.all(imageUrls.map(url => urlToDataUrl(url)));
 
-      const imagesAsDataUrls = await Promise.all(imageUrls.map(url => urlToDataUrl(url)));
-
-      const res = await fetch('/api/generate-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: composerPrompt,
-          images: imagesAsDataUrls,
-          storyId: selectedStoryId,
-        }),
-      });
+        const res = await fetch('/api/generate-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: composerPrompt,
+            images: imagesAsDataUrls,
+            storyId: showUncategorized ? undefined : selectedStoryId,
+          }),
+        });
 
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'AI scene generation failed');
@@ -516,7 +531,9 @@ export default function SupportPage() {
     );
   }
 
-  const canSaveAssets = !!selectedStoryId; // NEW: enable save only if a story is selected
+  // const canSaveAssets = !!selectedStoryId;
+const canSaveAssets = !!selectedStoryId || showUncategorized;
+
 
   return (
     <div className="min-h-screen p-6 bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26] text-[#3A4B5C] dark:text-[#E0C9A0] font-sans">
@@ -536,40 +553,63 @@ export default function SupportPage() {
             </p>
             <p className="text-xs mt-1 text-[#3A4B5C]/60 dark:text-[#E0C9A0]/60">
               AI language: <strong>{langLabel}</strong>
-              {context.title ? ` • Context: ${context.title}` : ''}
+              {showUncategorized
+                ? ' • Context: Uncategorized'
+                : (context.title ? ` • Context: ${context.title}` : '')
+              }
             </p>
+
 
             {/* NEW: Story Selector Dropdown */}
             <div className="flex items-center gap-4 mt-2">
-              <label htmlFor="story-selector" className="text-sm font-semibold whitespace-nowrap">
-                Active Story:
-              </label>
-              <select
-                id="story-selector"
-                className="
-                  w-full max-w-xs p-2 border-2 rounded-md
-                  bg-white text-slate-900 border-slate-300
-                  dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]
-                "
-                value={selectedStoryId || ''}
-                onChange={(e) => setSelectedStoryId(e.target.value || undefined)}
-                disabled={userStoriesLoading}
-              >
-                <option value="">
-                  {userStoriesLoading ? 'Loading stories...' : 'Select a story...'}
-                </option>
-                {userStories.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.title || '(untitled)'}
+                <label htmlFor="story-selector" className="text-sm font-semibold whitespace-nowrap">
+                  Active Story:
+                </label>
+                <select
+                  id="story-selector"
+                  className="
+                    w-full max-w-xs p-2 border-2 rounded-md
+                    bg-white text-slate-900 border-slate-300
+                    dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]
+                  "
+                  value={storySelectValue}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === '__UNCAT__') {
+                      setShowUncategorized(true);
+                      setSelectedStoryId(undefined);
+                    } else {
+                      setShowUncategorized(false);
+                      setSelectedStoryId(v || undefined);
+                    }
+                  }}
+                  disabled={userStoriesLoading}
+                >
+                  <option value="">
+                    {userStoriesLoading ? 'Loading stories...' : 'Select a story...'}
                   </option>
-                ))}
-              </select>
-              {!selectedStoryId && (
-                <span className="text-sm text-red-600 font-medium">
-                  (No story selected for asset management)
-                </span>
-              )}
-            </div>
+
+                  {/* NEW: special option */}
+                  <option value="__UNCAT__">All Uncategorized Assets</option>
+
+                  {userStories.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.title || '(untitled)'}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Dynamic helper chip */}
+                {showUncategorized ? (
+                  <span className="text-sm font-medium text-blue-700 dark:text-blue-200">
+                    Viewing & saving to <em>Uncategorized</em>
+                  </span>
+                ) : !selectedStoryId ? (
+                  <span className="text-sm text-red-600 font-medium">
+                    (No story selected)
+                  </span>
+                ) : null}
+              </div>
           </div>
           <div className="flex gap-3">
             <Link className="underline text-sm" href="/create/begin">← Back</Link>
@@ -681,12 +721,29 @@ export default function SupportPage() {
               {/* --- 3. UPLOAD / GENERATE COMPONENT --- */}
               <div className="uploader-scope">
                 {/* NEW: choose a story message */}
-                {!canSaveAssets && (
+                {!canSaveAssets ? (
                   <div className="mb-4 p-3 rounded-md bg-yellow-100 border border-yellow-300 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-600 dark:text-yellow-200">
-                    <p className="font-semibold">Choose a Story to enable asset management.</p>
-                    <p className="text-sm">Select a story from the dropdown above to upload, generate, or view its specific assets.</p>
+                    <p className="font-semibold">Choose where to manage assets.</p>
+                    <p className="text-sm">
+                      Select a story from the dropdown, or choose <strong>All Uncategorized Assets</strong> to work outside any story.
+                    </p>
+                  </div>
+                ) : showUncategorized ? (
+                  <div className="mb-4 p-3 rounded-md bg-blue-100 border border-blue-300 text-blue-800 dark:bg-blue-900/30 dark:border-blue-600 dark:text-blue-200">
+                    <p className="font-semibold">Uncategorized mode</p>
+                    <p className="text-sm">
+                      Uploads & saves will go to <code>users/&lt;uid&gt;/assetIndex/uncategorized/&lt;category&gt;/</code>.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mb-4 p-3 rounded-md bg-emerald-100 border border-emerald-300 text-emerald-800 dark:bg-emerald-900/30 dark:border-emerald-600 dark:text-emerald-200">
+                    <p className="font-semibold">Story mode</p>
+                    <p className="text-sm">
+                      Uploads & saves will go to <code>users/&lt;uid&gt;/assetIndex/stories/{selectedStoryId}/&lt;category&gt;/</code>.
+                    </p>
                   </div>
                 )}
+
 
                 <div className="flex items-center gap-3 text-xs mb-2">
                   <span className="opacity-70">Generation Tips:</span>
@@ -718,7 +775,8 @@ export default function SupportPage() {
                   onGenerateRequest={handleGenerateRequest}
                   isGenerating={isGenerating}
                   generatedImageUrl={generatedImageUrlForChild}
-                  storyId={selectedStoryId || ''}              // UPDATED: use selectedStoryId
+                  storyId={showUncategorized ? undefined : selectedStoryId}
+              // UPDATED: use selectedStoryId
                   disableSaveButtons={!canSaveAssets}          // NEW
                 />
               </div>
@@ -785,7 +843,7 @@ export default function SupportPage() {
                   selection={activeTab.key === 'characters' ? selectedCharacters : selectedLocations}
                   onSelectionChange={activeTab.key === 'characters' ? setSelectedCharacters : setSelectedLocations}
                   maxSelection={activeTab.key === 'characters' ? 3 : 2}
-                  storyId={selectedStoryId || ''}              // UPDATED: use selectedStoryId
+                  storyId={showUncategorized ? undefined : selectedStoryId}    // UPDATED: use selectedStoryId
                   disableSaveButtons={!canSaveAssets}          // NEW
                 />
               </div>

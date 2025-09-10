@@ -405,6 +405,11 @@ export default function ScenesPage() {
   const [userStories, setUserStories] = useState<StorySummary[]>([]);
   const [userStoriesLoading, setUserStoriesLoading] = useState(false);
   const [selectedStoryId, setSelectedStoryId] = useState<string | undefined>(storyId);
+  // NEW: uncategorized toggle + select value
+    const [showUncategorized, setShowUncategorized] = useState(false);
+    const storySelectValue = showUncategorized ? '__UNCAT__' : (selectedStoryId || '');
+    // Optional: used only for readability in effects
+    const canBrowseGallery = !!selectedStoryId || showUncategorized;
 
   // UI locals
   const [imagePrompt, setImagePrompt] = useState('');
@@ -510,27 +515,52 @@ export default function ScenesPage() {
         setStory(prev => prev ? prev : { title: '', synopsis: '', genres: [], language: 'en' as LangCode, scenes: [makeDefaultScene(0)], pageCount: 10 });
       }
     })();
+  
+    useEffect(() => {
+      const assets = searchParams.get('assets');
+      if (assets === 'uncategorized') {
+        setShowUncategorized(true);
+        setSelectedStoryId(undefined);
+      }
+      // keep selectedStoryId if ?storyId was present
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+    
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedStoryId]);
 
   // keep URL + lastScene (UPDATED to sync selectedStoryId)
   useEffect(() => {
     const sp2 = new URLSearchParams(window.location.search);
-
+  
     const urlStoryId = searchParams.get('storyId');
-    if (urlStoryId && urlStoryId !== selectedStoryId) {
-      setSelectedStoryId(urlStoryId);
-    } else if (!urlStoryId && selectedStoryId) {
+    const urlAssets  = searchParams.get('assets');
+  
+    // Pull from URL -> state (idempotent)
+    if (urlAssets === 'uncategorized' && !showUncategorized) {
+      setShowUncategorized(true);
       setSelectedStoryId(undefined);
+    } else if (urlStoryId && urlStoryId !== selectedStoryId && !showUncategorized) {
+      setSelectedStoryId(urlStoryId);
     }
-
-    if (selectedStoryId) sp2.set('storyId', selectedStoryId);
-    else sp2.delete('storyId');
-
+  
+    // State -> URL
+    if (showUncategorized) {
+      sp2.delete('storyId');
+      sp2.set('assets', 'uncategorized');
+    } else if (selectedStoryId) {
+      sp2.set('storyId', selectedStoryId);
+      sp2.delete('assets');
+    } else {
+      sp2.delete('storyId');
+      sp2.delete('assets');
+    }
+  
     sp2.set('scene', String(currentIndex));
     window.history.replaceState({}, '', `?${sp2.toString()}`);
     localStorage.setItem('reader:lastScene', String(currentIndex));
-  }, [currentIndex, selectedStoryId, searchParams]);
+  }, [currentIndex, selectedStoryId, showUncategorized, searchParams]);
+  
 
   /* -------- Fetch user's stories for dropdown -------- */
   useEffect(() => {
@@ -578,39 +608,27 @@ export default function ScenesPage() {
 
   /* -------- Gallery loader (UPDATED path + selectedStoryId requirement) -------- */
   const loadGallery = useCallback(async (category: AssetCategory) => {
-    if (!user || !selectedStoryId) {
+    if (!user || (!selectedStoryId && !showUncategorized)) {
       setGallery([]);
       return;
     }
     setLoadingGallery(true);
     try {
-      const base = sref(storage, `users/${user.uid}/assetIndex/stories/${selectedStoryId}/${category}/`);
+      const basePath = showUncategorized
+        ? `users/${user.uid}/assetIndex/uncategorized/${category}/`
+        : `users/${user.uid}/assetIndex/stories/${selectedStoryId}/${category}/`;
+      const base = sref(storage, basePath);
       const res = await listAll(base);
       const items = await Promise.all(
         res.items.map(async (i) => {
           const [url, meta] = await Promise.all([getDownloadURL(i), getMetadata(i).catch(() => null)]);
-          const cm = meta?.customMetadata || {};
-          const it: GalleryItem = {
+          return {
             name: i.name,
             fullPath: i.fullPath,
             url,
-            contentType: meta?.contentType || undefined,
+            contentType: meta?.contentType,
             size: typeof meta?.size === 'number' ? meta.size : undefined,
-            meta: {
-              modelUsed: (cm['narratum:model'] || cm['modelUsed'] || cm['model'] || null) as string | null,
-              provider: (cm['narratum:provider'] || cm['provider'] || null) as string | null,
-              location: (cm['narratum:location'] || cm['location'] || null) as string | null,
-              prompt: (cm['narratum:prompt'] || cm['prompt'] || null) as string | null,
-              language: (cm['narratum:language'] || null) as string | null,
-              source: (cm['source'] || null) as string | null,
-              displayName: (cm['displayName'] || null) as string | null,
-              category: (cm['category'] || null) as string | null,
-              createdAt: (cm['createdAt'] || null) as string | null,
-              storyId: (cm['narratum:storyId'] || cm['storyId'] || null) as string | null,
-              role: (cm['narratum:role'] || cm['role'] || null) as string | null,
-            },
-          };
-          return it;
+          } as GalleryItem;
         })
       );
       setGallery(items.sort((a, b) => (a.name < b.name ? 1 : -1)));
@@ -620,16 +638,15 @@ export default function ScenesPage() {
     } finally {
       setLoadingGallery(false);
     }
-  }, [user, selectedStoryId]);
-
+  }, [user, selectedStoryId, showUncategorized]);
+  
   useEffect(() => {
-    if (!user || !selectedStoryId) {
+    if (!user || (!selectedStoryId && !showUncategorized)) {
       setGallery([]);
       return;
     }
-    const tab = activeTab as AssetCategory;
-    void loadGallery(tab);
-  }, [user, activeTab, loadGallery, selectedStoryId]);
+    void loadGallery(activeTab as AssetCategory);
+  }, [user, activeTab, loadGallery, selectedStoryId, showUncategorized]);
 
   /* -------- Helpers to update local state -------- */
   function updateCurrentScene(patch: Partial<Scene>) {
@@ -1115,16 +1132,32 @@ export default function ScenesPage() {
                   bg-white text-slate-900 border-slate-300
                   dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]
                 "
-                value={selectedStoryId || ''}
-                onChange={(e) => setSelectedStoryId(e.target.value || undefined)}
+                value={storySelectValue}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === '__UNCAT__') {
+                    setShowUncategorized(true);
+                    setSelectedStoryId(undefined);
+                  } else {
+                    setShowUncategorized(false);
+                    setSelectedStoryId(v || undefined);
+                  }
+                }}
                 disabled={userStoriesLoading}
               >
                 <option value="">{userStoriesLoading ? 'Loading stories...' : 'Select a story...'}</option>
+                <option value="__UNCAT__">All Uncategorized Assets</option>
                 {userStories.map((s) => (
                   <option key={s.id} value={s.id}>{s.title || '(untitled)'}</option>
                 ))}
               </select>
-            </div>
+            {/* 👇 Insert this right after the <select> */}
+                {showUncategorized ? (
+                  <span className="text-xs ml-2 px-2 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200">
+                    Viewing Uncategorized
+                  </span>
+                ) : null}
+              </div>
           </div>
           <div className="flex items-center gap-2">
             <Link href="/create/begin" className="text-xs px-3 py-1.5 rounded-lg bg-white border-2 border-[#3D4F60]/20 dark:bg-[#1A2533] dark:border-[#4B5A6B]/20">Begin</Link>
@@ -1471,7 +1504,11 @@ export default function ScenesPage() {
                   <div className="text-sm opacity-70 flex items-center gap-2"><Loader2 className="animate-spin" /> Loading…</div>
                 ) : gallery.length === 0 ? (
                   <div className="text-sm opacity-70 flex items-center gap-2">
-                    <Info className="w-4 h-4" /> No files yet in {GALLERY_TABS.find(x => x.key === activeTab)?.label}.
+                    <Info className="w-4 h-4" />
+                      {showUncategorized
+                        ? 'No uncategorized files found.'
+                        : `No files yet for this story in ${GALLERY_TABS.find(x => x.key === activeTab)?.label}.`
+                      }
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
