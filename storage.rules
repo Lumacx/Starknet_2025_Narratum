@@ -33,7 +33,6 @@ service firebase.storage {
 
     /* ----------------- /users/{uid}/assets categories ----------------- */
     function isImageCategory(cat) {
-      // include generatedImages as image content
       return cat in ['covers','avatars','characters','locations','backgrounds','generatedImages'];
     }
     function isAudioCategory(cat) { return cat in ['audioNarrations','audioEffects']; }
@@ -45,82 +44,55 @@ service firebase.storage {
         // IMAGES: PNG/JPG/WEBP (10 KB – 12 MB)
         (isImageCategory(cat) && isImg() && sizeBetween(10*1024, 12*1024*1024)) ||
 
-        // AUDIO: MP3/WAV (50 KB – 16 MB)
-        (isAudioCategory(cat) && (isMp3() || isWav()) && sizeBetween(50*1024, 16*1024*1024)) ||
+        // AUDIO: MP3/WAV (10 KB – 16 MB)
+        (isAudioCategory(cat) && (isMp3() || isWav()) && sizeBetween(10*1024, 16*1024*1024)) ||
 
-        // VIDEO: MP4 (1 MB – 64 MB)
-        (isVideoCategory(cat) && isMp4() && sizeBetween(1*1024*1024, 64*1024*1024)) ||
+        // VIDEO: MP4 (0.5 MB – 64 MB)
+        (isVideoCategory(cat) && isMp4() && sizeBetween(0.5*1024*1024, 64*1024*1024)) ||
 
-        // OTHERS (conservative)
+        // OTHERS
         (isOtherCategory(cat) && (
-          (isImg() && sizeBetween(50*1024, 12*1024*1024)) ||
-          (isMp3() && sizeBetween(50*1024, 16*1024*1024)) ||
-          (isWav() && sizeBetween(50*1024, 16*1024*1024)) ||
-          (isMp4() && sizeBetween(1*1024*1024, 64*1024*1024))
+          (isImg()  && sizeBetween(10*1024, 12*1024*1024)) ||
+          (isMp3()  && sizeBetween(10*1024, 16*1024*1024)) ||
+          (isWav()  && sizeBetween(10*1024, 16*1024*1024)) ||
+          (isMp4()  && sizeBetween(0.5*1024*1024, 64*1024*1024))
         ));
     }
 
-    /* ----------------- Avatars ----------------- */
-    // Prefix: /avatars/{uid}
-    match /avatars/{uid} {
-      // listing avatar folder
-      allow list: if true; // make public if you want public profiles
-    }
+    /* ----------------- Rutas principales ----------------- */
+
+    // Avatares de perfil
     match /avatars/{uid}/{file=**} {
-      allow read: if true; // public profiles; change to isOwner(uid) if needed
+      allow read: if true;
       allow create, update: if isOwner(uid) && isImg() && sizeBetween(10*1024, 5*1024*1024);
       allow delete: if isOwner(uid);
     }
 
-    /* ----------------- Personal gallery: /users/{uid}/assets/{category}/... ----------------- */
-    match /users/{uid}/assets/{category} {
-      allow list: if isOwner(uid);
-    }
+    // Galería personal (legacy): /users/{uid}/assets/{category}/{file...}
     match /users/{uid}/assets/{category}/{file=**} {
       allow read: if isOwner(uid);
       allow create, update: if isOwner(uid) && assetValidForCategory(category);
       allow delete: if isOwner(uid);
     }
 
-    /* ----------------- Story assets (reader/publish): /users/{uid}/stories/{storyId}/{folder}/... ----------------- */
-    match /users/{uid}/stories/{storyId}/{folder} {
-      // allow listing pages/audio/videos under a story
-      allow list: if true; // reader/preview needs public listing
-    }
+    // Assets de historias publicados
     match /users/{uid}/stories/{storyId}/{folder}/{file=**} {
-      allow read: if true; // public read for published/reader flows
+      allow read: if true; // público (lector)
       allow create, update: if isOwner(uid) && (
-        ((folder == 'images') && isImg() && sizeBetween(10*1024, 12*1024*1024)) ||
-        ((folder == 'audio')  && (isMp3() || isWav()) && sizeBetween(50*1024, 16*1024*1024)) ||
-        ((folder == 'videos') && isMp4() && sizeBetween(1*1024*1024, 64*1024*1024))
+        (folder == 'images' && isImg() && sizeBetween(10*1024, 12*1024*1024)) ||
+        (folder == 'audio'  && (isMp3() || isWav()) && sizeBetween(10*1024, 16*1024*1024)) ||
+        (folder == 'videos' && isMp4() && sizeBetween(0.5*1024*1024, 64*1024*1024))
       );
       allow delete: if isOwner(uid);
     }
 
-    /* ----------------- Public zone (optional) ----------------- */
-    match /public {
-      allow list: if true;
-    }
-    match /public/{file=**} {
-      allow read: if true;
-      allow write: if isSignedIn(); // tighten for admins if needed
-    }
+    /* ----------------- assetIndex (tu galería privada) ----------------- */
 
-    /* ----------------- NEW: assetIndex (story-scoped private gallery) ----------------- */
-    // /users/{uid}/assetIndex/stories/{storyId}/{category}/...
-    match /users/{uid}/assetIndex/stories/{storyId}/{category} {
-      // *** THIS fixes listAll(...) for covers/characters/etc. ***
-      allow list: if isOwner(uid);
-    }
+    // OBJETOS (files)
     match /users/{uid}/assetIndex/stories/{storyId}/{category}/{file=**} {
       allow read: if isOwner(uid);
       allow create, update: if isOwner(uid) && assetValidForCategory(category);
       allow delete: if isOwner(uid);
-    }
-
-    /* ----------------- Uncategorized assetIndex ----------------- */
-    match /users/{uid}/assetIndex/uncategorized/{category} {
-      allow list: if isOwner(uid);
     }
     match /users/{uid}/assetIndex/uncategorized/{category}/{file=**} {
       allow read: if isOwner(uid);
@@ -128,7 +100,15 @@ service firebase.storage {
       allow delete: if isOwner(uid);
     }
 
-    /* ----------------- Default deny ----------------- */
+    // CARPETAS (prefix) — requerido por listAll()
+    match /users/{uid}/assetIndex/stories/{storyId}/{category} {
+      allow list: if isOwner(uid);
+    }
+    match /users/{uid}/assetIndex/uncategorized/{category} {
+      allow list: if isOwner(uid);
+    }
+
+    // Deny por defecto
     match /{path=**} {
       allow read, write, list: if false;
     }
