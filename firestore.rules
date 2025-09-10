@@ -107,6 +107,73 @@ service cloud.firestore {
           allow read, write: if isSignedIn() && request.auth.uid == uid;
         }
       }
+
+      // Helpers local to the /users/{uid} scope
+            function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
+            function allowedCategory(cat) {
+              return cat in [
+                'covers','avatars','characters','locations','backgrounds',
+                'audioNarrations','audioEffects','videos','generatedImages','others'
+              ];
+            }
+            function validAssetDoc(d) {
+              // Minimal fields you said you’ll store in the index docs
+              return (d.url is string)
+                  && (d.fileName is string)
+                  && (d.contentType is string)
+                  && (d.createdAt is timestamp)
+                  && (d.source is string); // 'uploaded' | 'ai-generated' | etc.
+            }
+
+            /* ============================================================
+              users/{uid}/assetIndex (normalized references)
+              ============================================================ */
+
+            /* Story-scoped assets
+              users/{uid}/assetIndex/stories/{storyId}/{category}/{assetId}
+            */
+            match /assetIndex/stories/{storyId}/{category}/{assetId} {
+
+              // READ: private index by default (owner only).
+              // If you want parts of the index visible elsewhere, relax this.
+              allow read: if isOwner(uid);
+
+              // CREATE: owner + category is allowed + payload is well-formed
+              //         + storyId on the doc (if present) must match the path
+              allow create: if isOwner(uid)
+                && allowedCategory(category)
+                && validAssetDoc(request.resource.data)
+                && ( !('storyId' in request.resource.data) || request.resource.data.storyId == storyId );
+
+              // UPDATE: owner + ensure we don’t “move” between stories/categories via update
+              allow update: if isOwner(uid)
+                && allowedCategory(category)
+                && validAssetDoc(request.resource.data)
+                && (resource.data.storyId == request.resource.data.storyId)  // frozen
+                && (category == category); // category frozen by path (no-op guard)
+
+              // DELETE: owner
+              allow delete: if isOwner(uid);
+            }
+
+            /* Uncategorized assets
+              users/{uid}/assetIndex/uncategorized/{category}/{assetId}
+            */
+            match /assetIndex/uncategorized/{category}/{assetId} {
+
+              // READ: owner only by default
+              allow read: if isOwner(uid);
+
+              // CREATE/UPDATE: owner + allowed category + valid doc
+              // (No storyId required here; if provided, it must be null or empty.)
+              allow create, update: if isOwner(uid)
+                && allowedCategory(category)
+                && validAssetDoc(request.resource.data)
+                && ( !('storyId' in request.resource.data) || request.resource.data.storyId == null );
+
+              // DELETE: owner
+              allow delete: if isOwner(uid);
+            }
     }
 
     /* ============================================================

@@ -33,7 +33,8 @@ service firebase.storage {
 
     /* ----------------- /users/{uid}/assets categories ----------------- */
     function isImageCategory(cat) {
-      return cat in ['covers','avatars','characters','locations','backgrounds'];
+      // include generatedImages as image content
+     return cat in ['covers','avatars','characters','locations','backgrounds','generatedImages'];
     }
     function isAudioCategory(cat) {
       return cat in ['audioNarrations','audioEffects'];
@@ -113,6 +114,27 @@ service firebase.storage {
       // Restringe si deseas sólo admins
       allow write: if isSignedIn();
     }
+
+/* ----------------- New assetIndex paths ----------------- */
+
+/** Story-scoped assets (private gallery) 
+ *  /users/{uid}/assetIndex/stories/{storyId}/{category}/{file...}
+ */
+match /users/{uid}/assetIndex/stories/{storyId}/{category}/{file=**} {
+  // Gallery browsing in app is private to owner
+  allow read: if isOwner(uid);
+  allow create, update: if isOwner(uid) && assetValidForCategory(category);
+  allow delete: if isOwner(uid);
+}
+
+/** Uncategorized assets (private gallery)
+ *  /users/{uid}/assetIndex/uncategorized/{category}/{file...}
+ */
+match /users/{uid}/assetIndex/uncategorized/{category}/{file=**} {
+  allow read: if isOwner(uid);
+  allow create, update: if isOwner(uid) && assetValidForCategory(category);
+  allow delete: if isOwner(uid);
+}
 
     // Deny by default
     match /{path=**} {
