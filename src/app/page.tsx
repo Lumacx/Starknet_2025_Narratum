@@ -1,15 +1,17 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import ThemeToggle from '../components/ThemeToggle'; // <--- CORRECTED PATH
+import ThemeToggle from '../components/ThemeToggle';
 
 const LandingPage: React.FC = () => {
   const router = useRouter();
-  const { user, starknetAddress, loading, logout } = useAuth(); // Added starknetAddress
-  const isLoggedIn = !!user || !!starknetAddress; // Updated isLoggedIn check
+  const { user, starknetAddress, loading } = useAuth();
+  const isLoggedIn = !!user || !!starknetAddress;
+
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
 
   if (loading) {
     return (
@@ -19,100 +21,136 @@ const LandingPage: React.FC = () => {
     );
   }
 
-  // Logout handler might not be needed here if it's in the global header
-  // const handleLogout = async () => {
-  //   try {
-  //     await logout();
-  //   } catch (error) {
-  //     console.error('Logout failed:', error);
-  //   }
-  // };
-
   return (
     <div className="min-h-screen relative flex flex-col items-center justify-center p-5 md:p-10 
-    bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26] 
-    text-[#3A4B5C] dark:text-[#E0C9A0] font-sans">
+      bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26] 
+      text-[#3A4B5C] dark:text-[#E0C9A0] font-sans">
 
-     {/* Container for top-corner buttons REMOVED */}
-      {/* 
-      <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-10">
-        <div className="flex items-center space-x-4">
-          <Link
-            href="/subscription"
-            className="px-6 py-2 bg-purple-600 text-white font-semibold rounded-full shadow-md hover:bg-purple-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-purple-300"
-          >
-            Subscriptions
-          </Link>
-        </div>
-        <div>
-          {isLoggedIn ? (
+      {/* Video Modal */}
+      {videoUrl && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="relative bg-black rounded-2xl shadow-lg w-full max-w-4xl aspect-video">
+            <iframe
+              src={videoUrl}
+              title="YouTube video"
+              className="w-full h-full rounded-2xl"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
             <button
-              onClick={handleLogout}
-              className="px-6 py-2 bg-red-500 text-white font-semibold rounded-full shadow-md hover:bg-red-600 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-red-300"
+              onClick={() => setVideoUrl(null)}
+              className="absolute -top-3 -right-3 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-md hover:bg-red-700"
             >
-              Logout ({ (user?.displayName || user?.email) || (starknetAddress ? `${starknetAddress.substring(0,6)}...` : 'User') })
+              ✕
             </button>
-          ) : (
-            <Link
-              href="/login"
-              className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-full shadow-md hover:bg-blue-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-300"
-            >
-              Login
-            </Link>
-          )}
+          </div>
         </div>
-      </div> 
-      */}
+      )}
 
-      <div className="max-w-4xl w-full text-center pt-10 md:pt-16 pb-24"> {/* Adjusted padding, assuming header takes some space */}
+      <div className="max-w-4xl w-full text-center pt-10 md:pt-16 pb-28">
         <header className="mb-10 md:mb-16">
           <p className="font-['Lato'] text-xl md:text-2xl font-light tracking-widest mb-1 text-shadow-sm">WELCOME TO</p>
           <h1 className="font-['Georgia'] text-6xl md:text-7xl lg:text-8xl font-bold m-0 text-shadow-md">NARRATUM</h1>
         </header>
+
+        {/* Action Cards */}
         <nav className="flex flex-wrap justify-center gap-6 md:gap-8 mb-12 md:mb-16">
+          {/* Discover */}
           <Link
             href="/discover"
-            className="flex flex-col items-center justify-center p-6 md:p-8 w-48 h-60 md:w-56 md:h-72 bg-[#F3EADF] border-2 border-[#CBBBA0] rounded-2xl shadow-lg text-[#3A4B5C] transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-[#CBBBA0]"
+            className="flex flex-col items-center justify-center p-6 md:p-8 w-48 h-60 md:w-56 md:h-72 
+              bg-[#F3EADF] border-2 border-[#CBBBA0] rounded-2xl shadow-lg text-[#3A4B5C]
+              transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-[#CBBBA0]"
           >
             <i className="fas fa-book-open text-5xl md:text-6xl text-[#A9834F] mb-6 md:mb-8"></i>
-            <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase leading-tight mb-0.5">DISCOVER</span>
-            <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase leading-tight">STORIES</span>
+            <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase">DISCOVER</span>
+            <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase">STORIES</span>
           </Link>
+
+          {/* Create */}
           <Link
-              href={isLoggedIn ? "/create/begin" : "/login"} 
-              className={`flex flex-col items-center justify-center p-6 md:p-8 w-48 h-60 md:w-56 md:h-72 bg-[#F3EADF] border-2 border-[#CBBBA0] rounded-2xl shadow-lg text-[#3A4B5C] transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-[#CBBBA0] ${!isLoggedIn ? 'opacity-70' : ''}`}
-              aria-disabled={!isLoggedIn}
-              tabIndex={!isLoggedIn ? -1 : undefined}
-            >
-              <i className="fas fa-feather-alt text-5xl md:text-6xl text-[#A9834F] mb-6 md:mb-8"></i>
-              <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase leading-tight mb-0.5">CREATE</span>
-              <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase leading-tight">STORY</span>
+            href={isLoggedIn ? "/create/begin" : "/login"}
+            className={`flex flex-col items-center justify-center p-6 md:p-8 w-48 h-60 md:w-56 md:h-72 
+              bg-[#F3EADF] border-2 border-[#CBBBA0] rounded-2xl shadow-lg text-[#3A4B5C]
+              transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-[#CBBBA0] ${!isLoggedIn ? 'opacity-70' : ''}`}
+            aria-disabled={!isLoggedIn}
+            tabIndex={!isLoggedIn ? -1 : undefined}
+          >
+            <i className="fas fa-feather-alt text-5xl md:text-6xl text-[#A9834F] mb-6 md:mb-8"></i>
+            <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase">CREATE</span>
+            <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase">STORY</span>
           </Link>
+
+          {/* Profile */}
           {isLoggedIn ? (
             <Link
               href="/profile"
-              className="flex flex-col items-center justify-center p-6 md:p-8 w-48 h-60 md:w-56 md:h-72 bg-[#F3EADF] border-2 border-[#CBBBA0] rounded-2xl shadow-lg text-[#3A4B5C] transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-[#CBBBA0]"
+              className="flex flex-col items-center justify-center p-6 md:p-8 w-48 h-60 md:w-56 md:h-72 
+                bg-[#F3EADF] border-2 border-[#CBBBA0] rounded-2xl shadow-lg text-[#3A4B5C]
+                transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-[#CBBBA0]"
             >
               <i className="fas fa-user-circle text-5xl md:text-6xl text-[#A9834F] mb-6 md:mb-8"></i>
-              <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase leading-tight mb-0.5">MY</span>
-              <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase leading-tight">PROFILE</span>
+              <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase">MY</span>
+              <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase">PROFILE</span>
             </Link>
           ) : (
-            <div 
-              className="flex flex-col items-center justify-center p-6 md:p-8 w-48 h-60 md:w-56 md:h-72 bg-[#E0E0E0] border-2 border-[#CBBBA0] rounded-2xl shadow-lg text-[#A0A0A0] opacity-70 cursor-not-allowed"
+            <div
+              className="flex flex-col items-center justify-center p-6 md:p-8 w-48 h-60 md:w-56 md:h-72 
+                bg-[#E0E0E0] border-2 border-[#CBBBA0] rounded-2xl shadow-lg text-[#A0A0A0] opacity-70 cursor-not-allowed"
               title="Please log in to view your profile"
-              aria-disabled="true"
             >
               <i className="fas fa-user-circle text-5xl md:text-6xl text-[#A9834F] mb-6 md:mb-8"></i>
-              <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase leading-tight mb-0.5">MY</span>
-              <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase leading-tight">PROFILE</span>
+              <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase">MY</span>
+              <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase">PROFILE</span>
             </div>
           )}
         </nav>
+
+        {/* Teasers and Tutorials */}
+        <div className="flex flex-col md:flex-row gap-6 justify-center mb-12">
+          <button
+            onClick={() => setVideoUrl("https://www.youtube.com/embed/utV8LROR3f4")}
+            className="px-6 py-3 bg-purple-600 text-white font-semibold rounded-full shadow-md hover:bg-purple-700 
+              transition transform hover:scale-105 animate-pulse-slow"
+          >
+            🎬 Watch Teaser
+          </button>
+          <button
+            onClick={() => setVideoUrl("https://www.youtube.com/embed/ATOhy6NASL0")}
+            className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-full shadow-md hover:bg-blue-700 
+              transition transform hover:scale-105 animate-pulse-slow"
+          >
+            📘 Watch Tutorial
+          </button>
+        </div>
+
         <footer className="font-['Georgia'] italic text-xl md:text-2xl text-[#3A4B5C] dark:text-[#E0C9A0] text-shadow-sm mt-8">
           <p>Where your words come to life</p>
         </footer>
       </div>
+
+      {/* Feedback Button (bottom-right) */}
+      <a
+        href="https://docs.google.com/forms/d/16mfeP7iiuWYU3vSThm-mt3ZygQRGPf3WbcP2yDLPiek/edit?pli=1"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-6 right-6 px-5 py-3 bg-gradient-to-r from-green-500 to-teal-600 text-white font-semibold 
+          rounded-full shadow-lg hover:scale-105 hover:shadow-xl transition z-50 animate-pulse-slow"
+      >
+        💡 Feedback Welcome
+      </a>
+
+      {/* Custom Glow Animation */}
+      <style jsx global>{`
+        @keyframes pulseGlow {
+          0%, 100% { box-shadow: 0 0 8px rgba(255, 255, 255, 0.3); }
+          50% { box-shadow: 0 0 16px rgba(255, 255, 255, 0.7); }
+        }
+        .animate-pulse-slow {
+          animation: pulseGlow 2.5s infinite;
+        }
+      `}</style>
     </div>
   );
 };

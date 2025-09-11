@@ -139,7 +139,7 @@ type PromptContext = {
 interface CoverImageManagerProps {
   onCoverImageSaved: (url: string) => void;
   initialCoverUrl?: string;
-  storyId: string; // mandatory
+  storyId?: string; // ⬅️ optional
   assetRole?: 'cover' | 'reference' | 'character' | 'location' | 'scene' | string;
   promptContext?: PromptContext;
 }
@@ -232,8 +232,12 @@ export default function CoverImageManager({
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   // --- keep latest storyId available to async callbacks to avoid stale captures
-  const storyIdRef = useRef<string>(storyId);
-  useEffect(() => { storyIdRef.current = storyId; }, [storyId]);
+  const storyIdRef = useRef<string | null>(storyId ?? null);
+
+  // keep it in sync when prop changes
+  useEffect(() => {
+    storyIdRef.current = storyId ?? null;
+  }, [storyId]);
 
   // Path builder (no leading slash)
   const pathFor = useCallback((uid: string, sid: string, category: string, name?: string) => {
@@ -476,6 +480,7 @@ export default function CoverImageManager({
       setIsUploading(true);
 
       const sid = storyIdRef.current!;
+      if (!sid) { alert('Create or select a story first.'); return; }
       const ext = mimeToExt(uploadedFile.type);
       const path = pathFor(currentUser.uid, sid, assetCategory, `${uploadNameToSave}.${ext}`);
       const storageRef = sref(storage, path);
@@ -530,6 +535,7 @@ export default function CoverImageManager({
 
       setIsUploading(true);
       const sid = storyIdRef.current!;
+      if (!sid) { alert('Create or select a story first.'); return; }
       const path = pathFor(currentUser.uid, sid, assetCategory, `${aiNameToSave}.png`);
       const storageRef = sref(storage, path);
 
@@ -605,6 +611,23 @@ export default function CoverImageManager({
     : isCurrentCover
     ? 'This is your current Book Cover. No changes needed unless you select a new one.'
     : "Click 'Set as Book Cover' to save this image as your story's cover.";
+
+    /* ✅ EARLY GUARD — place here, before the main return */
+if (!currentUser) {
+  return (
+    <div className="p-4 text-sm text-slate-600 dark:text-slate-300">
+      Please sign in to manage your cover images.
+    </div>
+  );
+}
+
+if (!storyId) {
+  return (
+    <div className="p-4 text-sm text-slate-600 dark:text-slate-300">
+      Create or select a story first (no <code>storyId</code> yet).
+    </div>
+  );
+}
 
   /* ------------------------ UI ------------------------ */
   return (

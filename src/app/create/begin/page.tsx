@@ -175,6 +175,10 @@ export default function BeginPage() {
   const [storiesLoading, setStoriesLoading] = useState(false);
   const [storiesLast, setStoriesLast] = useState<QueryDocumentSnapshot | null>(null);
 
+  // NEW: State for sorting
+  const [sortKey, setSortKey] = useState<'updatedAt' | 'title'>('updatedAt');
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+
   /* ---------------- Buttons/progress ---------------- */
   const [starting, setStarting] = useState(false);
   const [jumpingScenes, setJumpingScenes] = useState(false);
@@ -250,14 +254,16 @@ export default function BeginPage() {
   /* ---------------- Fetch user's stories for Continue ---------------- */
   const fetchStoriesPage = useCallback(async (after?: QueryDocumentSnapshot) => {
     if (!user) return;
+    if (storiesLoading) return; // guard against double calls
     setStoriesLoading(true);
     try {
-      const base = [
+      const secondaryDir = sortOrder; // keep secondary aligned with primary
+      const base: any[] = [
         where('ownerUid', '==', user.uid),
-        orderBy('updatedAt', 'desc'),
-        orderBy('__name__', 'desc'),
+        orderBy(sortKey, sortOrder),
+        orderBy('__name__', secondaryDir),
         limit(50),
-      ] as const;
+      ];
 
       const qy = after
         ? query(collection(db, 'stories'), ...base, startAfter(after))
@@ -285,11 +291,17 @@ export default function BeginPage() {
     } finally {
       setStoriesLoading(false);
     }
-  }, [user]);
+  }, [user, sortKey, sortOrder, storiesLoading, db]);
 
+  // Consolidated effect: initial load + reacts to sort changes.
   useEffect(() => {
-    if (user) fetchStoriesPage();
-  }, [user, fetchStoriesPage]);
+    if (!user) return;
+    // Reset list & cursor whenever the sort changes (or on first user load)
+    setStories([]);
+    setStoriesLast(null);
+    // Fresh page 1 for the new sort
+    fetchStoriesPage();
+  }, [user, sortKey, sortOrder, fetchStoriesPage]);
 
   /* ---------------- Ensure story exists (used by cover/premium saving) ---------------- */
   async function ensureStoryId(): Promise<string> {
@@ -299,29 +311,29 @@ export default function BeginPage() {
     const premiumPayload = buildPremiumPayloadFromDraft(draft);
 
     const id = await createStory({
-    title: draft.title || '(untitled)',
-    synopsis: draft.synopsis || '',
-    genres: draft.genres || [],
-    category: draft.category,
-    pageCount: clampPagesForCategory(draft.category, draft.pages),
-    coverImageUrl: null,
-    visibility: 'private',
-    status: 'draft',
-    language: draft.language,
-    metadata: draft.campaignName ? { campaignName: draft.campaignName } : {},
-    // ⭐ include premium only if provided
-    ...premiumPayload,
-  } as any);
+      title: draft.title || '(untitled)',
+      synopsis: draft.synopsis || '',
+      genres: draft.genres || [],
+      category: draft.category,
+      pageCount: clampPagesForCategory(draft.category, draft.pages),
+      coverImageUrl: null,
+      visibility: 'private',
+      status: 'draft',
+      language: draft.language,
+      metadata: draft.campaignName ? { campaignName: draft.campaignName } : {},
+      // ⭐ include premium only if provided
+      ...premiumPayload,
+    } as any);
 
-  setDraft((d) => ({ ...d, storyId: id }));
-  try {
-    const raw = localStorage.getItem(DRAFT_KEY);
-    const obj = raw ? JSON.parse(raw) : {};
-    obj.storyId = id;
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(obj));
-  } catch {}
-  return id;
-}
+    setDraft((d) => ({ ...d, storyId: id }));
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      const obj = raw ? JSON.parse(raw) : {};
+      obj.storyId = id;
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(obj));
+    } catch {}
+    return id;
+  }
 
   /* ---------------- Upload cover helpers ---------------- */
   async function uploadCoverViaSdk(userUid: string, storyId: string, srcUrl: string) {
@@ -545,20 +557,19 @@ export default function BeginPage() {
       const premiumPayload = buildPremiumPayloadFromDraft(draft);
 
       const id = await createStory({
-      title: draft.title.trim(),
-      synopsis: draft.synopsis.trim(),
-      genres: draft.genres,
-      category: draft.category,
-      pageCount: clampPagesForCategory(draft.category, draft.pages),
-      coverImageUrl: null,
-      visibility: 'private',
-      status: 'draft',
-      language: draft.language,
-      metadata: draft.campaignName ? { campaignName: draft.campaignName } : {},
-      // ⭐ include premium only if provided
-      ...premiumPayload,
+        title: draft.title.trim(),
+        synopsis: draft.synopsis.trim(),
+        genres: draft.genres,
+        category: draft.category,
+        pageCount: clampPagesForCategory(draft.category, draft.pages),
+        coverImageUrl: null,
+        visibility: 'private',
+        status: 'draft',
+        language: draft.language,
+        metadata: draft.campaignName ? { campaignName: draft.campaignName } : {},
+        // ⭐ include premium only if provided
+        ...premiumPayload,
       } as any);
-
 
       setDraft((d) => ({ ...d, storyId: id }));
       try {
@@ -591,21 +602,20 @@ export default function BeginPage() {
       const premiumPayload = buildPremiumPayloadFromDraft(draft);
 
       const id =
-      draft.storyId ||
-      (await createStory({
-        title: draft.title.trim(),
-        synopsis: draft.synopsis.trim(),
-        genres: draft.genres,
-        category: draft.category,
-        pageCount: clampPagesForCategory(draft.category, draft.pages),
-        visibility: 'private',
-        status: 'draft',
-        language: draft.language,
-        metadata: draft.campaignName ? { campaignName: draft.campaignName } : {},
-        // ⭐ include premium only if provided
-        ...premiumPayload,
+        draft.storyId ||
+        (await createStory({
+          title: draft.title.trim(),
+          synopsis: draft.synopsis.trim(),
+          genres: draft.genres,
+          category: draft.category,
+          pageCount: clampPagesForCategory(draft.category, draft.pages),
+          visibility: 'private',
+          status: 'draft',
+          language: draft.language,
+          metadata: draft.campaignName ? { campaignName: draft.campaignName } : {},
+          // ⭐ include premium only if provided
+          ...premiumPayload,
         } as any));
-
 
       setDraft(d => ({ ...d, storyId: id }));
       try {
@@ -780,7 +790,7 @@ export default function BeginPage() {
                 className="
                   w-full p-3 border-2 rounded-md
                   bg-white text-slate-900 border-slate-300
-                  dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]
+                dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]
                 "
                 value={draft.category}
                 onChange={(e) => {
@@ -836,8 +846,8 @@ export default function BeginPage() {
             </div>
           </div>
 
-              {/* --- Premium features toggle header --- */}
-            <div className="mt-6 border-t border-slate-300 dark:border-[#2c3f55] pt-4">
+          {/* --- Premium features toggle header --- */}
+          <div className="mt-6 border-t border-slate-300 dark:border-[#2c3f55] pt-4">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold">Premium Features</h2>
               <label className="flex items-center gap-2 text-sm">
@@ -1116,7 +1126,7 @@ export default function BeginPage() {
             <div className="mt-4 text-xs text-slate-600 dark:text-[#C8D6E5]/70">
               Reader side will inject:
               <pre className="mt-2 p-2 rounded bg-slate-100 dark:bg-black/30 overflow-x-auto">{`<elevenlabs-convai agent-id="<this value>"></elevenlabs-convai>
-          <script src="https://unpkg.com/@elevenlabs/convai-widget-embed" async type="text/javascript"></script>`}</pre>
+<script src="https://unpkg.com/@elevenlabs/convai-widget-embed" async type="text/javascript"></script>`}</pre>
             </div>
           </div>
         )}

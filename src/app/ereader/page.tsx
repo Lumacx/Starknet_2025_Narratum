@@ -122,6 +122,18 @@ export default function EReaderPage() {
     })();
   }, [storyId]);
 
+  const handleDownloadPdf = () => {
+    if (storyId) {
+      window.open(`/api/download-story-pdf?storyId=${encodeURIComponent(storyId)}`, '_blank');
+    }
+  };
+
+  const handleDownloadAudioArchive = () => {
+    if (storyId) {
+      window.open(`/api/download-story-audio-archive?storyId=${encodeURIComponent(storyId)}`, '_blank');
+    }
+  };
+
   if (!storyId) return <div className="p-6">Missing <code>storyId</code>.</div>;
   if (loading) return <div className="p-6">Loading…</div>;
   if (error) {
@@ -154,6 +166,20 @@ export default function EReaderPage() {
           setTimeout(() => window.location.reload(), 100);
         }}
       />
+      <div className="fixed bottom-4 right-4 flex space-x-2">
+        <button
+          onClick={handleDownloadPdf}
+          className="px-4 py-2 rounded-md bg-[#3D4F60] text-white"
+        >
+          Download as PDF
+        </button>
+        <button
+          onClick={handleDownloadAudioArchive}
+          className="px-4 py-2 rounded-md bg-[#3D4F60] text-white"
+        >
+          Download resources Separate (no synchronization just files)
+        </button>
+      </div>
     </div>
   );
 }

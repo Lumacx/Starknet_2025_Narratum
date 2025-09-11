@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import UploadImageReference from '@/components/UploadImageReference';
-import { ImageIcon, MapPin, User, Music, Wand2, Film, Loader2 } from 'lucide-react';
+import { ImageIcon, MapPin, User, Music, Wand2, Film, Loader2, ArrowUpDown, ChevronDown } from 'lucide-react';
 
 // ────────────────────────────────────────────────────────────────────────────────
 // Re-using or adapting from src/app/create/begin/page.tsx
@@ -27,12 +27,12 @@ import { db } from '@/lib/firebase';
 import {
   doc as fsDoc,
   getDoc,
-  collection,  // NEW
-  query,       // NEW
-  where,       // NEW
-  orderBy,     // NEW
-  limit,       // NEW
-  getDocs,     // NEW
+  collection,
+  query,
+  where,
+  orderBy,
+  limit,
+  getDocs,
 } from 'firebase/firestore';
 
 import InfoPopover from '@/components/InfoPopover';
@@ -195,12 +195,32 @@ export default function SupportPage() {
   const [userStoriesLoading, setUserStoriesLoading] = useState(false);
   const [selectedStoryId, setSelectedStoryId] = useState<string | undefined>(storyId); // primary source of truth
 
-    // NEW: toggle to show uncategorized assets
-    const [showUncategorized, setShowUncategorized] = useState(false);
+  // NEW: toggle to show uncategorized assets
+  const [showUncategorized, setShowUncategorized] = useState(false);
 
-    // Helper: single source for the <select> value
-    const storySelectValue = showUncategorized ? '__UNCAT__' : (selectedStoryId || '');
+  // Helper: single source for the <select> value
+  const storySelectValue = showUncategorized ? '__UNCAT__' : (selectedStoryId || '');
 
+  // 🔽🔽 NEW — Sort & Pagination controls (mirrors Begin/Page) 🔽🔽
+  type SortField = 'name' | 'createdAt' | 'updatedAt';
+  type SortDir = 'asc' | 'desc';
+
+  const [sortField, setSortField] = useState<SortField>(
+    (search.get('sortField') as SortField) || 'updatedAt'
+  );
+  const [sortDir, setSortDir] = useState<SortDir>(
+    (search.get('sortDir') as SortDir) || 'desc'
+  );
+  const [pageSize, setPageSize] = useState<number>(
+    Number(search.get('pageSize')) || 24
+  );
+
+  // A bump value to force remount of gallery on changes (resets internal pagination)
+  const [galleryResetTick, setGalleryResetTick] = useState(0);
+
+  const triggerGalleryReset = useCallback(() => {
+    setGalleryResetTick(t => t + 1);
+  }, []);
 
   // fetch story context (title/genres/synopsis/lang) based on selectedStoryId
   useEffect(() => {
@@ -263,7 +283,7 @@ export default function SupportPage() {
         });
         setUserStories(storiesData);
 
-        if (!selectedStoryId && storiesData.length > 0) {
+        if (!selectedStoryId && storiesData.length > 0 && !showUncategorized) {
           setSelectedStoryId(storiesData[0].id);
         }
       } catch (e) {
@@ -274,7 +294,7 @@ export default function SupportPage() {
     };
 
     fetchUserStories();
-  }, [user, selectedStoryId]);
+  }, [user, selectedStoryId, showUncategorized]);
 
   const initialKey =
     (search.get('tab') as TabKey) ||
@@ -308,10 +328,10 @@ export default function SupportPage() {
   // NEW: Sync URL <-> selectedStoryId and other resets
   useEffect(() => {
     if (typeof window === 'undefined') return;
-  
+
     const params = new URLSearchParams(window.location.search);
     params.set('tab', active);
-  
+
     // Reflect selector state into URL:
     if (showUncategorized) {
       params.set('assets', 'uncategorized');
@@ -323,11 +343,16 @@ export default function SupportPage() {
       params.delete('storyId');
       params.delete('assets');
     }
-  
+
+    // Reflect sort + pagination in URL too
+    params.set('sortField', sortField);
+    params.set('sortDir', sortDir);
+    params.set('pageSize', String(pageSize));
+
     window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
-  
+
     localStorage.setItem('supportTab', active);
-  
+
     // resets
     setDisplayUrl('');
     setDisplayContentType(undefined);
@@ -336,8 +361,7 @@ export default function SupportPage() {
     setDescLoading(false);
     setGeneratedImageUrlForChild('');
     setLastModelUsed('');
-  }, [active, selectedStoryId, showUncategorized]);
-  
+  }, [active, selectedStoryId, showUncategorized, sortField, sortDir, pageSize]);
 
   useEffect(() => {
     if (!TABS.some((t) => t.key === active)) setActive('characters');
@@ -377,7 +401,7 @@ export default function SupportPage() {
     }
     setIsGenerating(true);
     setGeneratedImageUrlForChild('');
-  
+
     try {
       const { prompt, negativePrompt } = composePromptForImagen(userPrompt, memoizedPromptContext);
       const res = await fetch('/api/generate-image', {
@@ -445,30 +469,30 @@ export default function SupportPage() {
 
   // NEW: guard requires active story; uses selectedStoryId
   const handleSceneGeneration = async () => {
-      if (!showUncategorized && !selectedStoryId) {
-        alert('Select a story or choose "All Uncategorized Assets" to generate a scene.');
-        return;
-      }
-      if (!composerPrompt.trim() || (selectedCharacters.length === 0 && selectedLocations.length === 0)) {
-        alert('Please select at least one image and provide a prompt.');
-        return;
-      }
-      setIsComposing(true);
-      setGeneratedImageUrlForChild('');
+    if (!showUncategorized && !selectedStoryId) {
+      alert('Select a story or choose "All Uncategorized Assets" to generate a scene.');
+      return;
+    }
+    if (!composerPrompt.trim() || (selectedCharacters.length === 0 && selectedLocations.length === 0)) {
+      alert('Please select at least one image and provide a prompt.');
+      return;
+    }
+    setIsComposing(true);
+    setGeneratedImageUrlForChild('');
 
-      try {
-        const imageUrls = [...selectedCharacters, ...selectedLocations];
-        const imagesAsDataUrls = await Promise.all(imageUrls.map(url => urlToDataUrl(url)));
+    try {
+      const imageUrls = [...selectedCharacters, ...selectedLocations];
+      const imagesAsDataUrls = await Promise.all(imageUrls.map(url => urlToDataUrl(url)));
 
-        const res = await fetch('/api/generate-image', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            prompt: composerPrompt,
-            images: imagesAsDataUrls,
-            storyId: showUncategorized ? undefined : selectedStoryId,
-          }),
-        });
+      const res = await fetch('/api/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: composerPrompt,
+          images: imagesAsDataUrls,
+          storyId: showUncategorized ? undefined : selectedStoryId,
+        }),
+      });
 
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'AI scene generation failed');
@@ -532,8 +556,25 @@ export default function SupportPage() {
   }
 
   // const canSaveAssets = !!selectedStoryId;
-const canSaveAssets = !!selectedStoryId || showUncategorized;
+  const canSaveAssets = !!selectedStoryId || showUncategorized;
 
+  // 🔽 convenience: flip sort dir
+  const toggleSortDir = () => setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+
+  // 🔽 whenever sort field/dir/pageSize changes, reset gallery pagination
+  useEffect(() => {
+    triggerGalleryReset();
+  }, [sortField, sortDir, pageSize, triggerGalleryReset]);
+
+  // 🔽 Build a stable key to force remount on critical changes (resets cursors)
+  const galleryKey = [
+    active,
+    showUncategorized ? 'UNCAT' : selectedStoryId ?? 'NO_STORY',
+    sortField,
+    sortDir,
+    pageSize,
+    galleryResetTick,
+  ].join('|');
 
   return (
     <div className="min-h-screen p-6 bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26] text-[#3A4B5C] dark:text-[#E0C9A0] font-sans">
@@ -559,53 +600,52 @@ const canSaveAssets = !!selectedStoryId || showUncategorized;
               }
             </p>
 
-
             {/* NEW: Story Selector Dropdown */}
             <div className="flex items-center gap-4 mt-2">
-                <label htmlFor="story-selector" className="text-sm font-semibold whitespace-nowrap">
-                  Active Story:
-                </label>
-                <select
-                  id="story-selector"
-                  className="w-full max-w-xs p-2 border-2 rounded-md bg-white text-slate-900 border-slate-300 dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]"
-                  value={storySelectValue}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (v === '__UNCAT__') {
-                      setShowUncategorized(true);
-                      setSelectedStoryId(undefined);
-                    } else {
-                      setShowUncategorized(false);
-                      setSelectedStoryId(v || undefined);
-                    }
-                  }}
-                  disabled={userStoriesLoading}
-                >
-                  <option value="">
-                    {userStoriesLoading ? 'Loading stories...' : 'Select a story...'}
+              <label htmlFor="story-selector" className="text-sm font-semibold whitespace-nowrap">
+                Active Story:
+              </label>
+              <select
+                id="story-selector"
+                className="w-full max-w-xs p-2 border-2 rounded-md bg-white text-slate-900 border-slate-300 dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]"
+                value={storySelectValue}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === '__UNCAT__') {
+                    setShowUncategorized(true);
+                    setSelectedStoryId(undefined);
+                  } else {
+                    setShowUncategorized(false);
+                    setSelectedStoryId(v || undefined);
+                  }
+                }}
+                disabled={userStoriesLoading}
+              >
+                <option value="">
+                  {userStoriesLoading ? 'Loading stories...' : 'Select a story...'}
+                </option>
+
+                {/* NEW: special option */}
+                <option value="__UNCAT__">All Uncategorized Assets</option>
+
+                {userStories.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.title || '(untitled)'}
                   </option>
+                ))}
+              </select>
 
-                  {/* NEW: special option */}
-                  <option value="__UNCAT__">All Uncategorized Assets</option>
-
-                  {userStories.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.title || '(untitled)'}
-                    </option>
-                  ))}
-                </select>
-
-                {/* Dynamic helper chip */}
-                {showUncategorized ? (
-                  <span className="text-sm font-medium text-blue-700 dark:text-blue-200">
-                    Viewing & saving to <em>Uncategorized</em>
-                  </span>
-                ) : !selectedStoryId ? (
-                  <span className="text-sm text-red-600 font-medium">
-                    (No story selected)
-                  </span>
-                ) : null}
-              </div>
+              {/* Dynamic helper chip */}
+              {showUncategorized ? (
+                <span className="text-sm font-medium text-blue-700 dark:text-blue-200">
+                  Viewing & saving to <em>Uncategorized</em>
+                </span>
+              ) : !selectedStoryId ? (
+                <span className="text-sm text-red-600 font-medium">
+                  (No story selected)
+                </span>
+              ) : null}
+            </div>
           </div>
           <div className="flex gap-3">
             <Link className="underline text-sm" href="/create/begin">← Back</Link>
@@ -696,7 +736,7 @@ const canSaveAssets = !!selectedStoryId || showUncategorized;
                     <>
                       <label className="block text-sm font-bold mb-1">Description</label>
                       <textarea
-                        className="w-full p-2 border rounded dark:bg-white dark:text-[#3D4F60]"
+                        className="w-full p-2 border rounded dark:bg:white dark:text-[#3D4F60]"
                         rows={5}
                         value={desc}
                         onChange={(e) => setDesc(e.target.value)}
@@ -732,14 +772,13 @@ const canSaveAssets = !!selectedStoryId || showUncategorized;
                     </p>
                   </div>
                 ) : (
-                  <div className="mb-4 p-3 rounded-md bg-emerald-100 border border-emerald-300 text-emerald-800 dark:bg-emerald-900/30 dark:border-emerald-600 dark:text-emerald-200">
+                  <div className="mb-4 p-3 rounded-md bg-emerald-100 border-emerald-300 border text-emerald-800 dark:bg-emerald-900/30 dark:border-emerald-600 dark:text-emerald-200">
                     <p className="font-semibold">Story mode</p>
                     <p className="text-sm">
                       Uploads & saves will go to <code>users/&lt;uid&gt;/assetIndex/stories/{selectedStoryId}/&lt;category&gt;/</code>.
                     </p>
                   </div>
                 )}
-
 
                 <div className="flex items-center gap-3 text-xs mb-2">
                   <span className="opacity-70">Generation Tips:</span>
@@ -772,8 +811,12 @@ const canSaveAssets = !!selectedStoryId || showUncategorized;
                   isGenerating={isGenerating}
                   generatedImageUrl={generatedImageUrlForChild}
                   storyId={showUncategorized ? undefined : selectedStoryId}
-              // UPDATED: use selectedStoryId
-                  disableSaveButtons={!canSaveAssets}          // NEW
+                  // Sorting/pagination also apply to uploader lists (if shown there later)
+                  sortField={sortField}
+                  sortDir={sortDir}
+                  pageSize={pageSize}
+                  // disable save buttons unless destination chosen
+                  disableSaveButtons={!canSaveAssets}
                 />
               </div>
             </div>
@@ -824,14 +867,75 @@ const canSaveAssets = !!selectedStoryId || showUncategorized;
 
               {/* --- 5. MY GALLERY --- */}
               <div className="border-2 border-[#3D4F60] dark:border-[#4B5A6B] rounded-xl p-3 bg-white/60 dark:bg-transparent">
-                <h4 className="font-semibold mb-3">
-                  My Gallery — <span className="opacity-80">{activeTab.label}</span>
-                </h4>
+                <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                  <h4 className="font-semibold">
+                    My Gallery — <span className="opacity-80">{activeTab.label}</span>
+                  </h4>
+
+                  {/* 🔽 Sort & Pagination Controls */}
+                  <div className="flex items-center gap-2 text-sm">
+                    {/* Sort field */}
+                    <label className="sr-only" htmlFor="gallery-sort-field">Sort by</label>
+                    <div className="relative">
+                      <select
+                        id="gallery-sort-field"
+                        className="pl-3 pr-8 py-1.5 rounded-md border bg-white dark:bg-[#1A2533] dark:text-[#E0C9A0] dark:border-[#4B5A6B]/40"
+                        value={sortField}
+                        onChange={(e) => setSortField(e.target.value as typeof sortField)}
+                      >
+                        <option value="name">Name</option>
+                        <option value="updatedAt">Updated</option>
+                        <option value="createdAt">Created</option>
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 opacity-60" />
+                    </div>
+
+                    {/* Sort dir */}
+                    <button
+                      type="button"
+                      onClick={toggleSortDir}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border bg-white dark:bg-[#1A2533] dark:text-[#E0C9A0] dark:border-[#4B5A6B]/40"
+                      title={`Sort ${sortDir === 'asc' ? 'ascending' : 'descending'}`}
+                    >
+                      <ArrowUpDown className="h-4 w-4" />
+                      {sortDir.toUpperCase()}
+                    </button>
+
+                    {/* Page size */}
+                    <label className="ml-2">Page:</label>
+                    <select
+                      className="pl-2 pr-6 py-1.5 rounded-md border bg-white dark:bg-[#1A2533] dark:text-[#E0C9A0] dark:border-[#4B5A6B]/40"
+                      value={pageSize}
+                      onChange={(e) => setPageSize(Number(e.target.value))}
+                    >
+                      {[12, 24, 36, 48].map(n => <option key={n} value={n}>{n}</option>)}
+                    </select>
+
+                    {/* Force reset (useful when testing pagination) */}
+                    <button
+                      type="button"
+                      onClick={triggerGalleryReset}
+                      className="ml-2 text-xs underline opacity-80"
+                      title="Reset gallery pagination"
+                    >
+                      reset
+                    </button>
+                  </div>
+                </div>
+
                 {isImageTab(activeTab.key) && (
                   <p className="text-xs text-gray-500 mb-2">Select up to 3 characters and 2 locations to combine them.</p>
                 )}
+
+                {/* NOTE:
+                   - key={galleryKey} forces a remount when sort/page settings change,
+                     which ensures any internal cursor-based pagination in the gallery re-initializes.
+                   - sortField/sortDir/pageSize are passed down; wire them inside UploadImageReference
+                     where you build your Firestore queries (orderBy + limit).
+                */}
                 {/* @ts-ignore */}
                 <UploadImageReference
+                  key={galleryKey}
                   mode="galleryOnly"
                   variant={activeTab.variant}
                   assetCategory={activeTab.key}
@@ -839,9 +943,17 @@ const canSaveAssets = !!selectedStoryId || showUncategorized;
                   selection={activeTab.key === 'characters' ? selectedCharacters : selectedLocations}
                   onSelectionChange={activeTab.key === 'characters' ? setSelectedCharacters : setSelectedLocations}
                   maxSelection={activeTab.key === 'characters' ? 3 : 2}
-                  storyId={showUncategorized ? undefined : selectedStoryId}    // UPDATED: use selectedStoryId
-                  disableSaveButtons={!canSaveAssets}          // NEW
+                  storyId={showUncategorized ? undefined : selectedStoryId}
+                  disableSaveButtons={!canSaveAssets}
+                  sortField={sortField}       // NEW
+                  sortDir={sortDir}           // NEW
+                  pageSize={pageSize}         // NEW
                 />
+
+                {/* Tiny helper text for pagination state */}
+                <div className="mt-2 text-[11px] opacity-70">
+                  Sorting by <code>{sortField}</code> ({sortDir}), page size <code>{pageSize}</code>. Changes here reset the gallery’s internal cursor.
+                </div>
               </div>
             </div>
           </div>

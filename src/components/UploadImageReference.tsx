@@ -12,14 +12,37 @@ import {
   listAll,
   deleteObject,
 } from 'firebase/storage';
-import { doc as fsDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import {
+  doc as fsDoc,
+  setDoc,
+  serverTimestamp,
+  collection,
+  query,
+  where,
+  orderBy,
+  limit,
+  getDocs,
+  startAfter,
+  deleteDoc,
+  type QueryDocumentSnapshot,
+  type DocumentData,
+} from 'firebase/firestore';
 import InfoPopover from '@/components/InfoPopover';
 
 /* ---------- Types ---------- */
 type LangCode =
   | 'en' | 'es' | 'pt' | 'fr' | 'de' | 'it' | 'ja' | 'ko' | 'zh' | 'hi' | 'ar';
 
-type GalleryItem = { name: string; url: string; fullPath: string; contentType?: string };
+export type GalleryItem = {
+  name: string;
+  url: string;
+  fullPath: string;
+  contentType?: string;
+  /** Firestore index doc id (if available) */
+  indexId?: string;
+  /** Storage path string saved to the index (if available) */
+  storagePath?: string;
+};
 type AssetCategory =
   | 'covers'
   | 'avatars'
@@ -33,6 +56,9 @@ type AssetCategory =
   | 'others';
 
 type Mode = 'full' | 'uploaderOnly' | 'galleryOnly';
+
+type SortField = 'name' | 'createdAt' | 'updatedAt';
+type SortDir = 'asc' | 'desc';
 
 type Props = {
   variant: 'character' | 'location' | 'cover';
@@ -53,6 +79,11 @@ type Props = {
   preferredLanguage?: LangCode;
   storyId?: string; // story-scoped when defined; otherwise uncategorized
   disableSaveButtons?: boolean;
+
+  /** NEW: sorting + pagination (consumed from Support/page) */
+  sortField?: SortField; // 'name' | 'createdAt' | 'updatedAt'
+  sortDir?: SortDir;     // 'asc' | 'desc'
+  pageSize?: number;     // default 24
 };
 
 /* ---------- Helpers ---------- */
@@ -109,12 +140,19 @@ function extFromMime(mime: string) {
   return parts[1] || 'bin';
 }
 
-// Firestore index path
+// Firestore index path (doc)
 function buildIndexTarget(params: { uid: string; storyId?: string; category: string; docId: string }) {
   const base = params.storyId
     ? `users/${params.uid}/assetIndex/stories/${params.storyId}/${params.category}`
     : `users/${params.uid}/assetIndex/uncategorized/${params.category}`;
   return { path: `${base}/${params.docId}` };
+}
+
+// Firestore index path (collection)
+function buildIndexCollectionPath(params: { uid: string; storyId?: string; category: string }) {
+  return params.storyId
+    ? `users/${params.uid}/assetIndex/stories/${params.storyId}/${params.category}`
+    : `users/${params.uid}/assetIndex/uncategorized/${params.category}`;
 }
 
 /* ---------- Component ---------- */
@@ -135,6 +173,11 @@ export default function UploadImageReference({
   maxSelection = 1,
   storyId,
   disableSaveButtons,
+
+  // NEW sort/pagination props (with local defaults)
+  sortField = 'updatedAt',
+  sortDir = 'desc',
+  pageSize = 24,
 }: Props) {
   const { user: currentUser } = useAuth();
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -173,6 +216,28 @@ export default function UploadImageReference({
   const [err, setErr] = useState('');
   const [localGeneratedUrl, setLocalGeneratedUrl] = useState('');
 
+  /** NEW: pagination state (Firestore) */
+  const [loadingGallery, setLoadingGallery] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const lastDocRef = useRef<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [usedIndex, setUsedIndex] = useState<boolean>(false); // whether index was used for this load
+
+  // ⬇️ place this INSIDE the component, after the hooks
+  const resetUploader = useCallback(() => {
+    if (inputRef.current) {
+      try { inputRef.current.value = ''; } catch {}
+    }
+    if (previewUrl?.startsWith('blob:')) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setSelectedFile(null);
+    setPreviewUrl('');
+    setNameToSave('');
+    setSuggestedPrompt('');
+    // If you want to also clear the main prompt:
+    // setMainPrompt('');
+  }, [previewUrl]);
+
   const accept = useMemo(() => {
     if (isImageCategory(assetCategory)) {
       return 'image/png, image/jpeg, image/jpg, image/gif, image/webp';
@@ -203,40 +268,154 @@ export default function UploadImageReference({
     return () => { if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl); };
   }, [previewUrl]);
 
-  const loadGallery = useCallback(async () => {
+  /** Build the Firestore query for the index */
+  const buildIndexQuery = useCallback(() => {
+    if (!currentUser) return null;
+    const sid = storyIdRef.current;
+    const colPath = buildIndexCollectionPath({
+      uid: currentUser.uid,
+      storyId: sid,
+      category: assetCategory,
+    });
+    const colRef = collection(db, colPath);
+
+    // Map UI sortField to actual index fields. We store nameLower, createdAt, updatedAt.
+    const fieldMap: Record<SortField, string> = {
+      name: 'nameLower',
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt',
+    };
+    const primaryField = fieldMap[sortField] || 'updatedAt';
+    const dir = sortDir;
+
+    let qBase = query(colRef, orderBy(primaryField as any, dir as any), limit(pageSize));
+
+    // If we want fully deterministic ordering when many entries share null/identical values,
+    // we could add a tie-breaker:
+    // qBase = query(colRef, orderBy(primaryField as any, dir as any), orderBy('__name__', dir as any), limit(pageSize));
+
+    if (lastDocRef.current) {
+      qBase = query(qBase, startAfter(lastDocRef.current));
+    }
+
+    return qBase;
+  }, [currentUser, assetCategory, sortField, sortDir, pageSize]);
+
+  /** Load a page from Firestore index; fall back to Storage listAll on error/empty */
+  const loadGallery = useCallback(async (reset = true) => {
     if (!currentUser) {
       setGallery([]);
       return;
     }
     const sid = storyIdRef.current;
 
+    setLoadingGallery(true);
     try {
-      const base = sref(storage, pathFor(currentUser.uid, sid, assetCategory));
-      const res = await listAll(base);
-      const items = await Promise.all(
-        res.items.map(async (i) => ({
-          name: i.name,
-          fullPath: i.fullPath,
-          url: await getDownloadURL(i),
-        }))
-      );
-      setGallery(items.sort((a, b) => (a.name < b.name ? 1 : -1)));
-      setErr('');
-    } catch (e: any) {
-      console.error(`Failed to load gallery for ${sid ? `story ${sid}` : 'uncategorized'}:`, e);
-      const msg = String(e?.message || e);
-      if (msg.includes('storage/unauthorized')) {
-        setErr('Permission error listing your gallery. Check Storage rules: allow list on users/{uid}/assetIndex/(stories|uncategorized)/{category}.');
-      } else {
-        setErr(`Failed to load gallery: ${msg}`);
+      // Reset pagination if needed
+      if (reset) {
+        lastDocRef.current = null;
+        setGallery([]);
       }
-      setGallery([]);
-    }
-  }, [assetCategory, currentUser, pathFor]);
 
+      const qy = buildIndexQuery();
+      let usedIndexThisCall = false;
+
+      if (qy) {
+        try {
+          const snap = await getDocs(qy);
+          const docs = snap.docs;
+
+          if (docs.length > 0) {
+            usedIndexThisCall = true;
+            const items: GalleryItem[] = docs.map((d) => {
+              const x = d.data() as any;
+              return {
+                name: (x.fileName || x.name || d.id) as string,
+                url: (x.url as string) ?? '',
+                fullPath: (x.storagePath as string) ?? '', // we save it on write; may be empty for legacy
+                contentType: (x.contentType as string) ?? undefined,
+                indexId: d.id,
+                storagePath: (x.storagePath as string) ?? undefined,
+              };
+            });
+
+            setGallery((g) => (reset ? items : [...g, ...items]));
+            lastDocRef.current = docs[docs.length - 1];
+            setHasMore(docs.length === pageSize);
+            setUsedIndex(true);
+          } else {
+            // No docs in this page
+            if (reset) {
+              // fall back only if first page is empty
+              usedIndexThisCall = false;
+            }
+            setHasMore(false);
+          }
+        } catch (indexErr) {
+          // e.g., missing indexes or missing fields
+          console.warn('Index query failed; will fall back to Storage listAll:', indexErr);
+        }
+      }
+
+      if (!usedIndexThisCall) {
+        // Fallback: Storage listAll (no paging)
+        try {
+          const base = sref(storage, pathFor(currentUser.uid, sid, assetCategory));
+          const res = await listAll(base);
+          const items = await Promise.all(
+            res.items.map(async (i) => ({
+              name: i.name,
+              fullPath: i.fullPath,
+              url: await getDownloadURL(i),
+            }))
+          );
+
+          // Sort locally by name according to UI direction (name only)
+          const sorted = items.sort((a, b) => {
+            const av = a.name.toLowerCase();
+            const bv = b.name.toLowerCase();
+            if (av < bv) return sortDir === 'asc' ? -1 : 1;
+            if (av > bv) return sortDir === 'asc' ? 1 : -1;
+            return 0;
+          });
+
+          // Emulate page size for fallback
+          const pageSlice = sorted.slice(0, pageSize);
+          setGallery(pageSlice);
+          setHasMore(sorted.length > pageSlice.length);
+          setUsedIndex(false);
+          setErr('');
+        } catch (e: any) {
+          console.error(`Failed to load gallery (fallback) for ${sid ? `story ${sid}` : 'uncategorized'}:`, e);
+          const msg = String(e?.message || e);
+          if (msg.includes('storage/unauthorized')) {
+            setErr('Permission error listing your gallery. Check Storage rules: allow list on users/{uid}/assetIndex/(stories|uncategorized)/{category}.');
+          } else {
+            setErr(`Failed to load gallery: ${msg}`);
+          }
+          setGallery([]);
+          setHasMore(false);
+        }
+      } else {
+        setErr('');
+      }
+    } finally {
+      setLoadingGallery(false);
+    }
+  }, [assetCategory, currentUser, pageSize, pathFor, sortDir, buildIndexQuery]);
+
+  /** Reset and reload any time story/category/sort or page size changes */
   useEffect(() => {
-    loadGallery();
-  }, [loadGallery]);
+    loadGallery(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assetCategory, storyId, sortField, sortDir, pageSize]);
+
+  /** Load next page (only when using Firestore index) */
+  const loadMore = useCallback(() => {
+    if (usedIndex && hasMore && !loadingGallery) {
+      loadGallery(false);
+    }
+  }, [usedIndex, hasMore, loadingGallery, loadGallery]);
 
   async function onChoose(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -288,11 +467,11 @@ export default function UploadImageReference({
 
       await uploadString(storageRef, dataUrl, 'data_url', { customMetadata: meta });
       const downloadUrl = await getDownloadURL(storageRef);
-      const item = { name: filename, url: downloadUrl, fullPath: path, contentType: selectedFile.type };
+      const item: GalleryItem = { name: filename, url: downloadUrl, fullPath: path, contentType: selectedFile.type };
       setGallery((g) => [item, ...g]);
       onSaved?.(item);
 
-      // Firestore index doc
+      // Firestore index doc (NEW: add nameLower, storagePath, updatedAt)
       try {
         const { path: docPath } = buildIndexTarget({
           uid: currentUser.uid,
@@ -305,9 +484,12 @@ export default function UploadImageReference({
           {
             url: downloadUrl,
             name: cleanName,
+            nameLower: cleanName.toLowerCase(),
             fileName: filename,
             contentType: selectedFile.type || 'application/octet-stream',
+            storagePath: path,
             createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
             source: 'uploaded',
             storyId: sid ?? null,
             role: variant,
@@ -319,6 +501,10 @@ export default function UploadImageReference({
       }
 
       alert('Saved to gallery!');
+      resetUploader();
+
+      // After write, reload from index to reflect correct sort position
+      loadGallery(true);
     } catch (e: any) {
       const msg = String(e?.message || e);
       if (msg.includes('storage/unauthorized')) {
@@ -356,11 +542,11 @@ export default function UploadImageReference({
       await uploadString(storageRef, localGeneratedUrl, 'data_url', { customMetadata: meta });
 
       const downloadUrl = await getDownloadURL(storageRef);
-      const item = { name: filename, url: downloadUrl, fullPath: path, contentType: 'image/png' };
+      const item: GalleryItem = { name: filename, url: downloadUrl, fullPath: path, contentType: 'image/png' };
       setGallery((g) => [item, ...g]);
       onSaved?.(item);
 
-      // Firestore index doc
+      // Firestore index doc (NEW: add nameLower, storagePath, updatedAt)
       try {
         const { path: docPath } = buildIndexTarget({
           uid: currentUser.uid,
@@ -373,9 +559,12 @@ export default function UploadImageReference({
           {
             url: downloadUrl,
             name: cleanName,
+            nameLower: cleanName.toLowerCase(),
             fileName: filename,
             contentType: 'image/png',
+            storagePath: path,
             createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
             source: 'ai-generated',
             storyId: sid ?? null,
             role: variant,
@@ -387,6 +576,11 @@ export default function UploadImageReference({
       }
 
       alert('Generated image saved!');
+      resetUploader();
+      setLocalGeneratedUrl('');
+
+      // After write, reload from index to reflect correct sort position
+      loadGallery(true);
     } catch (e: any) {
       const msg = String(e?.message || e);
       if (msg.includes('storage/unauthorized')) {
@@ -404,9 +598,31 @@ export default function UploadImageReference({
   async function handleDelete(item: GalleryItem) {
     if (!confirm(`Delete "${item.name}"?`)) return;
     try {
+      // Delete from Storage
       await deleteObject(sref(storage, item.fullPath));
+      // Try delete matching index doc if we have its id
+      if (currentUser) {
+        const sid = storyIdRef.current;
+        if (item.indexId) {
+          const colPath = buildIndexCollectionPath({
+            uid: currentUser.uid,
+            storyId: sid,
+            category: assetCategory,
+          });
+          await deleteDoc(fsDoc(db, `${colPath}/${item.indexId}`));
+        } else if (item.storagePath) {
+          // Legacy: if storagePath matches doc id scheme (cleanName), try best-effort:
+          const maybeId = item.name.replace(/\.[^.]+$/, '');
+          const colPath = buildIndexCollectionPath({
+            uid: currentUser.uid,
+            storyId: sid,
+            category: assetCategory,
+          });
+          try { await deleteDoc(fsDoc(db, `${colPath}/${maybeId}`)); } catch {}
+        }
+      }
+
       setGallery((g) => g.filter((x) => x.fullPath !== item.fullPath));
-      // (Optional) also delete Firestore index doc
     } catch (e: any) {
       alert(e?.message || 'Delete failed');
     }
@@ -628,58 +844,78 @@ export default function UploadImageReference({
 
   function GalleryUI() {
     const galleryMessage = storyIdRef.current
-      ? (gallery.length === 0 ? 'No files yet for this story. Upload or generate one!' : null)
-      : (gallery.length === 0 ? 'No uncategorized files found. Upload or generate one with no story selected!' : null);
+      ? (gallery.length === 0 && !loadingGallery ? 'No files yet for this story. Upload or generate one!' : null)
+      : (gallery.length === 0 && !loadingGallery ? 'No uncategorized files found. Upload or generate one with no story selected!' : null);
 
     return (
       <div>
         {galleryMessage ? (
           <p className="text-sm text-neutral-500">{galleryMessage}</p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {gallery.map((it) => {
-              const isSelected = selection.includes(it.url);
-              const isSelectionMode = !!onSelectionChange;
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {gallery.map((it) => {
+                const isSelected = selection.includes(it.url);
+                const isSelectionMode = !!onSelectionChange;
 
-              return (
-                <div
-                  key={it.fullPath}
-                  className="relative group border rounded-md overflow-hidden p-1 cursor-pointer transition-all duration-200"
-                  onClick={() => handleGalleryItemClick(it)}
-                  style={{
-                    borderColor: isSelected ? '#3b82f6' : 'transparent',
-                    borderWidth: isSelected ? '3px' : '1px',
-                    opacity: isSelectionMode && selection.length > 0 && !isSelected ? 0.6 : 1,
-                  }}
-                >
-                  <Image
-                    src={it.url}
-                    alt={it.name}
-                    width={150}
-                    height={150}
-                    className="w-full h-32 object-cover rounded"
-                    unoptimized
-                  />
-                  <button
-                    title="Delete"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(it);
+                return (
+                  <div
+                    key={it.fullPath + (it.indexId ?? '')}
+                    className="relative group border rounded-md overflow-hidden p-1 cursor-pointer transition-all duration-200"
+                    onClick={() => handleGalleryItemClick(it)}
+                    style={{
+                      borderColor: isSelected ? '#3b82f6' : 'transparent',
+                      borderWidth: isSelected ? '3px' : '1px',
+                      opacity: isSelectionMode && selection.length > 0 && !isSelected ? 0.6 : 1,
                     }}
-                    className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition bg-white/90 rounded-full p-1 shadow"
                   >
-                    <Trash2 size={16} className="text-red-600" />
+                    <Image
+                      src={it.url}
+                      alt={it.name}
+                      width={150}
+                      height={150}
+                      className="w-full h-32 object-cover rounded"
+                      unoptimized
+                    />
+                    <button
+                      title="Delete"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(it);
+                      }}
+                      className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition bg-white/90 rounded-full p-1 shadow"
+                    >
+                      <Trash2 size={16} className="text-red-600" />
+                    </button>
+                    {isSelected && (
+                      <div className="absolute top-1 left-1 bg-blue-500 text-white rounded-full p-0.5 shadow">
+                        <CheckCircle2 size={20} />
+                      </div>
+                    )}
+                    <div className="px-2 py-1 text-xs truncate">{it.name}</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Pager */}
+            <div className="mt-3 flex items-center justify-between">
+              <div className="text-xs opacity-60">
+                {usedIndex ? 'Indexed ' : 'Fallback '} • Sort {sortField} ({sortDir}) • Page size {pageSize}
+              </div>
+              <div className="flex items-center gap-2">
+                {loadingGallery && <span className="text-xs opacity-70">Loading…</span>}
+                {usedIndex && hasMore && !loadingGallery && (
+                  <button
+                    className="px-3 py-1.5 rounded-md border text-sm"
+                    onClick={loadMore}
+                  >
+                    Load more
                   </button>
-                  {isSelected && (
-                    <div className="absolute top-1 left-1 bg-blue-500 text-white rounded-full p-0.5 shadow">
-                      <CheckCircle2 size={20} />
-                    </div>
-                  )}
-                  <div className="px-2 py-1 text-xs truncate">{it.name}</div>
-                </div>
-              );
-            })}
-          </div>
+                )}
+              </div>
+            </div>
+          </>
         )}
       </div>
     );

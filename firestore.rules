@@ -116,119 +116,109 @@ service cloud.firestore {
                 'audioNarrations','audioEffects','videos','generatedImages','others'
               ];
             }
-            function validAssetDoc(d) {
-              // Minimal fields you said you’ll store in the index docs
-              return (d.url is string)
-                  && (d.fileName is string)
-                  && (d.contentType is string)
-                  && (d.createdAt is timestamp)
-                  && (d.source is string); // 'uploaded' | 'ai-generated' | etc.
-            }
-
-            /* ============================================================
-              users/{uid}/assetIndex (normalized references)
-              ============================================================ */
-
-            /* Story-scoped assets
-              users/{uid}/assetIndex/stories/{storyId}/{category}/{assetId}
-            */
-            match /assetIndex/stories/{storyId}/{category}/{assetId} {
-
-              // READ: private index by default (owner only).
-              // If you want parts of the index visible elsewhere, relax this.
-              allow read: if isOwner(uid);
-
-              // CREATE: owner + category is allowed + payload is well-formed
-              //         + storyId on the doc (if present) must match the path
-              allow create: if isOwner(uid)
-                && allowedCategory(category)
-                && validAssetDoc(request.resource.data)
-                && ( !('storyId' in request.resource.data) || request.resource.data.storyId == storyId );
-
-              // UPDATE: owner + ensure we don’t “move” between stories/categories via update
-              allow update: if isOwner(uid)
-                && allowedCategory(category)
-                && validAssetDoc(request.resource.data)
-                && (resource.data.storyId == request.resource.data.storyId)  // frozen
-                && (category == category); // category frozen by path (no-op guard)
-
-              // DELETE: owner
-              allow delete: if isOwner(uid);
-            }
-
-            /* Uncategorized assets
-              users/{uid}/assetIndex/uncategorized/{category}/{assetId}
-            */
-            match /assetIndex/uncategorized/{category}/{assetId} {
-
-              // READ: owner only by default
-              allow read: if isOwner(uid);
-
-              // CREATE/UPDATE: owner + allowed category + valid doc
-              // (No storyId required here; if provided, it must be null or empty.)
-              allow create, update: if isOwner(uid)
-                && allowedCategory(category)
-                && validAssetDoc(request.resource.data)
-                && ( !('storyId' in request.resource.data) || request.resource.data.storyId == null );
-
-              // DELETE: owner
-              allow delete: if isOwner(uid);
-            }
-    }
-
-    /* ============================================================
-       TOP-LEVEL STORIES (descubrimiento/publishing)
-       ============================================================ */
-    match /stories/{storyId} {
-      // Crear: debe venir con ownerUid == caller
-      allow create: if isOwnerCreate();
-
-      // Leer: público (ANY of published/publishedAt/status/visibility/isPublic) o dueño
-      // (Incluye leer premium.convaiAgentId y otros campos.)
-      allow read: if isPublicStory() || isOwnerDoc();
-
-      // Actualizar/Eliminar: sólo dueño + congelar ownerUid
-      allow update, delete: if isOwnerDoc()
-        && request.resource.data.ownerUid == resource.data.ownerUid;
-
-      /* ---------- Subcolecciones bajo stories ---------- */
-
-      // Ratings: clave = uid del rater
-      match /ratings/{raterUid} {
-        // Leer: si story es público/owner o si el caller está leyendo su propio rating
-        allow read: if canReadStoryById(storyId)
-                 || (isSignedIn() && request.auth.uid == raterUid);
-
-        // Escribe/actualiza/elimina: sólo el propio rater
-        allow create, update, delete: if isSignedIn() && request.auth.uid == raterUid;
+            // Minimal schema we rely on; other fields are allowed.
+      function hasTimestampOrMissing(v) { return !(v in request.resource.data) || (request.resource.data[v] is timestamp); }
+      function validAssetDoc(d) {
+        return (d.url is string) &&
+              (d.fileName is string) &&
+              (d.contentType is string) &&
+              // createdAt required; updatedAt optional-but-if-present must be timestamp
+              (d.createdAt is timestamp) &&
+              hasTimestampOrMissing('updatedAt') &&
+              // optional extras we may set
+              ( !('name' in d) || (d.name is string) ) &&
+              ( !('nameLower' in d) || (d.nameLower is string) ) &&
+              ( !('storagePath' in d) || (d.storagePath is string) ) &&
+              ( !('role' in d) || (d.role is string) ) &&
+              ( !('source' in d) || (d.source is string) );
       }
 
-      // Comments
-      match /comments/{commentId} {
-        // Leer: si story es público o caller es dueño del story
-        allow read: if canReadStoryById(storyId);
+      /* ==========================================================
+        users/{uid}/assetIndex (normalized references for gallery)
+        ========================================================== */
+      // Story-scoped:
+      // users/{uid}/assetIndex/stories/{storyId}/{category}/{assetId}
+      match /assetIndex/stories/{storyId}/{category}/{assetId} {
+        allow read: if isOwner(uid);
+        // Create: owner + allowed category + minimal shape + storyId (if present) matches path
+        allow create: if isOwner(uid)
+          && allowedCategory(category)
+          && validAssetDoc(request.resource.data)
+          && ( !('storyId' in request.resource.data) || request.resource.data.storyId == storyId );
+        // Update: owner + keep category/storyId frozen + still minimally valid
+        allow update: if isOwner(uid)
+          && allowedCategory(category)
+          && validAssetDoc(request.resource.data)
+          && (resource.data.storyId == request.resource.data.storyId);
+        allow delete: if isOwner(uid);
+      }
 
-        // Crear: user autenticado; guarda authorId y congélalo
-        allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+      // Uncategorized:
+      // users/{uid}/assetIndex/uncategorized/{category}/{assetId}
+      match /assetIndex/uncategorized/{category}/{assetId} {
+        allow read: if isOwner(uid);
+        // Create/Update: owner + allowed category + minimal shape
+        // If storyId present, it must be null (don’t let assets “migrate” via update)
+        allow create, update: if isOwner(uid)
+          && allowedCategory(category)
+          && validAssetDoc(request.resource.data)
+          && ( !('storyId' in request.resource.data) || request.resource.data.storyId == null );
+        allow delete: if isOwner(uid);
+      }
+    }
+        /* ============================================================
+          TOP-LEVEL STORIES (descubrimiento/publishing)
+          ============================================================ */
+        match /stories/{storyId} {
+          // Crear: debe venir con ownerUid == caller
+          allow create: if isOwnerCreate();
 
-        // Update/Delete: sólo el autor del comentario y mantener authorId
-        allow update, delete: if isSignedIn()
-          && resource.data.authorId == request.auth.uid
-          && request.resource.data.authorId == resource.data.authorId;
+          // Leer: público (ANY of published/publishedAt/status/visibility/isPublic) o dueño
+          // (Incluye leer premium.convaiAgentId y otros campos.)
+          allow read: if isPublicStory() || isOwnerDoc();
 
-        // Reacciones a un comentario
-        match /reactions/{userId} {
-          allow read: if canReadStoryById(storyId);
-          allow create, update, delete: if isSignedIn() && request.auth.uid == userId;
+          // Actualizar/Eliminar: sólo dueño + congelar ownerUid
+          allow update, delete: if isOwnerDoc()
+            && request.resource.data.ownerUid == resource.data.ownerUid;
+
+          /* ---------- Subcolecciones bajo stories ---------- */
+
+          // Ratings: clave = uid del rater
+          match /ratings/{raterUid} {
+            // Leer: si story es público/owner o si el caller está leyendo su propio rating
+            allow read: if canReadStoryById(storyId)
+                    || (isSignedIn() && request.auth.uid == raterUid);
+
+            // Escribe/actualiza/elimina: sólo el propio rater
+            allow create, update, delete: if isSignedIn() && request.auth.uid == raterUid;
+          }
+
+          // Comments
+          match /comments/{commentId} {
+            // Leer: si story es público o caller es dueño del story
+            allow read: if canReadStoryById(storyId);
+
+            // Crear: user autenticado; guarda authorId y congélalo
+            allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+
+            // Update/Delete: sólo el autor del comentario y mantener authorId
+            allow update, delete: if isSignedIn()
+              && resource.data.authorId == request.auth.uid
+              && request.resource.data.authorId == resource.data.authorId;
+
+            // Reacciones a un comentario
+            match /reactions/{userId} {
+              allow read: if canReadStoryById(storyId);
+              allow create, update, delete: if isSignedIn() && request.auth.uid == userId;
+            }
+          }
+
+          // Reacciones directas al story
+          match /reactions/{userId} {
+            allow read: if canReadStoryById(storyId);
+            allow create, update, delete: if isSignedIn() && request.auth.uid == userId;
+          }
         }
-      }
-
-      // Reacciones directas al story
-      match /reactions/{userId} {
-        allow read: if canReadStoryById(storyId);
-        allow create, update, delete: if isSignedIn() && request.auth.uid == userId;
-      }
-    }
 
     /* ============================================================
        TOP-LEVEL storyContents (pages/segments)

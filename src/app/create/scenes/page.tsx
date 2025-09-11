@@ -5,7 +5,20 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ImageIcon, Music, Upload, Wand2, Loader2, Info, PlusCircle, Quote, Volume2, Image as ImgIcon } from 'lucide-react';
+import {
+  ImageIcon,
+  Music,
+  Upload,
+  Wand2,
+  Loader2,
+  Info,
+  PlusCircle,
+  Quote,
+  Volume2,
+  Image as ImgIcon,
+  SortAsc,
+  SortDesc
+} from 'lucide-react';
 
 import { useAuth } from '@/context/AuthContext';
 import { db, storage } from '@/lib/firebase';
@@ -15,7 +28,6 @@ import {
   updateDoc,
   doc as fsDoc,
   serverTimestamp,
-  // NEW IMPORTS FOR STORY LISTING
   collection,
   query,
   where,
@@ -54,7 +66,7 @@ type GalleryMeta = {
   source?: string | null;
   displayName?: string | null;
   category?: string | null;
-  createdAt?: string | null;
+  createdAt?: string | null; // <- we use this for sort by date (from storage metadata timeCreated)
   storyId?: string | null;
   role?: string | null;
 };
@@ -124,7 +136,6 @@ type StoryDoc = {
   pageCount?: number;
 };
 
-/* NEW: StorySummary type (for dropdown) */
 type StorySummary = {
   id: string;
   title: string;
@@ -142,90 +153,53 @@ function classNames(...xs: (string | false | null | undefined)[]) {
   return xs.filter(Boolean).join(' ');
 }
 
-/** NUEVO: mapa de avatar por voz + override por Children's */
 function resolveAvatarForVoiceAndGenre(voice: string | null | undefined, genres?: string[]): string {
   const g = (genres || []).map(s => s.toLowerCase());
-  const isChildren = g.some(s => s.includes("children"));
+  const isChildren = g.some(s => s.includes('children'));
   if (isChildren) return '/story_reader_avatars/Rain Bunny.png';
-
   switch ((voice || '').trim()) {
-    case 'Nuna':                      return '/story_reader_avatars/Nuna.png';
-    case 'Kore':                      return '/story_reader_avatars/Nuna.png';
-    case 'Juniper':                   return '/story_reader_avatars/Juniper.png';
-    case 'Leda':                      return '/story_reader_avatars/Juniper.png';
-    case 'Argus':                     return '/story_reader_avatars/Argus.png';
-    case 'Sadachbia':                 return '/story_reader_avatars/Argus.png';
-    case 'Achird':                    return '/story_reader_avatars/Raj.png';
-    case 'Zephyr':                    return '/story_reader_avatars/Belle.png';
-    case 'Puck':                      return '/story_reader_avatars/Scythe.png';
-    default:                          return DEFAULTS.avatarUrl;
+    case 'Nuna':      return '/story_reader_avatars/Nuna.png';
+    case 'Kore':      return '/story_reader_avatars/Nuna.png';
+    case 'Juniper':   return '/story_reader_avatars/Juniper.png';
+    case 'Leda':      return '/story_reader_avatars/Juniper.png';
+    case 'Argus':     return '/story_reader_avatars/Argus.png';
+    case 'Sadachbia': return '/story_reader_avatars/Argus.png';
+    case 'Achird':    return '/story_reader_avatars/Raj.png';
+    case 'Zephyr':    return '/story_reader_avatars/Belle.png';
+    case 'Puck':      return '/story_reader_avatars/Scythe.png';
+    default:          return DEFAULTS.avatarUrl;
   }
 }
 
-/** Construye SSML fuerte según “tone” */
 function buildSSML(text: string, tone: string, lang: LangCode = 'en'): { ssml: string; style: string } {
   const clean = (text || '').trim();
-  const safeText = clean
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-
-  // Prosody presets
-  let rate = '100%';
-  let pitch = '0st';
-  let volume = 'medium';
-  let style = 'normal';
-
+  const safeText = clean.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  let rate = '100%'; let pitch = '0st'; let volume = 'medium'; let style = 'normal';
   switch (tone) {
-    case 'a cheerful':
-      rate = '110%'; pitch = '+2st'; volume = 'loud'; style = 'cheerful'; break;
-    case 'a sad':
-      rate = '90%';  pitch = '-2st'; volume = 'medium'; style = 'sad'; break;
-    case 'an excited':
-      rate = '108%'; pitch = '+1st'; volume = 'x-loud'; style = 'excited'; break;
-    case 'a whispering':
-      rate = '95%';  pitch = '-1st'; volume = 'x-soft'; style = 'whispering'; break;
-    default:
-      style = 'normal';
+    case 'a cheerful':  rate='110%'; pitch='+2st'; volume='loud';   style='cheerful';  break;
+    case 'a sad':       rate='90%';  pitch='-2st'; volume='medium'; style='sad';       break;
+    case 'an excited':  rate='108%'; pitch='+1st'; volume='x-loud'; style='excited';   break;
+    case 'a whispering':rate='95%';  pitch='-1st'; volume='x-soft'; style='whispering';break;
   }
-
   const ssml =
 `<speak xml:lang="${lang}">
   <prosody rate="${rate}" pitch="${pitch}" volume="${volume}">
     ${safeText}
   </prosody>
 </speak>`;
-
   return { ssml, style };
 }
 
-/** NUEVO: escena por defecto sin undefined */
 function makeDefaultScene(index = 0): Scene {
-  const id = typeof crypto?.randomUUID === 'function'
-    ? crypto.randomUUID()
-    : String(Math.random()).slice(2);
-  return {
-    id,
-    index,
-    title: `Scene ${index + 1}`,
-    text: '',
-    imageUrl: null,
-    imageName: null,
-    audioUrl: null,
-    audioName: null,
-    voiceId: null,
-    durationMs: null,
-  };
+  const id = typeof crypto?.randomUUID === 'function' ? crypto.randomUUID() : String(Math.random()).slice(2);
+  return { id, index, title: `Scene ${index + 1}`, text: '', imageUrl: null, imageName: null, audioUrl: null, audioName: null, voiceId: null, durationMs: null };
 }
 
-/** Deep clean for Firestore */
 function deepClean(value: any): any {
-  if (value === undefined) return null;
-  if (value === null) return null;
+  if (value === undefined || value === null) return null;
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value;
   if (Array.isArray(value)) return value.map(deepClean);
   if (value instanceof Date) return value;
-
   const tag = Object.prototype.toString.call(value);
   if (tag === '[object Object]') {
     const out: any = {};
@@ -284,10 +258,6 @@ function inferKindFromPath(path?: string, contentType?: string): 'image' | 'audi
   return 'unknown';
 }
 
-/* ------------------------------------------------------------------ */
-/* Imagen + Suggest helpers                                           */
-/* ------------------------------------------------------------------ */
-
 function genreDescriptors(genres: string[] = []): string[] {
   const g = genres.map(s => s.toLowerCase().trim());
   const out: string[] = [];
@@ -331,21 +301,16 @@ function extractImageAndModel(json: any): { dataUrl?: string; modelUsed?: string
       : undefined;
     return { dataUrl, modelUsed: json.modelUsed || json.model || json.modelName };
   }
-  if (typeof json?.imageBase64 === 'string') {
-    return { dataUrl: `data:image/png;base64,${json.imageBase64}`, modelUsed: json.modelUsed || json.model };
-  }
-  if (typeof json?.dataUrl === 'string') {
-    return { dataUrl: json.dataUrl, modelUsed: json.modelUsed || json.model };
-  }
+  if (typeof json?.imageBase64 === 'string') return { dataUrl: `data:image/png;base64,${json.imageBase64}`, modelUsed: json.modelUsed || json.model };
+  if (typeof json?.dataUrl === 'string') return { dataUrl: json.dataUrl, modelUsed: json.modelUsed || json.model };
   return {};
 }
 
 /* ------------------------------------------------------------------ */
-/* Storage upload helpers (UPDATED)                                    */
+/* Storage upload helpers                                             */
 /* ------------------------------------------------------------------ */
 
 async function uploadDataUrlToStorage(userId: string, storyId: string, dataUrl: string, filename: string) {
-  // Use the new path structure for generated scene images
   const path = `users/${userId}/assetIndex/stories/${storyId}/generatedImages/${filename}`;
   const r = sref(storage, path);
   await uploadString(r, dataUrl, 'data_url', {
@@ -358,10 +323,7 @@ async function uploadDataUrlToStorage(userId: string, storyId: string, dataUrl: 
   });
   const https = await getDownloadURL(r);
   await setDoc(
-    fsDoc(
-      db,
-      `users/${userId}/assetIndex/stories/${storyId}/generatedImages/${filename.replace(/\.[^.]+$/, '')}`
-    ),
+    fsDoc(db, `users/${userId}/assetIndex/stories/${storyId}/generatedImages/${filename.replace(/\.[^.]+$/, '')}`),
     {
       url: https,
       name: filename.replace(/\.[^.]+$/, ''),
@@ -370,17 +332,16 @@ async function uploadDataUrlToStorage(userId: string, storyId: string, dataUrl: 
       createdAt: serverTimestamp(),
       source: 'ai-generated-scene',
       storyId,
-      role: 'cover', // or 'location'/'character' if you later specialize
+      role: 'cover',
     },
     { merge: true }
   );
   return { https, fullPath: r.fullPath };
 }
 
-/** Ensure no scene carries a data: URL before saving to Firestore (UPDATED) */
 async function normalizeScenesBeforeSave(
   userId: string | undefined,
-  storyId: string, // now required
+  storyId: string,
   raw: Scene[]
 ): Promise<Scene[]> {
   if (!userId) return raw;
@@ -422,17 +383,15 @@ export default function ScenesPage() {
   const [userStories, setUserStories] = useState<StorySummary[]>([]);
   const [userStoriesLoading, setUserStoriesLoading] = useState(false);
   const [selectedStoryId, setSelectedStoryId] = useState<string | undefined>(storyId);
-  // NEW: uncategorized toggle + select value
-    const [showUncategorized, setShowUncategorized] = useState(false);
-    const storySelectValue = showUncategorized ? '__UNCAT__' : (selectedStoryId || '');
-    // Optional: used only for readability in effects
-    const canBrowseGallery = !!selectedStoryId || showUncategorized;
+  const [showUncategorized, setShowUncategorized] = useState(false);
+  const storySelectValue = showUncategorized ? '__UNCAT__' : (selectedStoryId || '');
+  const canBrowseGallery = !!selectedStoryId || showUncategorized;
 
   // UI locals
   const [imagePrompt, setImagePrompt] = useState('');
   const [imageDesc, setImageDesc] = useState('');
   const [narrationText, setNarrationText] = useState('');
-  const [voice, setVoice] = useState('Kore'); // maps to Nuna avatar per rules
+  const [voice, setVoice] = useState('Kore');
   const [tone, setTone] = useState<'a normal' | 'a cheerful' | 'a sad' | 'an excited' | 'a whispering'>('a normal');
 
   const [isGenImage, setIsGenImage] = useState(false);
@@ -443,6 +402,9 @@ export default function ScenesPage() {
   const [activeTab, setActiveTab] = useState<typeof GALLERY_TABS[number]['key']>('characters');
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [loadingGallery, setLoadingGallery] = useState(false);
+  // Sorting
+  const [sortBy, setSortBy] = useState<'name' | 'date'>('date');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
   // AI ideas
   const [ideasLoading, setIdeasLoading] = useState(false);
@@ -452,154 +414,200 @@ export default function ScenesPage() {
   const currentScene = scenes[currentIndex] || null;
   const langLabel = useMemo(() => LANG_LABELS[(story?.language || 'en') as LangCode] || 'English', [story?.language]);
 
-  // ----- Page limit logic -----
-  const selectedPages = Math.max(1, Math.min( (story?.pageCount ?? 10), 20 ));
+  // Page limits
+  const selectedPages = Math.max(1, Math.min((story?.pageCount ?? 10), 20));
   const progressLabel = `Scene ${Math.min(currentIndex + 1, selectedPages)} / ${selectedPages}`;
 
-  // Permission flag
   const canManageAssets = !!selectedStoryId;
 
-  /* -------- Load story + scenes from Firestore (UPDATED to selectedStoryId) -------- */
- /* -------- Load story + scenes from Firestore (UPDATED to selectedStoryId) -------- */
-useEffect(() => {
-  (async () => {
-    if (!selectedStoryId) {
-      // Clear if nothing is selected
-      setStory(null);
-      setScenes([makeDefaultScene(0)]);
-      setCurrentIndex(0);
-      setReaderUI({ avatarUrl: DEFAULTS.avatarUrl, backgroundUrl: DEFAULTS.backgroundUrl });
-      return;
-    }
-
+  /* -------- Gallery loader (single, sorted) -------- */
+  const loadGallery = useCallback(async (category: AssetCategory) => {
+    if (!user) { setGallery([]); return; }
+    setLoadingGallery(true);
     try {
-      const storyRef = fsDoc(db, 'stories', selectedStoryId);
-      const snap = await getDoc(storyRef);
-      let docData: StoryDoc = {};
-      if (snap.exists()) docData = (snap.data() as StoryDoc) || {};
+      const basePath = showUncategorized
+        ? `users/${user.uid}/assetIndex/uncategorized/${category}/`
+        : selectedStoryId
+          ? `users/${user.uid}/assetIndex/stories/${selectedStoryId}/${category}/`
+          : null;
 
-      const fixedScenes: Scene[] = (docData.scenes || [])
-        .map((s, i) => ({
-          id: s?.id || (typeof crypto?.randomUUID === 'function' ? crypto.randomUUID() : String(Math.random()).slice(2)),
-          index: Number.isFinite(s?.index as any) ? (s!.index as number) : i,
-          title: s?.title ?? `Scene ${i + 1}`,
-          text: s?.text ?? '',
-          imageUrl: s?.imageUrl ?? null,
-          imageName: s?.imageName ?? null,
-          audioUrl: s?.audioUrl ?? null,
-          audioName: s?.audioName ?? null,
-          voiceId: s?.voiceId ?? null,
-          durationMs: Number.isFinite(s?.durationMs as any) ? s!.durationMs! : null,
-        }))
-        .sort((a, b) => a.index - b.index);
+      if (!basePath) { setGallery([]); return; }
 
-      const ensured = fixedScenes.length > 0 ? fixedScenes : [makeDefaultScene(0)];
+      const base = sref(storage, basePath);
+      const res = await listAll(base);
+      const items = await Promise.all(res.items.map(async (i) => {
+        const [url, meta] = await Promise.all([getDownloadURL(i), getMetadata(i).catch(() => null)]);
+        return {
+          name: i.name,
+          fullPath: i.fullPath,
+          url,
+          contentType: meta?.contentType || undefined,
+          size: typeof meta?.size === 'number' ? meta.size : undefined,
+          meta: {
+            ...(meta?.customMetadata || {}),
+            createdAt: (meta as any)?.timeCreated || undefined,
+          },
+        } as GalleryItem;
+      }));
 
-      const existingAvatar = docData.reader?.avatarUrl || DEFAULTS.avatarUrl;
-      const computedAvatar = resolveAvatarForVoiceAndGenre(docData.voiceId || ensured[0]?.voiceId || voice, docData.genres);
-      const finalAvatar = (existingAvatar === DEFAULTS.avatarUrl) ? computedAvatar : existingAvatar;
+      const sorted = [...items].sort((a, b) => {
+        if (sortBy === 'name') {
+          return sortDir === 'asc'
+            ? a.name.localeCompare(b.name)
+            : b.name.localeCompare(a.name);
+        } else {
+          const da = a.meta?.createdAt ? new Date(a.meta.createdAt).getTime() : 0;
+          const db = b.meta?.createdAt ? new Date(b.meta.createdAt).getTime() : 0;
+          return sortDir === 'asc' ? da - db : db - da;
+        }
+      });
 
-      setStory({
-        title: docData.title || '',
-        synopsis: docData.synopsis || '',
-        genres: docData.genres || [],
-        language: (docData.language as LangCode) || 'en',
-        voiceId: docData.voiceId || undefined,
-        reader: {
+      setGallery(sorted);
+    } catch (e) {
+      console.error('Failed to load storage gallery:', e);
+      setGallery([]);
+    } finally {
+      setLoadingGallery(false);
+    }
+  }, [user, selectedStoryId, showUncategorized, sortBy, sortDir]);
+
+  function applyIdeaToCurrent(idea: { title: string; outline: string; imagePrompt?: string }) {
+    if (!currentScene) return;
+  
+    const mergedText = currentScene.text?.trim()
+      ? `${currentScene.text.trim()}\n\n${idea.outline.trim()}`
+      : idea.outline.trim();
+  
+    updateCurrentScene({
+      title: idea.title || currentScene.title,
+      text: mergedText,
+    });
+  
+    if (idea.imagePrompt && idea.imagePrompt.trim()) {
+      setImagePrompt(idea.imagePrompt.trim());
+    }
+  }
+
+
+  /* -------- Load story + scenes from Firestore -------- */
+  useEffect(() => {
+    (async () => {
+      if (!selectedStoryId) {
+        setStory(null);
+        setScenes([makeDefaultScene(0)]);
+        setCurrentIndex(0);
+        setReaderUI({ avatarUrl: DEFAULTS.avatarUrl, backgroundUrl: DEFAULTS.backgroundUrl });
+        return;
+      }
+      try {
+        const storyRef = fsDoc(db, 'stories', selectedStoryId);
+        const snap = await getDoc(storyRef);
+        let docData: StoryDoc = {};
+        if (snap.exists()) docData = (snap.data() as StoryDoc) || {};
+
+        const fixedScenes: Scene[] = (docData.scenes || [])
+          .map((s, i) => ({
+            id: s?.id || (typeof crypto?.randomUUID === 'function' ? crypto.randomUUID() : String(Math.random()).slice(2)),
+            index: Number.isFinite(s?.index as any) ? (s!.index as number) : i,
+            title: s?.title ?? `Scene ${i + 1}`,
+            text: s?.text ?? '',
+            imageUrl: s?.imageUrl ?? null,
+            imageName: s?.imageName ?? null,
+            audioUrl: s?.audioUrl ?? null,
+            audioName: s?.audioName ?? null,
+            voiceId: s?.voiceId ?? null,
+            durationMs: Number.isFinite(s?.durationMs as any) ? s!.durationMs! : null,
+          }))
+          .sort((a, b) => a.index - b.index);
+
+        const ensured = fixedScenes.length > 0 ? fixedScenes : [makeDefaultScene(0)];
+
+        const existingAvatar = docData.reader?.avatarUrl || DEFAULTS.avatarUrl;
+        const computedAvatar = resolveAvatarForVoiceAndGenre(docData.voiceId || ensured[0]?.voiceId || voice, docData.genres);
+        const finalAvatar = (existingAvatar === DEFAULTS.avatarUrl) ? computedAvatar : existingAvatar;
+
+        setStory({
+          title: docData.title || '',
+          synopsis: docData.synopsis || '',
+          genres: docData.genres || [],
+          language: (docData.language as LangCode) || 'en',
+          voiceId: docData.voiceId || undefined,
+          reader: {
+            avatarUrl: finalAvatar || DEFAULTS.avatarUrl,
+            backgroundUrl: docData.reader?.backgroundUrl || DEFAULTS.backgroundUrl,
+          },
+          status: docData.status || 'draft',
+          isPublic: !!docData.isPublic,
+          scenes: ensured,
+          pageCount: typeof docData.pageCount === 'number' ? docData.pageCount : undefined,
+        });
+
+        setReaderUI({
           avatarUrl: finalAvatar || DEFAULTS.avatarUrl,
           backgroundUrl: docData.reader?.backgroundUrl || DEFAULTS.backgroundUrl,
-        },
-        status: docData.status || 'draft',
-        isPublic: !!docData.isPublic,
-        scenes: ensured,
-        pageCount: typeof docData.pageCount === 'number' ? docData.pageCount : undefined,
-      });
+        });
 
-      setReaderUI({
-        avatarUrl: finalAvatar || DEFAULTS.avatarUrl,
-        backgroundUrl: docData.reader?.backgroundUrl || DEFAULTS.backgroundUrl,
-      });
+        setScenes(ensured);
 
-      setScenes(ensured);
+        const fromUrl = Number.parseInt(searchParams.get('scene') || '', 10);
+        const fromLs  = Number.parseInt(localStorage.getItem('reader:lastScene') || '', 10);
+        const initial = Number.isFinite(fromUrl) ? fromUrl : (Number.isFinite(fromLs) ? fromLs : 0);
+        setCurrentIndex(Math.max(0, Math.min(initial, Math.max(ensured.length - 1, 0))));
+      } catch (e) {
+        console.error('Failed to load story', e);
+        setScenes(prev => prev.length ? prev : [makeDefaultScene(0)]);
+        setStory(prev => prev ? prev : { title: '', synopsis: '', genres: [], language: 'en' as LangCode, scenes: [makeDefaultScene(0)], pageCount: 10 });
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedStoryId]);
 
-      const fromUrl = Number.parseInt(searchParams.get('scene') || '', 10);
-      const fromLs  = Number.parseInt(localStorage.getItem('reader:lastScene') || '', 10);
-      const initial = Number.isFinite(fromUrl) ? fromUrl : (Number.isFinite(fromLs) ? fromLs : 0);
-      setCurrentIndex(Math.max(0, Math.min(initial, Math.max(ensured.length - 1, 0))));
-    } catch (e) {
-      console.error('Failed to load story', e);
-      setScenes(prev => prev.length ? prev : [makeDefaultScene(0)]);
-      setStory(prev => prev ? prev : { title: '', synopsis: '', genres: [], language: 'en' as LangCode, scenes: [makeDefaultScene(0)], pageCount: 10 });
+  // Read ?assets=uncategorized once on mount
+  useEffect(() => {
+    const assets = searchParams.get('assets');
+    if (assets === 'uncategorized') {
+      setShowUncategorized(true);
+      setSelectedStoryId(undefined);
     }
-  })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [selectedStoryId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-// Read ?assets=uncategorized once on mount to set the scope.
-useEffect(() => {
-  const assets = searchParams.get('assets');
-  if (assets === 'uncategorized') {
-    setShowUncategorized(true);
-    setSelectedStoryId(undefined);
-  }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, []);
-
-  // keep URL + lastScene (UPDATED to sync selectedStoryId)
+  // keep URL + lastScene
   useEffect(() => {
     const sp2 = new URLSearchParams(window.location.search);
-  
     const urlStoryId = searchParams.get('storyId');
     const urlAssets  = searchParams.get('assets');
-  
-    // Pull from URL -> state (idempotent)
     if (urlAssets === 'uncategorized' && !showUncategorized) {
       setShowUncategorized(true);
       setSelectedStoryId(undefined);
     } else if (urlStoryId && urlStoryId !== selectedStoryId && !showUncategorized) {
       setSelectedStoryId(urlStoryId);
     }
-  
-    // State -> URL
     if (showUncategorized) {
-      sp2.delete('storyId');
-      sp2.set('assets', 'uncategorized');
+      sp2.delete('storyId'); sp2.set('assets', 'uncategorized');
     } else if (selectedStoryId) {
-      sp2.set('storyId', selectedStoryId);
-      sp2.delete('assets');
+      sp2.set('storyId', selectedStoryId); sp2.delete('assets');
     } else {
-      sp2.delete('storyId');
-      sp2.delete('assets');
+      sp2.delete('storyId'); sp2.delete('assets');
     }
-  
     sp2.set('scene', String(currentIndex));
     window.history.replaceState({}, '', `?${sp2.toString()}`);
     localStorage.setItem('reader:lastScene', String(currentIndex));
   }, [currentIndex, selectedStoryId, showUncategorized, searchParams]);
-  
+
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
-    if (showUncategorized) {
-      sp.set('uncat', '1');
-      sp.delete('storyId');
-    } else {
-      sp.delete('uncat');
-      if (selectedStoryId) sp.set('storyId', selectedStoryId);
-      else sp.delete('storyId');
-    }
+    if (showUncategorized) { sp.set('uncat', '1'); sp.delete('storyId'); }
+    else { sp.delete('uncat'); if (selectedStoryId) sp.set('storyId', selectedStoryId); else sp.delete('storyId'); }
     sp.set('scene', String(currentIndex));
     window.history.replaceState({}, '', `?${sp.toString()}`);
     localStorage.setItem('reader:lastScene', String(currentIndex));
   }, [currentIndex, selectedStoryId, showUncategorized]);
-  
 
   /* -------- Fetch user's stories for dropdown -------- */
   useEffect(() => {
     const fetchUserStories = async () => {
-      if (!user) {
-        setUserStories([]);
-        return;
-      }
+      if (!user) { setUserStories([]); return; }
       setUserStoriesLoading(true);
       try {
         const qy = query(
@@ -623,61 +631,19 @@ useEffect(() => {
           };
         });
         setUserStories(storiesData);
-
-        if (!selectedStoryId && storiesData.length > 0) {
-          setSelectedStoryId(storiesData[0].id);
-        }
+        if (!selectedStoryId && storiesData.length > 0) setSelectedStoryId(storiesData[0].id);
       } catch (e) {
         console.error('Failed to load user stories for dropdown in ScenesPage:', e);
       } finally {
         setUserStoriesLoading(false);
       }
     };
-
     fetchUserStories();
   }, [user, selectedStoryId]);
 
-  /* -------- Gallery loader (UPDATED path + selectedStoryId requirement) -------- */
-  const loadGallery = useCallback(async (category: AssetCategory) => {
-    if (!user) { setGallery([]); return; }
-    setLoadingGallery(true);
-    try {
-      const basePath = showUncategorized
-        ? `users/${user.uid}/assetIndex/uncategorized/${category}/`
-        : selectedStoryId
-          ? `users/${user.uid}/assetIndex/stories/${selectedStoryId}/${category}/`
-          : null;
-  
-      if (!basePath) { setGallery([]); return; }
-  
-      const base = sref(storage, basePath);
-      const res = await listAll(base);
-      const items = await Promise.all(res.items.map(async (i) => {
-        const [url, meta] = await Promise.all([getDownloadURL(i), getMetadata(i).catch(() => null)]);
-        return {
-          name: i.name,
-          fullPath: i.fullPath,
-          url,
-          contentType: meta?.contentType || undefined,
-          size: typeof meta?.size === 'number' ? meta.size : undefined,
-          meta: meta?.customMetadata || undefined,
-        } as GalleryItem;
-      }));
-      setGallery(items.sort((a, b) => (a.name < b.name ? 1 : -1)));
-    } catch (e) {
-      console.error('Failed to load storage gallery:', e);
-      setGallery([]);
-    } finally {
-      setLoadingGallery(false);
-    }
-  }, [user, selectedStoryId, showUncategorized]);
-  
-  
+  // Load gallery whenever inputs change
   useEffect(() => {
-    if (!user || (!selectedStoryId && !showUncategorized)) {
-      setGallery([]);
-      return;
-    }
+    if (!user || (!selectedStoryId && !showUncategorized)) { setGallery([]); return; }
     void loadGallery(activeTab as AssetCategory);
   }, [user, activeTab, loadGallery, selectedStoryId, showUncategorized]);
 
@@ -693,18 +659,11 @@ useEffect(() => {
   function updateStoryPatch(patch: Partial<StoryDoc>) {
     setStory(prev => (prev ? { ...prev, ...patch } : prev));
   }
-
-  /* Voice change => enforce avatar rule */
   function applyVoiceAvatarUpdate(newVoice: string) {
     const avatarPath = resolveAvatarForVoiceAndGenre(newVoice, story?.genres);
     setVoice(newVoice);
     setReaderUI(prev => ({ ...prev, avatarUrl: avatarPath }));
-    updateStoryPatch({
-      reader: {
-        avatarUrl: avatarPath,
-        backgroundUrl: story?.reader?.backgroundUrl || DEFAULTS.backgroundUrl,
-      }
-    });
+    updateStoryPatch({ reader: { avatarUrl: avatarPath, backgroundUrl: story?.reader?.backgroundUrl || DEFAULTS.backgroundUrl } });
   }
 
   /* -------- Select/Describe/Reference -------- */
@@ -714,11 +673,11 @@ useEffect(() => {
     try {
       if (!canDescribeSelected(item)) return;
       const lang = (story?.language || 'en') as LangCode;
-      const langLabel = LANG_LABELS[lang] || 'English';
+      const langLabel2 = LANG_LABELS[lang] || 'English';
       const promptText =
         lang === 'es'
           ? 'Describe esta imagen en un solo párrafo claro y conciso...'
-          : `Describe this image in one clear, concise paragraph... Respond only in ${langLabel}.`;
+          : `Describe this image in one clear, concise paragraph... Respond only in ${langLabel2}.`;
       const body = { imageUrl: item.url, prompt: promptText, language: lang, targetLanguage: lang, responseModalities: ['TEXT'] };
       const r = await fetch('/api/describe-image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const json = await r.json();
@@ -731,27 +690,19 @@ useEffect(() => {
 
   function handleSelectForScene(item: GalleryItem) {
     const kind = inferKindFromPath(item.fullPath, item.contentType);
-    if (kind === 'image') {
-      updateCurrentScene({ imageUrl: item.url, imageName: item.name });
-    } else if (kind === 'audio') {
-      updateCurrentScene({ audioUrl: item.url, audioName: item.name });
-    } else {
-      alert('Only image or audio can be selected directly for a scene.');
-    }
+    if (kind === 'image') updateCurrentScene({ imageUrl: item.url, imageName: item.name });
+    else if (kind === 'audio') updateCurrentScene({ audioUrl: item.url, audioName: item.name });
+    else alert('Only image or audio can be selected directly for a scene.');
   }
 
-  // Soft references
   const [references, setReferences] = useState<Array<{ url: string; name?: string; category?: AssetCategory }>>([]);
   function handleUseAsReference(item: GalleryItem) {
-    setReferences((prev) => [...prev, { url: item.url, name: item.name, category: activeTab as AssetCategory }]);
+    setReferences(prev => [...prev, { url: item.url, name: item.name, category: activeTab as AssetCategory }]);
   }
 
-  /* -------- AI: Generate Image (UPDATED uses selectedStoryId) -------- */
+  /* -------- AI: Generate Image -------- */
   const handleGenerateImage = useCallback(async () => {
-    if (!selectedStoryId) {
-      alert('Please select an active story from the dropdown to generate an image.');
-      return;
-    }
+    if (!selectedStoryId) { alert('Please select an active story from the dropdown to generate an image.'); return; }
     if (!story) return;
     if (!imagePrompt.trim() && !story.synopsis && !(story.genres?.length)) {
       alert('Please write an image description or fill the story synopsis/genres on the Begin page.');
@@ -760,18 +711,13 @@ useEffect(() => {
     setIsGenImage(true);
     try {
       const { prompt, negativePrompt } = composePromptForImagen(imagePrompt, {
-        title: story.title,
-        genres: story.genres,
-        synopsis: story.synopsis,
-        language: story.language,
+        title: story.title, genres: story.genres, synopsis: story.synopsis, language: story.language,
       });
-
       const refNames = (references || []).map(r => r.name).filter(Boolean);
       const promptWithRefs = refNames.length ? `${prompt}\nVISUAL REFERENCES (soft influence): ${refNames.join(', ')}.` : prompt;
 
       const r = await fetch('/api/generate-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: promptWithRefs, negativePrompt, count: 1, storyId: selectedStoryId }),
       });
       const json = await r.json();
@@ -779,11 +725,9 @@ useEffect(() => {
       const { dataUrl } = extractImageAndModel(json);
       if (!dataUrl) throw new Error('No image returned by generator.');
 
-      // upload to Storage; keep only HTTPS URL in state
       if (!user) throw new Error('You must be signed in to save generated images.');
       const fname = `scene-${currentIndex + 1}-${Date.now()}.png`;
       const uploaded = await uploadDataUrlToStorage(user.uid, selectedStoryId, dataUrl, fname);
-
       updateCurrentScene({ imageUrl: uploaded.https, imageName: fname });
     } catch (e: any) {
       alert(e?.message || 'Image generation error');
@@ -792,36 +736,21 @@ useEffect(() => {
     }
   }, [story, imagePrompt, references, currentIndex, user, selectedStoryId]);
 
-  /* -------- AI: Suggest (UPDATED to require/pass selectedStoryId) -------- */
+  /* -------- AI: Suggest -------- */
   async function handleSuggestForScene() {
-    if (!selectedStoryId) {
-      alert('Please select an active story from the dropdown to get scene suggestions.');
-      return;
-    }
+    if (!selectedStoryId) { alert('Please select an active story from the dropdown to get scene suggestions.'); return; }
     if (!story) return;
     setIsSuggesting(true);
     try {
       const payload = {
-        title: story.title,
-        genres: story.genres,
-        synopsis: story.synopsis,
-        language: story.language,
-        sceneIndex: currentIndex + 1,
-        storyId: selectedStoryId, // passed for future-proofing
+        title: story.title, genres: story.genres, synopsis: story.synopsis,
+        language: story.language, sceneIndex: currentIndex + 1, storyId: selectedStoryId,
       };
-
-      const res = await fetch('/api/suggest-scene', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
+      const res = await fetch('/api/suggest-scene', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Suggestion failed');
-
       if (json?.storyText) updateCurrentScene({ text: json.storyText });
       if (json?.imagePrompt) setImagePrompt(json.imagePrompt);
-
       if (!json?.storyText && !json?.imagePrompt) throw new Error('No suggestions returned.');
     } catch (e: any) {
       alert(e?.message || 'Suggest failed');
@@ -830,12 +759,9 @@ useEffect(() => {
     }
   }
 
-  /* -------- AI: Outline Ideas (UPDATED to require/pass selectedStoryId) -------- */
+  /* -------- AI: Outline Ideas -------- */
   async function handleGenerateIdeas() {
-    if (!selectedStoryId) {
-      alert('Please select an active story from the dropdown to generate outline ideas.');
-      return;
-    }
+    if (!selectedStoryId) { alert('Please select an active story from the dropdown to generate outline ideas.'); return; }
     if (!story) return;
     setIdeasLoading(true);
     setIdeas([]);
@@ -843,50 +769,18 @@ useEffect(() => {
       const res = await fetch('/api/generate-scene-outline', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          idea: story.synopsis || story.title || 'Story',
-          pages: selectedPages,
-          language: story.language || 'en',
-          storyId: selectedStoryId, // passed for future-proofing
-        }),
+        body: JSON.stringify({ idea: story.synopsis || story.title || 'Story', pages: selectedPages, language: story.language || 'en', storyId: selectedStoryId }),
       });
-
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'AI outline endpoint failed');
-
       const arr = Array.isArray(data) ? data : [];
-      const mapped = arr.map((p: any, i: number) => ({
-        title: `Beat ${i + 1}`,
-        outline: String(p?.storyText || '').trim(),
-        imagePrompt: String(p?.imagePrompt || '').trim(),
-      }));
-
+      const mapped = arr.map((p: any, i: number) => ({ title: `Beat ${i + 1}`, outline: String(p?.storyText || '').trim(), imagePrompt: String(p?.imagePrompt || '').trim() }));
       setIdeas(mapped);
     } catch (e: any) {
       alert(e?.message || 'Could not generate ideas.');
     } finally {
       setIdeasLoading(false);
     }
-  }
-
-  function applyIdeaToCurrent(idea: { title: string; outline: string; imagePrompt?: string }) {
-    if (!currentScene) return;
-    const mergedText = currentScene.text?.trim()
-      ? `${currentScene.text.trim()}\n\n${idea.outline.trim()}`
-      : idea.outline.trim();
-
-    updateCurrentScene({ title: idea.title || currentScene.title, text: mergedText });
-    if (idea.imagePrompt && idea.imagePrompt.trim()) setImagePrompt(idea.imagePrompt.trim());
-  }
-  function addIdeaAsNewScene(idea: { title: string; outline: string }) {
-    setScenes(prev => {
-      if (prev.length >= selectedPages) return prev;
-      const next = [
-        ...prev,
-        { id: typeof crypto?.randomUUID === 'function' ? crypto.randomUUID() : String(Math.random()).slice(2), index: prev.length, title: idea.title || `Scene ${prev.length + 1}`, text: idea.outline, imageUrl: null, imageName: null, audioUrl: null, audioName: null, voiceId: null, durationMs: null }
-      ];
-      return next;
-    });
   }
 
   /* -------- AUDIO player -------- */
@@ -902,34 +796,24 @@ useEffect(() => {
     if (!el) return;
     const src = currentScene?.audioUrl || '';
     if (!src) {
-      setIsPlaying(false);
-      setDuration(0);
-      setCurrentTime(0);
-      el.removeAttribute('src');
-      el.load();
+      setIsPlaying(false); setDuration(0); setCurrentTime(0);
+      el.removeAttribute('src'); el.load();
       return;
     }
-    el.src = src;
-    el.load();
-    if (autoplayUnlockedRef.current) {
-      el.play().then(() => setIsPlaying(true)).catch(() => {});
-    }
+    el.src = src; el.load();
+    if (autoplayUnlockedRef.current) el.play().then(() => setIsPlaying(true)).catch(() => {});
   }, [currentScene?.audioUrl, currentIndex]);
 
   useEffect(() => {
     const next = scenes[currentIndex + 1];
     if (!next?.audioUrl) return;
-    const link = document.createElement('link');
-    link.rel = 'prefetch';
-    link.as = 'audio';
-    link.href = next.audioUrl;
+    const link = document.createElement('link'); link.rel = 'prefetch'; link.as = 'audio'; link.href = next.audioUrl;
     document.head.appendChild(link);
     return () => { if (link.parentNode) link.parentNode.removeChild(link); };
   }, [currentIndex, scenes]);
 
   useEffect(() => {
-    const el = audioRef.current;
-    if (!el) return;
+    const el = audioRef.current; if (!el) return;
     const onLoaded = () => setDuration(el.duration || 0);
     const onTime = () => setCurrentTime(el.currentTime || 0);
     const onWaiting = () => setIsBuffering(true);
@@ -953,10 +837,7 @@ useEffect(() => {
     autoplayUnlockedRef.current = true;
     audioRef.current?.play().then(() => setIsPlaying(true)).catch(() => {});
   }
-  function onPause() {
-    audioRef.current?.pause();
-    setIsPlaying(false);
-  }
+  function onPause() { audioRef.current?.pause(); setIsPlaying(false); }
 
   /* -------- NAV + SAVE/PUBLISH ---------------------------------- */
   function goPrev() { setCurrentIndex(i => Math.max(0, i - 1)); }
@@ -967,12 +848,8 @@ useEffect(() => {
     : '#';
 
   async function persistScenes(nextScenes: Scene[]) {
-    if (!selectedStoryId) {
-      alert('Please select a story before saving scenes.');
-      return false;
-    }
+    if (!selectedStoryId) { alert('Please select a story before saving scenes.'); return false; }
     try {
-      // ensure no base64 gets saved inside the document
       const normalized = await normalizeScenesBeforeSave(user?.uid, selectedStoryId, nextScenes);
       const storyRef = fsDoc(db, 'stories', selectedStoryId);
       const safeDoc = serializeStoryForWrite(story, normalized);
@@ -986,50 +863,32 @@ useEffect(() => {
   }
 
   async function handleSaveScene() {
-    const clipped = scenes
-      .slice(0, selectedPages)
-      .map((s, i) => ({ ...s, index: i }));
+    const clipped = scenes.slice(0, selectedPages).map((s, i) => ({ ...s, index: i }));
     const ok = await persistScenes(clipped);
     if (ok) alert('Scene saved.');
   }
 
   async function handleSaveSceneAndNext() {
     let nextScenes = scenes.slice(0, selectedPages).map((s, i) => ({ ...s, index: i }));
-
     const onLastExisting = currentIndex === nextScenes.length - 1;
     const canAddMore = nextScenes.length < selectedPages;
-
     if (onLastExisting && canAddMore) {
       const newIdx = nextScenes.length;
       nextScenes = [...nextScenes, makeDefaultScene(newIdx)];
     }
-
     const ok = await persistScenes(nextScenes);
     if (!ok) return;
-
     setScenes(nextScenes);
-    if (onLastExisting && canAddMore) {
-      setCurrentIndex(i => Math.min(i + 1, nextScenes.length - 1));
-    } else if (currentIndex < nextScenes.length - 1) {
-      setCurrentIndex(i => i + 1);
-    } else {
-      alert('Reached selected page limit.');
-    }
+    if (onLastExisting && canAddMore) setCurrentIndex(i => Math.min(i + 1, nextScenes.length - 1));
+    else if (currentIndex < nextScenes.length - 1) setCurrentIndex(i => i + 1);
+    else alert('Reached selected page limit.');
   }
 
   async function handlePublishStory() {
-    if (!selectedStoryId) {
-      alert('Please select a story before publishing.');
-      return;
-    }
+    if (!selectedStoryId) { alert('Please select a story before publishing.'); return; }
     try {
       const storyRef = fsDoc(db, 'stories', selectedStoryId);
-      await updateDoc(storyRef, {
-        status: 'published',
-        isPublic: true,
-        publishedAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
+      await updateDoc(storyRef, { status: 'published', isPublic: true, publishedAt: serverTimestamp(), updatedAt: serverTimestamp() });
       alert('Story published! It will now appear in Discovery and your Profile.');
     } catch (e) {
       console.error(e);
@@ -1072,7 +931,6 @@ useEffect(() => {
 
   function SceneStrip() {
     const slots = Array.from({ length: selectedPages }, (_, i) => scenes[i] || null);
-
     return (
       <div className="w-full overflow-x-auto">
         <div className="flex gap-2 py-2">
@@ -1153,7 +1011,7 @@ useEffect(() => {
             <span className="text-sm font-semibold">Scenes</span>
             <span className="ml-3 text-xs opacity-70 px-2 py-1 rounded bg-white/60 border">{progressLabel}</span>
 
-            {/* NEW: Story Selector Dropdown */}
+            {/* Story Selector */}
             <div className="flex items-center gap-2 ml-4">
               <label htmlFor="scene-story-selector" className="text-sm font-semibold whitespace-nowrap hidden sm:inline">
                 Story:
@@ -1164,13 +1022,8 @@ useEffect(() => {
                 value={storySelectValue}
                 onChange={(e) => {
                   const v = e.target.value;
-                  if (v === '__UNCAT__') {
-                    setShowUncategorized(true);
-                    setSelectedStoryId(undefined);
-                  } else {
-                    setShowUncategorized(false);
-                    setSelectedStoryId(v || undefined);
-                  }
+                  if (v === '__UNCAT__') { setShowUncategorized(true); setSelectedStoryId(undefined); }
+                  else { setShowUncategorized(false); setSelectedStoryId(v || undefined); }
                 }}
                 disabled={userStoriesLoading}
               >
@@ -1180,13 +1033,12 @@ useEffect(() => {
                   <option key={s.id} value={s.id}>{s.title || '(untitled)'}</option>
                 ))}
               </select>
-            {/* 👇 Insert this right after the <select> */}
-                {showUncategorized ? (
-                  <span className="text-xs ml-2 px-2 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200">
-                    Viewing Uncategorized
-                  </span>
-                ) : null}
-              </div>
+              {showUncategorized ? (
+                <span className="text-xs ml-2 px-2 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200">
+                  Viewing Uncategorized
+                </span>
+              ) : null}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Link href="/create/begin" className="text-xs px-3 py-1.5 rounded-lg bg-white border-2 border-[#3D4F60]/20 dark:bg-[#1A2533] dark:border-[#4B5A6B]/20">Begin</Link>
@@ -1256,15 +1108,8 @@ useEffect(() => {
                     <div className="text-xs opacity-70">{progressLabel}</div>
                   </div>
 
-                  {/* Avatar + voice/tone chip */}
                   <div className="flex items-center gap-2 mb-2">
-                    <Image
-                      src={readerUI.avatarUrl || DEFAULTS.avatarUrl}
-                      alt="Narrator Avatar"
-                      width={36}
-                      height={36}
-                      className="rounded-full border border-black/10 bg-white"
-                    />
+                    <Image src={readerUI.avatarUrl || DEFAULTS.avatarUrl} alt="Narrator Avatar" width={36} height={36} className="rounded-full border border-black/10 bg-white" />
                     <div className="text-xs opacity-80">
                       <span className="font-medium">{voice}</span> • <span>{tone.replace(/^a[n]? /, '').toUpperCase()}</span>
                     </div>
@@ -1272,14 +1117,7 @@ useEffect(() => {
 
                   <div className="aspect-[4/3] w-full rounded-xl overflow-hidden bg-white/60 dark:bg-[#0f1620]/60 grid place-items-center">
                     {currentScene?.imageUrl ? (
-                      <Image
-                        src={currentScene.imageUrl}
-                        alt={currentScene?.imageName ?? 'scene image'}
-                        width={1024}
-                        height={768}
-                        className="w-full h-full object-cover"
-                        priority
-                      />
+                      <Image src={currentScene.imageUrl} alt={currentScene?.imageName ?? 'scene image'} width={1024} height={768} className="w-full h-full object-cover" priority />
                     ) : (
                       <div className="text-xs opacity-70">No image selected</div>
                     )}
@@ -1414,34 +1252,19 @@ useEffect(() => {
                         try {
                           const lang = (story?.language || 'en') as LangCode;
                           const { ssml, style } = buildSSML(base, tone, lang);
-
                           const r = await fetch('/api/generate-audio', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                              text: base,
-                              ssml,
-                              useSsml: true,
-                              voice,
-                              tone,
-                              style,
-                              toneHint: `[TONE=${tone}]`,
-                              language: lang,
-                              model: 'gemini-2.5-flash-preview-tts',
-                              format: 'auto',          // or 'mp3' | 'wav'
-                              storyId: selectedStoryId,
-                              userId: user.uid,        // <— add this
-                              sceneIndex: currentIndex + 1,
+                              text: base, ssml, useSsml: true, voice, tone, style, toneHint: `[TONE=${tone}]`,
+                              language: lang, model: 'gemini-2.5-flash-preview-tts', format: 'auto',
+                              storyId: selectedStoryId, userId: user.uid, sceneIndex: currentIndex + 1,
                             }),
                           });
                           const json = await r.json();
                           if (!r.ok) throw new Error(json?.error || 'TTS failed');
                           if (!json?.audioUrl) throw new Error('No audioUrl returned by TTS route.');
-                          updateCurrentScene({
-                            audioUrl: json.audioUrl,
-                            audioName: `scene-${currentIndex + 1}-narration`,
-                            voiceId: voice,
-                          });
+                          updateCurrentScene({ audioUrl: json.audioUrl, audioName: `scene-${currentIndex + 1}-narration`, voiceId: voice });
                         } catch (e: any) {
                           alert((e?.message || 'TTS failed') + '\n\nTip: ensure /api/generate-audio reads { ssml, tone, style, toneHint } to bias delivery.');
                         } finally {
@@ -1493,7 +1316,13 @@ useEffect(() => {
                           Insert into current
                         </button>
                         <button
-                          onClick={() => addIdeaAsNewScene(idea)}
+                          onClick={() => {
+                            setScenes(prev => {
+                              if (prev.length >= selectedPages) return prev;
+                              const next = [...prev, { id: typeof crypto?.randomUUID === 'function' ? crypto.randomUUID() : String(Math.random()).slice(2), index: prev.length, title: idea.title || `Scene ${prev.length + 1}`, text: idea.outline, imageUrl: null, imageName: null, audioUrl: null, audioName: null, voiceId: null, durationMs: null }];
+                              return next;
+                            });
+                          }}
                           className="rounded-md border border-indigo-500/50 bg-indigo-500/10 px-2 py-1 text-xs text-indigo-700 dark:text-indigo-200 hover:bg-indigo-500/20"
                         >
                           Add as new scene
@@ -1509,8 +1338,27 @@ useEffect(() => {
             <section className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold">My Gallery</h3>
-                <div className="text-xs opacity-70">AI language: <strong>{langLabel}</strong></div>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="opacity-70">Sort by:</span>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as 'name' | 'date')}
+                    className="border rounded px-2 py-1 text-sm"
+                  >
+                    <option value="date">Date</option>
+                    <option value="name">Name</option>
+                  </select>
+                  <button
+                    onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}
+                    className="p-1 rounded border"
+                    title="Toggle sort direction"
+                  >
+                    {sortDir === 'asc' ? <SortAsc size={14} /> : <SortDesc size={14} />}
+                  </button>
+                </div>
               </div>
+
+              <div className="text-xs opacity-70">AI language: <strong>{langLabel}</strong></div>
 
               <div className="flex flex-wrap gap-2">
                 {GALLERY_TABS.map(t => (
@@ -1536,10 +1384,10 @@ useEffect(() => {
                 ) : gallery.length === 0 ? (
                   <div className="text-sm opacity-70 flex items-center gap-2">
                     <Info className="w-4 h-4" />
-                      {showUncategorized
-                        ? 'No uncategorized files found.'
-                        : `No files yet for this story in ${GALLERY_TABS.find(x => x.key === activeTab)?.label}.`
-                      }
+                    {showUncategorized
+                      ? 'No uncategorized files found.'
+                      : `No files yet for this story in ${GALLERY_TABS.find(x => x.key === activeTab)?.label}.`
+                    }
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -1580,7 +1428,7 @@ useEffect(() => {
 
                           {/* Actions */}
                           <div className="absolute inset-x-1 bottom-1 flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                            {kind === 'image' && (
+                            {kind === 'image' ? (
                               <>
                                 <button onClick={() => handleDescribe(it)} className="flex-1 text-[11px] px-2 py-1 rounded bg-blue-500/90 text-white" title="AI Describe">
                                   Describe
@@ -1592,8 +1440,7 @@ useEffect(() => {
                                   Select
                                 </button>
                               </>
-                            )}
-                            {kind === 'audio' && (
+                            ) : (
                               <button onClick={() => handleSelectForScene(it)} className="w-full text-[11px] px-2 py-1 rounded bg-[#E97451]/90 text-white" title="Select for Scene (Audio)">
                                 Use Audio
                               </button>
