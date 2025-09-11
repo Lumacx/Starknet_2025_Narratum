@@ -460,91 +460,90 @@ export default function ScenesPage() {
   const canManageAssets = !!selectedStoryId;
 
   /* -------- Load story + scenes from Firestore (UPDATED to selectedStoryId) -------- */
-  useEffect(() => {
-    (async () => {
-      if (!selectedStoryId) {
-        // Clear if nothing is selected
-        setStory(null);
-        setScenes([makeDefaultScene(0)]);
-        setCurrentIndex(0);
-        setReaderUI({ avatarUrl: DEFAULTS.avatarUrl, backgroundUrl: DEFAULTS.backgroundUrl });
-        return;
-      }
+ /* -------- Load story + scenes from Firestore (UPDATED to selectedStoryId) -------- */
+useEffect(() => {
+  (async () => {
+    if (!selectedStoryId) {
+      // Clear if nothing is selected
+      setStory(null);
+      setScenes([makeDefaultScene(0)]);
+      setCurrentIndex(0);
+      setReaderUI({ avatarUrl: DEFAULTS.avatarUrl, backgroundUrl: DEFAULTS.backgroundUrl });
+      return;
+    }
 
-      try {
-        const storyRef = fsDoc(db, 'stories', selectedStoryId);
-        const snap = await getDoc(storyRef);
-        let docData: StoryDoc = {};
-        if (snap.exists()) docData = (snap.data() as StoryDoc) || {};
+    try {
+      const storyRef = fsDoc(db, 'stories', selectedStoryId);
+      const snap = await getDoc(storyRef);
+      let docData: StoryDoc = {};
+      if (snap.exists()) docData = (snap.data() as StoryDoc) || {};
 
-        const fixedScenes: Scene[] = (docData.scenes || [])
-          .map((s, i) => ({
-            id: s?.id || (typeof crypto?.randomUUID === 'function' ? crypto.randomUUID() : String(Math.random()).slice(2)),
-            index: Number.isFinite(s?.index as any) ? (s!.index as number) : i,
-            title: s?.title ?? `Scene ${i + 1}`,
-            text: s?.text ?? '',
-            imageUrl: s?.imageUrl ?? null,
-            imageName: s?.imageName ?? null,
-            audioUrl: s?.audioUrl ?? null,
-            audioName: s?.audioName ?? null,
-            voiceId: s?.voiceId ?? null,
-            durationMs: Number.isFinite(s?.durationMs as any) ? s!.durationMs! : null,
-          }))
-          .sort((a, b) => a.index - b.index);
+      const fixedScenes: Scene[] = (docData.scenes || [])
+        .map((s, i) => ({
+          id: s?.id || (typeof crypto?.randomUUID === 'function' ? crypto.randomUUID() : String(Math.random()).slice(2)),
+          index: Number.isFinite(s?.index as any) ? (s!.index as number) : i,
+          title: s?.title ?? `Scene ${i + 1}`,
+          text: s?.text ?? '',
+          imageUrl: s?.imageUrl ?? null,
+          imageName: s?.imageName ?? null,
+          audioUrl: s?.audioUrl ?? null,
+          audioName: s?.audioName ?? null,
+          voiceId: s?.voiceId ?? null,
+          durationMs: Number.isFinite(s?.durationMs as any) ? s!.durationMs! : null,
+        }))
+        .sort((a, b) => a.index - b.index);
 
-        const ensured = fixedScenes.length > 0 ? fixedScenes : [makeDefaultScene(0)];
+      const ensured = fixedScenes.length > 0 ? fixedScenes : [makeDefaultScene(0)];
 
-        // Choose avatar based on rules (don't clobber a custom avatar; only override if default)
-        const existingAvatar = docData.reader?.avatarUrl || DEFAULTS.avatarUrl;
-        const computedAvatar = resolveAvatarForVoiceAndGenre(docData.voiceId || ensured[0]?.voiceId || voice, docData.genres);
-        const finalAvatar = (existingAvatar === DEFAULTS.avatarUrl) ? computedAvatar : existingAvatar;
+      const existingAvatar = docData.reader?.avatarUrl || DEFAULTS.avatarUrl;
+      const computedAvatar = resolveAvatarForVoiceAndGenre(docData.voiceId || ensured[0]?.voiceId || voice, docData.genres);
+      const finalAvatar = (existingAvatar === DEFAULTS.avatarUrl) ? computedAvatar : existingAvatar;
 
-        setStory({
-          title: docData.title || '',
-          synopsis: docData.synopsis || '',
-          genres: docData.genres || [],
-          language: (docData.language as LangCode) || 'en',
-          voiceId: docData.voiceId || undefined,
-          reader: {
-            avatarUrl: finalAvatar || DEFAULTS.avatarUrl,
-            backgroundUrl: docData.reader?.backgroundUrl || DEFAULTS.backgroundUrl,
-          },
-          status: docData.status || 'draft',
-          isPublic: !!docData.isPublic,
-          scenes: ensured,
-          pageCount: typeof docData.pageCount === 'number' ? docData.pageCount : undefined,
-        });
-
-        setReaderUI({
+      setStory({
+        title: docData.title || '',
+        synopsis: docData.synopsis || '',
+        genres: docData.genres || [],
+        language: (docData.language as LangCode) || 'en',
+        voiceId: docData.voiceId || undefined,
+        reader: {
           avatarUrl: finalAvatar || DEFAULTS.avatarUrl,
           backgroundUrl: docData.reader?.backgroundUrl || DEFAULTS.backgroundUrl,
-        });
+        },
+        status: docData.status || 'draft',
+        isPublic: !!docData.isPublic,
+        scenes: ensured,
+        pageCount: typeof docData.pageCount === 'number' ? docData.pageCount : undefined,
+      });
 
-        setScenes(ensured);
+      setReaderUI({
+        avatarUrl: finalAvatar || DEFAULTS.avatarUrl,
+        backgroundUrl: docData.reader?.backgroundUrl || DEFAULTS.backgroundUrl,
+      });
 
-        const fromUrl = Number.parseInt(searchParams.get('scene') || '', 10);
-        const fromLs  = Number.parseInt(localStorage.getItem('reader:lastScene') || '', 10);
-        const initial = Number.isFinite(fromUrl) ? fromUrl : (Number.isFinite(fromLs) ? fromLs : 0);
-        setCurrentIndex(Math.max(0, Math.min(initial, Math.max(ensured.length - 1, 0))));
-      } catch (e) {
-        console.error('Failed to load story', e);
-        setScenes(prev => prev.length ? prev : [makeDefaultScene(0)]);
-        setStory(prev => prev ? prev : { title: '', synopsis: '', genres: [], language: 'en' as LangCode, scenes: [makeDefaultScene(0)], pageCount: 10 });
-      }
-    })();
-  
-    useEffect(() => {
-      const assets = searchParams.get('assets');
-      if (assets === 'uncategorized') {
-        setShowUncategorized(true);
-        setSelectedStoryId(undefined);
-      }
-      // keep selectedStoryId if ?storyId was present
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-    
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStoryId]);
+      setScenes(ensured);
+
+      const fromUrl = Number.parseInt(searchParams.get('scene') || '', 10);
+      const fromLs  = Number.parseInt(localStorage.getItem('reader:lastScene') || '', 10);
+      const initial = Number.isFinite(fromUrl) ? fromUrl : (Number.isFinite(fromLs) ? fromLs : 0);
+      setCurrentIndex(Math.max(0, Math.min(initial, Math.max(ensured.length - 1, 0))));
+    } catch (e) {
+      console.error('Failed to load story', e);
+      setScenes(prev => prev.length ? prev : [makeDefaultScene(0)]);
+      setStory(prev => prev ? prev : { title: '', synopsis: '', genres: [], language: 'en' as LangCode, scenes: [makeDefaultScene(0)], pageCount: 10 });
+    }
+  })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [selectedStoryId]);
+
+// Read ?assets=uncategorized once on mount to set the scope.
+useEffect(() => {
+  const assets = searchParams.get('assets');
+  if (assets === 'uncategorized') {
+    setShowUncategorized(true);
+    setSelectedStoryId(undefined);
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
 
   // keep URL + lastScene (UPDATED to sync selectedStoryId)
   useEffect(() => {
