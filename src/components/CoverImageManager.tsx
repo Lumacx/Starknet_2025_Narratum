@@ -29,10 +29,10 @@ const LIMITS: Record<string, { min: number; max: number }> = {
   'image/gif':  { min: 10 * KB, max: 12 * MB },
   'image/webp': { min: 10 * KB, max: 12 * MB },
   // AUDIO
-  'audio/mpeg': { min: 50 * KB, max: 16 * MB },
-  'audio/wav':  { min: 50 * KB, max: 16 * MB },
+  'audio/mpeg': { min: 10 * KB, max: 16 * MB },
+  'audio/wav':  { min: 10 * KB, max: 16 * MB },
   // VIDEO
-  'video/mp4':  { min: 1 * MB,  max: 64 * MB },
+  'video/mp4':  { min: 0.5 * MB,  max: 64 * MB },
 };
 const fmt = (bytes: number) => (bytes >= MB ? `${(bytes / MB).toFixed(1)} MB` : `${Math.round(bytes / KB)} KB`);
 
