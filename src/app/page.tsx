@@ -60,13 +60,12 @@ const LandingPage: React.FC = () => {
           <h1 className="font-['Georgia'] text-6xl md:text-7xl lg:text-8xl font-bold m-0">NARRATUM</h1>
         </header>
 
-        {/* Action Cards */}
+        {/* Top cards */}
         <nav className="flex flex-wrap justify-center gap-6 md:gap-8 mb-12 md:mb-16">
-          {/* Discover */}
           <Link
             href="/discover"
             className={`
-              flex flex-col items-center justify-center p-6 md:p-8 w-48 h-60 md:w-56 md:h-72
+              flex flex-col items-center justify-center p-6 md:p-8 w-48 md:w-56 h-60 md:h-72
               bg-[#F3EADF] border-2 border-[#CBBBA0] rounded-2xl shadow-lg text-[#3A4B5C]
               transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-[#CBBBA0]
             `}
@@ -76,11 +75,10 @@ const LandingPage: React.FC = () => {
             <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase">STORIES</span>
           </Link>
 
-          {/* Create */}
           <Link
             href={isLoggedIn ? '/create/begin' : '/login'}
             className={`
-              flex flex-col items-center justify-center p-6 md:p-8 w-48 h-60 md:w-56 md:h-72
+              flex flex-col items-center justify-center p-6 md:p-8 w-48 md:w-56 h-60 md:h-72
               bg-[#F3EADF] border-2 border-[#CBBBA0] rounded-2xl shadow-lg text-[#3A4B5C]
               transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-[#CBBBA0]
               ${!isLoggedIn ? 'opacity-70' : ''}
@@ -93,57 +91,57 @@ const LandingPage: React.FC = () => {
             <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase">STORY</span>
           </Link>
 
-          {/* Profile */}
-          {isLoggedIn ? (
-            <Link
-              href="/profile"
-              className={`
-                flex flex-col items-center justify-center p-6 md:p-8 w-48 h-60 md:w-56 md:h-72
-                bg-[#F3EADF] border-2 border-[#CBBBA0] rounded-2xl shadow-lg text-[#3A4B5C]
-                transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-[#CBBBA0]
-              `}
-            >
-              <i className="fas fa-user-circle text-5xl md:text-6xl text-[#A9834F] mb-6 md:mb-8" />
-              <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase">MY</span>
-              <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase">PROFILE</span>
-            </Link>
-          ) : (
-            <div
-              title="Please log in to view your profile"
-              aria-disabled="true"
-              className={`
-                flex flex-col items-center justify-center p-6 md:p-8 w-48 h-60 md:w-56 md:h-72
-                bg-[#E0E0E0] border-2 border-[#CBBBA0] rounded-2xl shadow-lg text-[#A0A0A0]
-                opacity-70 cursor-not-allowed
-              `}
-            >
-              <i className="fas fa-user-circle text-5xl md:text-6xl text-[#A9834F] mb-6 md:mb-8" />
-              <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase">MY</span>
-              <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase">PROFILE</span>
-            </div>
-          )}
+          <Link
+            href="/profile"
+            className={`
+              flex flex-col items-center justify-center p-6 md:p-8 w-48 md:w-56 h-60 md:h-72
+              bg-[#F3EADF] border-2 border-[#CBBBA0] rounded-2xl shadow-lg text-[#3A4B5C]
+              transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-[#CBBBA0]
+            `}
+          >
+            <i className="fas fa-user-circle text-5xl md:text-6xl text-[#A9834F] mb-6 md:mb-8" />
+            <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase">MY</span>
+            <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase">PROFILE</span>
+          </Link>
         </nav>
 
-        {/* Teasers and Tutorials */}
-        <div className="flex flex-col md:flex-row gap-6 justify-center mb-12">
+        {/* Pills row — same spacing as cards; same width as cards (w-48 md:w-56) */}
+        <div className="flex flex-wrap justify-center gap-6 md:gap-8 mb-12">
           <button
             onClick={() => setVideoUrl('https://www.youtube.com/embed/utV8LROR3f4')}
             className={`
-              px-6 py-3 bg-purple-600 text-white font-semibold rounded-full shadow-md hover:bg-purple-700
+              w-48 md:w-56 inline-flex items-center justify-center px-6 py-3 rounded-full
+              bg-purple-600 text-white font-semibold shadow-md hover:bg-purple-700
               transition transform hover:scale-105 animate-pulse-slow
             `}
           >
             🎬 Watch Teaser
           </button>
+
           <button
             onClick={() => setVideoUrl('https://www.youtube.com/embed/ATOhy6NASL0')}
             className={`
-              px-6 py-3 bg-blue-600 text-white font-semibold rounded-full shadow-md hover:bg-blue-700
+              w-48 md:w-56 inline-flex items-center justify-center px-6 py-3 rounded-full
+              bg-blue-600 text-white font-semibold shadow-md hover:bg-blue-700
               transition transform hover:scale-105 animate-pulse-slow
             `}
           >
             📘 Watch Tutorial
           </button>
+
+          <a
+            href="https://docs.google.com/forms/d/16mfeP7iiuWYU3vSThm-mt3ZygQRGPf3WbcP2yDLPiek/edit?pli=1"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Provide Feedback (opens in a new tab)"
+            className={`
+              w-48 md:w-56 inline-flex items-center justify-center px-6 py-3 rounded-full
+              bg-gradient-to-r from-green-500 to-teal-600 text-white font-semibold shadow-md
+              hover:shadow-lg hover:scale-105 transition animate-pulse-slow
+            `}
+          >
+            💡 Provide Feedback
+          </a>
         </div>
 
         <footer className="font-['Georgia'] italic text-xl md:text-2xl mt-8">
@@ -151,20 +149,7 @@ const LandingPage: React.FC = () => {
         </footer>
       </div>
 
-      {/* Feedback Button */}
-      <a
-        href="https://docs.google.com/forms/d/16mfeP7iiuWYU3vSThm-mt3ZygQRGPf3WbcP2yDLPiek/edit?pli=1"
-        target="_blank"
-        rel="noopener noreferrer"
-        className={`
-          fixed bottom-25 right-6 px-5 py-3 bg-gradient-to-r from-green-500 to-teal-600 text-white font-semibold
-          rounded-full shadow-lg hover:scale-105 hover:shadow-xl transition z-50 animate-pulse-slow
-        `}
-      >
-        💡 Provide Feedback
-      </a>
-
-      {/* Subtle glow keyframes (applied to teaser, tutorial, feedback buttons) */}
+      {/* Subtle glow keyframes */}
       <style jsx global>{`
         @keyframes pulseGlow {
           0%, 100% { box-shadow: 0 0 8px rgba(255, 255, 255, 0.25); }

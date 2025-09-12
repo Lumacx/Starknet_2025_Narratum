@@ -3,6 +3,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Story } from '@/lib/types';
 import { useListPublishedStories } from '@/hooks/useListPublishedStories';
 import GenreMultiSelect from '@/components/GenreMultiSelect';
@@ -18,7 +19,7 @@ import {
   runTransaction,
   serverTimestamp,
 } from 'firebase/firestore';
-import { Heart, Feather, BookOpen, Flag, Crown, Circle } from 'lucide-react';
+import { Heart, Feather, BookOpen, Flag, Crown, Circle, X, Bot } from 'lucide-react';
 
 /* ----------------------------- Constants ----------------------------- */
 const GENRE_OPTIONS = [
@@ -41,29 +42,79 @@ const LANGUAGE_OPTIONS: { code: string; label: string }[] = [
 ];
 
 type StoryTypeKey = 'short' | 'novela' | 'campaign' | 'unknown';
-type PlanKey = 'free' | 'paid' | 'unknown';
-
-/** ✅ Narrowed types used by the pills (exclude "unknown") */
+type PlanKey = 'basic' | 'premium' | 'convai' | 'unknown';
 type StoryTypeSelectable = Exclude<StoryTypeKey, 'unknown'>;
 type PlanSelectable = Exclude<PlanKey, 'unknown'>;
 
-/** ✅ Constants with narrow literal unions so TS knows "unknown" can't appear */
 const TYPE_PILLS: readonly StoryTypeSelectable[] = ['short', 'novela', 'campaign'] as const;
-const PLAN_PILLS: readonly PlanSelectable[] = ['paid', 'free'] as const;
+const PLAN_PILLS: readonly PlanSelectable[] = ['basic', 'premium', 'convai'] as const;
 
 /* ----------------------------- Helpers ----------------------------- */
+const DEFAULT_AVATAR =
+  'https://placehold.co/40x40/233446/E0C9A0?text=%F0%9F%91%A4';
+
 function norm(x?: string | null) {
   return (x ?? '').toString().trim().toLowerCase();
 }
 
+/** Use very tolerant accessors so TypeScript doesn't choke on nested fields */
+function getOwnerId(s: Partial<Story> & Record<string, any>): string | undefined {
+  const d: any = s as any;
+  return (
+    d.ownerId ||
+    d.ownerUid ||
+    d.ownerID ||
+    d.creatorUid ||
+    d.creatorId ||
+    d.userId ||
+    d.creator?.uid ||
+    d.creator?.id ||
+    d.metadata?.ownerId
+  )?.toString();
+}
+function getCreatorName(s: Partial<Story> & Record<string, any>): string | undefined {
+  const d: any = s as any;
+  return (
+    d.creator?.displayname ||
+    d.creator?.name ||
+    d.displayname ||
+    d.authorName ||
+    d.creatorName ||
+    d.metadata?.authorName ||
+    d.metadata?.creatorName
+  )?.toString();
+}
+function getCreatorPhoto(s: Partial<Story> & Record<string, any>): string | undefined {
+  const d: any = s as any;
+  return (
+    d.creator?.photoURL ||
+    d.creator?.photoUrl ||
+    d.creator?.avatar ||
+    d.creator?.avatarUrl ||
+    d.avatarUrl ||
+    d.authorPhotoURL ||
+    d.metadata?.authorPhotoURL
+  )?.toString();
+}
+function getSynopsis(s: Partial<Story> & Record<string, any>): string {
+  const d: any = s as any;
+  return (
+    d.synopsis ||
+    d.description ||
+    d.summary ||
+    d.metadata?.synopsis ||
+    'No synopsis provided.'
+  );
+}
+
 function getStoryType(s: Partial<Story> & Record<string, any>): StoryTypeKey {
   const candidates = [
-    norm(s.storyType),
-    norm(s.mode),
-    norm(s.category),
-    norm(s.type),
-    norm(s.metadata?.storyType),
-    norm(s.metadata?.mode),
+    norm((s as any).storyType),
+    norm((s as any).mode),
+    norm((s as any).category),
+    norm((s as any).type),
+    norm((s as any).metadata?.storyType),
+    norm((s as any).metadata?.mode),
   ].filter(Boolean);
 
   for (const c of candidates) {
@@ -71,23 +122,52 @@ function getStoryType(s: Partial<Story> & Record<string, any>): StoryTypeKey {
     if (c.includes('novel') || c.includes('novela')) return 'novela';
     if (c.includes('campaign')) return 'campaign';
   }
-  const slides = Number(s.pageCount ?? s.slides ?? s.pages ?? 0);
+  const slides = Number((s as any).pageCount ?? (s as any).slides ?? (s as any).pages ?? 0);
   if (!Number.isNaN(slides) && slides > 0 && slides <= 10) return 'short';
   return 'unknown';
 }
 
+/** ConvAI flag detection (any ElevenLabs agent id present) */
+function hasConvAI(s: Partial<Story> & Record<string, any>): boolean {
+  const d: any = s as any;
+  const m: any = d.metadata || {};
+  const c: any = d.creator || {};
+  const candidates = [
+    d.elevenlabsAgentId,
+    d.elevenLabsAgentId,
+    d.voiceAgentId,
+    d.agentId,
+    d.agent?.id,
+    m.elevenlabsAgentId,
+    m.elevenLabsAgentId,
+    m.voiceAgentId,
+    m.agentId,
+    c.elevenlabsAgentId,
+    c.elevenLabsAgentId,
+    c.voiceAgentId,
+    c.agentId,
+  ];
+  return candidates.some((v) =>
+    typeof v === 'string' ? v.trim().length > 0 : Boolean(v)
+  );
+}
+
+/** Plan mapping: Basic / Premium / ConvAI */
 function getPlan(s: Partial<Story> & Record<string, any>): PlanKey {
-  const planStr = norm(s.creatorPlan) || norm(s.plan) || norm(s.metadata?.plan);
-  if (planStr === 'paid' || planStr === 'premium' || planStr === 'pro') return 'paid';
-  if (planStr === 'free' || planStr === 'basic') return 'free';
-  if (s.isPremium === true) return 'paid';
-  if (s.premium && typeof s.premium === 'object') return 'paid';
-  return 'unknown';
+  if (hasConvAI(s)) return 'convai';
+
+  const p = norm((s as any).creatorPlan) || norm((s as any).plan) || norm((s as any).metadata?.plan);
+  if (p === 'convai') return 'convai';
+  if (['premium', 'paid', 'pro'].includes(p)) return 'premium';
+  if (['basic', 'free', 'freemium', 'starter'].includes(p)) return 'basic';
+  if ((s as any).isPremium === true) return 'premium';
+  return 'basic';
 }
 
 function getLanguageCode(s: Partial<Story> & Record<string, any>): string | undefined {
-  const cand = [s.language, s.lang, s.metadata?.language, s.metadata?.lang, s.locale]
-    .map((v) => norm(v))
+  const d: any = s as any;
+  const cand = [d.language, d.lang, d.metadata?.language, d.metadata?.lang, d.locale]
+    .map((v: any) => norm(v))
     .find(Boolean);
   if (!cand) return undefined;
   if (/^[a-z]{2}$/.test(cand)) return cand;
@@ -144,9 +224,10 @@ const TYPE_STYLES: Record<StoryTypeKey, {
 const PLAN_STYLES: Record<PlanKey, {
   badgeBg: string; badgeText: string; label: string; Icon: React.FC<any>;
 }> = {
-  paid:   { badgeBg: 'bg-rose-500',  badgeText: 'text-white', label: 'Premium', Icon: Crown },
-  free:   { badgeBg: 'bg-slate-700', badgeText: 'text-white', label: 'Free',    Icon: Circle },
-  unknown:{ badgeBg: 'bg-slate-500', badgeText: 'text-white', label: '—',       Icon: Circle },
+  basic:   { badgeBg: 'bg-slate-700',  badgeText: 'text-white', label: 'Basic',   Icon: Circle },
+  premium: { badgeBg: 'bg-rose-500',   badgeText: 'text-white', label: 'Premium', Icon: Crown },
+  convai:  { badgeBg: 'bg-indigo-500', badgeText: 'text-white', label: 'ConvAI',  Icon: Bot },
+  unknown: { badgeBg: 'bg-slate-500',  badgeText: 'text-white', label: '—',       Icon: Circle },
 };
 
 /* ----------------------------- Star Rating ----------------------------- */
@@ -414,6 +495,9 @@ function FilterPill({
 /* --------------------------------- Page ---------------------------------- */
 
 const CatalogPage: React.FC = () => {
+  const router = useRouter();
+  const params = useSearchParams();
+
   const [activeFilter, setActiveFilter] = useState<'all' | 'popular' | 'recent'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
@@ -423,7 +507,10 @@ const CatalogPage: React.FC = () => {
   const [userRatings, setUserRatings] = useState<Record<string, number | null>>({});
   const [userFavorites, setUserFavorites] = useState<Record<string, boolean>>({});
 
-  // Filters (state types don't include "unknown")
+  // Author / owner filter
+  const [ownerIdFilter, setOwnerIdFilter] = useState<string | null>(null);
+
+  // Other filters
   const [storyTypeFilter, setStoryTypeFilter] = useState<'all' | StoryTypeSelectable>('all');
   const [planFilter, setPlanFilter] = useState<'all' | PlanSelectable>('all');
   const [languageFilter, setLanguageFilter] = useState<string>('all');
@@ -438,12 +525,39 @@ const CatalogPage: React.FC = () => {
   const { user } = useAuth();
   const { data, isLoading, error } = useListPublishedStories();
 
+  /* ---------- Build a lookup of owners by name (for search) ---------- */
+  const ownerNameIndex = useMemo(() => {
+    const byId: Record<string, string> = {};
+    const nameToIds: Record<string, Set<string>> = {};
+    for (const s of allStories) {
+      const id = getOwnerId(s);
+      if (!id) continue;
+      const name = getCreatorName(s) || 'Unknown Author';
+      byId[id] = name;
+      const key = norm(name);
+      if (!nameToIds[key]) nameToIds[key] = new Set();
+      nameToIds[key].add(id);
+    }
+    return { byId, nameToIds };
+  }, [allStories]);
+
+  /* ---------- Initial data ---------- */
   useEffect(() => {
     const stories = data ?? [];
     setAllStories(stories);
     setDisplayedStories(stories);
   }, [data]);
 
+  /* ---------- Read ?owner=<uid> from URL ---------- */
+  useEffect(() => {
+    const qOwner = params.get('owner');
+    if (qOwner && qOwner !== ownerIdFilter) {
+      setOwnerIdFilter(qOwner);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params]);
+
+  /* ---------- User mirrors ---------- */
   useEffect(() => {
     if (!user?.uid) {
       setUserRatings({});
@@ -514,6 +628,7 @@ const CatalogPage: React.FC = () => {
     };
   }, [user?.uid, data]);
 
+  /* ---------- Filtering ---------- */
   const applyFiltersAndSearch = (stories: Story[]) => {
     let filtered = [...stories];
 
@@ -524,8 +639,8 @@ const CatalogPage: React.FC = () => {
       case 'recent':
         filtered = [...filtered].sort(
           (a, b) =>
-            new Date(b.createdAt ?? '').getTime() -
-            new Date(a.createdAt ?? '').getTime()
+            new Date((b as any).createdAt ?? '').getTime() -
+            new Date((a as any).createdAt ?? '').getTime()
         );
         break;
       default:
@@ -534,7 +649,7 @@ const CatalogPage: React.FC = () => {
 
     if (selectedGenres.length > 0) {
       filtered = filtered.filter(story =>
-        story.genres?.some(genre => selectedGenres.includes(genre))
+        (story as any).genres?.some((genre: string) => selectedGenres.includes(genre))
       );
     }
 
@@ -550,57 +665,107 @@ const CatalogPage: React.FC = () => {
       filtered = filtered.filter((s) => getLanguageCode(s) === languageFilter);
     }
 
+    if (ownerIdFilter) {
+      filtered = filtered.filter((s) => getOwnerId(s) === ownerIdFilter);
+    }
+
     return filtered;
   };
 
   useEffect(() => {
     setDisplayedStories(applyFiltersAndSearch(allStories));
-  }, [activeFilter, selectedGenres, storyTypeFilter, planFilter, languageFilter, allStories]);
+  }, [activeFilter, selectedGenres, storyTypeFilter, planFilter, languageFilter, ownerIdFilter, allStories]);
 
   useEffect(() => {
+    const parts: string[] = [];
+
     if (
       activeFilter !== 'all' ||
       selectedGenres.length > 0 ||
       storyTypeFilter !== 'all' ||
       planFilter !== 'all' ||
-      languageFilter !== 'all'
+      languageFilter !== 'all' ||
+      ownerIdFilter
     ) {
-      const parts: string[] = [];
       if (activeFilter !== 'all') parts.push(`Filter: ${activeFilter}`);
       if (selectedGenres.length > 0) parts.push(`Genres: ${selectedGenres.join(', ')}`);
       if (storyTypeFilter !== 'all') parts.push(`Type: ${storyTypeFilter}`);
-      if (planFilter !== 'all') parts.push(`Plan: ${planFilter}`);
+      if (planFilter !== 'all') parts.push(`Plan: ${PLAN_STYLES[planFilter].label}`);
       if (languageFilter !== 'all') {
         const label = LANGUAGE_OPTIONS.find(l => l.code === languageFilter)?.label || languageFilter;
         parts.push(`Language: ${label}`);
+      }
+      if (ownerIdFilter) {
+        const name = ownerNameIndex.byId[ownerIdFilter] || 'Unknown Author';
+        parts.push(`Author: ${name}`);
       }
       setSearchMessage(parts.join(' • '));
     } else if (!searchQuery.trim()) {
       setSearchMessage('');
     }
-  }, [activeFilter, selectedGenres, storyTypeFilter, planFilter, languageFilter, searchQuery]);
+  }, [activeFilter, selectedGenres, storyTypeFilter, planFilter, languageFilter, ownerIdFilter, searchQuery, ownerNameIndex.byId]);
+
+  const setOwnerFilter = (uid: string | null) => {
+    setOwnerIdFilter(uid);
+    const sp = new URLSearchParams(Array.from(params.entries()));
+    if (uid) sp.set('owner', uid); else sp.delete('owner');
+    router.replace(`/discover${sp.toString() ? `?${sp.toString()}` : ''}`);
+  };
 
   const handleFilterClick = (filter: 'all'|'popular'|'recent') => {
     setActiveFilter(filter);
     setSearchQuery('');
   };
 
+  /* ---------- Search: resolve author names to ownerIds; fallback to semantic title search ---------- */
   const handleSemanticSearch = async () => {
-    if (!searchQuery.trim()) {
+    const raw = searchQuery.trim();
+    if (!raw) {
       setSearchMessage('Please enter a search query.');
       setDisplayedStories(applyFiltersAndSearch(allStories));
       return;
     }
 
+    // Try "author:" prefix first; else use the raw string as a name candidate
+    const authorPrefixMatch = raw.match(/^author:\s*(.+)$/i);
+    const nameCandidate = authorPrefixMatch ? authorPrefixMatch[1] : raw;
+
+    // Resolve to matching ownerIds by display name substring
+    const wanted = norm(nameCandidate);
+    const matchingOwnerIds = new Set<string>();
+    for (const [nameKey, idSet] of Object.entries(ownerNameIndex.nameToIds)) {
+      if (nameKey.includes(wanted) && (idSet as Set<string>).size) {
+        (idSet as Set<string>).forEach((id) => matchingOwnerIds.add(id));
+      }
+    }
+
+    if (matchingOwnerIds.size > 0) {
+      const idsArr = Array.from(matchingOwnerIds);
+      if (idsArr.length === 1) {
+        setOwnerFilter(idsArr[0]);
+      } else {
+        setOwnerFilter(null);
+        const subset = allStories.filter((s) => {
+          const oid = getOwnerId(s);
+          return oid ? matchingOwnerIds.has(oid) : false;
+        });
+        const finalList = applyFiltersAndSearch(subset);
+        setDisplayedStories(finalList);
+        setSearchMessage(`Found ${finalList.length} stories from ${idsArr.length} matching author(s).`);
+      }
+      return;
+    }
+
+    // Fallback: existing semantic title search
     setSearchMessage('Searching for stories...');
     setDisplayedStories([]);
 
     try {
-      const storyTitles = allStories.map(story => story.title || '');
+      const storyTitles = allStories.map(story => (story as any).title || '');
       const response = await fetch('/api/semantic-search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ searchQuery, storyTitles }),
+        body: JSON.stringify({ searchQuery: raw, storyTitles }),
       });
 
       const result = await response.json();
@@ -608,12 +773,12 @@ const CatalogPage: React.FC = () => {
 
       const { matchedTitles } = result;
       if (Array.isArray(matchedTitles) && matchedTitles.length > 0) {
-        let filteredBySearch = allStories.filter(story => matchedTitles.includes(story.title));
+        let filteredBySearch = allStories.filter(story => matchedTitles.includes((story as any).title));
         filteredBySearch = applyFiltersAndSearch(filteredBySearch);
         setDisplayedStories(filteredBySearch);
         setSearchMessage(`Found ${filteredBySearch.length} matching stories.`);
       } else {
-        setDisplayedStories([]);
+        setDisplayedStories(applyFiltersAndSearch(allStories));
         setSearchMessage('No semantically related stories found from your titles.');
       }
     } catch (error: any) {
@@ -694,7 +859,7 @@ const CatalogPage: React.FC = () => {
               className="h-6 w-px mx-2 sm:mx-3 bg-[#3A4B5C]/30 dark:bg-white/30"
             />
 
-            {/* Right group: Plan Pills (Premium / Free) */}
+            {/* Right group: Plan Pills */}
             <div className="flex flex-wrap items-center gap-3">
               {PLAN_PILLS.map((k) => {
                 const Ico = PLAN_STYLES[k].Icon;
@@ -751,12 +916,12 @@ const CatalogPage: React.FC = () => {
           />
         </nav>
 
-        {/* Row 2 (dropdowns removed) */}
-        <div className="flex flex-wrap items-center justify-center gap-3 md:gap-4 mb-8 w-full">
+        {/* Row 2 */}
+        <div className="flex flex-wrap items-center justify-center gap-3 md:gap-4 mb-4 w-full">
           <div className="flex items-center gap-3 w-full max-w-xl">
             <input
               type="text"
-              placeholder="Search stories semantically..."
+              placeholder='Search stories… try: author: Ana Perez'
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="flex-grow p-3 rounded-lg border-2 border-[#4A5C6E] bg-[#233446] text-[#E0C9A0] placeholder-[#8FA0AF] focus:outline-none focus:border-[#BFA071]"
@@ -770,6 +935,23 @@ const CatalogPage: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* Active author chip */}
+        {ownerIdFilter && (
+          <div className="mb-6 flex justify-center">
+            <span className="inline-flex items-center gap-2 bg-[#233446] text-[#E0C9A0] border border-[#BFA071] px-3 py-1 rounded-full">
+              Author: <strong>{ownerNameIndex.byId[ownerIdFilter] || 'Unknown Author'}</strong>
+              <button
+                onClick={() => setOwnerFilter(null)}
+                className="p-1 hover:bg-white/10 rounded-full"
+                aria-label="Clear author filter"
+                title="Clear author filter"
+              >
+                <X size={16} />
+              </button>
+            </span>
+          </div>
+        )}
 
         {searchMessage && (
           <div className="mb-6 p-3 rounded-lg text-sm bg-blue-900 text-blue-200 border border-blue-700">
@@ -787,9 +969,9 @@ const CatalogPage: React.FC = () => {
                   : undefined;
 
               const count = (story as any).ratingCount as number | undefined;
-              const my = userRatings[story.id!];
+              const my = userRatings[(story as any).id!];
 
-              const readHref = `/ereader?storyId=${encodeURIComponent(story.id!)}&back=%2Fdiscover`;
+              const readHref = `/ereader?storyId=${encodeURIComponent((story as any).id!)}&back=%2Fdiscover`;
 
               const typeKey = getStoryType(story);
               const planKey = getPlan(story);
@@ -798,18 +980,23 @@ const CatalogPage: React.FC = () => {
               const TypeIcon = typeStyle.Icon;
               const PlanIcon = planStyle.Icon;
 
-              const hasReadThis = !!userReadsSet[story.id!];
-              const hasRatedThis = !!userRatedSet[story.id!];
+              const hasReadThis = !!userReadsSet[(story as any).id!];
+              const hasRatedThis = !!userRatedSet[(story as any).id!];
+
+              const creatorName = getCreatorName(story) || 'Unknown Author';
+              const ownerId = getOwnerId(story);
+              const authorPhoto = getCreatorPhoto(story) || DEFAULT_AVATAR;
 
               return (
                 <div
-                  key={story.id}
-                  className={`story-card bg-[#233446] border-2 ${typeStyle.border} p-2.5 rounded-lg w-64 text-[#E0C9A0] relative transition-all duration-300 ease-in-out hover:translate-y-[-5px] hover:shadow-2xl ${typeStyle.glow}`}
+                  key={(story as any).id}
+                  className={`group/story story-card bg-[#233446] border-2 ${typeStyle.border} p-2.5 rounded-lg w-64 text-[#E0C9A0] relative transition-all duration-300 ease-in-out hover:translate-y-[-5px] hover:shadow-2xl ${typeStyle.glow}`}
                 >
-                  <FavoriteButton storyId={story.id!} initialIsFav={!!userFavorites[story.id!]}/>
+                  <FavoriteButton storyId={(story as any).id!} initialIsFav={!!userFavorites[(story as any).id!]}/>
 
                   <div className="absolute inset-1 border border-[#BFA071] rounded-md pointer-events-none z-10"></div>
 
+                  {/* Type & Plan badges */}
                   <div className="absolute left-2 top-2 z-30 flex gap-2">
                     <span className={`px-2 py-0.5 text-[11px] rounded ${typeStyle.badgeBg} ${typeStyle.badgeText} font-bold uppercase tracking-wide inline-flex items-center gap-1.5`}>
                       <TypeIcon size={13}/> {typeStyle.label}
@@ -821,43 +1008,75 @@ const CatalogPage: React.FC = () => {
                     </span>
                   </div>
 
+                  {/* Cover */}
                   <Link
                     href={readHref}
-                    onClick={() => logRead(story.id!)}
+                    onClick={() => logRead((story as any).id!)}
                     className="card-art-container block w-full h-40 mb-4 rounded-sm overflow-hidden relative z-20"
                   >
                     <img
-                      src={story.coverImageUrl || 'https://placehold.co/300x200/BFA071/1A2533?text=Image+Not+Found'}
-                      alt={story.title || 'Untitled Story'}
+                      src={(story as any).coverImageUrl || 'https://placehold.co/300x200/BFA071/1A2533?text=Image+Not+Found'}
+                      alt={(story as any).title || 'Untitled Story'}
                       className="w-full h-full object-cover block"
                     />
                   </Link>
 
-                  <Link href={readHref} onClick={() => logRead(story.id!)}>
+                  {/* Title */}
+                  <Link href={readHref} onClick={() => logRead((story as any).id!)}>
                     <h3 className="font-['Merriweather'] text-xl font-bold mb-2 leading-tight min-h-[2.6rem] z-20 relative">
-                      {story.title || 'Untitled Story'}
+                      {(story as any).title || 'Untitled Story'}
                     </h3>
                   </Link>
 
-                  {story.genres?.length ? (
-                    <p className="text-xs text-[#8FA0AF] mb-1">{story.genres.join(', ')}</p>
+                  {/* Genres */}
+                  {(story as any).genres?.length ? (
+                    <p className="text-xs text-[#8FA0AF] mb-1">{(story as any).genres.join(', ')}</p>
                   ) : null}
 
-                  {(story as any).creator && (
-                    <p className="text-sm text-[#8FA0AF] mb-1">
-                      By {(story as any).creator.displayname || 'Unknown Author'}
-                    </p>
-                  )}
+                  {/* Author line: avatar + link to filter */}
+                  <div className="mt-1">
+                    {ownerId ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setOwnerFilter(ownerId);
+                        }}
+                        className="inline-flex items-center gap-2 text-xs text-[#8FA0AF] hover:text-[#E0C9A0] transition underline-offset-2"
+                        title={`See all by ${creatorName}`}
+                      >
+                        <img
+                          src={authorPhoto}
+                          alt={`${creatorName} avatar`}
+                          className="w-5 h-5 rounded-full object-cover border border-white/30"
+                        />
+                        <span>
+                          Created by: <span className="underline">{creatorName}</span>
+                        </span>
+                      </button>
+                    ) : (
+                      <div className="inline-flex items-center gap-2 text-xs text-[#8FA0AF]">
+                        <img
+                          src={authorPhoto}
+                          alt={`${creatorName} avatar`}
+                          className="w-5 h-5 rounded-full object-cover border border-white/30"
+                        />
+                        <span>Created by: {creatorName}</span>
+                      </div>
+                    )}
+                  </div>
 
+                  {/* Comments */}
                   {(story as any).commentsCount !== undefined && (
                     <p className="text-sm text-[#8FA0AF] flex items-center justify-center gap-1">
                       💬 {(story as any).commentsCount} Comments
                     </p>
                   )}
 
+                  {/* Stars */}
                   <div className="mt-2">
                     <StarRating
-                      storyId={story.id!}
+                      storyId={(story as any).id!}
                       initialUserRating={my ?? null}
                       average={avg}
                       count={count}
@@ -869,6 +1088,7 @@ const CatalogPage: React.FC = () => {
                     />
                   </div>
 
+                  {/* Read Button */}
                   <div className="mt-3 relative inline-block">
                     {!hasReadThis && (
                       <span
@@ -880,11 +1100,32 @@ const CatalogPage: React.FC = () => {
                     )}
                     <Link
                       href={readHref}
-                      onClick={() => logRead(story.id!)}
+                      onClick={() => logRead((story as any).id!)}
                       className="font-['Lato'] bg-[#BFA071] text-[#1A2533] py-2.5 px-6 rounded-md text-base font-bold uppercase tracking-wide inline-block transition-colors duration-300 hover:bg-[#E0C9A0] z-20 relative"
                     >
                       READ
                     </Link>
+                  </div>
+
+                  {/* Hover info box */}
+                  <div
+                    className="pointer-events-none opacity-0 group-hover/story:opacity-100 transition-opacity duration-200
+                               absolute inset-x-2 bottom-24 z-40"
+                  >
+                    <div className="bg-black/85 text-white text-xs rounded-md p-3 border border-white/10 shadow-xl">
+                      <div className="font-semibold mb-1">Synopsis</div>
+                      <div className="line-clamp-5 text-[12px]">
+                        {getSynopsis(story)}
+                      </div>
+                      <div className="mt-2 flex items-center gap-2 text-[12px] opacity-90">
+                        <img
+                          src={authorPhoto}
+                          alt={`${creatorName} avatar`}
+                          className="w-4 h-4 rounded-full object-cover border border-white/30"
+                        />
+                        <span>Created by: <span className="font-medium">{creatorName}</span></span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
