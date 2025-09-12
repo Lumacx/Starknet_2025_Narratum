@@ -4,8 +4,11 @@ import { createuserprofile } from './authTriggers';
 import { incrementCommentCount } from './commentCounter';
 import { indexAssetOnFinalize, removeIndexOnDelete } from './assetsIndex';
 
-// 👇 importa y exporta la HTTP v2
-import { generateWithGemini, generateWithImagen} from './smartGenerateImage';
+// HTTP v2 image generators
+import { generateWithGemini, generateWithImagen } from './smartGenerateImage';
+
+// 👇 NEW: PDF generator (HTTP HTTPS function)
+import { downloadStoryPdf } from './downloadStoryPdf';
 
 export {
   generateNarratumImage,
@@ -15,4 +18,5 @@ export {
   removeIndexOnDelete,
   generateWithGemini,
   generateWithImagen,
-  };
+  downloadStoryPdf, // 👈 added export
+};
