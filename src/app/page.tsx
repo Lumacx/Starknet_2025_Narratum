@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import ThemeToggle from '../components/ThemeToggle';
+//import ThemeToggle from '../components/ThemeToggle';
 
 const LandingPage: React.FC = () => {
   const { user, starknetAddress, loading } = useAuth();
@@ -27,11 +27,7 @@ const LandingPage: React.FC = () => {
         text-[#3A4B5C] dark:text-[#E0C9A0] font-sans
       `}
     >
-      {/* Theme toggle */}
-      <div className="absolute top-4 right-4">
-        <ThemeToggle />
-      </div>
-
+      
       {/* Video Modal */}
       {videoUrl && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
