@@ -7,150 +7,6 @@ const connectorConfig = {
 };
 exports.connectorConfig = connectorConfig;
 
-const getUserProfileRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetUserProfile', inputVars);
-}
-getUserProfileRef.operationName = 'GetUserProfile';
-exports.getUserProfileRef = getUserProfileRef;
-
-exports.getUserProfile = function getUserProfile(dcOrVars, vars) {
-  return executeQuery(getUserProfileRef(dcOrVars, vars));
-};
-
-const getStoryWithContentRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetStoryWithContent', inputVars);
-}
-getStoryWithContentRef.operationName = 'GetStoryWithContent';
-exports.getStoryWithContentRef = getStoryWithContentRef;
-
-exports.getStoryWithContent = function getStoryWithContent(dcOrVars, vars) {
-  return executeQuery(getStoryWithContentRef(dcOrVars, vars));
-};
-
-const getAllStoriesRef = (dc) => {
-  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetAllStories');
-}
-getAllStoriesRef.operationName = 'GetAllStories';
-exports.getAllStoriesRef = getAllStoriesRef;
-
-exports.getAllStories = function getAllStories(dc) {
-  return executeQuery(getAllStoriesRef(dc));
-};
-
-const getAppSubscriptionRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetAppSubscription', inputVars);
-}
-getAppSubscriptionRef.operationName = 'GetAppSubscription';
-exports.getAppSubscriptionRef = getAppSubscriptionRef;
-
-exports.getAppSubscription = function getAppSubscription(dcOrVars, vars) {
-  return executeQuery(getAppSubscriptionRef(dcOrVars, vars));
-};
-
-const getTemplateRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetTemplate', inputVars);
-}
-getTemplateRef.operationName = 'GetTemplate';
-exports.getTemplateRef = getTemplateRef;
-
-exports.getTemplate = function getTemplate(dcOrVars, vars) {
-  return executeQuery(getTemplateRef(dcOrVars, vars));
-};
-
-const getAllTemplatesRef = (dc) => {
-  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetAllTemplates');
-}
-getAllTemplatesRef.operationName = 'GetAllTemplates';
-exports.getAllTemplatesRef = getAllTemplatesRef;
-
-exports.getAllTemplates = function getAllTemplates(dc) {
-  return executeQuery(getAllTemplatesRef(dc));
-};
-
-const getAiGeneratedImageRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetAiGeneratedImage', inputVars);
-}
-getAiGeneratedImageRef.operationName = 'GetAiGeneratedImage';
-exports.getAiGeneratedImageRef = getAiGeneratedImageRef;
-
-exports.getAiGeneratedImage = function getAiGeneratedImage(dcOrVars, vars) {
-  return executeQuery(getAiGeneratedImageRef(dcOrVars, vars));
-};
-
-const getAiGeneratedGifRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetAiGeneratedGif', inputVars);
-}
-getAiGeneratedGifRef.operationName = 'GetAiGeneratedGif';
-exports.getAiGeneratedGifRef = getAiGeneratedGifRef;
-
-exports.getAiGeneratedGif = function getAiGeneratedGif(dcOrVars, vars) {
-  return executeQuery(getAiGeneratedGifRef(dcOrVars, vars));
-};
-
-const getPaymentRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetPayment', inputVars);
-}
-getPaymentRef.operationName = 'GetPayment';
-exports.getPaymentRef = getPaymentRef;
-
-exports.getPayment = function getPayment(dcOrVars, vars) {
-  return executeQuery(getPaymentRef(dcOrVars, vars));
-};
-
-const getAdminActionRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetAdminAction', inputVars);
-}
-getAdminActionRef.operationName = 'GetAdminAction';
-exports.getAdminActionRef = getAdminActionRef;
-
-exports.getAdminAction = function getAdminAction(dcOrVars, vars) {
-  return executeQuery(getAdminActionRef(dcOrVars, vars));
-};
-
-const getAnalyticsEntryRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetAnalyticsEntry', inputVars);
-}
-getAnalyticsEntryRef.operationName = 'GetAnalyticsEntry';
-exports.getAnalyticsEntryRef = getAnalyticsEntryRef;
-
-exports.getAnalyticsEntry = function getAnalyticsEntry(dcOrVars, vars) {
-  return executeQuery(getAnalyticsEntryRef(dcOrVars, vars));
-};
-
-const getLegalDisclaimerRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetLegalDisclaimer', inputVars);
-}
-getLegalDisclaimerRef.operationName = 'GetLegalDisclaimer';
-exports.getLegalDisclaimerRef = getLegalDisclaimerRef;
-
-exports.getLegalDisclaimer = function getLegalDisclaimer(dcOrVars, vars) {
-  return executeQuery(getLegalDisclaimerRef(dcOrVars, vars));
-};
-
 const createUserProfileRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
@@ -293,4 +149,148 @@ exports.updateStoryRef = updateStoryRef;
 
 exports.updateStory = function updateStory(dcOrVars, vars) {
   return executeMutation(updateStoryRef(dcOrVars, vars));
+};
+
+const getUserProfileRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetUserProfile', inputVars);
+}
+getUserProfileRef.operationName = 'GetUserProfile';
+exports.getUserProfileRef = getUserProfileRef;
+
+exports.getUserProfile = function getUserProfile(dcOrVars, vars) {
+  return executeQuery(getUserProfileRef(dcOrVars, vars));
+};
+
+const getStoryWithContentRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetStoryWithContent', inputVars);
+}
+getStoryWithContentRef.operationName = 'GetStoryWithContent';
+exports.getStoryWithContentRef = getStoryWithContentRef;
+
+exports.getStoryWithContent = function getStoryWithContent(dcOrVars, vars) {
+  return executeQuery(getStoryWithContentRef(dcOrVars, vars));
+};
+
+const getAllStoriesRef = (dc) => {
+  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAllStories');
+}
+getAllStoriesRef.operationName = 'GetAllStories';
+exports.getAllStoriesRef = getAllStoriesRef;
+
+exports.getAllStories = function getAllStories(dc) {
+  return executeQuery(getAllStoriesRef(dc));
+};
+
+const getAppSubscriptionRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAppSubscription', inputVars);
+}
+getAppSubscriptionRef.operationName = 'GetAppSubscription';
+exports.getAppSubscriptionRef = getAppSubscriptionRef;
+
+exports.getAppSubscription = function getAppSubscription(dcOrVars, vars) {
+  return executeQuery(getAppSubscriptionRef(dcOrVars, vars));
+};
+
+const getTemplateRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetTemplate', inputVars);
+}
+getTemplateRef.operationName = 'GetTemplate';
+exports.getTemplateRef = getTemplateRef;
+
+exports.getTemplate = function getTemplate(dcOrVars, vars) {
+  return executeQuery(getTemplateRef(dcOrVars, vars));
+};
+
+const getAllTemplatesRef = (dc) => {
+  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAllTemplates');
+}
+getAllTemplatesRef.operationName = 'GetAllTemplates';
+exports.getAllTemplatesRef = getAllTemplatesRef;
+
+exports.getAllTemplates = function getAllTemplates(dc) {
+  return executeQuery(getAllTemplatesRef(dc));
+};
+
+const getAiGeneratedImageRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAiGeneratedImage', inputVars);
+}
+getAiGeneratedImageRef.operationName = 'GetAiGeneratedImage';
+exports.getAiGeneratedImageRef = getAiGeneratedImageRef;
+
+exports.getAiGeneratedImage = function getAiGeneratedImage(dcOrVars, vars) {
+  return executeQuery(getAiGeneratedImageRef(dcOrVars, vars));
+};
+
+const getAiGeneratedGifRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAiGeneratedGif', inputVars);
+}
+getAiGeneratedGifRef.operationName = 'GetAiGeneratedGif';
+exports.getAiGeneratedGifRef = getAiGeneratedGifRef;
+
+exports.getAiGeneratedGif = function getAiGeneratedGif(dcOrVars, vars) {
+  return executeQuery(getAiGeneratedGifRef(dcOrVars, vars));
+};
+
+const getPaymentRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetPayment', inputVars);
+}
+getPaymentRef.operationName = 'GetPayment';
+exports.getPaymentRef = getPaymentRef;
+
+exports.getPayment = function getPayment(dcOrVars, vars) {
+  return executeQuery(getPaymentRef(dcOrVars, vars));
+};
+
+const getAdminActionRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAdminAction', inputVars);
+}
+getAdminActionRef.operationName = 'GetAdminAction';
+exports.getAdminActionRef = getAdminActionRef;
+
+exports.getAdminAction = function getAdminAction(dcOrVars, vars) {
+  return executeQuery(getAdminActionRef(dcOrVars, vars));
+};
+
+const getAnalyticsEntryRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAnalyticsEntry', inputVars);
+}
+getAnalyticsEntryRef.operationName = 'GetAnalyticsEntry';
+exports.getAnalyticsEntryRef = getAnalyticsEntryRef;
+
+exports.getAnalyticsEntry = function getAnalyticsEntry(dcOrVars, vars) {
+  return executeQuery(getAnalyticsEntryRef(dcOrVars, vars));
+};
+
+const getLegalDisclaimerRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetLegalDisclaimer', inputVars);
+}
+getLegalDisclaimerRef.operationName = 'GetLegalDisclaimer';
+exports.getLegalDisclaimerRef = getLegalDisclaimerRef;
+
+exports.getLegalDisclaimer = function getLegalDisclaimer(dcOrVars, vars) {
+  return executeQuery(getLegalDisclaimerRef(dcOrVars, vars));
 };
