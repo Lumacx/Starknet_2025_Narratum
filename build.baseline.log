@@ -1,0 +1,10 @@
+
+> nextn@0.1.0 build /home/user/studio
+> next build
+
+   ▲ Next.js 15.2.3
+   - Environments: .env.local, .env
+   - Experiments (use with caution):
+     · allowedDevOrigins
+
+   Creating an optimized production build ...

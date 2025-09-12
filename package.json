@@ -6,20 +6,29 @@
   "engines": {
     "node": "20"
   },
-  "scripts": {
-    "dev": "next dev",
-    "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
-    "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "typecheck": "tsc --noEmit",
-    "dc:enable": "npx -y firebase-tools@latest experiments:enable dataconnect",
-    "dc:deploy": "npx -y firebase-tools@latest deploy --only dataconnect",
-    "dc:sdk": "npx -y firebase-tools@latest dataconnect:sdk:generate --out dataconnect-generated/js",
-    "dc:all": "npm run dc:deploy && npm run dc:sdk",
-    "generate:connector": "npx -y firebase-tools@latest dataconnect:sdk:generate"
-  },
+  
+    "scripts": {
+      "dev": "next dev",
+      "build": "next build",
+      "start": "next start",
+  
+      "typecheck": "tsc --noEmit",
+      "lint": "eslint .",
+      "lint:fix": "eslint . --fix",
+  
+      "build:baseline": "NODE_OPTIONS=--max_old_space_size=8192 next build",
+      "build:nominify": "NEXT_SWC_MINIFY=false next build",
+      "analyze": "ANALYZE=true next build",
+  
+      "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
+      "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
+  
+      "dc:enable": "firebase experiments:enable dataconnect",           
+      "dc:deploy": "firebase deploy --only dataconnect",
+      "dc:codegen": "firebase dataconnect:sdk:generate --out dataconnect-generated/js",
+      "dc:all": "npm run dc:deploy && npm run dc:codegen"
+    },
+  
   "dependencies": {
     "@argent/x-ui": "^1.87.0",
     "@chakra-ui/react": "^2.8.2",
@@ -113,6 +122,7 @@
   },
   "devDependencies": {
     "@firebase/data-connect": "^0.3.10",
+    "@next/bundle-analyzer": "^15.5.3",
     "@types/jest": "^27.5.2",
     "@types/node": "^20.0.0",
     "@types/react": "^18",
