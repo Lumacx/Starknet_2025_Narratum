@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef  } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -174,6 +174,7 @@ export default function BeginPage() {
   const [stories, setStories] = useState<StorySummary[]>([]);
   const [storiesLoading, setStoriesLoading] = useState(false);
   const [storiesLast, setStoriesLast] = useState<QueryDocumentSnapshot | null>(null);
+  const isFetchingStoriesRef = useRef(false);
 
   // NEW: State for sorting
   const [sortKey, setSortKey] = useState<'updatedAt' | 'title'>('updatedAt');
@@ -252,10 +253,12 @@ export default function BeginPage() {
   const isLongForm = draft.category === 'novela' || draft.category === 'campaign';
 
   /* ---------------- Fetch user's stories for Continue ---------------- */
-  const fetchStoriesPage = useCallback(async (after?: QueryDocumentSnapshot) => {
-    if (!user) return;
-    if (storiesLoading) return; // guard against double calls
-    setStoriesLoading(true);
+      const fetchStoriesPage = useCallback(async (after?: QueryDocumentSnapshot) => {
+       if (!user) return;
+       if (isFetchingStoriesRef.current) return;   // hard guard against overlap
+       isFetchingStoriesRef.current = true;
+       setStoriesLoading(true);
+
     try {
       const secondaryDir = sortOrder; // keep secondary aligned with primary
       const base: any[] = [
@@ -290,18 +293,17 @@ export default function BeginPage() {
       console.error('Failed to load stories for user', e);
     } finally {
       setStoriesLoading(false);
+      isFetchingStoriesRef.current = false;
     }
-  }, [user, sortKey, sortOrder, storiesLoading, db]);
+  }, [user, sortKey, sortOrder]); // ⬅️ remove storiesLoading/db (db is stable anyway)
 
   // Consolidated effect: initial load + reacts to sort changes.
-  useEffect(() => {
-    if (!user) return;
-    // Reset list & cursor whenever the sort changes (or on first user load)
-    setStories([]);
-    setStoriesLast(null);
-    // Fresh page 1 for the new sort
-    fetchStoriesPage();
-  }, [user, sortKey, sortOrder, fetchStoriesPage]);
+    useEffect(() => {
+       if (!user) return;
+       setStories([]);
+       setStoriesLast(null);
+       fetchStoriesPage();             // stable; won’t thrash on loading flips
+     }, [user, sortKey, sortOrder, fetchStoriesPage]);
 
   /* ---------------- Ensure story exists (used by cover/premium saving) ---------------- */
   async function ensureStoryId(): Promise<string> {
@@ -722,6 +724,8 @@ export default function BeginPage() {
 
               {storyMode === 'continue' && (
                 <select
+                  id="continue-select"
+                  disabled={storyMode !== 'continue'}
                   className="
                     w-full p-3 border-2 rounded-md
                     bg-white text-slate-900 border-slate-300

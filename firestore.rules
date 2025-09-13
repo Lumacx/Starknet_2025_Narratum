@@ -3,7 +3,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /* ----------------- Helpers ----------------- */
+    /* ----------------- Global Helpers ----------------- */
     function isSignedIn() { return request.auth != null; }
 
     // existing doc -> owner (requires { ownerUid } on the doc)
@@ -14,6 +14,18 @@ service cloud.firestore {
     // incoming payload -> owner (requires { ownerUid } in request)
     function isOwnerCreate() {
       return isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
+    }
+
+    function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
+
+    // Require that a set of fields do NOT change across an update
+    function unchanged(fields) {
+      return fields.every(f => request.resource.data[f] == resource.data[f]);
+    }
+
+    // Block clients from writing server-controlled fields at CREATE
+    function absentOnCreate(fields) {
+      return fields.every(f => !(f in request.resource.data));
     }
 
     // Allow either explicit boolean "published", a "publishedAt" timestamp in the past,
@@ -56,6 +68,35 @@ service cloud.firestore {
       return storyIsPublic(storyId) || isStoryOwner(storyId);
     }
 
+    /* --------- Asset helpers (used under /users/{uid}/assetIndex) --------- */
+    function allowedCategory(cat) {
+      return cat in [
+        'covers','avatars','characters','locations','backgrounds',
+        'audioNarrations','audioEffects','videos','generatedImages','others'
+      ];
+    }
+
+    function hasTimestampOrMissing(v) {
+      return !(v in request.resource.data) || (request.resource.data[v] is timestamp);
+    }
+
+    function validAssetDoc(d) {
+      return (d.url is string) &&
+             (d.fileName is string) &&
+             (d.contentType is string) &&
+             // createdAt required; updatedAt optional-but-if-present must be timestamp
+             (d.createdAt is timestamp) &&
+             hasTimestampOrMissing('updatedAt') &&
+             // optional extras we may set
+             ( !('name' in d) || (d.name is string) ) &&
+             ( !('nameLower' in d) || (d.nameLower is string) ) &&
+             ( !('storagePath' in d) || (d.storagePath is string) ) &&
+             ( !('role' in d) || (d.role is string) ) &&
+             ( !('source' in d) || (d.source is string) ) &&
+             // If present, storyId must be string or null depending on path usage
+             ( !('storyId' in d) || (d.storyId is string || d.storyId == null) );
+    }
+
     /* ============================================================
        TOP-LEVEL _meta (KeepAliveProvider, etc.)
        ============================================================ */
@@ -64,78 +105,74 @@ service cloud.firestore {
     }
 
     /* ============================================================
-       USERS TREE (path-scoped; no exige ownerUid en el doc)
+       USERS TREE (scoped to each authenticated user)
        ============================================================ */
     match /users/{uid} {
-      // Perfil del usuario + subcolecciones salvo overrides
-      allow read, write: if isSignedIn() && request.auth.uid == uid;
+
+      // -------- Profile doc --------
+      // READ: owner only (switch to true if you want public profiles)
+      allow read: if isOwner(uid);
+
+      // CREATE: owner only; cannot set server-controlled fields at create.
+      // We allow client to set 'referredBy' exactly once on create.
+      allow create: if isOwner(uid) &&
+        absentOnCreate(['plan','subscriptionTier','credits','ownerUid','email','createdAt','referralCode']) &&
+        ( !('referredBy' in request.resource.data) || (request.resource.data.referredBy is string) );
+
+      // UPDATE: owner may edit ONLY profile fields.
+      // Server-controlled fields must remain unchanged.
+      // 'referredBy' and 'referralCode' become immutable after creation (stamped by server).
+      allow update: if isOwner(uid) &&
+        request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          'displayName','bio','location','website','socials','walletAddress','photoURL'
+        ]) &&
+        unchanged(['plan','subscriptionTier','credits','ownerUid','email','createdAt','referredBy','referralCode']);
+
+      // DELETE: owner may delete their user doc (optional)
+      allow delete: if isOwner(uid);
 
       // _meta (keepalive/flags)
       match /_meta/{docId} {
-        allow read, write: if isSignedIn() && request.auth.uid == uid;
+        allow read, write: if isOwner(uid);
       }
 
       // Galería
       match /assets/{assetId} {
-        allow read, write: if isSignedIn() && request.auth.uid == uid;
+        allow read, write: if isOwner(uid);
       }
 
       // Favoritos (usado en discover/profile)
       match /favorites/{favId} {
-        allow read, write: if isSignedIn() && request.auth.uid == uid;
+        allow read, write: if isOwner(uid);
       }
 
       // Lecturas (para “Earn Stars”)
       match /reads/{storyId} {
-        allow read, write: if isSignedIn() && request.auth.uid == uid;
+        allow read, write: if isOwner(uid);
       }
 
       // Ratings mirror (tu copia por usuario)
       match /ratings/{storyId} {
-        allow read, write: if isSignedIn() && request.auth.uid == uid;
+        allow read, write: if isOwner(uid);
       }
 
       // Historias WIP del usuario
       match /stories/{storyId} {
-        allow read, write: if isSignedIn() && request.auth.uid == uid;
+        allow read, write: if isOwner(uid);
 
         match /scenes/{sceneId} {
-          allow read, write: if isSignedIn() && request.auth.uid == uid;
+          allow read, write: if isOwner(uid);
         }
 
         match /assets/{assetId} {
-          allow read, write: if isSignedIn() && request.auth.uid == uid;
+          allow read, write: if isOwner(uid);
         }
       }
 
-      // Helpers local to the /users/{uid} scope
-            function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
-            function allowedCategory(cat) {
-              return cat in [
-                'covers','avatars','characters','locations','backgrounds',
-                'audioNarrations','audioEffects','videos','generatedImages','others'
-              ];
-            }
-            // Minimal schema we rely on; other fields are allowed.
-      function hasTimestampOrMissing(v) { return !(v in request.resource.data) || (request.resource.data[v] is timestamp); }
-      function validAssetDoc(d) {
-        return (d.url is string) &&
-              (d.fileName is string) &&
-              (d.contentType is string) &&
-              // createdAt required; updatedAt optional-but-if-present must be timestamp
-              (d.createdAt is timestamp) &&
-              hasTimestampOrMissing('updatedAt') &&
-              // optional extras we may set
-              ( !('name' in d) || (d.name is string) ) &&
-              ( !('nameLower' in d) || (d.nameLower is string) ) &&
-              ( !('storagePath' in d) || (d.storagePath is string) ) &&
-              ( !('role' in d) || (d.role is string) ) &&
-              ( !('source' in d) || (d.source is string) );
-      }
-
       /* ==========================================================
-        users/{uid}/assetIndex (normalized references for gallery)
-        ========================================================== */
+         users/{uid}/assetIndex (normalized references for gallery)
+         ========================================================== */
+
       // Story-scoped:
       // users/{uid}/assetIndex/stories/{storyId}/{category}/{assetId}
       match /assetIndex/stories/{storyId}/{category}/{assetId} {
@@ -165,60 +202,72 @@ service cloud.firestore {
           && ( !('storyId' in request.resource.data) || request.resource.data.storyId == null );
         allow delete: if isOwner(uid);
       }
+
+      /* ==========================================================
+         users/{uid}/transactions (READ-ONLY for clients)
+         ========================================================== */
+      match /transactions/{txId} {
+        // Owner can read their own transactions
+        allow read: if isOwner(uid);
+
+        // Block client writes; use Admin SDK/Cloud Functions to create/update/delete
+        allow create, update, delete: if false;
+      }
     }
-        /* ============================================================
-          TOP-LEVEL STORIES (descubrimiento/publishing)
-          ============================================================ */
-        match /stories/{storyId} {
-          // Crear: debe venir con ownerUid == caller
-          allow create: if isOwnerCreate();
 
-          // Leer: público (ANY of published/publishedAt/status/visibility/isPublic) o dueño
-          // (Incluye leer premium.convaiAgentId y otros campos.)
-          allow read: if isPublicStory() || isOwnerDoc();
+    /* ============================================================
+       TOP-LEVEL STORIES (descubrimiento/publishing)
+       ============================================================ */
+    match /stories/{storyId} {
+      // Crear: debe venir con ownerUid == caller
+      allow create: if isOwnerCreate();
 
-          // Actualizar/Eliminar: sólo dueño + congelar ownerUid
-          allow update, delete: if isOwnerDoc()
-            && request.resource.data.ownerUid == resource.data.ownerUid;
+      // Leer: público (ANY of published/publishedAt/status/visibility/isPublic) o dueño
+      // (Incluye leer premium.convaiAgentId y otros campos.)
+      allow read: if isPublicStory() || isOwnerDoc();
 
-          /* ---------- Subcolecciones bajo stories ---------- */
+      // Actualizar/Eliminar: sólo dueño + congelar ownerUid
+      allow update, delete: if isOwnerDoc()
+        && request.resource.data.ownerUid == resource.data.ownerUid;
 
-          // Ratings: clave = uid del rater
-          match /ratings/{raterUid} {
-            // Leer: si story es público/owner o si el caller está leyendo su propio rating
-            allow read: if canReadStoryById(storyId)
-                    || (isSignedIn() && request.auth.uid == raterUid);
+      /* ---------- Subcolecciones bajo stories ---------- */
 
-            // Escribe/actualiza/elimina: sólo el propio rater
-            allow create, update, delete: if isSignedIn() && request.auth.uid == raterUid;
-          }
+      // Ratings: clave = uid del rater
+      match /ratings/{raterUid} {
+        // Leer: si story es público/owner o si el caller está leyendo su propio rating
+        allow read: if canReadStoryById(storyId)
+                || (isSignedIn() && request.auth.uid == raterUid);
 
-          // Comments
-          match /comments/{commentId} {
-            // Leer: si story es público o caller es dueño del story
-            allow read: if canReadStoryById(storyId);
+        // Escribe/actualiza/elimina: sólo el propio rater
+        allow create, update, delete: if isSignedIn() && request.auth.uid == raterUid;
+      }
 
-            // Crear: user autenticado; guarda authorId y congélalo
-            allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+      // Comments
+      match /comments/{commentId} {
+        // Leer: si story es público o caller es dueño del story
+        allow read: if canReadStoryById(storyId);
 
-            // Update/Delete: sólo el autor del comentario y mantener authorId
-            allow update, delete: if isSignedIn()
-              && resource.data.authorId == request.auth.uid
-              && request.resource.data.authorId == resource.data.authorId;
+        // Crear: user autenticado; guarda authorId y congélalo
+        allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
 
-            // Reacciones a un comentario
-            match /reactions/{userId} {
-              allow read: if canReadStoryById(storyId);
-              allow create, update, delete: if isSignedIn() && request.auth.uid == userId;
-            }
-          }
+        // Update/Delete: sólo el autor del comentario y mantener authorId
+        allow update, delete: if isSignedIn()
+          && resource.data.authorId == request.auth.uid
+          && request.resource.data.authorId == resource.data.authorId;
 
-          // Reacciones directas al story
-          match /reactions/{userId} {
-            allow read: if canReadStoryById(storyId);
-            allow create, update, delete: if isSignedIn() && request.auth.uid == userId;
-          }
+        // Reacciones a un comentario
+        match /reactions/{userId} {
+          allow read: if canReadStoryById(storyId);
+          allow create, update, delete: if isSignedIn() && request.auth.uid == userId;
         }
+      }
+
+      // Reacciones directas al story
+      match /reactions/{userId} {
+        allow read: if canReadStoryById(storyId);
+        allow create, update, delete: if isSignedIn() && request.auth.uid == userId;
+      }
+    }
 
     /* ============================================================
        TOP-LEVEL storyContents (pages/segments)

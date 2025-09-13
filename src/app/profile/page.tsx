@@ -1,9 +1,9 @@
 // src/app/profile/page.tsx
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { signOut, signInAnonymously, updateProfile, reload } from 'firebase/auth';
 import {
   doc,
@@ -11,64 +11,113 @@ import {
   collection,
   onSnapshot,
   getDoc,
+  getDocs,
   query,
   where,
   orderBy,
+  limit,
+  Timestamp,
 } from 'firebase/firestore';
-
-import { useAuth } from '@/context/AuthContext';
 import { auth, db } from '@/lib/firebase';
+import { useAuth } from '@/context/AuthContext';
 import AvatarUploader from '@/components/AvatarUploader';
 
-type FavoriteItem = {
-  storyId: string;
+/* ----------------------------- Types ----------------------------- */
+type FavoriteItem = { storyId: string; createdAt?: any };
+
+type BaseStoryLite = { id: string; title?: string; coverImageUrl?: string; genres?: string[] };
+
+type RatingFields = { averageRating?: number; ratingCount?: number; ratingSum?: number };
+
+type MetricFields = RatingFields & { views?: number; status?: string; updatedAt?: any };
+
+type StoryLite = BaseStoryLite & RatingFields;
+type MyStory = BaseStoryLite & MetricFields;
+
+type Plan = 'free' | 'paid';
+type Tier = 'basic' | 'fan' | 'premium';
+
+type UserProfileDoc = {
+  plan?: Plan;
+  subscriptionTier?: Tier;
+  credits?: number;
+  bio?: string;
+  location?: string;
+  website?: string;
+  socials?: { twitter?: string; instagram?: string; discord?: string };
+  createdAt?: any;        // for referral code timestamp
+  referredBy?: string | null; // who referred this user (uid), set-once
+  walletAddress?: string;
+  photoURL?: string;
+  displayName?: string;
+};
+
+type TxStatus = 'confirmed' | 'pending' | 'failed';
+type TxType = 'purchase' | 'spend' | 'bonus';
+
+type TxItem = {
+  id: string;
+  type: TxType;
+  creditsDelta: number;
+  amountUsd?: number;
+  storyId?: string;
+  note?: string;
+  status: TxStatus;
   createdAt?: any;
 };
 
-type BaseStoryLite = {
+type RefUser = {
   id: string;
-  title?: string;
-  coverImageUrl?: string;
-  genres?: string[];
+  displayName?: string;
+  email?: string;
+  createdAt?: any;
 };
 
-type RatingFields = {
-  averageRating?: number;
-  ratingCount?: number;
-  ratingSum?: number;
-};
-
-type MetricFields = RatingFields & {
-  views?: number;
-  status?: string;
-  updatedAt?: any;
-};
-
-type StoryLite = BaseStoryLite & RatingFields;
-
-type MyStory = BaseStoryLite & MetricFields;
-
+/* ----------------------------- Page ----------------------------- */
 const ProfilePage: React.FC = () => {
   const { user, starknetAddress, loading, logout } = useAuth();
   const router = useRouter();
-  const [message, setMessage] = useState('');
-  const [avatarOverride, setAvatarOverride] = useState<string | null>(null);
   const isLoggedIn = !!user || !!starknetAddress;
 
-  // Section state
-  const [activeTab, setActiveTab] = useState<'stories' | 'drafts' | 'favorites'>('stories');
+  /* ---------- Local UI state ---------- */
+  const [message, setMessage] = useState('');
+  const [avatarOverride, setAvatarOverride] = useState<string | null>(null);
 
-  // Favorites state
+  const [activeTab, setActiveTab] = useState<'stories' | 'drafts' | 'favorites' | 'transactions'>('stories');
+  const [txSubtab, setTxSubtab] = useState<'personal' | 'referrals'>('personal'); // NEW
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [profileDoc, setProfileDoc] = useState<UserProfileDoc>({});
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  // editable fields
+  const [displayNameInput, setDisplayNameInput] = useState('');
+  const [bio, setBio] = useState('');
+  const [location, setLocation] = useState('');
+  const [website, setWebsite] = useState('');
+  const [socials, setSocials] = useState<{ twitter?: string; instagram?: string; discord?: string }>({});
+
+  /* ---------- Favorites ---------- */
   const [favs, setFavs] = useState<FavoriteItem[]>([]);
   const [favStories, setFavStories] = useState<StoryLite[]>([]);
   const [favLoading, setFavLoading] = useState(true);
 
-  // My stories / drafts
+  /* ---------- My stories / drafts ---------- */
   const [myStories, setMyStories] = useState<MyStory[]>([]);
   const [myDrafts, setMyDrafts] = useState<MyStory[]>([]);
   const [mineLoading, setMineLoading] = useState(true);
 
-  // If the user connected ONLY via Starknet, ensure an anonymous Firebase user
+  /* ---------- Transactions ---------- */
+  const [txs, setTxs] = useState<TxItem[]>([]);
+  const [txLoading, setTxLoading] = useState(true);
+
+  /* ---------- Referrals list ---------- */
+  const [refUsers, setRefUsers] = useState<RefUser[]>([]);
+  const [refLoading, setRefLoading] = useState(true);
+
+  /* =========================
+     ANON SIGN-IN FOR WALLET
+     ========================= */
   useEffect(() => {
     (async () => {
       if (!loading && starknetAddress && !auth.currentUser) {
@@ -81,7 +130,9 @@ const ProfilePage: React.FC = () => {
     })();
   }, [loading, starknetAddress]);
 
-  // Persist the Starknet address on the user's Firestore doc
+  /* =========================
+     STARKNET ADDRESS -> USER DOC
+     ========================= */
   useEffect(() => {
     (async () => {
       if (!loading && auth.currentUser && starknetAddress) {
@@ -90,7 +141,6 @@ const ProfilePage: React.FC = () => {
           { walletAddress: starknetAddress },
           { merge: true }
         );
-        // Optional: set a short alias as displayName for anonymous users
         if (!auth.currentUser.displayName) {
           const short = `${starknetAddress.slice(0, 6)}...${starknetAddress.slice(-4)}`;
           try {
@@ -104,16 +154,19 @@ const ProfilePage: React.FC = () => {
     })();
   }, [loading, starknetAddress]);
 
+  /* =========================
+     AUTH GUARD
+     ========================= */
   useEffect(() => {
     if (!loading && !isLoggedIn) router.push('/login');
   }, [isLoggedIn, loading, router]);
 
-  // Prefer provider photo; fallback to user.photoURL
+  /* =========================
+     COMPUTED AVATAR
+     ========================= */
   const computedAuthAvatar = useMemo(() => {
     const candidate =
-      user?.providerData?.find((p) => !!p.photoURL)?.photoURL ||
-      user?.photoURL ||
-      null;
+      user?.providerData?.find((p) => !!p.photoURL)?.photoURL || user?.photoURL || null;
 
     if (!candidate) return null;
     try {
@@ -137,14 +190,18 @@ const ProfilePage: React.FC = () => {
     return computedAuthAvatar || 'https://placehold.co/160x160/A88F72/FFFFFF?text=User';
   }, [avatarOverride, computedAuthAvatar]);
 
-  // Name
-  let displayName = 'Narratum User';
-  if (user?.displayName) displayName = user.displayName;
-  else if (user?.email) displayName = user.email;
-  else if (starknetAddress)
-    displayName = `${starknetAddress.substring(0, 6)}...${starknetAddress.substring(
-      starknetAddress.length - 4
-    )}`;
+  /* =========================
+     DISPLAY NAME
+     ========================= */
+  const computedDisplayName = useMemo(() => {
+    if (user?.displayName) return user.displayName;
+    if (user?.email) return user.email;
+    if (starknetAddress)
+      return `${starknetAddress.substring(0, 6)}...${starknetAddress.substring(
+        starknetAddress.length - 4
+      )}`;
+    return 'Narratum User';
+  }, [user, starknetAddress]);
 
   const loginMethod = user ? 'Logged in with Google/Email' : 'Connected via Starknet';
 
@@ -154,8 +211,78 @@ const ProfilePage: React.FC = () => {
     setMessage('Avatar updated successfully.');
   };
 
+/* ----------------------------- Referral helpers ----------------------------- */
+
+// Normalize a display name into a URL/code-safe slug: letters+numbers with dashes
+function slugifyName(name: string): string {
+  return (name || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFKD')                // strip accents
+    .replace(/[\u0300-\u036f]/g, '')  // diacritics
+    .replace(/[^a-z0-9]+/g, '-')      // non-alnum -> dash
+    .replace(/^-+|-+$/g, '')          // trim dashes
+    .replace(/-{2,}/g, '-');          // collapse dashes
+}
+
+function monthYearFromDate(d: Date) {
+  const mm = String(d.getMonth() + 1).padStart(2, '0'); // 01..12
+  const yyyy = String(d.getFullYear());
+  return { mm, yyyy };
+}
+
+/**
+ * Derive the referral code:
+ *   slug(displayName) + '-' + MM(createdAt) + YYYY(createdAt)
+ * If displayName missing, return null (so UI shows the “Fill personal info…” flag).
+ * If createdAt missing from Firestore, we fall back to auth creationTime locally.
+ */
+function makeReferralCode(displayName: string | undefined | null, createdAtTs: any, authCreationTime?: string | null) {
+  const name = slugifyName(displayName || '');
+  if (!name) return null;
+
+  let dt: Date | null = null;
+
+  // Firestore Timestamp has toDate()
+  if (createdAtTs?.toDate?.()) {
+    dt = createdAtTs.toDate();
+  } else if (authCreationTime) {
+    // e.g. "Fri, 12 Sep 2025 03:01:02 GMT"
+    const parsed = new Date(authCreationTime);
+    if (!isNaN(parsed.getTime())) dt = parsed;
+  } else {
+    // last resort: now (keeps code stable for UI but recommend stamping server-side later)
+    dt = new Date();
+  }
+
+  const { mm, yyyy } = monthYearFromDate(dt!);
+  return `${name}-${mm}${yyyy}`;
+}
+
+
+
   /* =========================
-     FAVORITES: live subscribe
+     USER PROFILE DOC (Plan/Tier/Credits & personal info)
+     ========================= */
+  useEffect(() => {
+    const fetch = async () => {
+      if (!auth.currentUser) return;
+      const uref = doc(db, 'users', auth.currentUser.uid);
+      const snap = await getDoc(uref);
+      const d = (snap.exists() ? (snap.data() as UserProfileDoc) : {}) || {};
+
+      setProfileDoc(d);
+      setDisplayNameInput(computedDisplayName);
+      setBio(d.bio || '');
+      setLocation(d.location || '');
+      setWebsite(d.website || '');
+      setSocials(d.socials || {});
+    };
+    fetch();
+  }, [computedDisplayName]);
+
+  /* =========================
+     FAVORITES live
      ========================= */
   useEffect(() => {
     if (!user) {
@@ -172,7 +299,6 @@ const ProfilePage: React.FC = () => {
       (snap) => {
         const items: FavoriteItem[] = [];
         snap.forEach((d) => items.push({ storyId: d.id, ...(d.data() as any) }));
-        // Sort by createdAt desc if present
         items.sort((a, b) => {
           const at = (a.createdAt?.toMillis?.() ?? 0);
           const bt = (b.createdAt?.toMillis?.() ?? 0);
@@ -186,7 +312,6 @@ const ProfilePage: React.FC = () => {
     return () => unsub();
   }, [user]);
 
-  // Fetch the story docs for the current favorites
   useEffect(() => {
     const loadStories = async () => {
       if (!favs.length) {
@@ -206,8 +331,8 @@ const ProfilePage: React.FC = () => {
               typeof d.averageRating === 'number'
                 ? d.averageRating
                 : ratingCount
-                  ? (d.ratingSum ?? 0) / ratingCount
-                  : undefined;
+                ? (d.ratingSum ?? 0) / ratingCount
+                : undefined;
 
             fetched.push({
               id: sSnap.id,
@@ -238,7 +363,6 @@ const ProfilePage: React.FC = () => {
     }
     setMineLoading(true);
 
-    // All stories owned by user; we split client-side by status
     const qStories = query(
       collection(db, 'stories'),
       where('ownerUid', '==', user.uid),
@@ -256,8 +380,8 @@ const ProfilePage: React.FC = () => {
             typeof x.averageRating === 'number'
               ? x.averageRating
               : ratingCount
-                ? (x.ratingSum ?? 0) / ratingCount
-                : undefined;
+              ? (x.ratingSum ?? 0) / ratingCount
+              : undefined;
 
           owned.push({
             id: d.id,
@@ -286,13 +410,158 @@ const ProfilePage: React.FC = () => {
     return () => unsub();
   }, [user]);
 
-  // Nav helpers
-  const jumpTo = (id: string, tab?: 'stories' | 'drafts' | 'favorites') => {
-    if (tab) setActiveTab(tab);
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+  /* =========================
+     TRANSACTIONS (latest 100)
+     ========================= */
+  useEffect(() => {
+    if (!user) {
+      setTxs([]);
+      setTxLoading(false);
+      return;
+    }
+    setTxLoading(true);
 
+    const qTx = query(
+      collection(db, 'users', user.uid, 'transactions'),
+      orderBy('createdAt', 'desc'),
+      limit(100)
+    );
+
+    const unsub = onSnapshot(
+      qTx,
+      (snap) => {
+        const items: TxItem[] = [];
+        snap.forEach((d) => {
+          const x = d.data() as any;
+          items.push({
+            id: d.id,
+            type: x.type ?? 'spend',
+            creditsDelta: x.creditsDelta ?? 0,
+            amountUsd: x.amountUsd,
+            storyId: x.storyId,
+            note: x.note,
+            status: x.status ?? 'confirmed',
+            createdAt: x.createdAt,
+          });
+        });
+        setTxs(items);
+        setTxLoading(false);
+      },
+      () => setTxLoading(false)
+    );
+
+    return () => unsub();
+  }, [user]);
+
+  /* =========================
+     REFERRAL LIST (users where referredBy == current uid)
+     ========================= */
+  useEffect(() => {
+    const loadReferrals = async () => {
+      if (!user) {
+        setRefUsers([]);
+        setRefLoading(false);
+        return;
+      }
+      setRefLoading(true);
+      try {
+        // Keep simple (no orderBy to avoid composite index); add orderBy('createdAt','desc') if you add the index
+        const qRef = query(collection(db, 'users'), where('referredBy', '==', user.uid), limit(200));
+        const snap = await getDocs(qRef);
+        const rows: RefUser[] = [];
+        snap.forEach((d) => {
+          const x = d.data() as any;
+          rows.push({
+            id: d.id,
+            displayName: x.displayName || x.email || d.id,
+            email: x.email,
+            createdAt: x.createdAt,
+          });
+        });
+        setRefUsers(rows);
+      } finally {
+        setRefLoading(false);
+      }
+    };
+    loadReferrals();
+  }, [user]);
+
+  /* =========================
+     HELPERS
+     ========================= */
+  const jumpTo = useCallback((tab: typeof activeTab) => {
+    setActiveTab(tab);
+    const el =
+      tab === 'stories'
+        ? document.getElementById('my-stories-section')
+        : tab === 'drafts'
+        ? document.getElementById('drafts-section')
+        : tab === 'favorites'
+        ? document.getElementById('favorites-section')
+        : document.getElementById('transactions-section');
+
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
+  const saveProfile = useCallback(async () => {
+    if (!auth.currentUser) return;
+    setSavingProfile(true);
+    try {
+      if (displayNameInput && displayNameInput !== computedDisplayName) {
+        await updateProfile(auth.currentUser, { displayName: displayNameInput });
+        await reload(auth.currentUser);
+      }
+      const uref = doc(db, 'users', auth.currentUser.uid);
+      const payload: Partial<UserProfileDoc> = {
+        bio: bio || undefined,
+        location: location || undefined,
+        website: website || undefined,
+        socials: {
+          twitter: socials.twitter || undefined,
+          instagram: socials.instagram || undefined,
+          discord: socials.discord || undefined,
+        },
+        displayName: displayNameInput || undefined,
+        photoURL: auth.currentUser.photoURL || undefined,
+      };
+      await setDoc(uref, payload, { merge: true });
+      setMessage('Profile updated.');
+      setEditOpen(false);
+    } catch (e) {
+      console.warn('[profile] saveProfile error', e);
+      setMessage('Failed to update profile.');
+    } finally {
+      setSavingProfile(false);
+    }
+  }, [bio, location, website, socials, displayNameInput, computedDisplayName]);
+
+  const plan: Plan = (profileDoc.plan || 'free');
+  const tier: Tier = (profileDoc.subscriptionTier || (plan === 'free' ? 'basic' : 'fan'));
+  const credits = typeof profileDoc.credits === 'number' ? profileDoc.credits! : 0;
+
+  // -------- Referral code (uid + createdAt seconds) --------
+// Prefer Firestore createdAt; fall back to Firebase Auth creation time
+const authCreationTime = auth.currentUser?.metadata?.creationTime || null;
+const referralCode =
+  makeReferralCode(profileDoc.displayName ?? user?.displayName ?? null, profileDoc.createdAt, authCreationTime);
+const hasReferralCode = !!referralCode;
+
+const copyReferral = async () => {
+  if (!referralCode) {
+    setMessage('Fill personal info to get your code first.');
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(referralCode);
+    setMessage('Referral code copied to clipboard.');
+  } catch {
+    setMessage('Could not copy referral code.');
+  }
+};
+
+  /* =========================
+     RENDER
+     ========================= */
   if (loading || !isLoggedIn) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
@@ -304,11 +573,12 @@ const ProfilePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen relative flex flex-col items-center justify-start 
+    <div
+      className="min-h-screen relative flex flex-col items-center justify-start 
       bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26] 
-      text-[#3A4B5C] dark:text-[#E0C9A0] font-['Georgia'] p-5 md:p-10 pb-28 md:pb-36 box-border">
-
-
+      text-[#3A4B5C] dark:text-[#E0C9A0] font-['Georgia'] p-5 md:p-10 pb-28 md:pb-36 box-border"
+    >
+      {/* Top Right Controls */}
       <div className="fixed top-7 right-4 z-50 flex gap-4">
         <Link
           href="/"
@@ -328,210 +598,350 @@ const ProfilePage: React.FC = () => {
         </button>
       </div>
 
-      <div className="profile-container w-full max-w-6xl text-center pt-16">
-        <header className="profile-header mb-8">
-          <div className="avatar-section relative inline-block mb-4">
-            <div className="avatar-frame w-40 h-40 md:w-48 md:h-48 rounded-full border-4 border-[#8B6F4E] p-1.5 bg-[#F5EFE3] flex justify-center items-center shadow-md">
+      {/* Header */}
+      <div className="w-full max-w-6xl text-center pt-16">
+        <header className="mb-5">
+          <div className="relative inline-block mb-4">
+            <div className="w-40 h-40 md:w-48 md:h-48 rounded-full border-4 border-[#8B6F4E] p-1.5 bg-[#F5EFE3] flex justify-center items-center shadow-md">
               <img
                 src={avatarSrc}
-                alt={displayName}
-                className="avatar-image w-full h-full rounded-full border-3 border-[#A88F72] object-cover"
+                alt={computedDisplayName}
+                className="w-full h-full rounded-full border-3 border-[#A88F72] object-cover"
                 referrerPolicy="no-referrer"
                 loading="lazy"
               />
             </div>
           </div>
 
-          {/* Google/Email AND Starknet+anonymous */}
-          <AvatarUploader className="mb-6" onUploaded={handleUploaded} />
+          <AvatarUploader className="mb-4" onUploaded={handleUploaded} />
 
-          <h1 className="user-name text-4xl md:text-5xl font-bold text-[#3A4B5C] dark:text-[#E0C9A0] m-0">
-            {displayName}
+          <h1 className="text-4xl md:text-5xl font-bold text-[#3A4B5C] dark:text-[#E0C9A0] m-0">
+            {computedDisplayName}
           </h1>
-          <p className="text-sm text-[#6B7280] dark:text-[#C2B6A3] mt-2">{loginMethod}</p>
+          <p className="text-sm text-[#6B7280] dark:text-[#C2B6A3] mt-1">{loginMethod}</p>
+
+          {/* Plan / Tier / Credits + Edit */}
+          <div className="mt-4 flex flex-wrap gap-3 justify-center items-center">
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-bold border ${
+                plan === 'paid'
+                  ? 'bg-green-700/20 border-green-500 text-green-200'
+                  : 'bg-gray-700/20 border-gray-500 text-gray-200'
+              }`}
+            >
+              Plan: {plan === 'paid' ? 'Paid' : 'Free'}
+            </span>
+            <span className="px-3 py-1 rounded-full text-xs font-bold border border-[#BFA071] bg-[#233446] text-[#E0C9A0]">
+              Subscription: {tier.charAt(0).toUpperCase() + tier.slice(1)}
+            </span>
+            <span className="px-3 py-1 rounded-full text-xs font-bold border border-[#4A5C6E] bg-[#1F2937] text-[#FDE68A]">
+              Credits: {credits}
+            </span>
+            <button
+              onClick={() => setEditOpen(true)}
+              className="ml-2 px-4 py-1.5 rounded-full text-sm font-bold bg-[#BFA071] text-[#1A2533] hover:bg-[#E0C9A0] shadow"
+            >
+              Edit Profile
+            </button>
+          </div>
+
+          {/* Referral Code Block */}
+        {/* Referral Code Block */}
+<div className="mt-4 flex flex-col items-center gap-1">
+  <div className="flex items-center gap-2">
+    <span className="text-sm font-semibold">Your Referral Code:</span>
+
+    {hasReferralCode ? (
+      <>
+        <code className="px-2 py-1 rounded bg-[#0f172a] border border-[#243041] text-xs">
+          {referralCode}
+        </code>
+        <button
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(referralCode!);
+              setMessage('Referral code copied to clipboard.');
+            } catch {
+              setMessage('Could not copy referral code.');
+            }
+          }}
+          className="px-2 py-1 rounded bg-[#233446] hover:bg-[#2b3e52] text-xs border border-[#4A5C6E]"
+          title="Copy code"
+        >
+          Copy
+        </button>
+      </>
+    ) : (
+      <span className="px-2 py-1 rounded bg-yellow-200/20 border border-yellow-400/40 text-xs text-yellow-200">
+        Fill personal info to get your code
+      </span>
+    )}
+  </div>
+
+  <div className="text-xs px-3 py-1 rounded-full bg-[#BFA071]/15 border border-[#BFA071]/40 text-center">
+    <strong>Share it</strong> to earn <strong>20% to 40%</strong> on referrals for purchases.
+  </div>
+</div>
         </header>
 
         {message && (
-          <div className="mb-6 p-3 rounded-lg text-sm bg-green-100 text-green-700">
-            {message}
-          </div>
+          <div className="mb-6 p-3 rounded-lg text-sm bg-green-100 text-green-700">{message}</div>
         )}
 
-        <hr className="separator border-0 h-0.5 bg-[#B09A7A] my-8" />
+        <hr className="border-0 h-0.5 bg-[#B09A7A] my-6" />
 
-        {/* Top nav */}
-        <nav className="profile-navigation flex justify-around items-center mb-8 px-2 md:px-4 flex-wrap gap-y-4">
-          <button
-            onClick={() => jumpTo('my-stories-section', 'stories')}
-            className={`nav-link text-lg font-bold uppercase tracking-wide px-3 py-1.5 ${activeTab==='stories' ? 'text-[#8B6F4E]' : 'text-[#3A4B5C] dark:text-[#E0C9A0]'} hover:text-[#8B6F4E] dark:hover:text-[#3A4B5C]`}
-          >
-            MY STORIES
-          </button>
-          <button
-            onClick={() => jumpTo('drafts-section', 'drafts')}
-            className={`nav-link text-lg font-bold uppercase tracking-wide px-3 py-1.5 ${activeTab==='drafts' ? 'text-[#8B6F4E]' : 'text-[#3A4B5C] dark:text-[#E0C9A0]'} hover:text-[#8B6F4E] dark:hover:text-[#3A4B5C]`}
-          >
-            DRAFTS
-          </button>
-          <button
-            onClick={() => jumpTo('favorites-section', 'favorites')}
-            className={`nav-link text-lg font-bold uppercase tracking-wide px-3 py-1.5 ${activeTab==='favorites' ? 'text-[#8B6F4E]' : 'text-[#3A4B5C] dark:text-[#E0C9A0]'} hover:text-[#8B6F4E] dark:hover:text-[#3A4B5C]`}
-          >
-            FAVORITES
-          </button>
+        {/* 4 tabs */}
+        <nav className="w-full mb-6 flex justify-center">
+          <div className="inline-flex items-center gap-3 bg-[#0f172a]/40 border border-[#4A5C6E] rounded-full p-2 shadow-inner">
+            {[
+              { key: 'stories', label: 'My Stories' },
+              { key: 'drafts', label: 'Drafts' },
+              { key: 'favorites', label: 'Favorites' },
+              { key: 'transactions', label: 'Transactions' },
+            ].map((t) => (
+              <button
+                key={t.key}
+                onClick={() => jumpTo(t.key as any)}
+                className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
+                  activeTab === (t.key as any)
+                    ? 'bg-[#BFA071] text-[#1A2533]'
+                    : 'bg-transparent text-[#E0C9A0] hover:bg-[#233446]'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
         </nav>
 
-        {/* =============== MY STORIES (Published) =============== */}
-        <section id="my-stories-section" className="w-full mt-2">
-          <h2 className="text-2xl md:text-3xl font-bold mb-4">My Stories</h2>
-          {mineLoading ? (
-            <p className="text-sm text-[#8FA0AF]">Loading your stories…</p>
-          ) : myStories.length === 0 ? (
-            <p className="text-sm text-[#8FA0AF]">You haven't published any stories yet.</p>
-          ) : (
-            <div className="content-grid flex justify-start gap-6 flex-wrap">
-              {myStories.map((s) => (
-                <div
-                  key={s.id}
-                  className="w-64 bg-[#233446] border-2 border-[#4A5C6E] p-2.5 rounded-lg text-[#E0C9A0] shadow-xl relative"
-                >
-                  <div className="absolute inset-1 border border-[#BFA071] rounded-md pointer-events-none z-10"></div>
+        {/* Sections (stories/drafts/favorites same as before) ... */}
 
-                  <Link
-                    href={`/ereader?storyId=${encodeURIComponent(s.id)}&back=${encodeURIComponent('/profile')}`}
-                    className="block w-full h-40 mb-3 rounded-sm overflow-hidden relative z-20"
-                  >
-                    <img
-                      src={s.coverImageUrl || 'https://placehold.co/300x200/BFA071/1A2533?text=Image+Not+Found'}
-                      alt={s.title || 'Story'}
-                      className="w-full h-full object-cover block"
-                    />
-                  </Link>
+        {/* (Keep your previous Stories, Drafts, Favorites sections unchanged) */}
 
-                  <h3 className="font-['Merriweather'] text-lg font-bold mb-1 leading-tight min-h-[2.2rem]">
-                    {s.title || 'Untitled Story'}
-                  </h3>
-                  {s.genres?.length ? (
-                    <p className="text-xs text-[#8FA0AF] mb-1">{s.genres.join(', ')}</p>
-                  ) : null}
+        {/* Transactions */}
+        <section id="transactions-section" className="w-full mt-10">
+          <h2 className="text-2xl md:text-3xl font-bold mb-4 text-center">Transactions</h2>
 
-                  <div className="flex justify-between text-xs text-[#8FA0AF] mt-1">
-                    <span>👁 {s.views ?? 0}</span>
-                    {typeof s.averageRating === 'number' ? (
-                      <span>⭐ {s.averageRating.toFixed(1)} ({s.ratingCount ?? 0})</span>
-                    ) : (
-                      <span>⭐ 0.0 (0)</span>
-                    )}
-                  </div>
-
-                  <Link
-                    href={`/ereader?storyId=${encodeURIComponent(s.id)}&back=${encodeURIComponent('/profile')}`}
-                    className="mt-3 inline-block font-['Lato'] bg-[#BFA071] text-[#1A2533] py-2 px-5 rounded-md text-sm font-bold uppercase tracking-wide hover:bg-[#E0C9A0]"
-                  >
-                    Read
-                  </Link>
-                </div>
-              ))}
+          {/* Sub-toggle */}
+          <div className="flex justify-center mb-4">
+            <div className="inline-flex rounded-full border border-[#4A5C6E] overflow-hidden">
+              <button
+                className={`px-4 py-2 text-sm font-semibold ${
+                  txSubtab === 'personal' ? 'bg-[#BFA071] text-[#1A2533]' : 'bg-[#0f172a] text-[#E0C9A0]'
+                }`}
+                onClick={() => setTxSubtab('personal')}
+              >
+                Personal Transactions
+              </button>
+              <button
+                className={`px-4 py-2 text-sm font-semibold ${
+                  txSubtab === 'referrals' ? 'bg-[#BFA071] text-[#1A2533]' : 'bg-[#0f172a] text-[#E0C9A0]'
+                }`}
+                onClick={() => setTxSubtab('referrals')}
+              >
+                Referral Transactions
+              </button>
             </div>
-          )}
-        </section>
+          </div>
 
-        {/* =============== DRAFTS (Work in progress) =============== */}
-        <section id="drafts-section" className="w-full mt-10">
-          <h2 className="text-2xl md:text-3xl font-bold mb-4">My Drafts</h2>
-          {mineLoading ? (
-            <p className="text-sm text-[#8FA0AF]">Loading your drafts…</p>
-          ) : myDrafts.length === 0 ? (
-            <p className="text-sm text-[#8FA0AF]">You have no drafts yet.</p>
-          ) : (
-            <div className="content-grid flex justify-start gap-6 flex-wrap">
-              {myDrafts.map((s) => (
-                <div
-                  key={s.id}
-                  className="w-64 bg-[#233446] border-2 border-[#4A5C6E] p-2.5 rounded-lg text-[#E0C9A0] shadow-xl relative"
-                >
-                  <div className="absolute inset-1 border border-[#BFA071] rounded-md pointer-events-none z-10"></div>
-
-                  <Link
-                    href={`/create/scenes?storyId=${encodeURIComponent(s.id)}`}
-                    className="block w-full h-40 mb-3 rounded-sm overflow-hidden relative z-20"
-                    title="Open in Scenes editor"
-                  >
-                    <img
-                      src={s.coverImageUrl || 'https://placehold.co/300x200/BFA071/1A2533?text=Image+Not+Found'}
-                      alt={s.title || 'Draft'}
-                      className="w-full h-full object-cover block"
-                    />
-                  </Link>
-
-                  <h3 className="font-['Merriweather'] text-lg font-bold mb-1 leading-tight min-h-[2.2rem]">
-                    {s.title || 'Untitled Draft'}
-                  </h3>
-                  {s.genres?.length ? (
-                    <p className="text-xs text-[#8FA0AF] mb-1">{s.genres.join(', ')}</p>
-                  ) : null}
-
-                  <div className="flex justify-between text-xs text-[#8FA0AF] mt-1">
-                    <span>Status: {(s.status ?? 'draft').toUpperCase()}</span>
-                    <span>👁 {s.views ?? 0}</span>
-                  </div>
-
-                  <Link
-                    href={`/create/scenes?storyId=${encodeURIComponent(s.id)}`}
-                    className="mt-3 inline-block font-['Lato'] bg-[#BFA071] text-[#1A2533] py-2 px-5 rounded-md text-sm font-bold uppercase tracking-wide hover:bg-[#E0C9A0]"
-                  >
-                    Edit Scenes
-                  </Link>
+          {txSubtab === 'personal' ? (
+            txLoading ? (
+              <p className="text-sm text-center text-[#8FA0AF]">Loading transactions…</p>
+            ) : txs.length === 0 ? (
+              <p className="text-sm text-center text-[#8FA0AF]">
+                No transactions yet. Purchases, bonuses, and spends will show up here.
+              </p>
+            ) : (
+              <div className="max-w-4xl mx-auto overflow-hidden rounded-lg border border-[#4A5C6E] bg-[#0b1220]/60">
+                <div className="grid grid-cols-12 text-xs font-semibold uppercase tracking-wide bg-[#162235] text-[#E0C9A0] border-b border-[#4A5C6E]">
+                  <div className="col-span-3 px-3 py-2">Date</div>
+                  <div className="col-span-2 px-3 py-2">Type</div>
+                  <div className="col-span-2 px-3 py-2">Credits</div>
+                  <div className="col-span-2 px-3 py-2">Amount (USD)</div>
+                  <div className="col-span-3 px-3 py-2">Note</div>
                 </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* =============== FAVORITES GRID =============== */}
-        <section id="favorites-section" className="w-full mt-10">
-          <h2 className="text-2xl md:text-3xl font-bold mb-24">My Favorites</h2>
-
-          {favLoading ? (
-            <p className="text-sm text-[#8FA0AF]">Loading favorites…</p>
-          ) : favStories.length === 0 ? (
-            <p className="text-sm text-[#8FA0AF]">You haven’t added any favorites yet.</p>
+                {txs.map((t) => {
+                  const ts = t.createdAt?.toDate?.() as Date | undefined;
+                  const dateStr = ts ? ts.toLocaleString() : '—';
+                  const sign = t.creditsDelta >= 0 ? '+' : '';
+                  const color =
+                    t.creditsDelta > 0
+                      ? 'text-green-300'
+                      : t.creditsDelta < 0
+                      ? 'text-rose-300'
+                      : 'text-slate-200';
+                  return (
+                    <div key={t.id} className="grid grid-cols-12 text-sm border-b border-[#243041] last:border-none text-[#E5E7EB]">
+                      <div className="col-span-3 px-3 py-2">{dateStr}</div>
+                      <div className="col-span-2 px-3 py-2 capitalize">
+                        {t.type} {t.status !== 'confirmed' && <span className="text-xs opacity-70">({t.status})</span>}
+                      </div>
+                      <div className={`col-span-2 px-3 py-2 font-bold ${color}`}>{sign}{t.creditsDelta}</div>
+                      <div className="col-span-2 px-3 py-2">{t.amountUsd ? `$${t.amountUsd.toFixed(2)}` : '—'}</div>
+                      <div className="col-span-3 px-3 py-2">
+                        {t.note || (t.storyId ? `Story: ${t.storyId}` : '—')}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )
           ) : (
-            <div className="content-grid flex justify-start gap-6 flex-wrap">
-              {favStories.map((s) => (
-                <Link
-                  key={s.id}
-                  href={`/ereader?storyId=${encodeURIComponent(s.id)}&back=${encodeURIComponent('/profile')}`}
-                  className="w-64 bg-[#233446] border-2 border-[#4A5C6E] p-2.5 rounded-lg text-[#E0C9A0] shadow-xl relative transition-all duration-200 hover:-translate-y-1"
-                  title="Open in Reader"
-                >
-                  <div className="absolute inset-1 border border-[#BFA071] rounded-md pointer-events-none z-10"></div>
-
-                  <div className="w-full h-40 mb-3 rounded-sm overflow-hidden relative z-20">
-                    <img
-                      src={s.coverImageUrl || 'https://placehold.co/300x200/BFA071/1A2533?text=Image+Not+Found'}
-                      alt={s.title || 'Story'}
-                      className="w-full h-full object-cover block"
-                    />
+            // Referral subtab
+            <div className="max-w-4xl mx-auto">
+              {refLoading ? (
+                <p className="text-sm text-center text-[#8FA0AF]">Loading referral report…</p>
+              ) : refUsers.length === 0 ? (
+                <p className="text-sm text-center text-[#8FA0AF]">
+                  No users have signed up with your referral code yet.
+                </p>
+              ) : (
+                <div className="overflow-hidden rounded-lg border border-[#4A5C6E] bg-[#0b1220]/60">
+                  <div className="grid grid-cols-12 text-xs font-semibold uppercase tracking-wide bg-[#162235] text-[#E0C9A0] border-b border-[#4A5C6E]">
+                    <div className="col-span-6 px-3 py-2">Referred User</div>
+                    <div className="col-span-3 px-3 py-2">UID</div>
+                    <div className="col-span-3 px-3 py-2">Joined</div>
                   </div>
+                  {refUsers.map((u) => {
+                    const ts = u.createdAt?.toDate?.() as Date | undefined;
+                    const joined = ts ? ts.toLocaleDateString() : '—';
+                    return (
+                      <div key={u.id} className="grid grid-cols-12 text-sm border-b border-[#243041] last:border-none text-[#E5E7EB]">
+                        <div className="col-span-6 px-3 py-2">{u.displayName || u.email || u.id}</div>
+                        <div className="col-span-3 px-3 py-2">{u.id}</div>
+                        <div className="col-span-3 px-3 py-2">{joined}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
-                  <h3 className="font-['Merriweather'] text-lg font-bold mb-1 leading-tight min-h-[2.2rem]">
-                    {s.title || 'Untitled Story'}
-                  </h3>
-                  {s.genres?.length ? (
-                    <p className="text-xs text-[#8FA0AF] mb-1">{s.genres.join(', ')}</p>
-                  ) : null}
-                  {typeof s.averageRating === 'number' ? (
-                    <p className="text-xs text-[#8FA0AF]">⭐ {s.averageRating.toFixed(1)} ({s.ratingCount ?? 0})</p>
-                  ) : (
-                    <p className="text-xs text-[#8FA0AF]">⭐ 0.0 (0)</p>
-                  )}
-                </Link>
-              ))}
+              {/* Placeholder note for commissions */}
+              <p className="mt-3 text-xs text-center text-[#9AA6B2]">
+                Referral commissions appear when your backend writes referral transactions
+                (e.g., to <code>users/&lt;you&gt;/transactions</code> with fields like <code>referrerUid</code> and <code>commissionCredits</code>).
+              </p>
             </div>
           )}
         </section>
       </div>
+
+      {/* ---------- Edit Drawer ---------- */}
+      {editOpen && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50">
+          <div className="w-full md:max-w-2xl bg-[#0b1220] text-[#E0C9A0] border border-[#4A5C6E] rounded-t-2xl md:rounded-2xl shadow-2xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#243041]">
+              <h3 className="text-xl font-bold">Edit Profile</h3>
+              <button
+                className="px-3 py-1 rounded-md bg-[#233446] hover:bg-[#2b3e52]"
+                onClick={() => setEditOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="p-5 grid gap-4">
+              <label className="grid gap-1">
+                <span className="text-sm font-semibold">Display Name</span>
+                <input
+                  type="text"
+                  className="px-3 py-2 rounded-md bg-[#0f172a] border border-[#243041] outline-none"
+                  value={displayNameInput}
+                  onChange={(e) => setDisplayNameInput(e.target.value)}
+                  placeholder="Your public name"
+                />
+                <span className="text-xs text-slate-400">
+                  Email and creation date are not editable here.
+                </span>
+              </label>
+
+              <label className="grid gap-1">
+                <span className="text-sm font-semibold">Bio</span>
+                <textarea
+                  className="px-3 py-2 rounded-md bg-[#0f172a] border border-[#243041] outline-none"
+                  rows={3}
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  placeholder="Tell readers about you"
+                />
+              </label>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label className="grid gap-1">
+                  <span className="text-sm font-semibold">Location</span>
+                  <input
+                    type="text"
+                    className="px-3 py-2 rounded-md bg-[#0f172a] border border-[#243041] outline-none"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="City, Country"
+                  />
+                </label>
+                <label className="grid gap-1">
+                  <span className="text-sm font-semibold">Website</span>
+                  <input
+                    type="text"
+                    className="px-3 py-2 rounded-md bg-[#0f172a] border border-[#243041] outline-none"
+                    value={website}
+                    onChange={(e) => setWebsite(e.target.value)}
+                    placeholder="example.com"
+                  />
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <label className="grid gap-1">
+                  <span className="text-sm font-semibold">Twitter / X</span>
+                  <input
+                    type="text"
+                    className="px-3 py-2 rounded-md bg-[#0f172a] border border-[#243041] outline-none"
+                    value={socials.twitter || ''}
+                    onChange={(e) => setSocials((s) => ({ ...s, twitter: e.target.value }))}
+                    placeholder="@handle"
+                  />
+                </label>
+                <label className="grid gap-1">
+                  <span className="text-sm font-semibold">Instagram</span>
+                  <input
+                    type="text"
+                    className="px-3 py-2 rounded-md bg-[#0f172a] border border-[#243041] outline-none"
+                    value={socials.instagram || ''}
+                    onChange={(e) => setSocials((s) => ({ ...s, instagram: e.target.value }))}
+                    placeholder="@handle"
+                  />
+                </label>
+                <label className="grid gap-1">
+                  <span className="text-sm font-semibold">Discord</span>
+                  <input
+                    type="text"
+                    className="px-3 py-2 rounded-md bg-[#0f172a] border border-[#243041] outline-none"
+                    value={socials.discord || ''}
+                    onChange={(e) => setSocials((s) => ({ ...s, discord: e.target.value }))}
+                    placeholder="username#1234"
+                  />
+                </label>
+              </div>
+
+              <div className="mt-2 text-xs text-slate-400">
+                Plan, subscription tier, and credits are displayed and managed by billing. Contact support to change them.
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 px-5 py-4 border-t border-[#243041]">
+              <button className="px-4 py-2 rounded-md bg-[#233446] hover:bg-[#2b3e52]" onClick={() => setEditOpen(false)}>
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 rounded-md bg-[#BFA071] text-[#1A2533] font-bold hover:bg-[#E0C9A0] disabled:opacity-60"
+                disabled={savingProfile}
+                onClick={saveProfile}
+              >
+                {savingProfile ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

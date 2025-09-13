@@ -6,34 +6,27 @@
   "engines": {
     "node": "20"
   },
-
-   "packageManager": "pnpm@10.13.1",
-
-    "scripts": {
-      "dev": "next dev",
-      "build": "next build",
-      "start": "next start",
-  
-      "typecheck": "tsc --noEmit",
-      "lint": "eslint .",
-      "lint:fix": "eslint . --fix",
-  
-      "build:baseline": "NODE_OPTIONS=--max_old_space_size=8192 next build",
-      "build:nominify": "NEXT_SWC_MINIFY=false next build",
-      "analyze": "ANALYZE=true next build",
-  
-      "clean:caches": "rm -rf .next/cache node_modules/.cache .turbo",
-      "build:tmp": "TMPDIR=/tmp pnpm build",
-
-      "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
-      "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
-  
-      "dc:enable": "firebase experiments:enable dataconnect",           
-      "dc:deploy": "firebase deploy --only dataconnect",
-      "dc:codegen": "firebase dataconnect:sdk:generate --out dataconnect-generated/js",
-      "dc:all": "npm run dc:deploy && npm run dc:codegen"
-    },
-  
+  "packageManager": "pnpm@10.13.1",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "build:baseline": "NODE_OPTIONS=--max_old_space_size=8192 next build",
+    "build:nominify": "NEXT_SWC_MINIFY=false next build",
+    "analyze": "ANALYZE=true next build",
+    "clean:caches": "rm -rf .next/cache node_modules/.cache .turbo",
+    "build:tmp": "TMPDIR=/tmp pnpm build",
+    "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
+    "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
+    "dc:enable": "firebase experiments:enable dataconnect",
+    "dc:deploy": "firebase deploy --only dataconnect",
+    "dc:codegen": "firebase dataconnect:sdk:generate --out dataconnect-generated/js",
+    "dc:all": "npm run dc:deploy && npm run dc:codegen",
+    "backfill:referrals": "node scripts/backfillReferralCodes.cjs"
+  },
   "dependencies": {
     "@argent/x-ui": "^1.87.0",
     "@chakra-ui/react": "^2.8.2",
@@ -88,7 +81,6 @@
     "date-fns": "^3.6.0",
     "dotenv": "^16.6.1",
     "firebase": "^11.10.0",
-    "firebase-admin": "^13.4.0",
     "framer-motion": "^11.18.0",
     "genkit": "^1.6.2",
     "graphql": "^16.11.0",
@@ -136,6 +128,7 @@
     "autoprefixer": "^10.4.21",
     "eslint": "^9.35.0",
     "eslint-plugin-react-hooks": "^5.2.0",
+    "firebase-admin": "^13.4.0",
     "genkit-cli": "^1.6.1",
     "install": "^0.13.0",
     "postcss": "^8.5.3",
