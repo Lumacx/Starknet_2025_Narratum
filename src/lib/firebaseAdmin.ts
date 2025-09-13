@@ -12,9 +12,15 @@ import {
   FIREBASE_PRIVATE_KEY,
 } from './env.server';
 
-const STORAGE_BUCKET = process.env.FIREBASE_STORAGE_BUCKET; // e.g. "<project-id>.appspot.com"
+/**
+ * Prefer explicit env, but fall back to the conventional default so
+ * admin.storage() has a valid bucket without extra config.
+ * Example: narratum.appspot.com
+ */
+const STORAGE_BUCKET =
+  process.env.FIREBASE_STORAGE_BUCKET || `${FIREBASE_PROJECT_ID}.appspot.com`;
 
-// Normalize private key (handle escaped newlines if env vars aren't fixed upstream)
+/** Normalize private key for cases where \n are escaped in env vars. */
 function normalizePrivateKey(key: string): string {
   return key.replace(/\\n/g, '\n');
 }
@@ -37,6 +43,24 @@ function getAdminApp(): App {
 
 const app = getAdminApp();
 
-// Export singletons bound to the Admin app
+/** Firestore singleton */
 export const adminDb = getFirestore(app);
-export const adminBucket = getStorage(app).bucket();
+
+/**
+ * Storage singleton (service). Note: DO NOT call `.bucket()` here.
+ * Access the bucket lazily inside handlers with `getAdminBucket()`.
+ */
+export const adminStorage = getStorage(app);
+
+/**
+ * Lazy accessor for the default Storage bucket.
+ * Call this *inside* API route handlers / server actions to avoid
+ * executing Storage calls during Next.js build/prerender.
+ */
+export function getAdminBucket() {
+  return adminStorage.bucket(); // uses the `storageBucket` from initializeApp
+}
+
+/** Optional: expose for debugging if needed */
+export const adminProjectId = FIREBASE_PROJECT_ID;
+export const adminStorageBucketName = STORAGE_BUCKET;

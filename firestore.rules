@@ -1,3 +1,4 @@
+// firestore.rules
 rules_version = '2';
 
 service cloud.firestore {
@@ -19,13 +20,9 @@ service cloud.firestore {
     function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
 
     // Require that a set of fields do NOT change across an update
+    // (i.e., none of 'fields' are in the changedKeys)
     function unchanged(fields) {
-      return fields.every(f => request.resource.data[f] == resource.data[f]);
-    }
-
-    // Block clients from writing server-controlled fields at CREATE
-    function absentOnCreate(fields) {
-      return fields.every(f => !(f in request.resource.data));
+      return !request.resource.data.diff(resource.data).changedKeys().hasAny(fields);
     }
 
     // Allow either explicit boolean "published", a "publishedAt" timestamp in the past,
@@ -115,18 +112,24 @@ service cloud.firestore {
 
       // CREATE: owner only; cannot set server-controlled fields at create.
       // We allow client to set 'referredBy' exactly once on create.
-      allow create: if isOwner(uid) &&
-        absentOnCreate(['plan','subscriptionTier','credits','ownerUid','email','createdAt','referralCode']) &&
-        ( !('referredBy' in request.resource.data) || (request.resource.data.referredBy is string) );
+      allow create: if isOwner(uid)
+        && !('plan' in request.resource.data)
+        && !('subscriptionTier' in request.resource.data)
+        && !('credits' in request.resource.data)
+        && !('ownerUid' in request.resource.data)
+        && !('email' in request.resource.data)
+        && !('createdAt' in request.resource.data)
+        && !('referralCode' in request.resource.data)
+        && ( !('referredBy' in request.resource.data) || (request.resource.data.referredBy is string) );
 
       // UPDATE: owner may edit ONLY profile fields.
       // Server-controlled fields must remain unchanged.
       // 'referredBy' and 'referralCode' become immutable after creation (stamped by server).
-      allow update: if isOwner(uid) &&
-        request.resource.data.diff(resource.data).changedKeys().hasOnly([
+      allow update: if isOwner(uid)
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
           'displayName','bio','location','website','socials','walletAddress','photoURL'
-        ]) &&
-        unchanged(['plan','subscriptionTier','credits','ownerUid','email','createdAt','referredBy','referralCode']);
+        ])
+        && unchanged(['plan','subscriptionTier','credits','ownerUid','email','createdAt','referredBy','referralCode']);
 
       // DELETE: owner may delete their user doc (optional)
       allow delete: if isOwner(uid);

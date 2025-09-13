@@ -37,23 +37,24 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.downloadStoryPdf = void 0;
+// functions/src/downloadStoryPdf.ts
 const functions = __importStar(require("firebase-functions"));
 const chromium_1 = __importDefault(require("@sparticuz/chromium"));
 const puppeteer_core_1 = __importDefault(require("puppeteer-core"));
 exports.downloadStoryPdf = functions
     .region('us-central1')
     .runWith({
-    memory: '1GB', // headless chromium needs a bit of memory
+    memory: '1GB', // headless chromium needs memory
     timeoutSeconds: 120,
 })
     .https.onRequest(async (req, res) => {
+    if (req.method !== 'POST') {
+        res.status(405).send('Method Not Allowed');
+        return;
+    }
     try {
-        if (req.method !== 'POST') {
-            res.status(405).send('Method Not Allowed');
-            return;
-        }
-        const { html, pdfOptions } = req.body;
-        if (!html) {
+        const { html, pdfOptions } = (req.body || {});
+        if (!html || typeof html !== 'string' || html.trim().length === 0) {
             res.status(400).send('Missing html');
             return;
         }
@@ -62,22 +63,36 @@ exports.downloadStoryPdf = functions
             args: chromium_1.default.args,
             defaultViewport: chromium_1.default.defaultViewport,
             executablePath,
-            headless: chromium_1.default.headless,
+            headless: chromium_1.default.headless, // true on CF
         });
-        const page = await browser.newPage();
-        await page.setContent(html, { waitUntil: 'networkidle0' });
-        const pdf = await page.pdf({
-            format: 'A4',
-            printBackground: true,
-            ...pdfOptions,
-        });
-        await browser.close();
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', 'attachment; filename="story.pdf"');
-        res.status(200).send(Buffer.from(pdf));
+        try {
+            const page = await browser.newPage();
+            // Make CSS look like a browser (not print) and allow backgrounds
+            await page.emulateMediaType('screen');
+            // If your HTML uses relative URLs for images/CSS, set a base here (optional).
+            // You can also pass this from the caller; leaving blank falls back to in-doc <base>.
+            const baseURL = undefined;
+            await page.setContent(html, {
+                waitUntil: 'networkidle0',
+                // @ts-expect-error: Puppeteer supports baseURL in newer versions; harmless if ignored.
+                baseURL,
+            });
+            const pdf = await page.pdf({
+                format: 'A4',
+                printBackground: true,
+                preferCSSPageSize: true, // respect @page size if present
+                ...(pdfOptions ?? {}),
+            });
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', 'attachment; filename="story.pdf"');
+            res.status(200).send(Buffer.from(pdf));
+        }
+        finally {
+            await browser.close();
+        }
     }
     catch (err) {
-        console.error(err);
+        console.error('PDF generation failed:', err);
         res.status(500).send(`PDF generation failed: ${err?.message || err}`);
     }
 });

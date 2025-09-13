@@ -1,27 +1,42 @@
+// src/app/api/download-story-pdf/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 const BASE = process.env.FIREBASE_FUNCTIONS_BASE_URL?.replace(/\/$/, '');
 
-function safeStr(x: any): string {
-  if (typeof x !== 'string') return '';
-  const s = x.trim();
-  return s;
+function safeStr(x: unknown): string {
+  if (x == null) return '';
+  const s = typeof x === 'string' ? x : String(x);
+  return s.trim();
+}
+
+function slugify(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '');
 }
 
 function storyToHtml(d: any): string {
   const title = safeStr(d?.title) || 'Story';
-  const cover = safeStr(d?.coverImageUrl) || '';
+  const cover =
+    safeStr(d?.coverImageUrl) ||
+    safeStr(d?.imageUrl) || // fallback if you only saved one image at top level
+    '';
   const scenes: any[] = Array.isArray(d?.scenes) ? d.scenes : [];
 
   const pagesHtml = scenes
+    .slice()
     .sort((a, b) => (a?.index ?? 0) - (b?.index ?? 0))
     .map((s: any, i: number) => {
-      const img = safeStr(s?.imageUrl);
-      const txt = safeStr(s?.text).replace(/\n/g, '<br/>');
+      const img =
+        safeStr(s?.imageUrl) ||
+        safeStr(s?.coverImageUrl) ||
+        safeStr(s?.img) ||
+        '';
+      const txt = safeStr(s?.text || s?.content || s?.storyText).replace(/\n/g, '<br/>');
       return `
         <section style="page-break-after: always; margin-bottom: 24px;">
           ${img ? `<img src="${img}" alt="Page ${i + 1}" style="max-width: 100%; height: auto;"/>` : ''}
@@ -64,7 +79,7 @@ async function callPdfFn(html: string, pdfOptions?: Record<string, unknown>) {
     body: JSON.stringify({ html, pdfOptions }),
   });
   if (!res.ok) {
-    const txt = await res.text();
+    const txt = await res.text().catch(() => '');
     throw new Error(`Function error: ${res.status} ${txt}`);
   }
   const buf = await res.arrayBuffer();
@@ -83,13 +98,17 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Story not found' }, { status: 404 });
     }
 
-    const html = storyToHtml(snap.data() || {});
+    const data = snap.data() || {};
+    const html = storyToHtml(data);
     const buf = await callPdfFn(html);
+
+    // prefer title for filename, fallback to id
+    const baseName = slugify(safeStr(data.title)) || `story-${storyId}`;
 
     return new NextResponse(Buffer.from(buf), {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="story-${storyId}.pdf"`,
+        'Content-Disposition': `attachment; filename="${baseName}.pdf"`,
       },
     });
   } catch (err: any) {
