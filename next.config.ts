@@ -10,14 +10,23 @@ const extraOrigins = (process.env.ALLOWED_DEV_ORIGINS || '')
   .split(',').map((s) => s.trim()).filter(Boolean);
 
 const nextConfig: NextConfig = {
-  // Keep speed-ups
   typescript: { ignoreBuildErrors: true },
   eslint: { ignoreDuringBuilds: true },
 
-  /**
-   * Reduce client bundle size by rewriting common libs to per-module imports.
-   * (Huge impact if using many icons/utilities.)
-   */
+  // ⬇️ Moved out of `experimental` per Next 15.2 message
+  serverExternalPackages: [
+    'graphql-yoga',
+    '@whatwg-node/fetch',
+    'genkit',
+    '@genkit-ai/core',
+    '@opentelemetry/api',
+    '@opentelemetry/instrumentation',
+    '@opentelemetry/sdk-node',
+    'require-in-the-middle',
+    'handlebars',
+    'dotprompt',
+  ],
+
   experimental: {
     allowedDevOrigins: [
       'http://localhost:3000',
@@ -26,17 +35,11 @@ const nextConfig: NextConfig = {
       ...(cloudWorkstationsOrigin ? [cloudWorkstationsOrigin] : []),
       ...extraOrigins,
     ],
-    optimizePackageImports: ['lucide-react', 'date-fns', 'lodash-es'], // <- helps treeshake
+    optimizePackageImports: ['lucide-react', 'date-fns', 'lodash-es'],
   },
 
-  /**
-   * Automatic per-icon imports to avoid bundling all of lucide-react.
-   * (If you already import from 'lucide-react/icons/...', you can skip this.)
-   */
   modularizeImports: {
-    'lucide-react': {
-      transform: 'lucide-react/icons/{{member}}',
-    },
+    'lucide-react': { transform: 'lucide-react/icons/{{member}}' },
   },
 
   images: {
@@ -55,10 +58,17 @@ const nextConfig: NextConfig = {
     contentSecurityPolicy: "script-src 'none'; frame-src 'none'; worker-src 'self';",
   },
 
-  env: {
-    FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID as string,
-    FIREBASE_CLIENT_EMAIL: process.env.FIREBASE_CLIENT_EMAIL as string,
-    FIREBASE_PRIVATE_KEY: process.env.FIREBASE_PRIVATE_KEY as string,
+  webpack: (config, { dev }) => {
+    if (!dev) {
+      config.cache = { type: 'filesystem', cacheDirectory: '/tmp/webpack-cache' };
+    }
+    // Silence harmless Node-lib warnings
+    config.ignoreWarnings = [
+      { module: /handlebars/ },
+      { module: /require-in-the-middle/ },
+      { module: /@whatwg-node\/fetch/ },
+    ];
+    return config;
   },
 };
 

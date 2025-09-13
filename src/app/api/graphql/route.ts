@@ -1,29 +1,45 @@
+// src/app/api/graphql/route.ts
+import 'server-only'
 
-import { createYoga } from 'graphql-yoga'
-import { builder } from '@/graphql/builder'
-import  '@/graphql/schema/story'
-import  '@/graphql/schema/user'
-import  '@/graphql/schema/comment'
-import  '@/graphql/schema/reaction'
-import { NextRequest } from 'next/server'
-import { context } from '@/context/context'
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
+// Build (and cache) the Yoga server once per instance
+const yogaPromise = (async () => {
+  const { createYoga } = await import('graphql-yoga')
+  const { builder } = await import('@/graphql/builder')
 
-const schema = builder.toSchema()
+  await Promise.all([
+    import('@/graphql/schema/story'),
+    import('@/graphql/schema/user'),
+    import('@/graphql/schema/comment'),
+    import('@/graphql/schema/reaction'),
+  ])
 
-const { handleRequest } = createYoga({
-  schema,
-  context,
-  // Yoga needs to know how to create a valid Next response
-  fetchAPI: {
-    Response: Response,
-    Request: Request,
-  },
-  graphqlEndpoint: '/api/graphql',
-})
+  const { context } = await import('@/context/context')
+  const schema = builder.toSchema()
 
-export {
-  handleRequest as GET,
-  handleRequest as POST,
-  handleRequest as OPTIONS,
+  return createYoga({
+    schema,
+    context,
+    graphqlEndpoint: '/api/graphql',
+    fetchAPI: { Response, Request },
+  })
+})()
+
+type NextCtx = { params?: Record<string, string> } // keep signature for Next
+
+export async function GET(req: Request, _ctx: NextCtx) {
+  const yoga = await yogaPromise
+  return yoga.fetch(req) // <-- no ctx needed
+}
+
+export async function POST(req: Request, _ctx: NextCtx) {
+  const yoga = await yogaPromise
+  return yoga.fetch(req)
+}
+
+export async function OPTIONS(req: Request, _ctx: NextCtx) {
+  const yoga = await yogaPromise
+  return yoga.fetch(req)
 }

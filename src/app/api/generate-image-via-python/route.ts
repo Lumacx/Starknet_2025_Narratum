@@ -1,6 +1,9 @@
 // src/app/api/generate-image-via-python/route.ts
 import { NextResponse } from 'next/server';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 // The URL of your running Python Flask API
 const PYTHON_API_URL = 'http://127.0.0.1:8765/generate-image';
 
