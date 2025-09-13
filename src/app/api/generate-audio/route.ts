@@ -8,6 +8,8 @@ import { doc as fsDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 type Body = {
   text: string;

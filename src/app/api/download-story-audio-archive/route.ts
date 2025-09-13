@@ -1,11 +1,21 @@
 // src/app/api/download-story-audio-archive/route.ts
+import 'server-only';
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import JSZip from 'jszip';
 
+// --- Ensure this route never gets prerendered or cached at build time ---
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
+
+function slugify(s: string) {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+}
+
 export async function GET(req: NextRequest) {
   const storyId = req.nextUrl.searchParams.get('storyId');
-
   if (!storyId) {
     return NextResponse.json({ error: 'Missing storyId' }, { status: 400 });
   }
@@ -41,7 +51,7 @@ export async function GET(req: NextRequest) {
         <div>
           ${
             storyData.content
-              ? storyData.content.replace(/\n/g, '<br/>')
+              ? String(storyData.content).replace(/\n/g, '<br/>')
               : 'No content available.'
           }
         </div>
@@ -55,32 +65,27 @@ export async function GET(req: NextRequest) {
       for (let i = 0; i < storyData.audioUrls.length; i++) {
         const audioUrl = storyData.audioUrls[i];
         try {
-          const audioResponse = await fetch(audioUrl);
-          if (!audioResponse.ok) {
-            console.warn(
-              `Skipping audio: ${audioUrl} (status ${audioResponse.status})`
-            );
+          const r = await fetch(audioUrl);
+          if (!r.ok) {
+            console.warn(`Skipping audio: ${audioUrl} (status ${r.status})`);
             continue;
           }
-          const audioBuffer = await audioResponse.arrayBuffer();
-          const ext =
-            audioUrl.split('.').pop()?.split('?')[0] || 'mp3'; // Guess extension
-          const audioFileName = `audio_${i + 1}.${ext}`;
-          zip.file(audioFileName, audioBuffer);
-        } catch (fetchError) {
-          console.error(`Error fetching audio ${audioUrl}:`, fetchError);
+          const buf = await r.arrayBuffer();
+          const ext = audioUrl.split('.').pop()?.split('?')[0] || 'mp3';
+          zip.file(`audio_${i + 1}.${ext}`, buf);
+        } catch (err) {
+          console.error(`Error fetching audio ${audioUrl}:`, err);
         }
       }
     }
 
     const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
+    const base = slugify(String(storyData.title || 'story'));
 
     return new NextResponse(zipBuffer, {
       headers: {
         'Content-Type': 'application/zip',
-        'Content-Disposition': `attachment; filename="${
-          (storyData.title || 'story').replace(/[^a-z0-9_\-]/gi, '_')
-        }-with-audio.zip"`,
+        'Content-Disposition': `attachment; filename="${base}-with-audio.zip"`,
       },
     });
   } catch (error) {

@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 // The URL of your running Python Flask API
 const PYTHON_API_URL = 'http://127.0.0.1:8765/generate-image';

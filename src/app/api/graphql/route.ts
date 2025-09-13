@@ -1,8 +1,10 @@
 // src/app/api/graphql/route.ts
 import 'server-only'
 
-export const runtime = 'nodejs'
-export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 // Build (and cache) the Yoga server once per instance
 const yogaPromise = (async () => {
