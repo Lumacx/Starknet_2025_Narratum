@@ -645,17 +645,25 @@ const copyReferral = async () => {
             </button>
           </div>
 
-          {/* Referral Code Block */}
         {/* Referral Code Block */}
-<div className="mt-4 flex flex-col items-center gap-1">
+<div className="mt-4 flex flex-col items-center gap-2">
   <div className="flex items-center gap-2">
     <span className="text-sm font-semibold">Your Referral Code:</span>
 
     {hasReferralCode ? (
       <>
-        <code className="px-2 py-1 rounded bg-[#0f172a] border border-[#243041] text-xs">
+        {/* High-contrast code chip */}
+        <code
+          className="
+            text-xs px-2 py-1 rounded border font-semibold
+            text-slate-800 bg-slate-50 border-slate-300
+            dark:text-slate-100 dark:bg-slate-800 dark:border-slate-600
+          "
+        >
           {referralCode}
         </code>
+
+        {/* High-contrast copy button */}
         <button
           onClick={async () => {
             try {
@@ -665,23 +673,42 @@ const copyReferral = async () => {
               setMessage('Could not copy referral code.');
             }
           }}
-          className="px-2 py-1 rounded bg-[#233446] hover:bg-[#2b3e52] text-xs border border-[#4A5C6E]"
           title="Copy code"
+          className="
+            text-xs px-2 py-1 rounded border transition
+            bg-slate-200/80 text-slate-800 border-slate-300 hover:bg-slate-200
+            focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/60
+            dark:bg-[#233446] dark:text-slate-100 dark:border-[#4A5C6E]
+            dark:hover:bg-[#2b3e52] dark:focus-visible:ring-slate-300/40
+          "
         >
           Copy
         </button>
       </>
     ) : (
-      <span className="px-2 py-1 rounded bg-yellow-200/20 border border-yellow-400/40 text-xs text-yellow-200">
+      <span
+        className="
+          text-xs px-2 py-1 rounded border
+          bg-yellow-50 text-yellow-800 border-yellow-300
+          dark:bg-yellow-200/20 dark:text-yellow-200 dark:border-yellow-400/40
+        "
+      >
         Fill personal info to get your code
       </span>
     )}
   </div>
 
-  <div className="text-xs px-3 py-1 rounded-full bg-[#BFA071]/15 border border-[#BFA071]/40 text-center">
+  <div
+    className="
+      text-xs px-3 py-1 rounded-full border text-center
+      bg-amber-50 text-amber-900 border-amber-200
+      dark:bg-[#BFA071]/15 dark:text-[#E0C9A0] dark:border-[#BFA071]/40
+    "
+  >
     <strong>Share it</strong> to earn <strong>20% to 40%</strong> on referrals for purchases.
   </div>
 </div>
+
         </header>
 
         {message && (

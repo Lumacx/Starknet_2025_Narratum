@@ -35,7 +35,7 @@
     "src/types",
     "src/types/firebase-fix.d.ts",
     "src/types/firebasegen.d.ts"
-  ],
+, "src/components/ThemeToggle.js"  ],
   "exclude": [
     "node_modules",
     "lib",

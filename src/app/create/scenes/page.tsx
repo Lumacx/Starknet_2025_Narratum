@@ -119,6 +119,7 @@ type Scene = {
   audioName?: string | null;
   voiceId?: string | null;
   durationMs?: number | null;
+  youtubeVideoUrl?: string | null;   // NEW
 };
 
 type StoryDoc = {
@@ -221,6 +222,7 @@ function serializeScene(s: Scene, i: number) {
     audioName: s?.audioName ?? null,
     voiceId: s?.voiceId ?? null,
     durationMs: Number.isFinite(s?.durationMs as any) ? s.durationMs : null,
+    youtubeVideoUrl: s?.youtubeVideoUrl ?? null,   // NEW
   };
   return deepClean(base);
 }
@@ -364,6 +366,51 @@ async function normalizeScenesBeforeSave(
   return out;
 }
 
+// --- YouTube helpers ---
+function extractYouTubeId(raw: string | null | undefined): string | null {
+  const url = (raw || '').trim();
+  if (!url) return null;
+
+  // 1) Plain IDs (11 chars)
+  if (/^[a-zA-Z0-9_-]{11}$/.test(url)) return url;
+
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, '');
+
+    // youtube.com/watch?v=ID
+    if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com') {
+      const v = u.searchParams.get('v');
+      if (v && /^[a-zA-Z0-9_-]{11}$/.test(v)) return v;
+
+      // /shorts/ID, /embed/ID
+      const parts = u.pathname.split('/').filter(Boolean);
+      const idx = parts.findIndex(p => p === 'shorts' || p === 'embed' || p === 'live');
+      if (idx >= 0 && parts[idx + 1] && /^[a-zA-Z0-9_-]{11}$/.test(parts[idx + 1])) {
+        return parts[idx + 1];
+      }
+    }
+
+    // youtu.be/ID
+    if (host === 'youtu.be') {
+      const id = u.pathname.split('/').filter(Boolean)[0];
+      if (id && /^[a-zA-Z0-9_-]{11}$/.test(id)) return id;
+    }
+  } catch {
+    // not a URL – fall through to regex
+  }
+
+  // Last-chance regex
+  const m = url.match(/(?:v=|\/shorts\/|\/embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+function youtubeEmbedUrl(id: string): string {
+  // modest UI + no related vids from other channels
+  return `https://www.youtube.com/embed/${id}?rel=0&modestbranding=1&playsinline=1`;
+}
+
+
 /* ------------------------------------------------------------------ */
 /* Component                                                           */
 /* ------------------------------------------------------------------ */
@@ -413,6 +460,12 @@ export default function ScenesPage() {
   // Derived
   const currentScene = scenes[currentIndex] || null;
   const langLabel = useMemo(() => LANG_LABELS[(story?.language || 'en') as LangCode] || 'English', [story?.language]);
+
+  const currentYouTubeId = useMemo(
+    () => extractYouTubeId(currentScene?.youtubeVideoUrl),
+    [currentScene?.youtubeVideoUrl]
+  );
+  
 
   // Page limits
   const selectedPages = Math.max(1, Math.min((story?.pageCount ?? 10), 20));
@@ -506,18 +559,19 @@ export default function ScenesPage() {
         if (snap.exists()) docData = (snap.data() as StoryDoc) || {};
 
         const fixedScenes: Scene[] = (docData.scenes || [])
-          .map((s, i) => ({
-            id: s?.id || (typeof crypto?.randomUUID === 'function' ? crypto.randomUUID() : String(Math.random()).slice(2)),
-            index: Number.isFinite(s?.index as any) ? (s!.index as number) : i,
-            title: s?.title ?? `Scene ${i + 1}`,
-            text: s?.text ?? '',
-            imageUrl: s?.imageUrl ?? null,
-            imageName: s?.imageName ?? null,
-            audioUrl: s?.audioUrl ?? null,
-            audioName: s?.audioName ?? null,
-            voiceId: s?.voiceId ?? null,
-            durationMs: Number.isFinite(s?.durationMs as any) ? s!.durationMs! : null,
-          }))
+        .map((s, i) => ({
+          id: s?.id || crypto.randomUUID(),
+          index: Number.isFinite(s?.index as any) ? (s!.index as number) : i,
+          title: s?.title ?? `Scene ${i + 1}`,
+          text: s?.text ?? '',
+          imageUrl: s?.imageUrl ?? null,
+          imageName: s?.imageName ?? null,
+          audioUrl: s?.audioUrl ?? null,
+          audioName: s?.audioName ?? null,
+          voiceId: s?.voiceId ?? null,
+          durationMs: Number.isFinite(s?.durationMs as any) ? s!.durationMs! : null,
+          youtubeVideoUrl: s?.youtubeVideoUrl ?? null,   // NEW
+        }))
           .sort((a, b) => a.index - b.index);
 
         const ensured = fixedScenes.length > 0 ? fixedScenes : [makeDefaultScene(0)];
@@ -1285,6 +1339,40 @@ export default function ScenesPage() {
                   </div>
                 </div>
               </div>
+
+                {/* YouTube Video URL input + preview */}
+                <div className="rounded-2xl border-2 border-[#3D4F60]/10 dark:border-[#4B5A6B]/20 bg-white/70 dark:bg-[#0f1620]/70 shadow-sm p-3 space-y-2">
+                  <label className="text-xs font-semibold">YouTube Video URL</label>
+                  <input
+                    type="url"
+                    value={currentScene?.youtubeVideoUrl || ''}
+                    onChange={(e) => updateCurrentScene({ youtubeVideoUrl: e.target.value })}
+                    placeholder="Paste a YouTube link for this scene (e.g. https://youtu.be/XXXXXXXXXXX)…"
+                    className="mt-1 w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm"
+                  />
+
+                  {/* Live preview */}
+                  {currentYouTubeId ? (
+                    <div className="mt-2 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-black">
+                      <div className="aspect-[16/9] w-full">
+                        <iframe
+                          key={currentYouTubeId} // force refresh if ID changes
+                          src={youtubeEmbedUrl(currentYouTubeId)}
+                          title="YouTube preview"
+                          loading="lazy"
+                          allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                          className="w-full h-full"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-[12px] opacity-70">
+                      Supports full URLs (<code className="font-mono">youtube.com/watch?v=…</code>, <code className="font-mono">youtu.be/…</code>, <code className="font-mono">/shorts/…</code>) or a raw 11-char video ID.
+                    </p>
+                  )}
+                </div>
+
 
               {/* AI ideas */}
               <div className="rounded-2xl border-2 border-[#3D4F60]/10 dark:border-[#4B5A6B]/20 bg-white/70 dark:bg-[#0f1620]/70 p-3">

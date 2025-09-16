@@ -8,74 +8,6 @@
      · allowedDevOrigins
 
    Creating an optimized production build ...
- ⚠ Compiled with warnings
-
-./node_modules/.pnpm/@whatwg-node+fetch@0.10.10/node_modules/@whatwg-node/fetch/dist/node-ponyfill.js
-Critical dependency: the request of a dependency is an expression
-
-Import trace for requested module:
-./node_modules/.pnpm/@whatwg-node+fetch@0.10.10/node_modules/@whatwg-node/fetch/dist/node-ponyfill.js
-./node_modules/.pnpm/graphql-yoga@5.15.2_graphql@16.11.0/node_modules/graphql-yoga/esm/server.js
-./node_modules/.pnpm/graphql-yoga@5.15.2_graphql@16.11.0/node_modules/graphql-yoga/esm/index.js
-./src/app/api/graphql/route.ts
-
-./node_modules/.pnpm/handlebars@4.7.8/node_modules/handlebars/lib/index.js
-require.extensions is not supported by webpack. Use a loader instead.
-
-Import trace for requested module:
-./node_modules/.pnpm/handlebars@4.7.8/node_modules/handlebars/lib/index.js
-./node_modules/.pnpm/dotprompt@1.1.1/node_modules/dotprompt/dist/index.js
-./node_modules/.pnpm/@genkit-ai+core@1.19.2_@google-cloud+firestore@7.11.3_firebase-admin@13.5.0_firebase@11_3e78ee83a87429b3fadbda92a593cf04/node_modules/@genkit-ai/core/lib/registry.js
-./node_modules/.pnpm/genkit@1.19.2_@google-cloud+firestore@7.11.3_firebase-admin@13.5.0_firebase@11.10.0/node_modules/genkit/lib/registry.js
-./node_modules/.pnpm/genkit@1.19.2_@google-cloud+firestore@7.11.3_firebase-admin@13.5.0_firebase@11.10.0/node_modules/genkit/lib/genkit.js
-./node_modules/.pnpm/genkit@1.19.2_@google-cloud+firestore@7.11.3_firebase-admin@13.5.0_firebase@11.10.0/node_modules/genkit/lib/index.mjs
-./src/ai/genkit.ts
-./src/ai/flows/generate-writing-prompts.ts
-
-./node_modules/.pnpm/handlebars@4.7.8/node_modules/handlebars/lib/index.js
-require.extensions is not supported by webpack. Use a loader instead.
-
-Import trace for requested module:
-./node_modules/.pnpm/handlebars@4.7.8/node_modules/handlebars/lib/index.js
-./node_modules/.pnpm/dotprompt@1.1.1/node_modules/dotprompt/dist/index.js
-./node_modules/.pnpm/@genkit-ai+core@1.19.2_@google-cloud+firestore@7.11.3_firebase-admin@13.5.0_firebase@11_3e78ee83a87429b3fadbda92a593cf04/node_modules/@genkit-ai/core/lib/registry.js
-./node_modules/.pnpm/genkit@1.19.2_@google-cloud+firestore@7.11.3_firebase-admin@13.5.0_firebase@11.10.0/node_modules/genkit/lib/registry.js
-./node_modules/.pnpm/genkit@1.19.2_@google-cloud+firestore@7.11.3_firebase-admin@13.5.0_firebase@11.10.0/node_modules/genkit/lib/genkit.js
-./node_modules/.pnpm/genkit@1.19.2_@google-cloud+firestore@7.11.3_firebase-admin@13.5.0_firebase@11.10.0/node_modules/genkit/lib/index.mjs
-./src/ai/genkit.ts
-./src/ai/flows/generate-writing-prompts.ts
-
-./node_modules/.pnpm/handlebars@4.7.8/node_modules/handlebars/lib/index.js
-require.extensions is not supported by webpack. Use a loader instead.
-
-Import trace for requested module:
-./node_modules/.pnpm/handlebars@4.7.8/node_modules/handlebars/lib/index.js
-./node_modules/.pnpm/dotprompt@1.1.1/node_modules/dotprompt/dist/index.js
-./node_modules/.pnpm/@genkit-ai+core@1.19.2_@google-cloud+firestore@7.11.3_firebase-admin@13.5.0_firebase@11_3e78ee83a87429b3fadbda92a593cf04/node_modules/@genkit-ai/core/lib/registry.js
-./node_modules/.pnpm/genkit@1.19.2_@google-cloud+firestore@7.11.3_firebase-admin@13.5.0_firebase@11.10.0/node_modules/genkit/lib/registry.js
-./node_modules/.pnpm/genkit@1.19.2_@google-cloud+firestore@7.11.3_firebase-admin@13.5.0_firebase@11.10.0/node_modules/genkit/lib/genkit.js
-./node_modules/.pnpm/genkit@1.19.2_@google-cloud+firestore@7.11.3_firebase-admin@13.5.0_firebase@11.10.0/node_modules/genkit/lib/index.mjs
-./src/ai/genkit.ts
-./src/ai/flows/generate-writing-prompts.ts
-
-./node_modules/.pnpm/require-in-the-middle@7.5.2/node_modules/require-in-the-middle/index.js
-Critical dependency: require function is used in a way in which dependencies cannot be statically extracted
-
-Import trace for requested module:
-./node_modules/.pnpm/require-in-the-middle@7.5.2/node_modules/require-in-the-middle/index.js
-./node_modules/.pnpm/@opentelemetry+instrumentation@0.52.1_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/instrumentation/build/esm/platform/node/instrumentation.js
-./node_modules/.pnpm/@opentelemetry+instrumentation@0.52.1_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/instrumentation/build/esm/platform/node/index.js
-./node_modules/.pnpm/@opentelemetry+instrumentation@0.52.1_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/instrumentation/build/esm/platform/index.js
-./node_modules/.pnpm/@opentelemetry+instrumentation@0.52.1_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/instrumentation/build/esm/index.js
-./node_modules/.pnpm/@opentelemetry+sdk-node@0.52.1_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/sdk-node/build/src/sdk.js
-./node_modules/.pnpm/@opentelemetry+sdk-node@0.52.1_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/sdk-node/build/src/index.js
-./node_modules/.pnpm/@genkit-ai+core@1.19.2_@google-cloud+firestore@7.11.3_firebase-admin@13.5.0_firebase@11_3e78ee83a87429b3fadbda92a593cf04/node_modules/@genkit-ai/core/lib/tracing/node-telemetry-provider.js
-./node_modules/.pnpm/@genkit-ai+core@1.19.2_@google-cloud+firestore@7.11.3_firebase-admin@13.5.0_firebase@11_3e78ee83a87429b3fadbda92a593cf04/node_modules/@genkit-ai/core/lib/node.js
-./node_modules/.pnpm/genkit@1.19.2_@google-cloud+firestore@7.11.3_firebase-admin@13.5.0_firebase@11.10.0/node_modules/genkit/lib/common.js
-./node_modules/.pnpm/genkit@1.19.2_@google-cloud+firestore@7.11.3_firebase-admin@13.5.0_firebase@11.10.0/node_modules/genkit/lib/index.mjs
-./src/ai/genkit.ts
-./src/ai/flows/generate-writing-prompts.ts
-
  ✓ Compiled successfully
    Skipping validation of types
    Skipping linting
@@ -88,28 +20,57 @@ MIIEugIBADANBgkqhkiG9w
 privateKey after replace (first 50 chars): -----BEGIN PRIVATE KEY-----
 MIIEugIBADANBgkqhkiG9w
 privateKey length: 1700
-   Generating static pages (0/26) ...
-   Generating static pages (6/26) 
-Debugging Firebase Admin SDK Initialization:
-FIREBASE_PROJECT_ID: narratum
-FIREBASE_CLIENT_EMAIL: firebase-adminsdk-fbsvc@narratum.iam.gserviceaccount.com
-FIREBASE_PRIVATE_KEY (first 50 chars): -----BEGIN PRIVATE KEY-----
-MIIEugIBADANBgkqhkiG9w
-privateKey after replace (first 50 chars): -----BEGIN PRIVATE KEY-----
-MIIEugIBADANBgkqhkiG9w
-privateKey length: 1700
- ⨯ useSearchParams() should be wrapped in a suspense boundary at page "/discover". Read more: https://nextjs.org/docs/messages/missing-suspense-with-csr-bailout
-    at i (/home/user/studio/.next/server/chunks/1720.js:53:32323)
-    at c (/home/user/studio/.next/server/chunks/1720.js:11:42629)
-    at M (/home/user/studio/.next/server/app/discover/page.js:6:80)
-    at nL (/home/user/studio/node_modules/.pnpm/next@15.2.3_@babel+core@7.28.4_@opentelemetry+api@1.9.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:76:46773)
-    at nF (/home/user/studio/node_modules/.pnpm/next@15.2.3_@babel+core@7.28.4_@opentelemetry+api@1.9.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:76:48548)
-    at nq (/home/user/studio/node_modules/.pnpm/next@15.2.3_@babel+core@7.28.4_@opentelemetry+api@1.9.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:76:67434)
-    at nH (/home/user/studio/node_modules/.pnpm/next@15.2.3_@babel+core@7.28.4_@opentelemetry+api@1.9.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:76:65009)
-    at nU (/home/user/studio/node_modules/.pnpm/next@15.2.3_@babel+core@7.28.4_@opentelemetry+api@1.9.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:76:47125)
-    at nF (/home/user/studio/node_modules/.pnpm/next@15.2.3_@babel+core@7.28.4_@opentelemetry+api@1.9.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:76:48594)
-    at nF (/home/user/studio/node_modules/.pnpm/next@15.2.3_@babel+core@7.28.4_@opentelemetry+api@1.9.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:76:64360)
-Error occurred prerendering page "/discover". Read more: https://nextjs.org/docs/messages/prerender-error
-Export encountered an error on /discover/page: /discover, exiting the build.
- ⨯ Next.js build worker exited with code: 1 and signal: null
- ELIFECYCLE  Command failed with exit code 1.
+   Generating static pages (0/19) ...
+   Generating static pages (4/19) 
+   Generating static pages (9/19) 
+   Generating static pages (14/19) 
+ ✓ Generating static pages (19/19)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                 Size  First Load JS
+┌ ○ /                                    5.47 kB         302 kB
+├ ○ /_not-found                            991 B         102 kB
+├ ○ /about                               1.11 kB         106 kB
+├ ƒ /api/describe-image                    194 B         102 kB
+├ ƒ /api/download-story-audio-archive      194 B         102 kB
+├ ƒ /api/download-story-pdf                194 B         102 kB
+├ ƒ /api/generate-audio                    194 B         102 kB
+├ ƒ /api/generate-image                    194 B         102 kB
+├ ƒ /api/generate-image-via-python         194 B         102 kB
+├ ƒ /api/generate-scene-outline            194 B         102 kB
+├ ƒ /api/graphql                           194 B         102 kB
+├ ƒ /api/image-proxy                       194 B         102 kB
+├ ƒ /api/list-models                       194 B         102 kB
+├ ƒ /api/paypal-config                     194 B         102 kB
+├ ƒ /api/paypal-verify-subscription        194 B         102 kB
+├ ƒ /api/scene-outline                     194 B         102 kB
+├ ƒ /api/semantic-search                   194 B         102 kB
+├ ƒ /api/set-book-cover                    194 B         102 kB
+├ ƒ /api/story-outline                     194 B         102 kB
+├ ƒ /api/suggest-scene                     194 B         102 kB
+├ ƒ /api/tts                               194 B         102 kB
+├ ○ /create/begin                        14.2 kB         354 kB
+├ ○ /create/scenes                       14.4 kB         321 kB
+├ ○ /create/support                        59 kB         365 kB
+├ ○ /dashboard                           5.56 kB         303 kB
+├ ○ /discover                              10 kB         344 kB
+├ ○ /ereader                             1.65 kB         320 kB
+├ ○ /legal                               1.56 kB         106 kB
+├ ○ /login                                483 kB         934 kB
+├ ○ /login/gsitest                       3.51 kB         297 kB
+├ ○ /profile                             7.33 kB         304 kB
+├ ○ /reader                                523 B         102 kB
+├ ○ /signup                              2.71 kB         300 kB
+├ ƒ /story/[storyId]                     3.36 kB         325 kB
+├ ƒ /story/edit/[storyId]                13.4 kB         146 kB
+└ ○ /subscription                        5.01 kB         302 kB
++ First Load JS shared by all             101 kB
+  ├ chunks/1ed183b4-725eb8368ea465d0.js  53.3 kB
+  ├ chunks/5858-6fdda8f7df24ee14.js      46.2 kB
+  └ other shared chunks (total)          2.06 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

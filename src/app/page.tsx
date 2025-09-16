@@ -4,6 +4,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import YoutubeVideoPlayer from '../components/YoutubeVideoPlayer';
 //import ThemeToggle from '../components/ThemeToggle';
 
 const LandingPage: React.FC = () => {
@@ -28,27 +29,7 @@ const LandingPage: React.FC = () => {
       `}
     >
       
-      {/* Video Modal */}
-      {videoUrl && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="relative bg-black rounded-2xl shadow-lg w-full max-w-4xl aspect-video">
-            <iframe
-              src={videoUrl}
-              title="YouTube video"
-              className="w-full h-full rounded-2xl"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-            />
-            <button
-              onClick={() => setVideoUrl(null)}
-              className="absolute -top-3 -right-3 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-md hover:bg-red-700"
-              aria-label="Close video"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
+      <YoutubeVideoPlayer videoUrl={videoUrl} isOpen={!!videoUrl} onClose={() => setVideoUrl(null)} />
 
       <div className="max-w-4xl w-full text-center pt-10 md:pt-16 pb-28">
         <header className="mb-10 md:mb-16">
