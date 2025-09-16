@@ -3,6 +3,7 @@
 
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import dynamicImport  from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Story } from '@/lib/types';
 import { useListPublishedStories } from '@/hooks/useListPublishedStories';
@@ -19,10 +20,16 @@ import {
   runTransaction,
   serverTimestamp,
 } from 'firebase/firestore';
-import { Heart, Feather, BookOpen, Flag, Crown, Circle, X, Bot } from 'lucide-react';
+import { Heart, Feather, BookOpen, Flag, Crown, Circle, X, Bot, Youtube as YoutubeIcon } from 'lucide-react';
 
-// Ensure this page is rendered dynamically (prevents SSG/prerender errors with search params)
+// Prevent SSG/prerender issues with search params etc.
 export const dynamic = 'force-dynamic';
+
+// Lazy-load the YouTube player (client-only)
+const YoutubeVideoPlayer = dynamicImport(
+  () => import('@/components/YoutubeVideoPlayer'),
+  { ssr: false }
+);
 
 /* ----------------------------- Constants ----------------------------- */
 const GENRE_OPTIONS = [
@@ -60,7 +67,6 @@ function norm(x?: string | null) {
   return (x ?? '').toString().trim().toLowerCase();
 }
 
-/** Use very tolerant accessors so TypeScript doesn't choke on nested fields */
 function getOwnerId(s: Partial<Story> & Record<string, any>): string | undefined {
   const d: any = s as any;
   return (
@@ -130,7 +136,6 @@ function getStoryType(s: Partial<Story> & Record<string, any>): StoryTypeKey {
   return 'unknown';
 }
 
-/** ConvAI flag detection (any ElevenLabs agent id present) */
 function hasConvAI(s: Partial<Story> & Record<string, any>): boolean {
   const d: any = s as any;
   const m: any = d.metadata || {};
@@ -155,7 +160,6 @@ function hasConvAI(s: Partial<Story> & Record<string, any>): boolean {
   );
 }
 
-/** Plan mapping: Basic / Premium / ConvAI */
 function getPlan(s: Partial<Story> & Record<string, any>): PlanKey {
   if (hasConvAI(s)) return 'convai';
 
@@ -496,10 +500,6 @@ function FavoriteButton({
 }
 
 /* ------------------------------ INNER PAGE ------------------------------ */
-/** 
- * This inner component contains all hooks that require a Suspense boundary 
- * (useSearchParams/useRouter, etc.). The default export below wraps it in <Suspense>.
- */
 function CatalogPageInner() {
   const router = useRouter();
   const params = useSearchParams();
@@ -524,6 +524,10 @@ function CatalogPageInner() {
   // Anti-abuse tracking
   const [userReadsSet, setUserReadsSet] = useState<Record<string, true>>({});
   const [userRatedSet, setUserRatedSet] = useState<Record<string, true>>({});
+
+  // Teaser modal state using the reusable component props
+  const [teaserOpen, setTeaserOpen] = useState(false);
+  const [teaserUrl, setTeaserUrl] = useState<string | null>(null);
 
   const userReadCount = useMemo(() => Object.keys(userReadsSet).length, [userReadsSet]);
   const userRatedUniqueCount = useMemo(() => Object.keys(userRatedSet).length, [userRatedSet]);
@@ -722,7 +726,7 @@ function CatalogPageInner() {
     setSearchQuery('');
   };
 
-  /* ---------- Search: resolve author names to ownerIds; fallback to semantic title search ---------- */
+  /* ---------- Search: author name or semantic title ---------- */
   const handleSemanticSearch = async () => {
     const raw = searchQuery.trim();
     if (!raw) {
@@ -731,11 +735,9 @@ function CatalogPageInner() {
       return;
     }
 
-    // Try "author:" prefix first; else use the raw string as a name candidate
     const authorPrefixMatch = raw.match(/^author:\s*(.+)$/i);
     const nameCandidate = authorPrefixMatch ? authorPrefixMatch[1] : raw;
 
-    // Resolve to matching ownerIds by display name substring
     const wanted = norm(nameCandidate);
     const matchingOwnerIds = new Set<string>();
     for (const [nameKey, idSet] of Object.entries(ownerNameIndex.nameToIds)) {
@@ -803,15 +805,17 @@ function CatalogPageInner() {
     }
   };
 
-  //const { isLoading } = useListPublishedStories();
-
-   // --- UI (unchanged) ---
-  // [BEGIN] — your large JSX returned previously
-
   return (
     <div className="min-h-screen relative flex flex-col items-center p-5 md:p-10 
       bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26] 
       text-[#3A4B5C] dark:text-[#E0C9A0] font-sans box-border">
+
+      {/* Reusable Teaser Modal */}
+      <YoutubeVideoPlayer
+        videoUrl={teaserUrl}
+        isOpen={teaserOpen}
+        onClose={() => { setTeaserOpen(false); setTeaserUrl(null); }}
+      />
 
       <div className="fixed top-7 right-4 z-50">
         <Link
@@ -831,13 +835,11 @@ function CatalogPageInner() {
             CATALOG OF STORIES
           </h2>
 
-          {/* Interactive legend pills with vertical separator */}
+          {/* Legend (unchanged visuals) */}
           <div className="mt-4 flex flex-wrap items-center gap-3 justify-center text-sm">
-            {/* Left group: Story Type Pills */}
             <div className="flex flex-wrap items-center gap-3">
               {(['short','novela','campaign'] as const).map((k) => {
                 const Ico = TYPE_STYLES[k].Icon;
-                const active = (getStoryType as any) && false; // placeholder to keep TS quiet here
                 return (
                   <FilterPill
                     key={k}
@@ -854,14 +856,12 @@ function CatalogPageInner() {
               })}
             </div>
 
-            {/* Vertical separator */}
             <div
               role="separator"
               aria-orientation="vertical"
               className="h-6 w-px mx-2 sm:mx-3 bg-[#3A4B5C]/30 dark:bg-white/30"
             />
 
-            {/* Right group: Plan Pills */}
             <div className="flex flex-wrap items-center gap-3">
               {(['basic','premium','convai'] as const).map((k) => {
                 const Ico = PLAN_STYLES[k].Icon;
@@ -978,8 +978,6 @@ function CatalogPageInner() {
               const planKey = getPlan(story);
               const typeStyle = TYPE_STYLES[typeKey];
               const planStyle = PLAN_STYLES[planKey];
-              const TypeIcon = typeStyle.Icon;
-              const PlanIcon = planStyle.Icon;
 
               const hasReadThis = !!userReadsSet[(story as any).id!];
               const hasRatedThis = !!userRatedSet[(story as any).id!];
@@ -987,6 +985,8 @@ function CatalogPageInner() {
               const creatorName = getCreatorName(story) || 'Unknown Author';
               const ownerId = getOwnerId(story);
               const authorPhoto = getCreatorPhoto(story) || DEFAULT_AVATAR;
+
+              const teaser = (story as any).teaserYoutubeUrl as string | undefined;
 
               return (
                 <div
@@ -1000,12 +1000,12 @@ function CatalogPageInner() {
                   {/* Type & Plan badges */}
                   <div className="absolute left-2 top-2 z-30 flex gap-2">
                     <span className={`px-2 py-0.5 text-[11px] rounded ${typeStyle.badgeBg} ${typeStyle.badgeText} font-bold uppercase tracking-wide inline-flex items-center gap-1.5`}>
-                      <TypeIcon size={13}/> {typeStyle.label}
+                      {React.createElement(TYPE_STYLES[typeKey].Icon, { size: 13 })} {TYPE_STYLES[typeKey].label}
                     </span>
                   </div>
                   <div className="absolute right-12 top-2 z-30 flex gap-2">
                     <span className={`px-2 py-0.5 text-[11px] rounded ${planStyle.badgeBg} ${planStyle.badgeText} font-semibold inline-flex items-center gap-1.5`}>
-                      <PlanIcon size={13}/> {planStyle.label}
+                      {React.createElement(PLAN_STYLES[planKey].Icon, { size: 13 })} {PLAN_STYLES[planKey].label}
                     </span>
                   </div>
 
@@ -1034,7 +1034,7 @@ function CatalogPageInner() {
                     <p className="text-xs text-[#8FA0AF] mb-1">{(story as any).genres.join(', ')}</p>
                   ) : null}
 
-                  {/* Author line: avatar + link to filter */}
+                  {/* Author line */}
                   <div className="mt-1">
                     {ownerId ? (
                       <button
@@ -1089,8 +1089,8 @@ function CatalogPageInner() {
                     />
                   </div>
 
-                  {/* Read Button */}
-                  <div className="mt-3 relative inline-block">
+                  {/* Read + Teaser (single teaser button to the right) */}
+                  <div className="mt-3 relative flex items-center justify-center gap-2">
                     {!hasReadThis && (
                       <span
                         className="absolute -top-2 -right-2 z-30 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500 text-white shadow"
@@ -1106,6 +1106,20 @@ function CatalogPageInner() {
                     >
                       READ
                     </Link>
+
+                    {/* Only one teaser button, next to READ, for premium stories with a teaser URL */}
+                    {planKey === 'premium' && !!teaser && (
+                      <button
+                        type="button"
+                        onClick={() => { setTeaserUrl(teaser); setTeaserOpen(true); }}
+                        className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-white/20 bg-black/40 text-white hover:bg-black/55"
+                        title="Watch teaser"
+                        aria-label="Watch teaser"
+                      >
+                        <YoutubeIcon size={18} />
+                        <span className="text-sm font-semibold">Teaser</span>
+                      </button>
+                    )}
                   </div>
 
                   {/* Hover info box */}
@@ -1141,7 +1155,6 @@ function CatalogPageInner() {
 };
 
 /* ----------------------- PAGE EXPORT WITH SUSPENSE ----------------------- */
-//wrapper
 export default function CatalogPage() {
   return (
     <Suspense fallback={<div className="p-8 text-center">Loading discover…</div>}>

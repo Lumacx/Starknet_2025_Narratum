@@ -34,7 +34,7 @@ import {
   limit,
   getDocs,
 } from 'firebase/firestore';
-
+import { setDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import InfoPopover from '@/components/InfoPopover';
 
 /* --- LOGIC MOVED HERE from UploadImageReference --- */
@@ -137,18 +137,35 @@ const LANG_LABELS: Record<string, string> = {
 
 const DRAFT_KEY = 'newStoryDraft';
 
+type MediaKind = 'image' | 'audio' | 'video' | 'youtube' | 'unknown';
+
 /* ------------------------------ Utils -------------------------------- */
 function classNames(...xs: (string | false | null | undefined)[]) {
   return xs.filter(Boolean).join(' ');
 }
 const isImageTab = (k: TabKey) => k === 'characters' || k === 'locations';
 
-function inferKind(url?: string, contentType?: string): 'image' | 'audio' | 'video' | 'unknown' {
+function inferKind(url?: string, contentType?: string): MediaKind {
   const ct = (contentType || '').toLowerCase();
   if (ct.startsWith('image/')) return 'image';
   if (ct.startsWith('audio/')) return 'audio';
   if (ct.startsWith('video/')) return 'video';
-  const u = url || '';
+
+ const u = (url || '').trim();
+  if (!u) return 'unknown';
+
+  // YouTube detection
+  try {
+    const parsed = new URL(u);
+    const host = parsed.hostname.replace(/^www\./, '').toLowerCase();
+    if (host === 'youtube.com' || host === 'youtu.be' || host === 'm.youtube.com') {
+      return 'youtube';
+    }
+  } catch {
+    // if it's a data: URL, handle separately
+  }
+
+  // Fallback by extension / data URL
   try {
     const pathname = new URL(u).pathname.toLowerCase();
     if (/\.(png|jpe?g|gif|webp)$/.test(pathname)) return 'image';
@@ -160,6 +177,54 @@ function inferKind(url?: string, contentType?: string): 'image' | 'audio' | 'vid
     if (u.startsWith('data:video/')) return 'video';
   }
   return 'unknown';
+}
+
+// ── NEW: YouTube helpers ─────────────────────────────────────────────
+function getYouTubeId(rawUrl: string): string | null {
+  try {
+    const u = new URL(rawUrl.trim());
+    const host = u.hostname.replace(/^www\./, '').toLowerCase();
+
+    if (host === 'youtu.be') {
+      // https://youtu.be/<id>
+      const id = u.pathname.split('/').filter(Boolean)[0];
+      return id || null;
+    }
+    if (host === 'youtube.com' || host === 'm.youtube.com') {
+      // https://youtube.com/watch?v=<id> or /embed/<id> or /shorts/<id>
+      if (u.pathname.startsWith('/watch')) {
+        const id = u.searchParams.get('v');
+        return id || null;
+      }
+      if (u.pathname.startsWith('/embed/')) {
+        const id = u.pathname.split('/')[2];
+        return id || null;
+      }
+      if (u.pathname.startsWith('/shorts/')) {
+        const id = u.pathname.split('/')[2];
+        return id || null;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function toYouTubeEmbedUrl(rawUrl: string): string | null {
+  const id = getYouTubeId(rawUrl);
+  return id ? `https://www.youtube.com/embed/${id}` : null;
+}
+
+function toYouTubeThumb(rawUrl: string): string | null {
+  const id = getYouTubeId(rawUrl);
+  return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null;
+}
+
+// Normalize common “share” links into a canonical watch URL
+function normalizeYouTubeUrl(rawUrl: string): string | null {
+  const id = getYouTubeId(rawUrl);
+  return id ? `https://www.youtube.com/watch?v=${id}` : null;
 }
 
 async function urlToDataUrl(url: string): Promise<string> {
@@ -322,8 +387,15 @@ export default function SupportPage() {
     locations:       'image/png,image/jpeg',
     audioNarrations: 'audio/mpeg,audio/mp3',
     audioEffects:    'audio/mpeg,audio/mp3',
-    videos:          'video/mp4',
+    videos:          undefined, // now handled by YouTube link form
   };
+
+  // NEW: YouTube link capture
+  const [ytUrl, setYtUrl] = useState('');
+  const [ytName, setYtName] = useState('');
+  const [savingYt, setSavingYt] = useState(false);
+  const ytValid = !!normalizeYouTubeUrl(ytUrl);
+
 
   // NEW: Sync URL <-> selectedStoryId and other resets
   useEffect(() => {
@@ -368,7 +440,7 @@ export default function SupportPage() {
   }, [active]);
 
   const activeTab = useMemo(() => TABS.find((t) => t.key === active)!, [active]);
-  const kind = inferKind(displayUrl, displayContentType);
+  const kind: MediaKind = inferKind(displayUrl, displayContentType);
   const canDescribeSelected = isImageTab(activeTab.key) && kind === 'image' && !!displayUrl;
   const memoizedPromptContext = useMemo(
     () => ({
@@ -515,6 +587,59 @@ export default function SupportPage() {
       setIsComposing(false);
     }
   };
+
+  async function saveYouTubeLink() {
+    if (!user) return;
+    if (!ytValid) {
+      alert('Please paste a valid YouTube URL.');
+      return;
+    }
+  
+    const normalizedUrl = normalizeYouTubeUrl(ytUrl)!; // valid if ytValid
+    const embedUrl = toYouTubeEmbedUrl(normalizedUrl)!;
+    const thumbUrl = toYouTubeThumb(normalizedUrl) || null;
+  
+    // Decide the assetIndex path: story vs uncategorized
+    // users/{uid}/assetIndex/stories/{storyId}/videos or users/{uid}/assetIndex/uncategorized/videos
+    const base = showUncategorized
+      ? collection(db, 'users', user.uid, 'assetIndex', 'uncategorized', 'videos')
+      : collection(db, 'users', user.uid, 'assetIndex', 'stories', selectedStoryId!, 'videos');
+  
+    setSavingYt(true);
+    try {
+      const payload = {
+        name: ytName?.trim() || '(untitled)',
+        url: normalizedUrl,            // canonical “watch” URL
+        embedUrl,                      // convenience for display iframes
+        provider: 'youtube',
+        kind: 'video',
+        thumbUrl,                      // not guaranteed, but helpful for gallery cards
+        ownerUid: user.uid,
+        storyId: showUncategorized ? null : selectedStoryId!,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        // Optional “displayContentType” if your gallery expects it
+        contentType: 'video/youtube'
+      };
+      const docRef = await addDoc(base, payload);
+  
+      // Update left “Display” immediately
+      setDisplayUrl(embedUrl);
+      setDisplayContentType('video/youtube');
+  
+      // Clear inputs
+      setYtUrl('');
+      setYtName('');
+  
+      // Optionally: nudge the gallery to refresh (keeps pagination reset logic intact)
+      triggerGalleryReset();
+    } catch (e: any) {
+      console.error('Error saving YouTube link:', e);
+      alert(e?.message || 'Could not save the YouTube link.');
+    } finally {
+      setSavingYt(false);
+    }
+  }
 
   // Decide which doc to show for the #1 icon based on the active tab
   // ★ kebab-case paths in /public/info_tips
@@ -697,17 +822,25 @@ export default function SupportPage() {
               <div>
                 <h3 className="text-sm font-semibold mb-2">Display</h3>
                 <div className="relative w-full bg-white dark:bg-[#0f1620] border rounded-lg overflow-hidden aspect-square grid place-items-center">
-                  {!displayUrl ? (
-                    <div className="text-xs opacity-70">Nothing selected</div>
-                  ) : kind === 'image' ? (
-                    <img src={displayUrl} alt="Selected" className="absolute inset-0 w-full h-full object-contain" />
-                  ) : kind === 'audio' ? (
-                    <audio controls src={displayUrl} className="w-11/12" />
-                  ) : kind === 'video' ? (
-                    <video controls src={displayUrl} className="absolute inset-0 w-full h-full object-contain" />
-                  ) : (
-                    <div className="text-xs opacity-70">Unsupported media</div>
-                  )}
+                {!displayUrl ? (
+                      <div className="text-xs opacity-70">Nothing selected</div>
+                    ) : kind === 'image' ? (
+                      <img src={displayUrl} alt="Selected" className="absolute inset-0 w-full h-full object-contain" />
+                    ) : kind === 'audio' ? (
+                      <audio controls src={displayUrl} className="w-11/12" />
+                    ) : kind === 'video' ? (
+                      <video controls src={displayUrl} className="absolute inset-0 w-full h-full object-contain" />
+                    ) : kind === 'youtube' ? (
+                      <iframe
+                        className="absolute inset-0 w-full h-full"
+                        src={toYouTubeEmbedUrl(displayUrl) || displayUrl}
+                        title="YouTube video"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                      />
+                    ) : (
+                      <div className="text-xs opacity-70">Unsupported media</div>
+                    )}
 
                   {displayUrl && lastModelUsed && (
                     <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs font-mono rounded-md px-2 py-1 backdrop-blur-sm shadow-lg">
@@ -800,26 +933,84 @@ export default function SupportPage() {
                   </div>
                 </div>
 
-                <UploadImageReference
-                  mode="uploaderOnly"
-                  variant={activeTab.variant}
-                  assetCategory={activeTab.key}
-                  accept={acceptByTab[activeTab.key]}
-                  showInnerDescribe={false}
-                  onSaved={handleSaved}
-                  onGenerateRequest={handleGenerateRequest}
-                  isGenerating={isGenerating}
-                  generatedImageUrl={generatedImageUrlForChild}
-                  storyId={showUncategorized ? undefined : selectedStoryId}
-                  // Sorting/pagination also apply to uploader lists (if shown there later)
-                  sortField={sortField}
-                  sortDir={sortDir}
-                  pageSize={pageSize}
-                  // disable save buttons unless destination chosen
-                  disableSaveButtons={!canSaveAssets}
-                />
+                {activeTab.key !== 'videos' ? (
+                  <UploadImageReference
+                    mode="uploaderOnly"
+                    variant={activeTab.variant}
+                    assetCategory={activeTab.key}
+                    accept={acceptByTab[activeTab.key]}       // images/audio still use uploads
+                    showInnerDescribe={false}
+                    onSaved={handleSaved}
+                    onGenerateRequest={handleGenerateRequest}
+                    isGenerating={isGenerating}
+                    generatedImageUrl={generatedImageUrlForChild}
+                    storyId={showUncategorized ? undefined : selectedStoryId}
+                    sortField={sortField}
+                    sortDir={sortDir}
+                    pageSize={pageSize}
+                    disableSaveButtons={!canSaveAssets}
+                  />
+                ) : (
+                  /* NEW: YouTube link form for Videos tab */
+                  <div className="rounded-xl border-2 border-[#3D4F60] dark:border-[#4B5A6B] bg-[#F3EADF] dark:bg-[#2A3645] p-4">
+                    <h3 className="font-semibold mb-3 flex items-center gap-2">
+                      <Film className="h-4 w-4" />
+                      Insert YouTube URL
+                    </h3>
+
+                    {!canSaveAssets && (
+                      <div className="mb-3 p-2 rounded bg-yellow-100 text-yellow-900 text-sm">
+                        Select a story or choose <strong>All Uncategorized Assets</strong> to enable saving.
+                      </div>
+                    )}
+
+                    <label className="block text-sm font-semibold mb-1">YouTube URL</label>
+                    <input
+                      type="text"
+                      value={ytUrl}
+                      onChange={(e) => setYtUrl(e.target.value)}
+                      placeholder="https://www.youtube.com/watch?v=..."
+                      className="w-full p-2 border rounded mb-3 dark:bg-white dark:text-[#3D4F60]"
+                    />
+
+                    <label className="block text-sm font-semibold mb-1">Custom Name</label>
+                    <input
+                      type="text"
+                      value={ytName}
+                      onChange={(e) => setYtName(e.target.value)}
+                      placeholder="e.g., Trailer — Chapter 1"
+                      className="w-full p-2 border rounded mb-4 dark:bg:white dark:text-[#3D4F60]"
+                    />
+
+                    {/* Live preview when valid */}
+                    {ytValid && (
+                      <div className="relative w-full border rounded overflow-hidden aspect-video mb-3 bg-black">
+                        <iframe
+                          src={toYouTubeEmbedUrl(ytUrl) || undefined}
+                          title="YouTube preview"
+                          className="absolute inset-0 w-full h-full"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={saveYouTubeLink}
+                        disabled={!canSaveAssets || !ytValid || savingYt}
+                        className="px-4 py-2 rounded bg-[#E97451] text-white disabled:opacity-50"
+                      >
+                        {savingYt ? 'Saving…' : 'Save to My Gallery'}
+                      </button>
+                      {!ytValid && ytUrl.trim().length > 0 && (
+                        <span className="text-xs text-red-600">Enter a valid YouTube URL.</span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+              </div>
 
             {/* ------------------------- RIGHT COLUMN -------------------------- */}
             <div className="flex flex-col gap-6">
