@@ -128,12 +128,24 @@ const LandingPage: React.FC = () => {
 
       {/* Subtle glow keyframes */}
       <style jsx global>{`
-        @keyframes pulseGlow {
+        @keyframes pulseGlowLight {
+          0%, 100% { box-shadow: 0 0 22px rgba(58, 75, 92, 0.25); }
+          50% { box-shadow: 0 0 44px rgba(58, 75, 92, 0.6); }
+        }
+
+        @keyframes pulseGlowDark {
           0%, 100% { box-shadow: 0 0 8px rgba(255, 255, 255, 0.25); }
           50% { box-shadow: 0 0 16px rgba(255, 255, 255, 0.6); }
         }
+
+        /* Default: light mode */
         .animate-pulse-slow {
-          animation: pulseGlow 2.5s infinite;
+          animation: pulseGlowLight 2.5s infinite;
+        }
+
+        /* Override for dark mode */
+        .dark .animate-pulse-slow {
+          animation: pulseGlowDark 2.5s infinite;
         }
       `}</style>
     </div>

@@ -1,9 +1,9 @@
 // app/discover/page.tsx
 'use client';
 
-import React, { Suspense, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import dynamicImport  from 'next/dynamic';
+import dynamicImport from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Story } from '@/lib/types';
 import { useListPublishedStories } from '@/hooks/useListPublishedStories';
@@ -12,15 +12,24 @@ import { useAuth } from '@/context/AuthContext';
 import { db } from '@/lib/firebase';
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   onSnapshot,
-  setDoc,
-  deleteDoc,
   runTransaction,
   serverTimestamp,
 } from 'firebase/firestore';
-import { Heart, Feather, BookOpen, Flag, Crown, Circle, X, Bot, Youtube as YoutubeIcon } from 'lucide-react';
+import {
+  Heart,
+  Feather,
+  BookOpen,
+  Flag,
+  Crown,
+  Circle,
+  X,
+  Bot,
+  Youtube as YoutubeIcon,
+} from 'lucide-react';
 
 // Prevent SSG/prerender issues with search params etc.
 export const dynamic = 'force-dynamic';
@@ -33,7 +42,8 @@ const YoutubeVideoPlayer = dynamicImport(
 
 /* ----------------------------- Constants ----------------------------- */
 const GENRE_OPTIONS = [
-  'Fantasy','Sci-Fi','Mystery','Horror','Romance','Adventure','Children','Comedy','Drama','Action','Other'
+  'Fantasy', 'Sci-Fi', 'Mystery', 'Horror', 'Romance', 'Adventure',
+  'Children', 'Comedy', 'Drama', 'Action', 'Other'
 ] as const;
 
 const LANGUAGE_OPTIONS: { code: string; label: string }[] = [
@@ -81,18 +91,24 @@ function getOwnerId(s: Partial<Story> & Record<string, any>): string | undefined
     d.metadata?.ownerId
   )?.toString();
 }
+
+// more permissive
 function getCreatorName(s: Partial<Story> & Record<string, any>): string | undefined {
   const d: any = s as any;
   return (
     d.creator?.displayname ||
+    d.creator?.displayName ||
     d.creator?.name ||
     d.displayname ||
+    d.displayName ||
+    d.name ||
     d.authorName ||
     d.creatorName ||
     d.metadata?.authorName ||
     d.metadata?.creatorName
   )?.toString();
 }
+
 function getCreatorPhoto(s: Partial<Story> & Record<string, any>): string | undefined {
   const d: any = s as any;
   return (
@@ -105,6 +121,7 @@ function getCreatorPhoto(s: Partial<Story> & Record<string, any>): string | unde
     d.metadata?.authorPhotoURL
   )?.toString();
 }
+
 function getSynopsis(s: Partial<Story> & Record<string, any>): string {
   const d: any = s as any;
   return (
@@ -141,19 +158,9 @@ function hasConvAI(s: Partial<Story> & Record<string, any>): boolean {
   const m: any = d.metadata || {};
   const c: any = d.creator || {};
   const candidates = [
-    d.elevenlabsAgentId,
-    d.elevenLabsAgentId,
-    d.voiceAgentId,
-    d.agentId,
-    d.agent?.id,
-    m.elevenlabsAgentId,
-    m.elevenLabsAgentId,
-    m.voiceAgentId,
-    m.agentId,
-    c.elevenlabsAgentId,
-    c.elevenLabsAgentId,
-    c.voiceAgentId,
-    c.agentId,
+    d.elevenlabsAgentId, d.elevenLabsAgentId, d.voiceAgentId, d.agentId, d.agent?.id,
+    m.elevenlabsAgentId, m.elevenLabsAgentId, m.voiceAgentId, m.agentId,
+    c.elevenlabsAgentId, c.elevenLabsAgentId, c.voiceAgentId, c.agentId,
   ];
   return candidates.some((v) =>
     typeof v === 'string' ? v.trim().length > 0 : Boolean(v)
@@ -162,7 +169,6 @@ function hasConvAI(s: Partial<Story> & Record<string, any>): boolean {
 
 function getPlan(s: Partial<Story> & Record<string, any>): PlanKey {
   if (hasConvAI(s)) return 'convai';
-
   const p = norm((s as any).creatorPlan) || norm((s as any).plan) || norm((s as any).metadata?.plan);
   if (p === 'convai') return 'convai';
   if (['premium', 'paid', 'pro'].includes(p)) return 'premium';
@@ -194,38 +200,10 @@ const TYPE_STYLES: Record<StoryTypeKey, {
   label: string;
   Icon: React.FC<any>;
 }> = {
-  short: {
-    border: 'border-teal-500',
-    glow: 'shadow-[0_0_0_1px_rgba(20,184,166,0.35),0_6px_24px_rgba(20,184,166,0.25)]',
-    badgeBg: 'bg-teal-500/90',
-    badgeText: 'text-white',
-    label: 'Short Story',
-    Icon: Feather,
-  },
-  novela: {
-    border: 'border-violet-500',
-    glow: 'shadow-[0_0_0_1px_rgba(139,92,246,0.35),0_6px_24px_rgba(139,92,246,0.25)]',
-    badgeBg: 'bg-violet-500/90',
-    badgeText: 'text-white',
-    label: 'Novela',
-    Icon: BookOpen,
-  },
-  campaign: {
-    border: 'border-amber-400',
-    glow: 'shadow-[0_0_0_1px_rgba(251,191,36,0.35),0_6px_24px_rgba(251,191,36,0.25)]',
-    badgeBg: 'bg-amber-400/90',
-    badgeText: 'text-white',
-    label: 'Campaign',
-    Icon: Flag,
-  },
-  unknown: {
-    border: 'border-[#4A5C6E]',
-    glow: 'shadow-none',
-    badgeBg: 'bg-slate-500/80',
-    badgeText: 'text-white',
-    label: 'Story',
-    Icon: Feather,
-  },
+  short:   { border: 'border-teal-500',    glow: 'shadow-[0_0_0_1px_rgba(20,184,166,0.35),0_6px_24px_rgba(20,184,166,0.25)]', badgeBg: 'bg-teal-500/90',   badgeText: 'text-white', label: 'Short Story', Icon: Feather },
+  novela:  { border: 'border-violet-500',  glow: 'shadow-[0_0_0_1px_rgba(139,92,246,0.35),0_6px_24px_rgba(139,92,246,0.25)]', badgeBg: 'bg-violet-500/90', badgeText: 'text-white', label: 'Novela',      Icon: BookOpen },
+  campaign:{ border: 'border-amber-400',   glow: 'shadow-[0_0_0_1px_rgba(251,191,36,0.35),0_6px_24px_rgba(251,191,36,0.25)]', badgeBg: 'bg-amber-400/90',  badgeText: 'text-white', label: 'Campaign',    Icon: Flag },
+  unknown: { border: 'border-[#4A5C6E]',   glow: 'shadow-none',                                                       badgeBg: 'bg-slate-500/80', badgeText: 'text-white', label: 'Story',       Icon: Feather },
 };
 
 const PLAN_STYLES: Record<PlanKey, {
@@ -446,7 +424,7 @@ function StarRating({
   );
 }
 
-/* ------------------------------- Favorites UI ------------------------------ */
+/* ------------------------------- Favorites Button ------------------------------ */
 function FavoriteButton({
   storyId,
   initialIsFav
@@ -472,7 +450,9 @@ function FavoriteButton({
         await deleteDoc(favRef);
         setIsFav(false);
       } else {
-        await setDoc(favRef, { createdAt: serverTimestamp(), storyId });
+        await runTransaction(db, async (tx) => {
+          tx.set(favRef, { createdAt: serverTimestamp(), storyId }, { merge: true });
+        });
         setIsFav(true);
       }
     } catch (e) {
@@ -532,8 +512,12 @@ function CatalogPageInner() {
   const userReadCount = useMemo(() => Object.keys(userReadsSet).length, [userReadsSet]);
   const userRatedUniqueCount = useMemo(() => Object.keys(userRatedSet).length, [userRatedSet]);
 
+  // 🔴 LIVE OWNER PROFILES (Option A)
+  const [ownerProfiles, setOwnerProfiles] = useState<Record<string, { name?: string; photoURL?: string }>>({});
+  const ownerUnsubsRef = useRef<Record<string, () => void>>({});
+
   const { user } = useAuth();
-  const { data, isLoading, error } = useListPublishedStories();
+  const { data, isLoading } = useListPublishedStories();
 
   /* ---------- Build a lookup of owners by name (for search) ---------- */
   const ownerNameIndex = useMemo(() => {
@@ -542,14 +526,17 @@ function CatalogPageInner() {
     for (const s of allStories) {
       const id = getOwnerId(s);
       if (!id) continue;
-      const name = getCreatorName(s) || 'Unknown Author';
+      const name =
+        ownerProfiles[id]?.name ||
+        getCreatorName(s) ||
+        'Unknown Author';
       byId[id] = name;
       const key = norm(name);
       if (!nameToIds[key]) nameToIds[key] = new Set();
       nameToIds[key].add(id);
     }
     return { byId, nameToIds };
-  }, [allStories]);
+  }, [allStories, ownerProfiles]);
 
   /* ---------- Initial data ---------- */
   useEffect(() => {
@@ -557,6 +544,49 @@ function CatalogPageInner() {
     setAllStories(stories);
     setDisplayedStories(stories);
   }, [data]);
+
+  /* ---------- Attach real-time listeners to owners present in grid ---------- */
+  useEffect(() => {
+    const uids = new Set<string>();
+    for (const s of allStories) {
+      const uid = getOwnerId(s);
+      if (uid) uids.add(uid);
+    }
+
+    // add listeners for new UIDs
+    uids.forEach((uid) => {
+      if (ownerUnsubsRef.current[uid]) return; // already listening
+      const unsub = onSnapshot(doc(db, 'users', uid), (snap) => {
+        const d = (snap.data() || {}) as any;
+        setOwnerProfiles((prev) => ({
+          ...prev,
+          [uid]: {
+            name:
+              d.displayName || d.displayname || d.name || d.username || 'Unknown Author',
+            photoURL:
+              d.photoURL || d.photoUrl || d.avatarUrl || d.avatar || undefined,
+          },
+        }));
+      }, () => {
+        // on error, keep previous cache
+      });
+      ownerUnsubsRef.current[uid] = unsub;
+    });
+
+    // remove listeners no longer needed
+    Object.keys(ownerUnsubsRef.current).forEach((uid) => {
+      if (!uids.has(uid)) {
+        ownerUnsubsRef.current[uid]();
+        delete ownerUnsubsRef.current[uid];
+      }
+    });
+
+    return () => {
+      // optional cleanup on unmount
+      Object.values(ownerUnsubsRef.current).forEach((u) => u());
+      ownerUnsubsRef.current = {};
+    };
+  }, [allStories]);
 
   /* ---------- Read ?owner=<uid> from URL ---------- */
   useEffect(() => {
@@ -618,12 +648,12 @@ function CatalogPageInner() {
       const map: Record<string, number | null> = {};
       await Promise.all(
         list.map(async (s) => {
-          if (!s.id) return;
+          if (!(s as any).id) return;
           try {
-            const rRef = doc(db, 'stories', s.id, 'ratings', user.uid);
+            const rRef = doc(db, 'stories', (s as any).id, 'ratings', user.uid);
             const rSnap = await getDoc(rRef);
             if (rSnap.exists()) {
-              map[s.id] = (rSnap.data() as any)?.rating ?? null;
+              map[(s as any).id] = (rSnap.data() as any)?.rating ?? null;
             }
           } catch { /* ignore */ }
         })
@@ -644,7 +674,7 @@ function CatalogPageInner() {
 
     switch (activeFilter) {
       case 'popular':
-        filtered = [...filtered].sort((a, b) => (b.views ?? 0) - (a.views ?? 0));
+        filtered = [...filtered].sort((a, b) => (b as any).views - (a as any).views);
         break;
       case 'recent':
         filtered = [...filtered].sort(
@@ -729,42 +759,42 @@ function CatalogPageInner() {
   /* ---------- Search: author name or semantic title ---------- */
   const handleSemanticSearch = async () => {
     const raw = searchQuery.trim();
+    if (raw) {
+      const authorPrefixMatch = raw.match(/^author:\s*(.+)$/i);
+      const nameCandidate = authorPrefixMatch ? authorPrefixMatch[1] : raw;
+
+      const wanted = norm(nameCandidate);
+      const matchingOwnerIds = new Set<string>();
+      for (const [nameKey, idSet] of Object.entries(ownerNameIndex.nameToIds)) {
+        if (nameKey.includes(wanted) && (idSet as Set<string>).size) {
+          (idSet as Set<string>).forEach((id) => matchingOwnerIds.add(id));
+        }
+      }
+
+      if (matchingOwnerIds.size > 0) {
+        const idsArr = Array.from(matchingOwnerIds);
+        if (idsArr.length === 1) {
+          setOwnerFilter(idsArr[0]);
+        } else {
+          setOwnerFilter(null);
+          const subset = allStories.filter((s) => {
+            const oid = getOwnerId(s);
+            return oid ? matchingOwnerIds.has(oid) : false;
+          });
+          const finalList = applyFiltersAndSearch(subset);
+          setDisplayedStories(finalList);
+          setSearchMessage(`Found ${finalList.length} stories from ${idsArr.length} matching author(s).`);
+        }
+        return;
+      }
+    }
+
+    // Fallback: existing semantic title search hitting your API
+    setSearchMessage(raw ? 'Searching for stories...' : 'Please enter a search query.');
     if (!raw) {
-      setSearchMessage('Please enter a search query.');
       setDisplayedStories(applyFiltersAndSearch(allStories));
       return;
     }
-
-    const authorPrefixMatch = raw.match(/^author:\s*(.+)$/i);
-    const nameCandidate = authorPrefixMatch ? authorPrefixMatch[1] : raw;
-
-    const wanted = norm(nameCandidate);
-    const matchingOwnerIds = new Set<string>();
-    for (const [nameKey, idSet] of Object.entries(ownerNameIndex.nameToIds)) {
-      if (nameKey.includes(wanted) && (idSet as Set<string>).size) {
-        (idSet as Set<string>).forEach((id) => matchingOwnerIds.add(id));
-      }
-    }
-
-    if (matchingOwnerIds.size > 0) {
-      const idsArr = Array.from(matchingOwnerIds);
-      if (idsArr.length === 1) {
-        setOwnerFilter(idsArr[0]);
-      } else {
-        setOwnerFilter(null);
-        const subset = allStories.filter((s) => {
-          const oid = getOwnerId(s);
-          return oid ? matchingOwnerIds.has(oid) : false;
-        });
-        const finalList = applyFiltersAndSearch(subset);
-        setDisplayedStories(finalList);
-        setSearchMessage(`Found ${finalList.length} stories from ${idsArr.length} matching author(s).`);
-      }
-      return;
-    }
-
-    // Fallback: existing semantic title search
-    setSearchMessage('Searching for stories...');
     setDisplayedStories([]);
 
     try {
@@ -799,15 +829,17 @@ function CatalogPageInner() {
     if (!user?.uid || !storyId) return;
     try {
       const ref = doc(db, 'users', user.uid, 'reads', storyId);
-      await setDoc(ref, { storyId, lastReadAt: serverTimestamp() }, { merge: true });
+      await runTransaction(db, async (tx) => {
+        tx.set(ref, { storyId, lastReadAt: serverTimestamp() }, { merge: true });
+      });
     } catch (e) {
       console.warn('[logRead] failed', e);
     }
   };
 
   return (
-    <div className="min-h-screen relative flex flex-col items-center p-5 md:p-10 
-      bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26] 
+    <div className="min-h-screen relative flex flex-col items-center p-5 md:p-10
+      bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26]
       text-[#3A4B5C] dark:text-[#E0C9A0] font-sans box-border">
 
       {/* Reusable Teaser Modal */}
@@ -880,7 +912,7 @@ function CatalogPageInner() {
                 );
               })}
             </div>
-           </div>
+          </div>
         </header>
 
         {/* Row 1 */}
@@ -982,9 +1014,21 @@ function CatalogPageInner() {
               const hasReadThis = !!userReadsSet[(story as any).id!];
               const hasRatedThis = !!userRatedSet[(story as any).id!];
 
-              const creatorName = getCreatorName(story) || 'Unknown Author';
+              // 🔴 Prefer LIVE profile → denormalized → defaults
               const ownerId = getOwnerId(story);
-              const authorPhoto = getCreatorPhoto(story) || DEFAULT_AVATAR;
+              const live = ownerId ? ownerProfiles[ownerId] : undefined;
+
+              const creatorName =
+                live?.name ||
+                (story as any).authorName ||
+                getCreatorName(story) ||
+                'Unknown Author';
+
+              const authorPhoto =
+                live?.photoURL ||
+                (story as any).authorPhotoURL ||
+                getCreatorPhoto(story) ||
+                DEFAULT_AVATAR;
 
               const teaser = (story as any).teaserYoutubeUrl as string | undefined;
 
@@ -1152,7 +1196,7 @@ function CatalogPageInner() {
       </div>
     </div>
   );
-};
+}
 
 /* ----------------------- PAGE EXPORT WITH SUSPENSE ----------------------- */
 export default function CatalogPage() {

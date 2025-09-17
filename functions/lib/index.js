@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.downloadStoryPdf = exports.generateWithImagen = exports.generateWithGemini = exports.removeIndexOnDelete = exports.indexAssetOnFinalize = exports.incrementCommentCount = exports.createuserprofile = exports.generateNarratumImage = void 0;
+exports.propagateUserProfileToStories = exports.downloadStoryPdf = exports.generateWithImagen = exports.generateWithGemini = exports.removeIndexOnDelete = exports.indexAssetOnFinalize = exports.incrementCommentCount = exports.createuserprofile = exports.generateNarratumImage = void 0;
 // functions/src/index.ts
 const imageGeneration_1 = require("./imageGeneration");
 Object.defineProperty(exports, "generateNarratumImage", { enumerable: true, get: function () { return imageGeneration_1.generateNarratumImage; } });
@@ -18,4 +18,6 @@ Object.defineProperty(exports, "generateWithImagen", { enumerable: true, get: fu
 // 👇 NEW: PDF generator (HTTP HTTPS function)
 const downloadStoryPdf_1 = require("./downloadStoryPdf");
 Object.defineProperty(exports, "downloadStoryPdf", { enumerable: true, get: function () { return downloadStoryPdf_1.downloadStoryPdf; } });
+var propagateUserProfile_1 = require("./propagateUserProfile");
+Object.defineProperty(exports, "propagateUserProfileToStories", { enumerable: true, get: function () { return propagateUserProfile_1.propagateUserProfileToStories; } });
 //# sourceMappingURL=index.js.map

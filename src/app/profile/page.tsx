@@ -16,7 +16,6 @@ import {
   where,
   orderBy,
   limit,
-  Timestamp,
 } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
@@ -45,7 +44,7 @@ type UserProfileDoc = {
   location?: string;
   website?: string;
   socials?: { twitter?: string; instagram?: string; discord?: string };
-  createdAt?: any;        // for referral code timestamp
+  createdAt?: any; // for referral code timestamp
   referredBy?: string | null; // who referred this user (uid), set-once
   walletAddress?: string;
   photoURL?: string;
@@ -84,7 +83,7 @@ const ProfilePage: React.FC = () => {
   const [avatarOverride, setAvatarOverride] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<'stories' | 'drafts' | 'favorites' | 'transactions'>('stories');
-  const [txSubtab, setTxSubtab] = useState<'personal' | 'referrals'>('personal'); // NEW
+  const [txSubtab, setTxSubtab] = useState<'personal' | 'referrals'>('personal');
 
   const [editOpen, setEditOpen] = useState(false);
   const [profileDoc, setProfileDoc] = useState<UserProfileDoc>({});
@@ -211,55 +210,47 @@ const ProfilePage: React.FC = () => {
     setMessage('Avatar updated successfully.');
   };
 
-/* ----------------------------- Referral helpers ----------------------------- */
+  /* ----------------------------- Referral helpers ----------------------------- */
 
-// Normalize a display name into a URL/code-safe slug: letters+numbers with dashes
-function slugifyName(name: string): string {
-  return (name || '')
-    .trim()
-    .toLowerCase()
-    .normalize('NFKD')                // strip accents
-    .replace(/[\u0300-\u036f]/g, '')  // diacritics
-    .replace(/[^a-z0-9]+/g, '-')      // non-alnum -> dash
-    .replace(/^-+|-+$/g, '')          // trim dashes
-    .replace(/-{2,}/g, '-');          // collapse dashes
-}
-
-function monthYearFromDate(d: Date) {
-  const mm = String(d.getMonth() + 1).padStart(2, '0'); // 01..12
-  const yyyy = String(d.getFullYear());
-  return { mm, yyyy };
-}
-
-/**
- * Derive the referral code:
- *   slug(displayName) + '-' + MM(createdAt) + YYYY(createdAt)
- * If displayName missing, return null (so UI shows the “Fill personal info…” flag).
- * If createdAt missing from Firestore, we fall back to auth creationTime locally.
- */
-function makeReferralCode(displayName: string | undefined | null, createdAtTs: any, authCreationTime?: string | null) {
-  const name = slugifyName(displayName || '');
-  if (!name) return null;
-
-  let dt: Date | null = null;
-
-  // Firestore Timestamp has toDate()
-  if (createdAtTs?.toDate?.()) {
-    dt = createdAtTs.toDate();
-  } else if (authCreationTime) {
-    // e.g. "Fri, 12 Sep 2025 03:01:02 GMT"
-    const parsed = new Date(authCreationTime);
-    if (!isNaN(parsed.getTime())) dt = parsed;
-  } else {
-    // last resort: now (keeps code stable for UI but recommend stamping server-side later)
-    dt = new Date();
+  function slugifyName(name: string): string {
+    return (name || '')
+      .trim()
+      .toLowerCase()
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .replace(/-{2,}/g, '-');
   }
 
-  const { mm, yyyy } = monthYearFromDate(dt!);
-  return `${name}-${mm}${yyyy}`;
-}
+  function monthYearFromDate(d: Date) {
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = String(d.getFullYear());
+    return { mm, yyyy };
+  }
 
+  function makeReferralCode(
+    displayName: string | undefined | null,
+    createdAtTs: any,
+    authCreationTime?: string | null
+  ) {
+    const name = slugifyName(displayName || '');
+    if (!name) return null;
 
+    let dt: Date | null = null;
+
+    if (createdAtTs?.toDate?.()) {
+      dt = createdAtTs.toDate();
+    } else if (authCreationTime) {
+      const parsed = new Date(authCreationTime);
+      if (!isNaN(parsed.getTime())) dt = parsed;
+    } else {
+      dt = new Date();
+    }
+
+    const { mm, yyyy } = monthYearFromDate(dt!);
+    return `${name}-${mm}${yyyy}`;
+  }
 
   /* =========================
      USER PROFILE DOC (Plan/Tier/Credits & personal info)
@@ -300,8 +291,8 @@ function makeReferralCode(displayName: string | undefined | null, createdAtTs: a
         const items: FavoriteItem[] = [];
         snap.forEach((d) => items.push({ storyId: d.id, ...(d.data() as any) }));
         items.sort((a, b) => {
-          const at = (a.createdAt?.toMillis?.() ?? 0);
-          const bt = (b.createdAt?.toMillis?.() ?? 0);
+          const at = a.createdAt?.toMillis?.() ?? 0;
+          const bt = b.createdAt?.toMillis?.() ?? 0;
           return bt - at;
         });
         setFavs(items);
@@ -397,8 +388,8 @@ function makeReferralCode(displayName: string | undefined | null, createdAtTs: a
           });
         });
 
-        const published = owned.filter(s => (s.status ?? 'draft').toLowerCase() === 'published');
-        const drafts = owned.filter(s => (s.status ?? 'draft').toLowerCase() !== 'published');
+        const published = owned.filter((s) => (s.status ?? 'draft').toLowerCase() === 'published');
+        const drafts = owned.filter((s) => (s.status ?? 'draft').toLowerCase() !== 'published');
 
         setMyStories(published);
         setMyDrafts(drafts);
@@ -411,10 +402,10 @@ function makeReferralCode(displayName: string | undefined | null, createdAtTs: a
   }, [user]);
 
   /* =========================
-     TRANSACTIONS (latest 100)
+     TRANSACTIONS (latest 100) — only when tab is open
      ========================= */
   useEffect(() => {
-    if (!user) {
+    if (!user || activeTab !== 'transactions') {
       setTxs([]);
       setTxLoading(false);
       return;
@@ -451,21 +442,20 @@ function makeReferralCode(displayName: string | undefined | null, createdAtTs: a
     );
 
     return () => unsub();
-  }, [user]);
+  }, [user, activeTab]);
 
   /* =========================
-     REFERRAL LIST (users where referredBy == current uid)
+     REFERRAL LIST — only when Transactions + subtab 'referrals'
      ========================= */
   useEffect(() => {
     const loadReferrals = async () => {
-      if (!user) {
+      if (!user || activeTab !== 'transactions' || txSubtab !== 'referrals') {
         setRefUsers([]);
         setRefLoading(false);
         return;
       }
       setRefLoading(true);
       try {
-        // Keep simple (no orderBy to avoid composite index); add orderBy('createdAt','desc') if you add the index
         const qRef = query(collection(db, 'users'), where('referredBy', '==', user.uid), limit(200));
         const snap = await getDocs(qRef);
         const rows: RefUser[] = [];
@@ -484,24 +474,37 @@ function makeReferralCode(displayName: string | undefined | null, createdAtTs: a
       }
     };
     loadReferrals();
-  }, [user]);
+  }, [user, activeTab, txSubtab]);
 
   /* =========================
      HELPERS
      ========================= */
+
+  // CHANGED: don't try to scroll to Transactions before it's rendered
   const jumpTo = useCallback((tab: typeof activeTab) => {
     setActiveTab(tab);
-    const el =
-      tab === 'stories'
-        ? document.getElementById('my-stories-section')
-        : tab === 'drafts'
-        ? document.getElementById('drafts-section')
-        : tab === 'favorites'
-        ? document.getElementById('favorites-section')
-        : document.getElementById('transactions-section');
 
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (tab !== 'transactions') {
+      const el =
+        tab === 'stories'
+          ? document.getElementById('my-stories-section')
+          : tab === 'drafts'
+          ? document.getElementById('drafts-section')
+          : document.getElementById('favorites-section');
+
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }, []);
+
+  // NEW: when Transactions becomes active, scroll after it mounts
+  useEffect(() => {
+    if (activeTab === 'transactions') {
+      requestAnimationFrame(() => {
+        const el = document.getElementById('transactions-section');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+  }, [activeTab]);
 
   const saveProfile = useCallback(async () => {
     if (!auth.currentUser) return;
@@ -535,29 +538,31 @@ function makeReferralCode(displayName: string | undefined | null, createdAtTs: a
     }
   }, [bio, location, website, socials, displayNameInput, computedDisplayName]);
 
-  const plan: Plan = (profileDoc.plan || 'free');
-  const tier: Tier = (profileDoc.subscriptionTier || (plan === 'free' ? 'basic' : 'fan'));
+  const plan: Plan = profileDoc.plan || 'free';
+  const tier: Tier = profileDoc.subscriptionTier || (plan === 'free' ? 'basic' : 'fan');
   const credits = typeof profileDoc.credits === 'number' ? profileDoc.credits! : 0;
 
   // -------- Referral code (uid + createdAt seconds) --------
-// Prefer Firestore createdAt; fall back to Firebase Auth creation time
-const authCreationTime = auth.currentUser?.metadata?.creationTime || null;
-const referralCode =
-  makeReferralCode(profileDoc.displayName ?? user?.displayName ?? null, profileDoc.createdAt, authCreationTime);
-const hasReferralCode = !!referralCode;
+  const authCreationTime = auth.currentUser?.metadata?.creationTime || null;
+  const referralCode = makeReferralCode(
+    profileDoc.displayName ?? user?.displayName ?? null,
+    profileDoc.createdAt,
+    authCreationTime
+  );
+  const hasReferralCode = !!referralCode;
 
-const copyReferral = async () => {
-  if (!referralCode) {
-    setMessage('Fill personal info to get your code first.');
-    return;
-  }
-  try {
-    await navigator.clipboard.writeText(referralCode);
-    setMessage('Referral code copied to clipboard.');
-  } catch {
-    setMessage('Could not copy referral code.');
-  }
-};
+  const copyReferral = async () => {
+    if (!referralCode) {
+      setMessage('Fill personal info to get your code first.');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(referralCode);
+      setMessage('Referral code copied to clipboard.');
+    } catch {
+      setMessage('Could not copy referral code.');
+    }
+  };
 
   /* =========================
      RENDER
@@ -570,7 +575,7 @@ const copyReferral = async () => {
         </p>
       </div>
     );
-  }
+    }
 
   return (
     <div
@@ -645,70 +650,69 @@ const copyReferral = async () => {
             </button>
           </div>
 
-        {/* Referral Code Block */}
-<div className="mt-4 flex flex-col items-center gap-2">
-  <div className="flex items-center gap-2">
-    <span className="text-sm font-semibold">Your Referral Code:</span>
+          {/* Referral Code Block */}
+          <div className="mt-4 flex flex-col items-center gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold">Your Referral Code:</span>
 
-    {hasReferralCode ? (
-      <>
-        {/* High-contrast code chip */}
-        <code
-          className="
-            text-xs px-2 py-1 rounded border font-semibold
-            text-slate-800 bg-slate-50 border-slate-300
-            dark:text-slate-100 dark:bg-slate-800 dark:border-slate-600
-          "
-        >
-          {referralCode}
-        </code>
+              {hasReferralCode ? (
+                <>
+                  {/* High-contrast code chip */}
+                  <code
+                    className="
+                      text-xs px-2 py-1 rounded border font-semibold
+                      text-slate-800 bg-slate-50 border-slate-300
+                      dark:text-slate-100 dark:bg-slate-800 dark:border-slate-600
+                    "
+                  >
+                    {referralCode}
+                  </code>
 
-        {/* High-contrast copy button */}
-        <button
-          onClick={async () => {
-            try {
-              await navigator.clipboard.writeText(referralCode!);
-              setMessage('Referral code copied to clipboard.');
-            } catch {
-              setMessage('Could not copy referral code.');
-            }
-          }}
-          title="Copy code"
-          className="
-            text-xs px-2 py-1 rounded border transition
-            bg-slate-200/80 text-slate-800 border-slate-300 hover:bg-slate-200
-            focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/60
-            dark:bg-[#233446] dark:text-slate-100 dark:border-[#4A5C6E]
-            dark:hover:bg-[#2b3e52] dark:focus-visible:ring-slate-300/40
-          "
-        >
-          Copy
-        </button>
-      </>
-    ) : (
-      <span
-        className="
-          text-xs px-2 py-1 rounded border
-          bg-yellow-50 text-yellow-800 border-yellow-300
-          dark:bg-yellow-200/20 dark:text-yellow-200 dark:border-yellow-400/40
-        "
-      >
-        Fill personal info to get your code
-      </span>
-    )}
-  </div>
+                  {/* High-contrast copy button */}
+                  <button
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(referralCode!);
+                        setMessage('Referral code copied to clipboard.');
+                      } catch {
+                        setMessage('Could not copy referral code.');
+                      }
+                    }}
+                    title="Copy code"
+                    className="
+                      text-xs px-2 py-1 rounded border transition
+                      bg-slate-200/80 text-slate-800 border-slate-300 hover:bg-slate-200
+                      focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/60
+                      dark:bg-[#233446] dark:text-slate-100 dark:border-[#4A5C6E]
+                      dark:hover:bg-[#2b3e52] dark:focus-visible:ring-slate-300/40
+                    "
+                  >
+                    Copy
+                  </button>
+                </>
+              ) : (
+                <span
+                  className="
+                    text-xs px-2 py-1 rounded border
+                    bg-yellow-50 text-yellow-800 border-yellow-300
+                    dark:bg-yellow-200/20 dark:text-yellow-200 dark:border-yellow-400/40
+                  "
+                >
+                  Fill personal info to get your code
+                </span>
+              )}
+            </div>
 
-  <div
-    className="
-      text-xs px-3 py-1 rounded-full border text-center
-      bg-amber-50 text-amber-900 border-amber-200
-      dark:bg-[#BFA071]/15 dark:text-[#E0C9A0] dark:border-[#BFA071]/40
-    "
-  >
-    <strong>Share it</strong> to earn <strong>20% to 40%</strong> on referrals for purchases.
-  </div>
-</div>
-
+            <div
+              className="
+                text-xs px-3 py-1 rounded-full border text-center
+                bg-amber-50 text-amber-900 border-amber-200
+                dark:bg-[#BFA071]/15 dark:text-[#E0C9A0] dark:border-[#BFA071]/40
+              "
+            >
+              <strong>Share it</strong> to earn <strong>20% to 40%</strong> on referrals for purchases.
+            </div>
+          </div>
         </header>
 
         {message && (
@@ -741,116 +745,127 @@ const copyReferral = async () => {
           </div>
         </nav>
 
-        {/* Sections (stories/drafts/favorites same as before) ... */}
+        {/* TODO: Your Stories/Drafts/Favorites sections here with IDs:
+            id="my-stories-section", id="drafts-section", id="favorites-section"
+        */}
 
-        {/* (Keep your previous Stories, Drafts, Favorites sections unchanged) */}
+        {/* Transactions — render ONLY when the tab is selected */}
+        {activeTab === 'transactions' && (
+          <section id="transactions-section" className="w-full mt-10">
+            <h2 className="text-2xl md:text-3xl font-bold mb-4 text-center">Transactions</h2>
 
-        {/* Transactions */}
-        <section id="transactions-section" className="w-full mt-10">
-          <h2 className="text-2xl md:text-3xl font-bold mb-4 text-center">Transactions</h2>
-
-          {/* Sub-toggle */}
-          <div className="flex justify-center mb-4">
-            <div className="inline-flex rounded-full border border-[#4A5C6E] overflow-hidden">
-              <button
-                className={`px-4 py-2 text-sm font-semibold ${
-                  txSubtab === 'personal' ? 'bg-[#BFA071] text-[#1A2533]' : 'bg-[#0f172a] text-[#E0C9A0]'
-                }`}
-                onClick={() => setTxSubtab('personal')}
-              >
-                Personal Transactions
-              </button>
-              <button
-                className={`px-4 py-2 text-sm font-semibold ${
-                  txSubtab === 'referrals' ? 'bg-[#BFA071] text-[#1A2533]' : 'bg-[#0f172a] text-[#E0C9A0]'
-                }`}
-                onClick={() => setTxSubtab('referrals')}
-              >
-                Referral Transactions
-              </button>
-            </div>
-          </div>
-
-          {txSubtab === 'personal' ? (
-            txLoading ? (
-              <p className="text-sm text-center text-[#8FA0AF]">Loading transactions…</p>
-            ) : txs.length === 0 ? (
-              <p className="text-sm text-center text-[#8FA0AF]">
-                No transactions yet. Purchases, bonuses, and spends will show up here.
-              </p>
-            ) : (
-              <div className="max-w-4xl mx-auto overflow-hidden rounded-lg border border-[#4A5C6E] bg-[#0b1220]/60">
-                <div className="grid grid-cols-12 text-xs font-semibold uppercase tracking-wide bg-[#162235] text-[#E0C9A0] border-b border-[#4A5C6E]">
-                  <div className="col-span-3 px-3 py-2">Date</div>
-                  <div className="col-span-2 px-3 py-2">Type</div>
-                  <div className="col-span-2 px-3 py-2">Credits</div>
-                  <div className="col-span-2 px-3 py-2">Amount (USD)</div>
-                  <div className="col-span-3 px-3 py-2">Note</div>
-                </div>
-                {txs.map((t) => {
-                  const ts = t.createdAt?.toDate?.() as Date | undefined;
-                  const dateStr = ts ? ts.toLocaleString() : '—';
-                  const sign = t.creditsDelta >= 0 ? '+' : '';
-                  const color =
-                    t.creditsDelta > 0
-                      ? 'text-green-300'
-                      : t.creditsDelta < 0
-                      ? 'text-rose-300'
-                      : 'text-slate-200';
-                  return (
-                    <div key={t.id} className="grid grid-cols-12 text-sm border-b border-[#243041] last:border-none text-[#E5E7EB]">
-                      <div className="col-span-3 px-3 py-2">{dateStr}</div>
-                      <div className="col-span-2 px-3 py-2 capitalize">
-                        {t.type} {t.status !== 'confirmed' && <span className="text-xs opacity-70">({t.status})</span>}
-                      </div>
-                      <div className={`col-span-2 px-3 py-2 font-bold ${color}`}>{sign}{t.creditsDelta}</div>
-                      <div className="col-span-2 px-3 py-2">{t.amountUsd ? `$${t.amountUsd.toFixed(2)}` : '—'}</div>
-                      <div className="col-span-3 px-3 py-2">
-                        {t.note || (t.storyId ? `Story: ${t.storyId}` : '—')}
-                      </div>
-                    </div>
-                  );
-                })}
+            {/* Sub-toggle */}
+            <div className="flex justify-center mb-4">
+              <div className="inline-flex rounded-full border border-[#4A5C6E] overflow-hidden">
+                <button
+                  className={`px-4 py-2 text-sm font-semibold ${
+                    txSubtab === 'personal' ? 'bg-[#BFA071] text-[#1A2533]' : 'bg-[#0f172a] text-[#E0C9A0]'
+                  }`}
+                  onClick={() => setTxSubtab('personal')}
+                >
+                  Personal Transactions
+                </button>
+                <button
+                  className={`px-4 py-2 text-sm font-semibold ${
+                    txSubtab === 'referrals' ? 'bg-[#BFA071] text-[#1A2533]' : 'bg-[#0f172a] text-[#E0C9A0]'
+                  }`}
+                  onClick={() => setTxSubtab('referrals')}
+                >
+                  Referral Transactions
+                </button>
               </div>
-            )
-          ) : (
-            // Referral subtab
-            <div className="max-w-4xl mx-auto">
-              {refLoading ? (
-                <p className="text-sm text-center text-[#8FA0AF]">Loading referral report…</p>
-              ) : refUsers.length === 0 ? (
+            </div>
+
+            {txSubtab === 'personal' ? (
+              txLoading ? (
+                <p className="text-sm text-center text-[#8FA0AF]">Loading transactions…</p>
+              ) : txs.length === 0 ? (
                 <p className="text-sm text-center text-[#8FA0AF]">
-                  No users have signed up with your referral code yet.
+                  No transactions yet. Purchases, bonuses, and spends will show up here.
                 </p>
               ) : (
-                <div className="overflow-hidden rounded-lg border border-[#4A5C6E] bg-[#0b1220]/60">
+                <div className="max-w-4xl mx-auto overflow-hidden rounded-lg border border-[#4A5C6E] bg-[#0b1220]/60">
                   <div className="grid grid-cols-12 text-xs font-semibold uppercase tracking-wide bg-[#162235] text-[#E0C9A0] border-b border-[#4A5C6E]">
-                    <div className="col-span-6 px-3 py-2">Referred User</div>
-                    <div className="col-span-3 px-3 py-2">UID</div>
-                    <div className="col-span-3 px-3 py-2">Joined</div>
+                    <div className="col-span-3 px-3 py-2">Date</div>
+                    <div className="col-span-2 px-3 py-2">Type</div>
+                    <div className="col-span-2 px-3 py-2">Credits</div>
+                    <div className="col-span-2 px-3 py-2">Amount (USD)</div>
+                    <div className="col-span-3 px-3 py-2">Note</div>
                   </div>
-                  {refUsers.map((u) => {
-                    const ts = u.createdAt?.toDate?.() as Date | undefined;
-                    const joined = ts ? ts.toLocaleDateString() : '—';
+                  {txs.map((t) => {
+                    const ts = t.createdAt?.toDate?.() as Date | undefined;
+                    const dateStr = ts ? ts.toLocaleString() : '—';
+                    const sign = t.creditsDelta >= 0 ? '+' : '';
+                    const color =
+                      t.creditsDelta > 0
+                        ? 'text-green-300'
+                        : t.creditsDelta < 0
+                        ? 'text-rose-300'
+                        : 'text-slate-200';
                     return (
-                      <div key={u.id} className="grid grid-cols-12 text-sm border-b border-[#243041] last:border-none text-[#E5E7EB]">
-                        <div className="col-span-6 px-3 py-2">{u.displayName || u.email || u.id}</div>
-                        <div className="col-span-3 px-3 py-2">{u.id}</div>
-                        <div className="col-span-3 px-3 py-2">{joined}</div>
+                      <div
+                        key={t.id}
+                        className="grid grid-cols-12 text-sm border-b border-[#243041] last:border-none text-[#E5E7EB]"
+                      >
+                        <div className="col-span-3 px-3 py-2">{dateStr}</div>
+                        <div className="col-span-2 px-3 py-2 capitalize">
+                          {t.type}{' '}
+                          {t.status !== 'confirmed' && <span className="text-xs opacity-70">({t.status})</span>}
+                        </div>
+                        <div className={`col-span-2 px-3 py-2 font-bold ${color}`}>
+                          {sign}
+                          {t.creditsDelta}
+                        </div>
+                        <div className="col-span-2 px-3 py-2">{t.amountUsd ? `$${t.amountUsd.toFixed(2)}` : '—'}</div>
+                        <div className="col-span-3 px-3 py-2">{t.note || (t.storyId ? `Story: ${t.storyId}` : '—')}</div>
                       </div>
                     );
                   })}
                 </div>
-              )}
+              )
+            ) : (
+              // Referral subtab
+              <div className="max-w-4xl mx-auto">
+                {refLoading ? (
+                  <p className="text-sm text-center text-[#8FA0AF]">Loading referral report…</p>
+                ) : refUsers.length === 0 ? (
+                  <p className="text-sm text-center text-[#8FA0AF]">
+                    No users have signed up with your referral code yet.
+                  </p>
+                ) : (
+                  <div className="overflow-hidden rounded-lg border border-[#4A5C6E] bg-[#0b1220]/60">
+                    <div className="grid grid-cols-12 text-xs font-semibold uppercase tracking-wide bg-[#162235] text-[#E0C9A0] border-b border-[#4A5C6E]">
+                      <div className="col-span-6 px-3 py-2">Referred User</div>
+                      <div className="col-span-3 px-3 py-2">UID</div>
+                      <div className="col-span-3 px-3 py-2">Joined</div>
+                    </div>
+                    {refUsers.map((u) => {
+                      const ts = u.createdAt?.toDate?.() as Date | undefined;
+                      const joined = ts ? ts.toLocaleDateString() : '—';
+                      return (
+                        <div
+                          key={u.id}
+                          className="grid grid-cols-12 text-sm border-b border-[#243041] last:border-none text-[#E5E7EB]"
+                        >
+                          <div className="col-span-6 px-3 py-2">{u.displayName || u.email || u.id}</div>
+                          <div className="col-span-3 px-3 py-2">{u.id}</div>
+                          <div className="col-span-3 px-3 py-2">{joined}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
 
-              {/* Placeholder note for commissions */}
-              <p className="mt-3 text-xs text-center text-[#9AA6B2]">
-                Referral commissions appear when your backend writes referral transactions
-                (e.g., to <code>users/&lt;you&gt;/transactions</code> with fields like <code>referrerUid</code> and <code>commissionCredits</code>).
-              </p>
-            </div>
-          )}
-        </section>
+                {/* Placeholder note for commissions */}
+                <p className="mt-3 text-xs text-center text-[#9AA6B2]">
+                  Referral commissions appear when your backend writes referral transactions (e.g., to{' '}
+                  <code>users/&lt;you&gt;/transactions</code> with fields like <code>referrerUid</code> and{' '}
+                  <code>commissionCredits</code>).
+                </p>
+              </div>
+            )}
+          </section>
+        )}
       </div>
 
       {/* ---------- Edit Drawer ---------- */}
@@ -877,9 +892,7 @@ const copyReferral = async () => {
                   onChange={(e) => setDisplayNameInput(e.target.value)}
                   placeholder="Your public name"
                 />
-                <span className="text-xs text-slate-400">
-                  Email and creation date are not editable here.
-                </span>
+                <span className="text-xs text-slate-400">Email and creation date are not editable here.</span>
               </label>
 
               <label className="grid gap-1">

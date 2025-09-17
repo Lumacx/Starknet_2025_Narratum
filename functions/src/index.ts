@@ -20,3 +20,5 @@ export {
   generateWithImagen,
   downloadStoryPdf, // 👈 added export
 };
+
+export { propagateUserProfileToStories } from './propagateUserProfile';
