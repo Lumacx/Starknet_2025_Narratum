@@ -61,7 +61,7 @@ const ThemeToggle = () => {
     <button
       onClick={toggleTheme}
       // Tailwind classes for styling the button itself
-      className="p-3 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 shadow-lg transition-all duration-300 ease-in-out transform hover:scale-110 focus:outline-none focus:ring-4 focus:ring-gray-300 dark:focus:ring-gray-600"
+      className="p-3 rounded-full bg-white-200 dark:bg-white-700 text-white-800 dark:text-white-200 shadow-lg transition-all duration-300 ease-in-out transform hover:scale-110 focus:outline-none focus:ring-4 focus:ring-white-300 dark:focus:ring-white-600"
       aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
     >
       {/* Conditionally render Sun or Moon icon */}

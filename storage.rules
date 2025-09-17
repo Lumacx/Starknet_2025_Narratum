@@ -31,6 +31,20 @@ service firebase.storage {
       return request.resource.size >= minBytes && request.resource.size <= maxBytes;
     }
 
+    /* ---------- Story publish check (reads allowed if story is public) ---------- */
+    function isPublicishData(d) {
+      return d.published == true ||
+             (d.publishedAt is timestamp && d.publishedAt <= request.time) ||
+             d.status == "published" ||
+             d.visibility == "public" ||
+             d.isPublic == true;
+    }
+    function storyIsPublic(storyId) {
+      return isPublicishData(
+        get(/databases/(default)/documents/stories/$(storyId)).data
+      );
+    }
+
     /* ----------------- /users/{uid}/assets categories ----------------- */
     function isImageCategory(cat) {
       return cat in ['covers','avatars','characters','locations','backgrounds','generatedImages'];
@@ -50,13 +64,27 @@ service firebase.storage {
         // VIDEO: MP4 (0.5 MB – 64 MB)
         (isVideoCategory(cat) && isMp4() && sizeBetween(0.5*1024*1024, 64*1024*1024)) ||
 
-        // OTHERS
+        // OTHERS mirrors the above
         (isOtherCategory(cat) && (
           (isImg()  && sizeBetween(10*1024, 12*1024*1024)) ||
           (isMp3()  && sizeBetween(10*1024, 16*1024*1024)) ||
           (isWav()  && sizeBetween(10*1024, 16*1024*1024)) ||
           (isMp4()  && sizeBetween(0.5*1024*1024, 64*1024*1024))
         ));
+    }
+
+    /* ----------------- New story folders validation ----------------- */
+    function allowedStoryFolder(folder) {
+      // Added 'narration' to align with asset hub: images, audio, narration, soundfx, videos
+      return folder in ['images','audio','narration','soundfx','videos'];
+    }
+    function fileValidForStoryFolder(folder) {
+      return
+        (folder == 'images'    && isImg()                && sizeBetween(10*1024, 12*1024*1024)) ||
+        (folder == 'audio'     && (isMp3() || isWav())   && sizeBetween(10*1024, 16*1024*1024)) ||
+        (folder == 'narration' && (isMp3() || isWav())   && sizeBetween(10*1024, 16*1024*1024)) ||
+        (folder == 'soundfx'   && (isMp3() || isWav())   && sizeBetween(10*1024, 16*1024*1024)) ||
+        (folder == 'videos'    && isMp4()                && sizeBetween(0.5*1024*1024, 64*1024*1024));
     }
 
     /* ----------------- Rutas principales ----------------- */
@@ -75,15 +103,16 @@ service firebase.storage {
       allow delete: if isOwner(uid);
     }
 
-    // Assets de historias publicados
+    // Assets de historias: /users/{uid}/stories/{storyId}/{folder}/{file...}
+    // READ: owner OR story is public (was: open to all — tightened here)
     match /users/{uid}/stories/{storyId}/{folder}/{file=**} {
-      allow read: if true; // público (lector)
-      allow create, update: if isOwner(uid) && (
-        (folder == 'images' && isImg() && sizeBetween(10*1024, 12*1024*1024)) ||
-        (folder == 'audio'  && (isMp3() || isWav()) && sizeBetween(10*1024, 16*1024*1024)) ||
-        (folder == 'videos' && isMp4() && sizeBetween(0.5*1024*1024, 64*1024*1024))
-      );
+      allow read: if (isOwner(uid) || storyIsPublic(storyId)) && allowedStoryFolder(folder);
+      allow create, update: if isOwner(uid) && allowedStoryFolder(folder) && fileValidForStoryFolder(folder);
       allow delete: if isOwner(uid);
+    }
+    // list() for story folders (needed by listAll)
+    match /users/{uid}/stories/{storyId}/{folder} {
+      allow list: if (isOwner(uid) || storyIsPublic(storyId)) && allowedStoryFolder(folder);
     }
 
     /* ----------------- assetIndex (tu galería privada) ----------------- */

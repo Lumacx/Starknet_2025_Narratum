@@ -7,8 +7,35 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
-const BASE = process.env.FIREBASE_FUNCTIONS_BASE_URL?.replace(/\/$/, '');
+// ---------- Derive Functions base URL (emulator or prod) ----------
+function deriveFunctionsBase(): string | undefined {
+  const explicit = process.env.FIREBASE_FUNCTIONS_BASE_URL?.replace(/\/$/, '');
+  if (explicit) return explicit;
 
+  const region = process.env.FIREBASE_FUNCTIONS_REGION || 'us-central1';
+  const project =
+    process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+
+  const usingEmu =
+    process.env.NEXT_PUBLIC_USE_EMULATOR === 'true' ||
+    process.env.FIREBASE_EMULATORS === 'true' ||
+    !!process.env.FIREBASE_EMULATOR_HOST;
+
+  if (!project) return undefined;
+
+  if (usingEmu) {
+    // Emulator default: http://127.0.0.1:5001/{project}/{region}
+    return `http://127.0.0.1:5001/${project}/${region}`;
+  }
+
+  // Prod default: https://{region}-{project}.cloudfunctions.net
+  return `https://${region}-${project}.cloudfunctions.net`;
+}
+
+const FUNCTIONS_BASE = deriveFunctionsBase();
+const PDF_FN = process.env.FIREBASE_PDF_FN || 'downloadStoryPdf';
+
+// ---------- Helpers ----------
 function safeStr(x: unknown): string {
   if (x == null) return '';
   const s = typeof x === 'string' ? x : String(x);
@@ -23,7 +50,7 @@ function storyToHtml(d: any): string {
   const title = safeStr(d?.title) || 'Story';
   const cover =
     safeStr(d?.coverImageUrl) ||
-    safeStr(d?.imageUrl) || // fallback if you only saved one image at top level
+    safeStr(d?.imageUrl) ||
     '';
   const scenes: any[] = Array.isArray(d?.scenes) ? d.scenes : [];
 
@@ -71,21 +98,27 @@ function storyToHtml(d: any): string {
 }
 
 async function callPdfFn(html: string, pdfOptions?: Record<string, unknown>) {
-  if (!BASE) throw new Error('FIREBASE_FUNCTIONS_BASE_URL is not set');
-  const url = `${BASE}/downloadStoryPdf`;
+  if (!FUNCTIONS_BASE) {
+    throw new Error(
+      'FIREBASE_FUNCTIONS_BASE_URL is not set and a fallback could not be derived (missing FIREBASE_PROJECT_ID).'
+    );
+  }
+  const url = `${FUNCTIONS_BASE}/${PDF_FN}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    // If your function checks auth, add Authorization: Bearer <idToken> here.
     body: JSON.stringify({ html, pdfOptions }),
+    cache: 'no-store',
   });
   if (!res.ok) {
     const txt = await res.text().catch(() => '');
     throw new Error(`Function error: ${res.status} ${txt}`);
   }
-  const buf = await res.arrayBuffer();
-  return buf;
+  return await res.arrayBuffer();
 }
 
+// ---------- Handlers ----------
 export async function GET(req: NextRequest) {
   try {
     const storyId = req.nextUrl.searchParams.get('storyId');
@@ -102,13 +135,13 @@ export async function GET(req: NextRequest) {
     const html = storyToHtml(data);
     const buf = await callPdfFn(html);
 
-    // prefer title for filename, fallback to id
     const baseName = slugify(safeStr(data.title)) || `story-${storyId}`;
 
     return new NextResponse(Buffer.from(buf), {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${baseName}.pdf"`,
+        'Cache-Control': 'no-store',
       },
     });
   } catch (err: any) {
@@ -133,6 +166,7 @@ export async function POST(req: NextRequest) {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="story.pdf"`,
+        'Cache-Control': 'no-store',
       },
     });
   } catch (err: any) {

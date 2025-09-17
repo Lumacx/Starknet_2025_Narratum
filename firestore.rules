@@ -55,7 +55,7 @@ service cloud.firestore {
       return storyIsPublic(storyId) || isStoryOwner(storyId);
     }
 
-    /* --------- Asset helpers (used under /users/{uid}/assetIndex) --------- */
+    /* --------- Legacy Asset helpers (under /users/{uid}/assetIndex) --------- */
     function allowedCategory(cat) {
       return cat in [
         'covers','avatars','characters','locations','backgrounds',
@@ -79,6 +79,36 @@ service cloud.firestore {
              ( !('storyId' in d) || (d.storyId is string || d.storyId == null) );
     }
 
+    /* --------- NEW Asset-Hub helpers (Option B) --------- */
+    function allowedAssetType(t) {
+      return t in ['images','audio','narration','soundfx','videos'];
+    }
+    function isTimestampOrMissing(field) {
+      return !(field in request.resource.data) || (request.resource.data[field] is timestamp);
+    }
+    function isStringOrMissing(field) {
+      return !(field in request.resource.data) || (request.resource.data[field] is string);
+    }
+    function validStoryAsset(d, uid, storyId, assetType) {
+      // Required fields
+      return
+        (d.ownerUid == uid) &&
+        (d.storyId == storyId) &&
+        (d.assetType == assetType) &&
+
+        // Optional but type-checked
+        ( !('kind' in d) || (d.kind in ['page','teaser','raw']) ) &&
+        ( !('source' in d) || (d.source in ['storage','youtube']) ) &&
+        isStringOrMissing('youtubeUrl') &&
+        isStringOrMissing('storagePath') &&
+        isStringOrMissing('mimeType') &&
+        isTimestampOrMissing('createdAt') &&   // recommend serverTimestamp()
+        ( !('pageNumber' in d) || (d.pageNumber is int || d.pageNumber == null) ) &&
+        ( !('sceneIndex' in d) || (d.sceneIndex is int || d.sceneIndex == null) ) &&
+        ( !('name' in d) || (d.name is string) ) &&
+        ( !('tags' in d) || (d.tags is list) );
+    }
+
     /* ============================================================
        TOP-LEVEL _meta
        ============================================================ */
@@ -91,9 +121,8 @@ service cloud.firestore {
        ============================================================ */
     match /users/{uid} {
 
-      // READ: owner OR the referrer of this user (needed for your “Referral Transactions” tab)
-      // NEW: second condition enables `query(users where referredBy == request.auth.uid)`
-      allow read: if isOwner(uid) || (isSignedIn() && resource.data.referredBy == request.auth.uid); // NEW
+      // READ: owner OR the referrer of this user (for “Referral Transactions” tab)
+      allow read: if isOwner(uid) || (isSignedIn() && resource.data.referredBy == request.auth.uid);
 
       // CREATE: owner only; limited fields
       allow create: if isOwner(uid)
@@ -146,7 +175,7 @@ service cloud.firestore {
         }
       }
 
-      /* users/{uid}/assetIndex */
+      /* ---------- Legacy: users/{uid}/assetIndex/stories/{storyId}/{category}/{assetId} ---------- */
       match /assetIndex/stories/{storyId}/{category}/{assetId} {
         allow read: if isOwner(uid);
         allow create: if isOwner(uid)
@@ -160,6 +189,7 @@ service cloud.firestore {
         allow delete: if isOwner(uid);
       }
 
+      /* ---------- Legacy: users/{uid}/assetIndex/uncategorized/{category}/{assetId} ---------- */
       match /assetIndex/uncategorized/{category}/{assetId} {
         allow read: if isOwner(uid);
         allow create, update: if isOwner(uid)
@@ -167,6 +197,34 @@ service cloud.firestore {
           && validAssetDoc(request.resource.data)
           && ( !('storyId' in request.resource.data) || request.resource.data.storyId == null );
         allow delete: if isOwner(uid);
+      }
+
+      /* ---------- NEW: Asset Hub (Option B) ---------- */
+      // Hub document itself (e.g., /assetIndex/default/stories/{storyId}/storyAssets/default)
+      match /assetIndex/{assetIndexDoc}/stories/{storyId}/storyAssets/{storyAssetsDoc} {
+        // Readable by owner OR if the corresponding story is public
+        allow read: if isOwner(uid) || storyIsPublic(storyId);
+        // Only owner can write/manage the hub doc
+        allow write, update, delete: if isOwner(uid);
+      }
+
+      // Asset collections under the hub doc (images, audio, narration, soundfx, videos)
+      match /assetIndex/{assetIndexDoc}/stories/{storyId}/storyAssets/{storyAssetsDoc}/{assetType}/{assetId} {
+        allow read: if (isOwner(uid) || storyIsPublic(storyId))
+                    && allowedAssetType(assetType);
+
+        allow create: if isOwner(uid)
+                      && allowedAssetType(assetType)
+                      && validStoryAsset(request.resource.data, uid, storyId, assetType);
+
+        allow update: if isOwner(uid)
+                      && allowedAssetType(assetType)
+                      && validStoryAsset(request.resource.data, uid, storyId, assetType)
+                      && (request.resource.data.ownerUid == resource.data.ownerUid)
+                      && (request.resource.data.storyId == resource.data.storyId)
+                      && (request.resource.data.assetType == resource.data.assetType);
+
+        allow delete: if isOwner(uid) && allowedAssetType(assetType);
       }
 
       /* users/{uid}/transactions — client read-only */

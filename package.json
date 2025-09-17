@@ -74,6 +74,7 @@
     "@starknet-react/core": "^3.7.4",
     "@tanstack-query-firebase/react": "^2.0.0",
     "@tanstack/react-query": "^5.66.0",
+    "archiver": "^7.0.1",
     "axios": "^1.7.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -120,6 +121,7 @@
   "devDependencies": {
     "@firebase/data-connect": "^0.3.10",
     "@next/bundle-analyzer": "^15.5.3",
+    "@types/archiver": "^6.0.3",
     "@types/jest": "^27.5.2",
     "@types/node": "^20.0.0",
     "@types/react": "^18",
