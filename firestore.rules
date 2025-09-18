@@ -55,6 +55,33 @@ service cloud.firestore {
       return storyIsPublic(storyId) || isStoryOwner(storyId);
     }
 
+    function isTimestampOrMissing(field) {
+      return !(field in request.resource.data) || (request.resource.data[field] is timestamp);
+    }
+    function isStringOrMissing(field) {
+      return !(field in request.resource.data) || (request.resource.data[field] is string);
+    }
+
+    // Validates a YouTube link doc stored in the gallery
+    function validVideoLink(d, uid, storyId) {
+      return
+        (d.ownerUid == uid) &&
+        // storyId must match (or be null for uncategorized)
+        (
+          (storyId == null && (!('storyId' in d) || d.storyId == null)) ||
+          (storyId != null && d.storyId == storyId)
+        ) &&
+        (d.url is string) &&                            // canonical watch URL
+        ( !('embedUrl' in d)   || (d.embedUrl   is string) ) &&
+        ( !('thumbUrl' in d)   || (d.thumbUrl   is string) ) &&
+        ( !('provider' in d)   || (d.provider   in ['youtube']) ) &&
+        ( !('kind' in d)       || (d.kind       in ['video']) ) &&
+        ( !('contentType' in d)|| (d.contentType is string) ) &&
+        isTimestampOrMissing('createdAt') &&
+        isTimestampOrMissing('updatedAt');
+    }
+
+
     /* --------- Legacy Asset helpers (under /users/{uid}/assetIndex) --------- */
     function allowedCategory(cat) {
       return cat in [
@@ -83,12 +110,7 @@ service cloud.firestore {
     function allowedAssetType(t) {
       return t in ['images','audio','narration','soundfx','videos'];
     }
-    function isTimestampOrMissing(field) {
-      return !(field in request.resource.data) || (request.resource.data[field] is timestamp);
-    }
-    function isStringOrMissing(field) {
-      return !(field in request.resource.data) || (request.resource.data[field] is string);
-    }
+    
     function validStoryAsset(d, uid, storyId, assetType) {
       // Required fields
       return
@@ -177,7 +199,7 @@ service cloud.firestore {
 
       /* ---------- Legacy: users/{uid}/assetIndex/stories/{storyId}/{category}/{assetId} ---------- */
       match /assetIndex/stories/{storyId}/{category}/{assetId} {
-        allow read: if isOwner(uid);
+        allow read: if isOwner(uid) || storyIsPublic(storyId);
         allow create: if isOwner(uid)
           && allowedCategory(category)
           && validAssetDoc(request.resource.data)
@@ -191,7 +213,7 @@ service cloud.firestore {
 
       /* ---------- Legacy: users/{uid}/assetIndex/uncategorized/{category}/{assetId} ---------- */
       match /assetIndex/uncategorized/{category}/{assetId} {
-        allow read: if isOwner(uid);
+        allow read: if isOwner(uid) || storyIsPublic(storyId);
         allow create, update: if isOwner(uid)
           && allowedCategory(category)
           && validAssetDoc(request.resource.data)
@@ -199,9 +221,37 @@ service cloud.firestore {
         allow delete: if isOwner(uid);
       }
 
+      /* ---------- NEW: assetIndex videos (7 segments) ---------- */
+      /* Story-scoped: users/{uid}/assetIndex/default/stories/{storyId}/videos/{videoId} */
+      match /assetIndex/default/stories/{storyId}/videos/{videoId} {
+        // Read in editor by owner; optionally allow if the story is public
+        allow read: if isOwner(uid) || storyIsPublic(storyId);
+
+        allow create: if isOwner(uid)
+          && validVideoLink(request.resource.data, uid, storyId);
+
+        allow update: if isOwner(uid)
+          && validVideoLink(request.resource.data, uid, storyId)
+          && (request.resource.data.ownerUid == resource.data.ownerUid)
+          && (request.resource.data.storyId  == resource.data.storyId);
+
+        allow delete: if isOwner(uid);
+      }
+
+      /* Uncategorized: users/{uid}/assetIndex/default/uncategorized/videos/{videoId} */
+      match /assetIndex/default/uncategorized/videos/{videoId} {
+        allow read: if isOwner(uid) || storyIsPublic(storyId);
+
+        allow create, update: if isOwner(uid)
+          && validVideoLink(request.resource.data, uid, null);
+
+        allow delete: if isOwner(uid);
+      }
+
+
       /* ---------- NEW: Asset Hub (Option B) ---------- */
       // Hub document itself (e.g., /assetIndex/default/stories/{storyId}/storyAssets/default)
-      match /assetIndex/{assetIndexDoc}/stories/{storyId}/storyAssets/{storyAssetsDoc} {
+      match /assetIndex/default/stories/{storyId}/storyAssets/{storyAssetsDoc} {
         // Readable by owner OR if the corresponding story is public
         allow read: if isOwner(uid) || storyIsPublic(storyId);
         // Only owner can write/manage the hub doc
@@ -209,7 +259,7 @@ service cloud.firestore {
       }
 
       // Asset collections under the hub doc (images, audio, narration, soundfx, videos)
-      match /assetIndex/{assetIndexDoc}/stories/{storyId}/storyAssets/{storyAssetsDoc}/{assetType}/{assetId} {
+      match /assetIndex/default/stories/{storyId}/storyAssets/{storyAssetsDoc}/{assetType}/{assetId} {
         allow read: if (isOwner(uid) || storyIsPublic(storyId))
                     && allowedAssetType(assetType);
 
@@ -229,7 +279,7 @@ service cloud.firestore {
 
       /* users/{uid}/transactions — client read-only */
       match /transactions/{txId} {
-        allow read: if isOwner(uid);
+        allow read: if isOwner(uid) || storyIsPublic(storyId);
         allow create, update, delete: if false;
       }
     }

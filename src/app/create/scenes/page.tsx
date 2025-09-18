@@ -43,6 +43,8 @@ import {
   uploadString,
 } from 'firebase/storage';
 
+import { storyVideosCol, uncatVideosCol } from '@/lib/firestorePaths';
+
 /* ------------------------------------------------------------------ */
 /* Types & constants                                                   */
 /* ------------------------------------------------------------------ */
@@ -106,7 +108,7 @@ const GALLERY_TABS: Array<{
   { key: 'locations',       label: 'Locations',        kind: 'image' },
   { key: 'audioNarrations', label: 'Narrations (MP3)', kind: 'audio' },
   { key: 'audioEffects',    label: 'Sound FX (MP3)',   kind: 'audio' },
-  { key: 'videos',          label: 'Videos (MP4)',     kind: 'video' },
+  { key: 'videos', label: 'Videos (YouTube/MP4)', kind: 'video' },
 ];
 
 /* ----- Scene/Story types ----- */
@@ -501,11 +503,13 @@ export default function ScenesPage() {
     try {
       // Special case: videos are stored as Firestore docs (YouTube), not Storage files
       if (category === 'videos') {
-        const baseCol = showUncategorized
-          ? collection(db, 'users', user.uid, 'assetIndex', 'uncategorized', 'videos')
-          : selectedStoryId
-            ? collection(db, 'users', user.uid, 'assetIndex', 'stories', selectedStoryId, 'videos')
-            : null;
+       // ✅ Use odd-segment collection paths
+       const baseCol = showUncategorized
+       ? uncatVideosCol(db, user.uid)                      // users/uid/assetIndex/default/uncategorized/videos
+       : selectedStoryId
+         ? storyVideosCol(db, user.uid, selectedStoryId)   // users/uid/assetIndex/default/stories/{storyId}/videos
+         : null;
+
   
         if (!baseCol) { setGallery([]); return; }
   
@@ -1028,11 +1032,13 @@ export default function ScenesPage() {
     if (!canonical) { alert('Please enter a valid YouTube URL.'); return; }
   
     // Decide Firestore collection: story videos or uncategorized videos
+    // ✅ Use odd-segment collection paths
     const baseCol = showUncategorized
-      ? collection(db, 'users', user.uid, 'assetIndex', 'uncategorized', 'videos')
-      : selectedStoryId
-        ? collection(db, 'users', user.uid, 'assetIndex', 'stories', selectedStoryId, 'videos')
-        : null;
+    ? uncatVideosCol(db, user.uid)                      // users/uid/assetIndex/default/uncategorized/videos
+    : selectedStoryId
+      ? storyVideosCol(db, user.uid, selectedStoryId)   // users/uid/assetIndex/default/stories/{storyId}/videos
+      : null;
+
   
     if (!baseCol) {
       alert('Select a story or switch to "Uncategorized" first.');
