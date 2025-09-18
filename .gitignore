@@ -50,3 +50,11 @@ firebase-debug.log
 firestore-debug.log
 /src/generated/prisma
 secrets/*.json
+
+# Python virtual envs
+.venv/
+venv/
+.python-version
+
+# Playwright cache
+playwright/.cache/

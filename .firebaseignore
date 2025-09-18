@@ -1,5 +1,3 @@
-# from the project root
-cat > .firebaseignore <<'EOF'
 # Node & VCS
 **/node_modules/**
 **/.git/**
@@ -7,29 +5,70 @@ cat > .firebaseignore <<'EOF'
 # Logs & caches
 *.log
 firebase-debug.log
+firestore-debug.log
 ui-debug.log
 **/.DS_Store
 **/.cache/**
 **/.parcel-cache/**
 
+# Python & local tooling
+.venv/
+venv/
+.python-version
+playwright/.cache/
+
 # Env files (keep examples)
 .env
+.env.local
 .env.*.local
 !.env.example
 
-# Framework build outputs (frontend)
+# Framework build outputs
 .next/
 out/
 coverage/
 dist/
 build/
 tmp/
+.turbo/
 
 # Emulator artifacts (optional)
 .emulator_data/
 .firestore/
 .storage/
 
-# IMPORTANT: do NOT ignore the compiled Functions output
+# Functions — ignore sources that shouldn't ship, but keep compiled output
+functions/node_modules/
 !functions/lib/**
-EOF
+
+# Local/build artifacts
+node_modules
+**/.next
+**/dist
+**/build
+**/*.map
+**/.DS_Store
+
+# Editor/IDE/cache
+.vscode
+.idx
+.firebase/logs
+*.log
+
+# DataConnect local dev state + generated connectors
+dataconnect/.dataconnect
+dataconnect-debug.log
+dataconnect-generated/**
+dataconnect-generated
+
+# Postgres/pglite data (all those pg17/* files)
+**/pgliteData/**
+**/pg_wal/**
+**/pg_multixact/**
+**/pg_xact/**
+**/pg_logical/**
+**/global/**
+**/base/**
+
+# Misc
+workspace/.modified

@@ -10,7 +10,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p $PORT",
+    "deploy:prod": "pnpm -C functions build && pnpm dlx firebase-tools deploy --only apphosting,functions --project narratum",
+    "deploy:prod:app": "pnpm dlx firebase-tools deploy --only apphosting --project narratum",
+    "deploy:prod:functions": "pnpm -C functions build && pnpm dlx firebase-tools deploy --only functions --project narratum",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
