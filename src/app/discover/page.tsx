@@ -31,6 +31,9 @@ import {
   Youtube as YoutubeIcon,
 } from 'lucide-react';
 
+// ⬇️ NEW: credit + functions imports
+import { getFunctions, httpsCallable } from 'firebase/functions';
+
 // Prevent SSG/prerender issues with search params etc.
 export const dynamic = 'force-dynamic';
 
@@ -214,6 +217,21 @@ const PLAN_STYLES: Record<PlanKey, {
   convai:  { badgeBg: 'bg-indigo-500', badgeText: 'text-white', label: 'ConvAI',  Icon: Bot },
   unknown: { badgeBg: 'bg-slate-500',  badgeText: 'text-white', label: '—',       Icon: Circle },
 };
+
+/* ------------------------- NEW: Credits helpers ------------------------ */
+// Add this constant near other constants (e.g., GENRE_OPTIONS, LANGUAGE_OPTIONS)
+const CREDIT_COSTS: Record<PlanKey, number> = {
+  basic: 1,
+  premium: 5,
+  convai: 15,
+  unknown: 1, // fallback
+};
+
+// Add this helper function near getPlan
+function getStoryCreditCost(s: Partial<Story> & Record<string, any>): number {
+  const plan = getPlan(s);
+  return CREDIT_COSTS[plan];
+}
 
 /* ------------------------- Reusable UI: Filter Pill ------------------------ */
 function FilterPill({
@@ -509,6 +527,10 @@ function CatalogPageInner() {
   const [teaserOpen, setTeaserOpen] = useState(false);
   const [teaserUrl, setTeaserUrl] = useState<string | null>(null);
 
+  // ⬇️ NEW: tip dropdown (store open storyId or null), and working state
+  const [tipOpenFor, setTipOpenFor] = useState<string | null>(null);
+  const [sendingTip, setSendingTip] = useState(false);
+
   const userReadCount = useMemo(() => Object.keys(userReadsSet).length, [userReadsSet]);
   const userRatedUniqueCount = useMemo(() => Object.keys(userRatedSet).length, [userRatedSet]);
 
@@ -518,6 +540,11 @@ function CatalogPageInner() {
 
   const { user } = useAuth();
   const { data, isLoading } = useListPublishedStories();
+
+  // ⬇️ NEW: functions (callables)
+  const functions = useMemo(() => getFunctions(), []);
+  const deductCreditsForRead = useMemo(() => httpsCallable(functions, 'deductCreditsForRead'), [functions]);
+  const sendTipToWriter = useMemo(() => httpsCallable(functions, 'sendTipToWriter'), [functions]);
 
   /* ---------- Build a lookup of owners by name (for search) ---------- */
   const ownerNameIndex = useMemo(() => {
@@ -837,6 +864,82 @@ function CatalogPageInner() {
     }
   };
 
+  /* --------------------------- NEW: paid READ flow --------------------------- */
+  const handlePaidRead = async (story: Story) => {
+    const storyId = (story as any).id as string;
+    if (!storyId) return;
+
+    if (!user?.uid) {
+      alert('Please sign in to read paid stories.');
+      return;
+    }
+
+    const creditCost = getStoryCreditCost(story);
+    try {
+      // If your functions are HTTP onRequest instead of onCall, replace with fetch to your HTTPS URL.
+      const res: any = await deductCreditsForRead({
+        storyId,
+        cost: creditCost,
+        plan: getPlan(story),
+      });
+
+      const ok = res?.data?.ok ?? true; // assume ok if function returns nothing special
+      const remaining = res?.data?.remainingCredits;
+      if (!ok) {
+        const reason = res?.data?.reason || 'Not enough credits.';
+        alert(reason);
+        return;
+      }
+
+      // Optional: toast remaining credits
+      if (typeof remaining === 'number') {
+        // eslint-disable-next-line no-console
+        console.log(`Remaining credits: ${remaining}`);
+      }
+
+      await logRead(storyId);
+      router.push(`/ereader?storyId=${encodeURIComponent(storyId)}&back=%2Fdiscover`);
+    } catch (e: any) {
+      console.error('deductCreditsForRead failed', e);
+      alert(e?.message || 'Could not process credits. Please try again.');
+    }
+  };
+
+  /* ------------------------------ NEW: tipping ------------------------------- */
+  const TIP_AMOUNTS = [1, 3, 5, 10];
+
+  const handleSendTip = async (writerUid: string | undefined, storyId: string, amount: number) => {
+    if (!user?.uid) {
+      alert('Sign in to tip writers.');
+      return;
+    }
+    if (!writerUid) {
+      alert('No writer for this story.');
+      return;
+    }
+    setSendingTip(true);
+    try {
+      // If your function is HTTP onRequest, replace with fetch.
+      const res: any = await sendTipToWriter({
+        toUid: writerUid,
+        storyId,
+        amount,
+      });
+      const ok = res?.data?.ok ?? true;
+      if (!ok) {
+        alert(res?.data?.message || 'Could not send tip.');
+        return;
+      }
+      alert('Thanks! Tip sent successfully.');
+      setTipOpenFor(null);
+    } catch (e: any) {
+      console.error('sendTipToWriter failed', e);
+      alert(e?.message || 'Could not send tip. Please try again.');
+    } finally {
+      setSendingTip(false);
+    }
+  };
+
   return (
     <div className="min-h-screen relative flex flex-col items-center p-5 md:p-10
       bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26]
@@ -1004,8 +1107,6 @@ function CatalogPageInner() {
               const count = (story as any).ratingCount as number | undefined;
               const my = userRatings[(story as any).id!];
 
-              const readHref = `/ereader?storyId=${encodeURIComponent((story as any).id!)}&back=%2Fdiscover`;
-
               const typeKey = getStoryType(story);
               const planKey = getPlan(story);
               const typeStyle = TYPE_STYLES[typeKey];
@@ -1032,6 +1133,12 @@ function CatalogPageInner() {
 
               const teaser = (story as any).teaserYoutubeUrl as string | undefined;
 
+              // ⬇️ NEW: cost per story (Basic=1, Premium=5, ConvAI=15)
+              const creditCost = getStoryCreditCost(story);
+
+              // For navigation after successful deduction
+              const readHref = `/ereader?storyId=${encodeURIComponent((story as any).id!)}&back=%2Fdiscover`;
+
               return (
                 <div
                   key={(story as any).id}
@@ -1041,22 +1148,30 @@ function CatalogPageInner() {
 
                   <div className="absolute inset-1 border border-[#BFA071] rounded-md pointer-events-none z-10"></div>
 
-                  {/* Type & Plan badges */}
+                  {/* Type, Plan, and Credits badges */}
                   <div className="absolute left-2 top-2 z-30 flex gap-2">
                     <span className={`px-2 py-0.5 text-[11px] rounded ${typeStyle.badgeBg} ${typeStyle.badgeText} font-bold uppercase tracking-wide inline-flex items-center gap-1.5`}>
                       {React.createElement(TYPE_STYLES[typeKey].Icon, { size: 13 })} {TYPE_STYLES[typeKey].label}
                     </span>
                   </div>
-                  <div className="absolute right-12 top-2 z-30 flex gap-2">
+                  <div className="absolute right-2 top-2 z-30 flex gap-2">
                     <span className={`px-2 py-0.5 text-[11px] rounded ${planStyle.badgeBg} ${planStyle.badgeText} font-semibold inline-flex items-center gap-1.5`}>
                       {React.createElement(PLAN_STYLES[planKey].Icon, { size: 13 })} {PLAN_STYLES[planKey].label}
                     </span>
+                    {creditCost > 0 && (
+                      <span className="px-2 py-0.5 text-[11px] rounded bg-yellow-500/90 text-black font-bold inline-flex items-center gap-1.5">
+                        {creditCost} Credits
+                      </span>
+                    )}
                   </div>
 
-                  {/* Cover */}
+                  {/* Cover (kept as link to allow open in new tab if desired) */}
                   <Link
                     href={readHref}
-                    onClick={() => logRead((story as any).id!)}
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      await handlePaidRead(story);
+                    }}
                     className="card-art-container block w-full h-40 mb-4 rounded-sm overflow-hidden relative z-20"
                   >
                     <img
@@ -1067,11 +1182,17 @@ function CatalogPageInner() {
                   </Link>
 
                   {/* Title */}
-                  <Link href={readHref} onClick={() => logRead((story as any).id!)}>
+                  <a
+                    href={readHref}
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      await handlePaidRead(story);
+                    }}
+                  >
                     <h3 className="font-['Merriweather'] text-xl font-bold mb-2 leading-tight min-h-[2.6rem] z-20 relative">
                       {(story as any).title || 'Untitled Story'}
                     </h3>
-                  </Link>
+                  </a>
 
                   {/* Genres */}
                   {(story as any).genres?.length ? (
@@ -1133,7 +1254,7 @@ function CatalogPageInner() {
                     />
                   </div>
 
-                  {/* Read + Teaser (single teaser button to the right) */}
+                  {/* Read + Teaser + Tip */}
                   <div className="mt-3 relative flex items-center justify-center gap-2">
                     {!hasReadThis && (
                       <span
@@ -1143,15 +1264,17 @@ function CatalogPageInner() {
                         Earn Stars
                       </span>
                     )}
-                    <Link
-                      href={readHref}
-                      onClick={() => logRead((story as any).id!)}
+
+                    {/* READ: paid flow */}
+                    <button
+                      type="button"
+                      onClick={() => handlePaidRead(story)}
                       className="font-['Lato'] bg-[#BFA071] text-[#1A2533] py-2.5 px-6 rounded-md text-base font-bold uppercase tracking-wide inline-block transition-colors duration-300 hover:bg-[#E0C9A0] z-20 relative"
                     >
                       READ
-                    </Link>
+                    </button>
 
-                    {/* Only one teaser button, next to READ, for premium stories with a teaser URL */}
+                    {/* Single teaser button (premium only) */}
                     {planKey === 'premium' && !!teaser && (
                       <button
                         type="button"
@@ -1164,6 +1287,46 @@ function CatalogPageInner() {
                         <span className="text-sm font-semibold">Teaser</span>
                       </button>
                     )}
+
+                    {/* NEW: Tip Writer */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setTipOpenFor(prev => prev === (story as any).id ? null : (story as any).id)}
+                        className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-white/20 bg-black/40 text-white hover:bg-black/55"
+                        title="Tip the writer"
+                        aria-haspopup="menu"
+                        aria-expanded={tipOpenFor === (story as any).id}
+                        disabled={sendingTip}
+                      >
+                        💝 <span className="text-sm font-semibold">Tip</span>
+                      </button>
+
+                      {tipOpenFor === (story as any).id && (
+                        <div
+                          className="absolute right-0 mt-2 w-36 bg-[#101418] text-white border border-white/10 rounded-md shadow-xl z-50"
+                          role="menu"
+                        >
+                          <div className="px-3 py-2 text-xs opacity-80">Send a tip</div>
+                          <div className="h-px bg-white/10" />
+                          <ul className="py-1">
+                            {TIP_AMOUNTS.map((amt) => (
+                              <li key={amt}>
+                                <button
+                                  type="button"
+                                  className="w-full text-left px-3 py-2 hover:bg-white/10 text-sm"
+                                  onClick={() => handleSendTip(ownerId, (story as any).id!, amt)}
+                                  disabled={sendingTip}
+                                  role="menuitem"
+                                >
+                                  {amt} credit{amt === 1 ? '' : 's'}
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Hover info box */}

@@ -27,6 +27,9 @@ import { ref, uploadBytes, uploadString, getDownloadURL } from 'firebase/storage
 import { useCreateStory } from '@/hooks/useCreateStory';
 import { uploadCoverToStory } from '@/lib/uploadCover';
 
+/* 🔗 NEW: Cloud Functions (credit deduction) */
+import { getFunctions, httpsCallable } from 'firebase/functions';
+
 /* ------------------------------------------------------------------ */
 /* Page constants & types                                              */
 /* ------------------------------------------------------------------ */
@@ -106,6 +109,16 @@ const DEFAULTS = {
   backgroundUrl: '/story_reader_backgrounds/dream-background.png',
 };
 
+/* ⭐ NEW: Creation credit costs */
+const CREATION_CREDIT_COSTS: Record<Draft['category'], number> = {
+  short: 5,
+  novela: 10,
+  campaign: 15,
+};
+function getCreationCreditCost(category: Draft['category']): number {
+  return CREATION_CREDIT_COSTS[category];
+}
+
 /* Helpers */
 function isHttpUrl(u?: string | null) {
   return !!u && (u.startsWith('http://') || u.startsWith('https://'));
@@ -143,8 +156,17 @@ function buildPremiumPayloadFromDraft(d: any) {
 /* ------------------------------------------------------------------ */
 export default function BeginPage() {
   const router = useRouter();
-  const { user } = useAuth();
+
+  /* 🔄 NEW: also consume userCredits from Auth context */
+  const { user, credits: userCredits } = useAuth();
   const createStory = useCreateStory();
+
+  /* 🔗 NEW: Cloud Function callables */
+  const functions = useMemo(() => getFunctions(), []);
+  const deductCreditsForCreation = useMemo(
+    () => httpsCallable(functions, 'deductCreditsForCreation'),
+    [functions]
+  );
 
   /* ---------------- Draft state ---------------- */
   const [draft, setDraft] = useState<Draft>({
@@ -253,11 +275,11 @@ export default function BeginPage() {
   const isLongForm = draft.category === 'novela' || draft.category === 'campaign';
 
   /* ---------------- Fetch user's stories for Continue ---------------- */
-      const fetchStoriesPage = useCallback(async (after?: QueryDocumentSnapshot) => {
-       if (!user) return;
-       if (isFetchingStoriesRef.current) return;   // hard guard against overlap
-       isFetchingStoriesRef.current = true;
-       setStoriesLoading(true);
+  const fetchStoriesPage = useCallback(async (after?: QueryDocumentSnapshot) => {
+    if (!user) return;
+    if (isFetchingStoriesRef.current) return;   // hard guard against overlap
+    isFetchingStoriesRef.current = true;
+    setStoriesLoading(true);
 
     try {
       const secondaryDir = sortOrder; // keep secondary aligned with primary
@@ -295,15 +317,15 @@ export default function BeginPage() {
       setStoriesLoading(false);
       isFetchingStoriesRef.current = false;
     }
-  }, [user, sortKey, sortOrder]); // ⬅️ remove storiesLoading/db (db is stable anyway)
+  }, [user, sortKey, sortOrder]); // ⬅️ stable deps
 
   // Consolidated effect: initial load + reacts to sort changes.
-    useEffect(() => {
-       if (!user) return;
-       setStories([]);
-       setStoriesLast(null);
-       fetchStoriesPage();             // stable; won’t thrash on loading flips
-     }, [user, sortKey, sortOrder, fetchStoriesPage]);
+  useEffect(() => {
+    if (!user) return;
+    setStories([]);
+    setStoriesLast(null);
+    fetchStoriesPage();
+  }, [user, sortKey, sortOrder, fetchStoriesPage]);
 
   /* ---------------- Ensure story exists (used by cover/premium saving) ---------------- */
   async function ensureStoryId(): Promise<string> {
@@ -546,6 +568,7 @@ export default function BeginPage() {
     draft.synopsis.trim() !== '' &&
     (draft.category !== 'campaign' || (draft.campaignName || '').trim() !== '');
 
+  /* 🔥 UPDATED: Start Story with credit deduction */
   async function onStartStory() {
     try {
       setStarting(true);
@@ -555,6 +578,20 @@ export default function BeginPage() {
         return;
       }
       if (!canStartNew) throw new Error('Fill Title, Genres, Synopsis (and Campaign Name if Campaign).');
+      if (!user) throw new Error('Please sign in to create a story.');
+
+      const cost = getCreationCreditCost(draft.category);
+      if (userCredits == null || userCredits < cost) {
+        alert(`You need ${cost} credits to create a ${draft.category} story. You currently have ${userCredits ?? 0} credits.`);
+        router.push('/buy-credits');
+        return;
+      }
+
+      // Deduct credits via Cloud Function (only for NEW creation)
+      const deductRes: any = await deductCreditsForCreation({ cost, storyType: draft.category });
+      if (!deductRes?.data?.ok) {
+        throw new Error(deductRes?.data?.message || 'Failed to deduct credits for story creation.');
+      }
 
       const premiumPayload = buildPremiumPayloadFromDraft(draft);
 
@@ -589,6 +626,7 @@ export default function BeginPage() {
     }
   }
 
+  /* 🔥 UPDATED: Skip to Scenes with credit deduction (only if truly creating new) */
   async function handleSkipToScenes() {
     try {
       setJumpingScenes(true);
@@ -600,32 +638,48 @@ export default function BeginPage() {
       }
 
       if (!canStartNew) throw new Error('Fill Title, Genres, Synopsis (and Campaign Name if Campaign).');
+      if (!user) throw new Error('Please sign in to create a story.');
 
-      const premiumPayload = buildPremiumPayloadFromDraft(draft);
+      const cost = getCreationCreditCost(draft.category);
+      if (userCredits == null || userCredits < cost) {
+        alert(`You need ${cost} credits to create a ${draft.category} story. You currently have ${userCredits ?? 0} credits.`);
+        router.push('/buy-credits');
+        return;
+      }
 
-      const id =
-        draft.storyId ||
-        (await createStory({
+      // If there's no story yet, deduct and create it now.
+      let id = draft.storyId;
+      if (!id) {
+        const deductRes: any = await deductCreditsForCreation({ cost, storyType: draft.category });
+        if (!deductRes?.data?.ok) {
+          throw new Error(deductRes?.data?.message || 'Failed to deduct credits for story creation.');
+        }
+
+        const premiumPayload = buildPremiumPayloadFromDraft(draft);
+
+        id = await createStory({
           title: draft.title.trim(),
           synopsis: draft.synopsis.trim(),
           genres: draft.genres,
           category: draft.category,
           pageCount: clampPagesForCategory(draft.category, draft.pages),
+          coverImageUrl: null,
           visibility: 'private',
           status: 'draft',
           language: draft.language,
           metadata: draft.campaignName ? { campaignName: draft.campaignName } : {},
           // ⭐ include premium only if provided
           ...premiumPayload,
-        } as any));
+        } as any);
 
-      setDraft(d => ({ ...d, storyId: id }));
-      try {
-        const raw = localStorage.getItem(DRAFT_KEY);
-        const obj = raw ? JSON.parse(raw) : {};
-        obj.storyId = id;
-        localStorage.setItem(DRAFT_KEY, JSON.stringify(obj));
-      } catch {}
+        setDraft(d => ({ ...d, storyId: id }));
+        try {
+          const raw = localStorage.getItem(DRAFT_KEY);
+          const obj = raw ? JSON.parse(raw) : {};
+          obj.storyId = id;
+          localStorage.setItem(DRAFT_KEY, JSON.stringify(obj));
+        } catch {}
+      }
 
       router.push(`/create/scenes?storyId=${id}`);
     } catch (e: any) {
@@ -643,6 +697,8 @@ export default function BeginPage() {
     (draft.category !== 'campaign' || (draft.campaignName || '').trim() !== '');
 
   /* ---------------- UI ---------------- */
+  const selectedCost = getCreationCreditCost(draft.category);
+
   return (
     <div
       className="
@@ -666,6 +722,16 @@ export default function BeginPage() {
           border-slate-300 bg-white text-slate-800
           dark:border-[#344b63] dark:bg-[#142436] dark:text-[#E0C9A0]
         ">
+          {/* Quick credits summary (NEW) */}
+          <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
+            <span className="px-2 py-1 rounded-md bg-slate-100 dark:bg-black/30">
+              Your Credits: <strong>{userCredits ?? 0}</strong>
+            </span>
+            <span className="px-2 py-1 rounded-md bg-slate-100 dark:bg-black/30">
+              Cost to create <em className="font-semibold">{draft.category}</em>: <strong>{selectedCost}</strong>
+            </span>
+          </div>
+
           {/* Title + Genres + Story Mode */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             {/* Title */}
@@ -805,9 +871,14 @@ export default function BeginPage() {
                   });
                 }}
               >
-                {CATEGORIES.map((c) => (
-                  <option key={c.key} value={c.key}>{c.label}</option>
-                ))}
+                {CATEGORIES.map((c) => {
+                  const cost = getCreationCreditCost(c.key);
+                  return (
+                    <option key={c.key} value={c.key}>
+                      {c.label} ({cost} credits)
+                    </option>
+                  );
+                })}
               </select>
               <p className="text-xs mt-1 text-slate-600 dark:text-[#C8D6E5]/70">
                 Allowed pages: {cat.min}–{cat.max}
@@ -1129,7 +1200,7 @@ export default function BeginPage() {
 
             <div className="mt-4 text-xs text-slate-600 dark:text-[#C8D6E5]/70">
               Reader side will inject:
-              <pre className="mt-2 p-2 rounded bg-slate-100 dark:bg-black/30 overflow-x-auto">{`<elevenlabs-convai agent-id="<this value>"></elevenlabs-convai>
+              <pre className="mt-2 p-2 rounded bg-slate-100 dark:bg:black/30 overflow-x-auto">{`<elevenlabs-convai agent-id="<this value>"></elevenlabs-convai>
 <script src="https://unpkg.com/@elevenlabs/convai-widget-embed" async type="text/javascript"></script>`}</pre>
             </div>
           </div>

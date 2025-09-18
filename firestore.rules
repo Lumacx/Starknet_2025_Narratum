@@ -61,6 +61,11 @@ service cloud.firestore {
     function isStringOrMissing(field) {
       return !(field in request.resource.data) || (request.resource.data[field] is string);
     }
+    
+    // Valid story types
+    function isValidStoryType(type) {
+        return type in ['basic', 'premium', 'convai'];
+    }
 
     // Validates a YouTube link doc stored in the gallery
     function validVideoLink(d, uid, storyId) {
@@ -86,7 +91,7 @@ service cloud.firestore {
     function allowedCategory(cat) {
       return cat in [
         'covers','avatars','characters','locations','backgrounds',
-        'audioNarrations','audioEffects','videos','generatedImages','others'
+        'audioNarrations','audioEffects','generatedImages','others'
       ];
     }
     function hasTimestampOrMissing(v) {
@@ -131,14 +136,14 @@ service cloud.firestore {
         ( !('tags' in d) || (d.tags is list) );
     }
 
-    /* ============================================================
+    /* ===========================================================
        TOP-LEVEL _meta
        ============================================================ */
     match /_meta/{docId} {
       allow read, write: if isSignedIn();
     }
 
-    /* ============================================================
+    /* ===========================================================
        USERS TREE
        ============================================================ */
     match /users/{uid} {
@@ -150,7 +155,9 @@ service cloud.firestore {
       allow create: if isOwner(uid)
         && !('plan' in request.resource.data)
         && !('subscriptionTier' in request.resource.data)
-        && !('credits' in request.resource.data)
+        // Allow 'credits' and 'lastMonthlyCreditGrant' to be set on creation by server (e.g., auth trigger)
+        && ( !('credits' in request.resource.data) || (request.resource.data.credits is int && request.resource.data.credits >= 0) )
+        && ( !('lastMonthlyCreditGrant' in request.resource.data) || (request.resource.data.lastMonthlyCreditGrant is timestamp) )
         && !('ownerUid' in request.resource.data)
         && !('email' in request.resource.data)
         && !('createdAt' in request.resource.data)
@@ -158,11 +165,12 @@ service cloud.firestore {
         && ( !('referredBy' in request.resource.data) || (request.resource.data.referredBy is string) );
 
       // UPDATE: owner may edit ONLY profile fields; server fields immutable
+      // Credits and lastMonthlyCreditGrant can only be changed by server-side functions (Admin SDK)
       allow update: if isOwner(uid)
         && request.resource.data.diff(resource.data).changedKeys().hasOnly([
           'displayName','bio','location','website','socials','walletAddress','photoURL'
         ])
-        && unchanged(['plan','subscriptionTier','credits','ownerUid','email','createdAt','referredBy','referralCode']);
+        && unchanged(['plan','subscriptionTier','credits','ownerUid','email','createdAt','referredBy','referralCode', 'lastMonthlyCreditGrant']);
 
       allow delete: if isOwner(uid);
 
@@ -210,6 +218,23 @@ service cloud.firestore {
           && (resource.data.storyId == request.resource.data.storyId);
         allow delete: if isOwner(uid);
       }
+      
+      /* ---------- Legacy: users/{uid}/assetIndex/stories/{storyId}/videos/{videoId} (6 segments after users/{uid}/) ---------- */
+      // This rule is added to handle the video path with 6 segments.
+      match /assetIndex/stories/{storyId}/videos/{videoId} {
+        allow read: if isOwner(uid) || storyIsPublic(storyId);
+
+        allow create: if isOwner(uid)
+          && validVideoLink(request.resource.data, uid, storyId);
+
+        allow update: if isOwner(uid)
+          && validVideoLink(request.resource.data, uid, storyId)
+          && (request.resource.data.ownerUid == resource.data.ownerUid)
+          && (request.resource.data.storyId  == resource.data.storyId);
+
+        allow delete: if isOwner(uid);
+      }
+
 
       /* ---------- Legacy: users/{uid}/assetIndex/uncategorized/{category}/{assetId} ---------- */
       match /assetIndex/uncategorized/{category}/{assetId} {
@@ -279,19 +304,23 @@ service cloud.firestore {
 
       /* users/{uid}/transactions — client read-only */
       match /transactions/{txId} {
-        allow read: if isOwner(uid) || storyIsPublic(storyId);
-        allow create, update, delete: if false;
+        allow read: if isOwner(uid); // Only owner can read their own transactions
+        allow create: if false; // Only server can create transactions
+        allow update, delete: if false;
+        // Further validation for transaction fields will be in Cloud Functions for server-side writes
       }
     }
 
-    /* ============================================================
+    /* ===========================================================
        TOP-LEVEL STORIES
        ============================================================ */
     match /stories/{storyId} {
-      allow create: if isOwnerCreate();
+      allow create: if isOwnerCreate() && request.resource.data.type is string && isValidStoryType(request.resource.data.type);
       allow read: if isPublicStory() || isOwnerDoc();
       allow update, delete: if isOwnerDoc()
-        && request.resource.data.ownerUid == resource.data.ownerUid;
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && ( !('type' in request.resource.data) || isValidStoryType(request.resource.data.type) ) // Allow type update by owner, with validation
+        && unchanged(['ownerUid']); // ownerUid should not change on update
 
       match /ratings/{raterUid} {
         allow read: if canReadStoryById(storyId)
@@ -318,7 +347,7 @@ service cloud.firestore {
       }
     }
 
-    /* ============================================================
+    /* ===========================================================
        TOP-LEVEL storyContents
        ============================================================ */
     match /storyContents/{id} {

@@ -1,459 +1,326 @@
-// src/app/subscription/page.tsx
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { FC, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { X } from 'lucide-react';
-import { useRouter } from 'next/navigation'; // Import useRouter for navigation
-import { auth } from '@/lib/firebase'; // Import auth from your central Firebase client setup
+import { PayPalButtons } from '@paypal/react-paypal-js'; // Assuming PayPal integration here as well
+import { useAuth } from '@/context/AuthContext'; // Assuming useAuth provides user data and possibly PayPal client ID
+import { httpsCallable } from 'firebase/functions'; // For calling Cloud Functions
+import { functions } from '@/lib/firebase'; // Assuming firebase functions instance
 
-/* ───────────────────────────────────────────
-   Types to fix: window.paypal.Buttons typing
-   ─────────────────────────────────────────── */
-declare global {
-  interface Window {
-    paypal?: {
-      Buttons: (opts: any) => { render: (selector: string) => Promise<void> };
-    };
-  }
+interface OneTimeCreditPackage {
+  id: string;
+  name: string; // e.g., "Tester", "Reader"
+  credits: number;
+  price: number;
 }
 
-/* ----------------------------- Types & Data ----------------------------- */
-type BillingCycle = 'monthly' | 'yearly';
-type PlanName = 'Free' | 'Fan' | 'Premium';
+interface SubscriptionTier {
+  id: string;
+  name: string; // e.g., "OG Free", "Tester", "Reader"
+  credits: number;
+  price: number;
+}
 
-const BASE_PRICES: Record<Exclude<PlanName, 'Free'>, { monthly: number; yearly: number }> = {
-  Fan: { monthly: 8, yearly: 80 },
-  Premium: { monthly: 15, yearly: 150 },
+interface CreditOfferings {
+  oneTime: OneTimeCreditPackage[];
+  weekly: SubscriptionTier[];
+  monthly: SubscriptionTier[];
+}
+
+const allCreditOfferings: CreditOfferings = {
+  oneTime: [
+    { id: 'ot_tester', name: 'Tester', credits: 25, price: 5.00 },
+    { id: 'ot_reader', name: 'Reader', credits: 75, price: 15.00 },
+    { id: 'ot_writer', name: 'Writer', credits: 125, price: 25.00 },
+    { id: 'ot_creator', name: 'Creator', credits: 250, price: 50.00 },
+  ],
+  weekly: [
+    { id: 'sub_wk_og_free', name: 'OG Free', credits: 5, price: 0.00 },
+    { id: 'sub_wk_tester', name: 'Tester', credits: 10, price: 1.99 },
+    { id: 'sub_wk_reader', name: 'Reader', credits: 25, price: 3.99 },
+    { id: 'sub_wk_writer', name: 'Writer', credits: 50, price: 7.99 },
+    { id: 'sub_wk_creator', name: 'Creator', credits: 100, price: 14.99 },
+  ],
+  monthly: [
+    { id: 'sub_mo_og_free', name: 'OG Free', credits: 10, price: 0.00 },
+    { id: 'sub_mo_tester', name: 'Tester', credits: 25, price: 3.99 },
+    { id: 'sub_mo_reader', name: 'Reader', credits: 50, price: 7.99 },
+    { id: 'sub_mo_writer', name: 'Writer', credits: 100, price: 14.99 },
+    { id: 'sub_mo_creator', name: 'Creator', credits: 250, price: 36.99 },
+  ],
 };
 
-type AppliedCode =
-  | { code: 'Cartaguito0925'; kind: 'free_month' }
-  | { code: 'Beta2025'; kind: 'percent'; pct: number };
+type PurchaseType = 'one-time' | 'subscription';
+type SubscriptionFrequency = 'weekly' | 'monthly';
 
-function formatUSD(n: number) {
-  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
-}
+const SubscriptionPage: FC = () => {
+  const { user, loading: authLoading } = useAuth();
+  const [purchaseType, setPurchaseType] = useState<PurchaseType>('one-time');
+  const [subscriptionFrequency, setSubscriptionFrequency] = useState<SubscriptionFrequency>('monthly');
+  const [selectedOffering, setSelectedOffering] = useState<OneTimeCreditPackage | SubscriptionTier | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<'idle' | 'success' | 'error' | 'pending'>('idle');
+  const [message, setMessage] = useState<string>('');
 
-/* ----------------------------- Price Engine ----------------------------- */
-function computePrice(
-  plan: PlanName,
-  cycle: BillingCycle,
-  code?: AppliedCode
-): { display: string; raw: number; explainer?: string } {
-  if (plan === 'Free') return { display: 'Free', raw: 0 };
+  // Placeholder for PayPal client ID if needed directly here.
+  // In a real app, this would likely come from an API route or context.
+  const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID; 
 
-  const base = BASE_PRICES[plan][cycle];
-
-  if (!code) {
-    return {
-      display: cycle === 'monthly' ? `${formatUSD(base)} / month` : `${formatUSD(base)} / year`,
-      raw: base,
-    };
-  }
-
-  if (code.kind === 'free_month') {
-    if (cycle === 'monthly') {
-      const nextCharge = base;
-      return {
-        display: `${formatUSD(0)} now, then ${formatUSD(nextCharge)}/mo`,
-        raw: 0,
-        explainer: 'First month free. Billed monthly afterward.',
-      };
+  const currentOfferings = useMemo(() => {
+    if (purchaseType === 'one-time') {
+      return allCreditOfferings.oneTime;
+    } else if (subscriptionFrequency === 'weekly') {
+      return allCreditOfferings.weekly;
     } else {
-      const monthValue = BASE_PRICES[plan].monthly;
-      const discounted = Math.max(0, base - monthValue);
-      return {
-        display: `${formatUSD(discounted)} / year`,
-        raw: discounted,
-        explainer: `Includes 1 month free (${formatUSD(monthValue)} off).`,
-      };
+      return allCreditOfferings.monthly;
     }
-  }
+  }, [purchaseType, subscriptionFrequency]);
 
-  if (code.kind === 'percent') {
-    const discounted = +(base * (1 - code.pct)).toFixed(2);
-    if (cycle === 'monthly') {
-      return {
-        display: `${formatUSD(discounted)} now, then ${formatUSD(base)}/mo`,
-        raw: discounted,
-        explainer: `${Math.round(code.pct * 100)}% off the first charge.`,
-      };
-    } else {
-      return {
-        display: `${formatUSD(discounted)} / year`,
-        raw: discounted,
-        explainer: `${Math.round(code.pct * 100)}% off the annual total.`,
-      };
+  const createPayPalOrder = async (data: Record<string, unknown>, actions: any) => {
+    if (!selectedOffering) {
+      setMessage('Please select an offering.');
+      throw new Error('No offering selected.');
     }
-  }
 
-  return {
-    display: cycle === 'monthly' ? `${formatUSD(base)} / month` : `${formatUSD(base)} / year`,
-    raw: base,
+    // This would ideally call a backend endpoint to create the order securely.
+    // For now, client-side creation for demonstration.
+    return actions.order.create({
+      purchase_units: [
+        {
+          amount: {
+            value: selectedOffering.price.toFixed(2),
+            currency_code: 'USD',
+          },
+          description: `Narratum ${purchaseType === 'one-time' ? 'Credits Package' : 'Subscription'} - ${selectedOffering.name} (${selectedOffering.credits} Credits)`,
+        },
+      ],
+      intent: 'CAPTURE', // For one-time purchases
+      // For subscriptions, you'd use actions.subscription.create and a different flow
+    });
   };
-}
 
-/* ----------------------------- UI ----------------------------- */
-const SubscriptionPage: React.FC = () => {
-  const [billing, setBilling] = useState<BillingCycle>('monthly');
-  const [message, setMessage] = useState('');
-  const [referralInput, setReferralInput] = useState('');
-  const [applied, setApplied] = useState<AppliedCode | undefined>(undefined);
-  const [codeError, setCodeError] = useState<string | null>(null);
-  const [paypalClientId, setPaypalClientId] = useState<string | null>(null);
-  const [sdkReady, setSdkReady] = useState(false);
-  const router = useRouter(); // Initialize Next.js router
+  const onApprovePayPal = async (data: Record<string, unknown>, actions: any) => {
+    if (!user?.uid) {
+      setMessage('You must be logged in to complete this purchase.');
+      setPaymentStatus('error');
+      return;
+    }
+    if (!selectedOffering) {
+      setMessage('No offering selected for approval.');
+      setPaymentStatus('error');
+      return;
+    }
 
-  const fanPrice = useMemo(() => computePrice('Fan', billing, applied), [billing, applied]);
-  const premiumPrice = useMemo(() => computePrice('Premium', billing, applied), [billing, applied]);
+    setPaymentStatus('pending');
+    setMessage('Processing your payment...');
 
-  useEffect(() => {
-    async function fetchPaypalClientId() {
-      try {
-        const response = await fetch('/api/paypal-config');
-        const data = await response.json();
-        if (response.ok) {
-          setPaypalClientId(data.clientId);
+    try {
+      if (purchaseType === 'one-time') {
+        const order = await actions.order.capture();
+        if (order.status === 'COMPLETED') {
+          const processPayment = httpsCallable(functions, 'processPayPalPayment');
+          await processPayment({
+            orderId: order.id,
+            userId: user.uid,
+            amount: selectedOffering.credits,
+            pricePaid: selectedOffering.price,
+            packageId: selectedOffering.id,
+            type: 'one-time-purchase',
+          });
+          setPaymentStatus('success');
+          setMessage(`Successfully purchased ${selectedOffering.credits} credits!`);
         } else {
-          console.error('Failed to fetch PayPal Client ID:', data.error);
-          setMessage(`Error: ${data.error}`);
+          setPaymentStatus('error');
+          setMessage('PayPal payment not completed.');
         }
-      } catch (error) {
-        console.error('Error fetching PayPal Client ID:', error);
-        setMessage('Error connecting to payment services.');
+      } else {
+        // This is a simplified example for subscriptions.
+        // A real subscription flow would involve `actions.subscription.create`
+        // and then verifying the subscription status on your backend.
+        // For now, we'll simulate success for non-zero price subscriptions.
+        if (selectedOffering.price === 0) {
+            setMessage(`You activated the free ${selectedOffering.name} plan!`);
+            setPaymentStatus('success');
+            // Call a Cloud Function to activate free plan or grant credits
+            // For example:
+            // const activateFreePlan = httpsCallable(functions, 'activateFreeSubscription');
+            // await activateFreePlan({ userId: user.uid, planId: selectedOffering.id, frequency: subscriptionFrequency });
+        } else {
+            // Simulate PayPal subscription creation success.
+            // In a real app, this would involve a PayPal subscription ID and verification.
+            console.log('Simulating subscription approval for:', selectedOffering.name);
+            const processSubscription = httpsCallable(functions, 'processPayPalSubscription');
+            await processSubscription({
+                userId: user.uid,
+                planId: selectedOffering.id,
+                frequency: subscriptionFrequency,
+                price: selectedOffering.price,
+                credits: selectedOffering.credits,
+                // Add any PayPal subscription ID from actions.subscription.create if applicable
+            });
+            setPaymentStatus('success');
+            setMessage(`Subscription to ${selectedOffering.name} (${subscriptionFrequency}) activated!`);
+        }
       }
+    } catch (error: any) {
+      console.error('Error during PayPal approval/subscription:', error);
+      setPaymentStatus('error');
+      setMessage(`Payment/Subscription failed: ${error.message || 'An unexpected error occurred.'}`);
     }
-    fetchPaypalClientId();
-  }, []);
+  };
 
-  useEffect(() => {
-    if (paypalClientId && !sdkReady) {
-      const script = document.createElement('script');
-      script.src = `https://www.paypal.com/sdk/js?client-id=${paypalClientId}&components=buttons&vault=true&intent=subscription`;
-      script.onload = () => setSdkReady(true);
-      script.onerror = () => {
-        console.error('PayPal SDK failed to load.');
-        setMessage('Failed to load PayPal payment system.');
-      };
-      document.body.appendChild(script);
+  const onErrorPayPal = (err: Record<string, unknown>) => {
+    console.error('PayPal onError:', err);
+    setPaymentStatus('error');
+    setMessage('PayPal payment encountered an error. Please try again.');
+  };
 
-      return () => {
-        document.body.removeChild(script);
-      };
-    }
-  }, [paypalClientId, sdkReady]);
+  const onCancelPayPal = (data: Record<string, unknown>) => {
+    console.log('PayPal payment cancelled:', data);
+    setPaymentStatus('idle');
+    setMessage('Payment cancelled.');
+  };
 
-  function handleApplyCode() {
-    const code = referralInput.trim();
-    setCodeError(null);
-
-    if (!code) {
-      setCodeError('Please enter a code.');
-      return;
-    }
-
-    const c = code.toLowerCase();
-
-    if (c === 'cartaguito0925'.toLowerCase()) {
-      setApplied({ code: 'Cartaguito0925', kind: 'free_month' });
-      setReferralInput('');
-      setMessage('Referral applied: First month free (or 1 month value off yearly).');
-      return;
-    }
-
-    if (c === 'beta2025'.toLowerCase()) {
-      setApplied({ code: 'Beta2025', kind: 'percent', pct: 0.25 });
-      setReferralInput('');
-      setMessage('Referral applied: 25% off this purchase.');
-      return;
-    }
-
-    setCodeError('Invalid code. Check the spelling and try again.');
+  if (authLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading user data...</div>;
   }
 
-  function clearCode() {
-    setApplied(undefined);
-    setMessage('Referral code removed.');
-    setCodeError(null);
-  }
-
-  function handleSubscribe(planName: PlanName) {
-    if (planName === 'Free') {
-      setMessage(`You're choosing the Free plan. Enjoy!`);
-      return;
-    }
-
-    const p = computePrice(planName, billing, applied);
-
-    setMessage(
-      `Proceeding to subscribe to ${planName} — ${billing.toUpperCase()} at ${p.display}${applied ? ` (${applied.code}${p.explainer ? ` — ${p.explainer}` : ''})` : ''}. (PayPal checkout will be initiated here)`
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white p-4">
+        <p className="text-lg">Please log in to manage subscriptions or buy credits.</p>
+      </div>
     );
   }
 
-  const Toggle = (
-    <div className="inline-flex items-center rounded-full bg-white/70 dark:bg-black/30 border border-[#C1A98A] overflow-hidden shadow-sm">
-      <button
-        className={`px-4 py-2 text-sm font-semibold transition ${
-          billing === 'monthly' ? 'bg-[#C1A98A] text-white' : 'text-[#3A4B5C] dark:text-[#E0C9A0]'
-        }`}
-        onClick={() => setBilling('monthly')}
-        aria-pressed={billing === 'monthly'}
-      >
-        Monthly
-      </button>
-      <button
-        className={`px-4 py-2 text-sm font-semibold transition ${
-          billing === 'yearly' ? 'bg-[#C1A98A] text-white' : 'text-[#3A4B5C] dark:text-[#E0C9A0]'
-        }`}
-        onClick={() => setBilling('yearly')}
-        aria-pressed={billing === 'yearly'}
-      >
-        Yearly
-      </button>
-    </div>
-  );
-
-  // PayPal button container will be rendered only when SDK is ready
-  const PayPalButton = ({
-    planName,
-    price,
-  }: {
-    planName: PlanName;
-    price: { display: string; raw: number; explainer?: string };
-  }) => {
-    const buttonId = `paypal-button-container-${planName}`;
-
-    useEffect(() => {
-      const hasButtons =
-        typeof window !== 'undefined' &&
-        !!window.paypal &&
-        typeof window.paypal.Buttons === 'function';
-
-      if (sdkReady && hasButtons) {
-        const container = document.getElementById(buttonId);
-        if (container) container.innerHTML = '';
-
-        window.paypal!
-          .Buttons({
-            createSubscription: function (data: any, actions: any) {
-              let planId: string | undefined;
-              if (planName === 'Fan') {
-                planId = billing === 'monthly' ? 'P-060018922N140623RNC75AQI' : 'P-1J502793FF6508931NC75HHY';
-              } else if (planName === 'Premium') {
-                planId = billing === 'monthly' ? 'P-6DA52220W74986025NC75CUI' : 'P-0J155152P7353423PNC75EEI';
-              }
-              if (!planId) return Promise.reject('Invalid plan selected');
-
-              return actions.subscription.create({
-                plan_id: planId,
-                // You could include custom_id here if desired, though server-side verification
-                // based on Firebase ID token handles user linking.
-                // custom_id: auth.currentUser?.uid, // Example: Link PayPal subscription to Firebase UID
-              });
-            },
-            onApprove: async function (data: any) {
-              setMessage('Subscription approved! Verifying payment...');
-              console.log('Subscription Approved:', data.subscriptionID);
-
-              try {
-                const user = auth.currentUser; // Get current Firebase user
-                if (!user) {
-                  setMessage('Error: User not logged in. Please log in to complete subscription.');
-                  router.push('/login'); // Redirect to login page
-                  return;
-                }
-
-                const idToken = await user.getIdToken(); // Get Firebase ID Token
-
-                // Call your backend to verify the subscription
-                const response = await fetch('/api/paypal-verify-subscription', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${idToken}`, // Send Firebase ID Token
-                  },
-                  body: JSON.stringify({
-                    subscriptionID: data.subscriptionID,
-                    planName,
-                    billingCycle: billing,
-                  }),
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                  setMessage('Subscription successfully activated!');
-                  router.push('/dashboard?subscription=success'); // Redirect to dashboard with success message
-                } else {
-                  setMessage(`Subscription verification failed: ${result.error}`);
-                  console.error('Server verification failed:', result.error);
-                }
-              } catch (error) {
-                setMessage('Error during subscription verification.');
-                console.error('Error calling backend for verification:', error);
-              }
-            },
-            onError: function (err: any) {
-              console.error('PayPal error:', err);
-              setMessage('PayPal checkout error. Please try again.');
-            },
-            onCancel: function () {
-              setMessage('PayPal checkout cancelled.');
-            },
-          })
-          .render(`#${buttonId}`);
-      }
-    }, [sdkReady, planName, billing, price, buttonId, router, auth]); // Add router and auth to dependencies
-
-    if (!sdkReady) {
-      return (
-        <button
-          className="mt-2 font-['Lato'] bg-[#5D6D7E] text-[#FDFCFB] border-none rounded-lg py-3 px-6 text-base font-bold uppercase tracking-wide cursor-pointer transition-all duration-300 ease-in-out w-4/5 shadow-md hover:bg-[#4E5C6A] hover:translate-y-[-2px] opacity-50 cursor-not-allowed"
-          disabled
-        >
-          Loading PayPal...
-        </button>
-      );
-    }
-
-    return <div id={buttonId} className="w-full mt-2"></div>;
-  };
-
   return (
-    <div
-      className="min-h-screen relative flex flex-col items-center justify-center p-5 md:p-10
-      bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26]
-      text-[#3A4B5C] dark:text-[#E0C9A0] font-sans"
-    >
-      {/* Back */}
-      <div className="fixed top-7 right-4 z-50">
-        <Link
-          href="/"
-          className="px-6 py-3 bg-gray-600 text-white font-semibold rounded-full shadow-md hover:bg-gray-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300"
+    <div className="min-h-screen bg-gray-900 text-white p-8 flex flex-col items-center">
+      <h1 className="text-4xl font-bold mb-8">Credits & Subscriptions</h1>
+
+      {/* Toggle between One-time Purchase and Subscriptions */}
+      <div className="flex space-x-4 mb-8">
+        <button
+          onClick={() => {
+            setPurchaseType('one-time');
+            setSelectedOffering(null);
+            setMessage('');
+            setPaymentStatus('idle');
+          }}
+          className={`px-6 py-3 rounded-lg font-semibold transition-colors duration-200
+            ${purchaseType === 'one-time' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
         >
-          Back to Landing
-        </Link>
+          One-time Purchase
+        </button>
+        <button
+          onClick={() => {
+            setPurchaseType('subscription');
+            setSelectedOffering(null);
+            setMessage('');
+            setPaymentStatus('idle');
+          }}
+          className={`px-6 py-3 rounded-lg font-semibold transition-colors duration-200
+            ${purchaseType === 'subscription' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+        >
+          Subscriptions
+        </button>
       </div>
 
-      {/* Container */}
-      <div className="subscription-container w-full max-w-5xl text-center pt-16">
-        <header className="page-header mb-8 md:mb-10">
-          <h1 className="font-['Georgia'] text-5xl md:text-6xl font-bold text-[#3A4B5C] dark:text-[#E0C9A0] mb-3 filter drop-shadow-md">
-            NARRATUM
-          </h1>
-          <h1 className="font-['Merriweather'] text-3xl md:text-4xl font-bold uppercase tracking-wide text-[#3A4B5C] dark:text-[#E0C9A0]">
-            CHOOSE YOUR PATH
-          </h1>
-          <h2 className="font-['Merriweather'] text-2xl md:text-3xl font-normal uppercase tracking-wide text-[#3A4B5C] dark:text-[#E0C9A0]">
-            IN NARRATUM
-          </h2>
-        </header>
-
-        {/* Billing Toggle + Referral */}
-        <div className="flex flex-col items-center gap-4 mb-6">
-          {Toggle}
-
-          <div className="w-full max-w-lg flex items-center gap-2">
-            <input
-              type="text"
-              value={referralInput}
-              onChange={(e) => setReferralInput(e.target.value)}
-              placeholder="Enter Referral Code"
-              className="flex-1 rounded-lg border border-[#C1A98A] bg-white/80 dark:bg:black/30 px-4 py-2 outline-none focus:ring-2 focus:ring-[#C1A98A]"
-            />
-            <button
-              onClick={handleApplyCode}
-              className="px-4 py-2 rounded-lg bg-[#5D6D7E] text-white font-semibold shadow-md hover:bg-[#4E5C6A] transition"
-            >
-              Apply
-            </button>
-          </div>
-
-          {/* Applied code chip + errors */}
-          <div className="min-h-[28px]">
-            {applied ? (
-              <div className="inline-flex items-center gap-2 rounded-full border border-[#C1A98A] bg-white/70 dark:bg-black/30 px-3 py-1 text-sm">
-                <span className="font-semibold">Code:</span>
-                <span className="uppercase tracking-wide">{applied.code}</span>
-                <button
-                  onClick={clearCode}
-                  className="p-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition"
-                  aria-label="Remove code"
-                  title="Remove code"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            ) : codeError ? (
-              <div className="text-sm text-red-700 bg-red-100 px-3 py-1 rounded-lg">{codeError}</div>
-            ) : null}
-          </div>
+      {purchaseType === 'subscription' && (
+        <div className="flex space-x-4 mb-8">
+          <button
+            onClick={() => {
+              setSubscriptionFrequency('weekly');
+              setSelectedOffering(null);
+              setMessage('');
+              setPaymentStatus('idle');
+            }}
+            className={`px-6 py-3 rounded-lg font-semibold transition-colors duration-200
+              ${subscriptionFrequency === 'weekly' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+          >
+            Weekly
+          </button>
+          <button
+            onClick={() => {
+              setSubscriptionFrequency('monthly');
+              setSelectedOffering(null);
+              setMessage('');
+              setPaymentStatus('idle');
+            }}
+            className={`px-6 py-3 rounded-lg font-semibold transition-colors duration-200
+              ${subscriptionFrequency === 'monthly' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+          >
+            Monthly
+          </button>
         </div>
+      )}
 
-        {message && <div className="mb-6 p-3 rounded-lg text-sm bg-blue-100 text-blue-700">{message}</div>}
-
-        {/* Plans */}
-        <main className="pricing-plans flex justify-center gap-8 md:gap-10 flex-wrap">
-          {/* Free */}
-          <div className="plan-card bg-[#F9F6F0] border-2 border-[#C1A98A] rounded-xl p-8 md:p-10 w-64 flex flex-col items-center shadow-lg transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-xl">
-            <i className="fas fa-feather-alt text-6xl text-[#A9834F] mb-6" />
-            <h3 className="font-['Merriweather'] text-2xl font-extrabold uppercase text-[#4A3B31] mb-2">FREE</h3>
-            <p className="font-['Merriweather'] text-3xl font-bold text-[#3D2B1F] mb-6">Free</p>
-            <button
-              onClick={() => handleSubscribe('Free')}
-              className="font-['Lato'] bg-[#5D6D7E] text-[#FDFCFB] border-none rounded-lg py-3 px-6 text-base font-bold uppercase tracking-wide cursor-pointer transition-all duration-300 ease-in-out w-4/5 shadow-md hover:bg-[#4E5C6A] hover:translate-y-[-2px]"
-            >
-              SUBSCRIBE
-            </button>
-          </div>
-
-          {/* Fan */}
-          <div className="plan-card featured-plan bg-[#F9F6F0] border-2 border-[#A9834F] rounded-xl p-8 md:p-10 w-64 flex flex-col items-center shadow-lg transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-xl">
-            <i className="fas fa-star text-6xl text-[#A9834F] mb-6" />
-            <h3 className="font-['Merriweather'] text-2xl font-extrabold uppercase text-[#4A3B31] mb-2">Fan</h3>
-
-            <p className="font-['Merriweather'] text-3xl font-bold text-[#3D2B1F] mb-1">
-              {billing === 'monthly' ? formatUSD(BASE_PRICES.Fan.monthly) : formatUSD(BASE_PRICES.Fan.yearly)}
-              <span className="text-base font-normal block leading-none mt-0.5 text-[#5C4B3E]">
-                {billing === 'monthly' ? 'month' : 'year'}
-              </span>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 mb-12 w-full max-w-6xl">
+        {currentOfferings.map((offering) => (
+          <div
+            key={offering.id}
+            className={`bg-gray-800 p-6 rounded-lg shadow-lg cursor-pointer transition-all duration-200 text-center
+              ${selectedOffering?.id === offering.id ? 'border-4 border-teal-400' : 'border border-gray-700 hover:border-gray-500'}`}
+            onClick={() => {
+              setSelectedOffering(offering);
+              setPaymentStatus('idle');
+              setMessage('');
+            }}
+          >
+            <h2 className="text-2xl font-semibold mb-2">{offering.name}</h2>
+            <p className="text-lg text-gray-300 mb-4">{offering.credits} Credits</p>
+            <p className="text-3xl font-bold text-green-400">
+              {offering.price === 0 ? 'FREE' : `$${offering.price.toFixed(2)}`}
             </p>
-
-            {applied && (
-              <p className="text-sm text-[#5C4B3E] mb-2">
-                Now: <span className="font-semibold">{fanPrice.display}</span>
-              </p>
+            {purchaseType === 'subscription' && offering.price > 0 && (
+                <p className="text-sm text-gray-400 mt-1">{`per ${subscriptionFrequency === 'weekly' ? 'week' : 'month'}`}</p>
             )}
-            <PayPalButton planName="Fan" price={fanPrice} />
-          </div>
-
-          {/* Premium */}
-          <div className="plan-card bg-[#F9F6F0] border-2 border-[#C1A98A] rounded-xl p-8 md:p-10 w-64 flex flex-col items-center shadow-lg transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-xl">
-            <i className="fas fa-dragon text-6xl text-[#A9834F] mb-6" />
-            <h3 className="font-['Merriweather'] text-2xl font-extrabold uppercase text-[#4A3B31] mb-2">Premium</h3>
-
-            <p className="font-['Merriweather'] text-3xl font-bold text-[#3D2B1F] mb-1">
-              {billing === 'monthly' ? formatUSD(BASE_PRICES.Premium.monthly) : formatUSD(BASE_PRICES.Premium.yearly)}
-              <span className="text-base font-normal block leading-none mt-0.5 text-[#5C4B3E]">
-                {billing === 'monthly' ? 'month' : 'year'}
-              </span>
-            </p>
-
-            {applied && (
-              <p className="text-sm text-[#5C4B3E] mb-2">
-                Now: <span className="font-semibold">{premiumPrice.display}</span>
-              </p>
+            {purchaseType === 'subscription' && offering.price === 0 && (
+                <p className="text-sm text-gray-400 mt-1">{`${subscriptionFrequency === 'weekly' ? 'weekly' : 'monthly'} grant`}</p>
             )}
-            <PayPalButton planName="Premium" price={premiumPrice} />
           </div>
-        </main>
-
-        <p className="mt-8 text-xs text-[#5C4B3E]/80 dark:text-[#E0C9A0]/70">
-          * Referral usage limits (e.g., “one time only”) must be enforced during checkout on the server or payment
-          provider.
-        </p>
+        ))}
       </div>
+
+      {selectedOffering && (
+        <div className="w-full max-w-md bg-gray-800 p-6 rounded-lg shadow-lg">
+          <h2 className="text-xl font-semibold mb-4">Confirm Selection:</h2>
+          <p className="text-lg mb-4">
+            You selected: 
+            <span className="font-bold text-teal-400">
+              {selectedOffering.name} ({selectedOffering.credits} Credits)
+            </span>
+            for 
+            <span className="font-bold text-green-400">
+              {selectedOffering.price === 0 ? 'FREE' : `$${selectedOffering.price.toFixed(2)}`}
+            </span>
+            {purchaseType === 'subscription' && selectedOffering.price > 0 && ` ${subscriptionFrequency === 'weekly' ? 'per week' : 'per month'}`}
+          </p>
+
+          {message && (
+            <p className={`mb-4 ${paymentStatus === 'success' ? 'text-green-500' : 'text-red-500'}`}>
+              {message}
+            </p>
+          )}
+
+          {/* PayPal Buttons (Only show for paid offerings) */}
+          {selectedOffering.price > 0 ? (
+             <PayPalButtons
+                style={{ layout: 'vertical' }}
+                createOrder={createPayPalOrder}
+                onApprove={onApprovePayPal}
+                onError={onErrorPayPal}
+                onCancel={onCancelPayPal}
+              />
+          ) : (
+            <button
+              onClick={() => onApprovePayPal({}, {} as any)} // Simulate approval for free tier
+              className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition"
+              disabled={paymentStatus === 'pending'}
+            >
+              Activate Free Plan
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };

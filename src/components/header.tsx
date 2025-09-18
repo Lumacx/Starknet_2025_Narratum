@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import ThemeToggle from '@/components/ThemeToggle'; // <--- CORRECTED PATH
 
 const Header: FC = () => {
-  const { user, starknetAddress, logout, loading } = useAuth();
+  const { user, starknetAddress, logout, loading, credits } = useAuth(); // Destructure credits
   const isLoggedIn = !!user || !!starknetAddress;
 
   const handleLogout = async () => {
@@ -19,8 +19,8 @@ const Header: FC = () => {
   };
 
   const blueButtonClasses = "px-6 py-3 bg-[#1877F2] text-white font-semibold rounded-full shadow-md hover:bg-[#166FE5] transition duration-300 flex items-center justify-center text-sm";
-  // Corrected purple button classes from landing page
   const purpleButtonClasses = "px-6 py-3 bg-purple-600 text-white font-semibold rounded-full shadow-md hover:bg-purple-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-purple-300 text-sm";
+  const creditDisplayClasses = "px-4 py-2 bg-gray-700 text-white rounded-full text-sm font-medium";
 
   let loginLogoutContent;
   if (loading) {
@@ -36,9 +36,19 @@ const Header: FC = () => {
     }
     
     loginLogoutContent = (
-      <button onClick={handleLogout} className={blueButtonClasses}>
-        {buttonText} (Logout)
-      </button>
+      <div className="flex items-center space-x-2">
+        {credits !== null && (
+          <span className={creditDisplayClasses}>
+            Credits: {credits}
+          </span>
+        )}
+        <Link href="/buy-credits" className={blueButtonClasses}>
+          Buy Credits
+        </Link>
+        <button onClick={handleLogout} className={blueButtonClasses}>
+          {buttonText} (Logout)
+        </button>
+      </div>
     );
   } else {
     loginLogoutContent = (

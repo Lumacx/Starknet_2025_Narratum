@@ -10,6 +10,9 @@ import { generateWithGemini, generateWithImagen } from './smartGenerateImage';
 // 👇 NEW: PDF generator (HTTP HTTPS function)
 import { downloadStoryPdf } from './downloadStoryPdf';
 
+// 👇 NEW: Credit System Functions
+import { processPayPalPayment, deductCreditsForRead, deductCreditsForCreation, sendTipToWriter, grantMonthlyFreeCredits } from './credits';
+
 export {
   generateNarratumImage,
   createuserprofile,
@@ -18,7 +21,13 @@ export {
   removeIndexOnDelete,
   generateWithGemini,
   generateWithImagen,
-  downloadStoryPdf, // 👈 added export
+  downloadStoryPdf,
+  // Credit System Exports
+  processPayPalPayment,
+  deductCreditsForRead,
+  deductCreditsForCreation,
+  sendTipToWriter,
+  grantMonthlyFreeCredits,
 };
 
 export { propagateUserProfileToStories } from './propagateUserProfile';
