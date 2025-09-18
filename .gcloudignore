@@ -1,0 +1,36 @@
+# Keep in sync with .firebaseignore for Cloud Build / App Hosting
+# Core
+**/node_modules/**
+**/.git/**
+*.log
+**/.DS_Store
+
+# Build outputs
+.next/
+out/
+coverage/
+dist/
+build/
+tmp/
+.turbo/
+**/*.map
+
+# IDE
+.vscode
+.idx
+.firebase/logs
+
+# DataConnect & local DBs
+dataconnect/.dataconnect/**
+dataconnect-debug.log
+dataconnect-generated/**
+dataconnect-generated
+
+**/Integrations/**
+**/pgliteData/**
+**/pg_wal/**
+**/pg_multixact/**
+**/pg_xact/**
+**/pg_logical/**
+**/global/**
+**/base/**

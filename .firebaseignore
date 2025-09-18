@@ -55,13 +55,16 @@ node_modules
 .firebase/logs
 *.log
 
-# DataConnect local dev state + generated connectors
-dataconnect/.dataconnect
+# --- DataConnect local dev state + generated connectors (very large) ---
+dataconnect/.dataconnect/**          # <- directory and everything in it
 dataconnect-debug.log
 dataconnect-generated/**
 dataconnect-generated
 
-# Postgres/pglite data (all those pg17/* files)
+# Ignore ALL Integrations folders (anywhere in repo)
+**/Integrations/**
+
+# --- Postgres/pglite data trees (very large; catch all levels) ---
 **/pgliteData/**
 **/pg_wal/**
 **/pg_multixact/**

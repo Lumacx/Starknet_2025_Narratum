@@ -58,3 +58,6 @@ venv/
 
 # Playwright cache
 playwright/.cache/
+
+# Ignore ALL Integrations folders (anywhere in repo)
+**/Integrations/**
