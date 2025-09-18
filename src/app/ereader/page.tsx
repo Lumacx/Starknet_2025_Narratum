@@ -154,6 +154,9 @@ export default function EReaderPage() {
   // Loaded video assets (new asset-hub model)
   const [videos, setVideos] = useState<VideoAsset[]>([]);
 
+  const [hintNext, setHintNext] = useState(false);
+
+
   useEffect(() => {
     (async () => {
       if (!storyId) {
