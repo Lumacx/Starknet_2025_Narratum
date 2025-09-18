@@ -1,14 +1,14 @@
+// src/app/ereader/page.tsx
 'use client';
 
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { doc, getDoc, getDocs, query, orderBy } from 'firebase/firestore';
 import StoryReader from '@/components/StoryReader';
 import YoutubeVideoPlayer from '@/components/YoutubeVideoPlayer';
 import { Download as DownloadIcon, Film as FilmIcon } from 'lucide-react';
 import { storyAssetCol } from '@/lib/firestorePaths';
-import { auth } from '@/lib/firebase';
 
 /* ---------- Types StoryReader uses (extended) ---------- */
 type ReaderPage = {
@@ -17,7 +17,7 @@ type ReaderPage = {
   textContent?: string | null;
   imageUrl?: string | null;
   audioUrl?: string | null;
-  youtubeVideoUrl?: string | null; // backward-compat
+  youtubeVideoUrl?: string | null;
 };
 
 type StoryView = {
@@ -69,25 +69,23 @@ function toReaderShape(storyId: string, d: any): StoryView {
     (pages.length && safeStr(pages[0]?.imageUrl)) ||
     undefined;
 
+  const inferredOwnerUid =
+    safeStr(d?.creator?.uid) || safeStr(d?.ownerUid) || safeStr(d?.userId) || null;
+  const inferredCreatorAvatar = safeStr(d?.creator?.avatarUrl) || undefined;
+
   return {
     id: storyId,
     title: safeStr(d?.title) ?? '(untitled)',
     coverImageUrl: cover,
     backgroundMusicUrl: safeStr(d?.backgroundMusicUrl),
-    readerAvatarUrl:
-      safeStr(d?.reader?.avatarUrl) ||
-      safeStr(d?.creator?.avatarUrl) ||
-      '/story_reader_avatars/Default.png',
+    readerAvatarUrl: inferredCreatorAvatar || '/story_reader_avatars/Default.png',
     readerBackgroundUrl:
-      safeStr(d?.reader?.backgroundUrl) ||
-      '/story_reader_backgrounds/dream-background.png',
+      safeStr(d?.reader?.backgroundUrl) || '/story_reader_backgrounds/dream-background.png',
     storyContent: pages,
-    creator: d?.creator
-      ? {
-          avatarUrl: safeStr(d?.creator?.avatarUrl) ?? null,
-          uid: safeStr(d?.creator?.uid) ?? null,
-        }
-      : null,
+    creator:
+      inferredOwnerUid || inferredCreatorAvatar
+        ? { avatarUrl: inferredCreatorAvatar ?? null, uid: inferredOwnerUid }
+        : null,
     premium: d?.premium
       ? {
           convaiAgentId: safeStr(d?.premium?.convaiAgentId) ?? null,
@@ -108,7 +106,7 @@ function toYoutubeEmbed(url: string): string {
     if (u.hostname === 'youtu.be') {
       return `https://www.youtube.com/embed/${u.pathname.replace('/', '')}?rel=0&modestbranding=1`;
     }
-    return url; // fallback
+    return url;
   } catch {
     return url;
   }
@@ -154,8 +152,13 @@ export default function EReaderPage() {
   // Loaded video assets (new asset-hub model)
   const [videos, setVideos] = useState<VideoAsset[]>([]);
 
-  const [hintNext, setHintNext] = useState(false);
-
+  // Current user → to detect ownership
+  const [currentUid, setCurrentUid] = useState<string | null>(null);
+  useEffect(() => {
+    const unsub = auth.onAuthStateChanged((u) => setCurrentUid(u?.uid ?? null));
+    return () => unsub();
+  }, []);
+  const isOwner = !!(story?.creator?.uid && currentUid === story.creator.uid);
 
   useEffect(() => {
     (async () => {
@@ -210,7 +213,7 @@ export default function EReaderPage() {
     })();
   }, [story?.creator?.uid, story?.id]);
 
-  /* ----------- FIX: define handleDownloadPdf at component level ----------- */
+  /* ----------- PDF (available to all) ----------- */
   const handleDownloadPdf = useCallback(async () => {
     if (!storyId) return;
     try {
@@ -239,24 +242,47 @@ export default function EReaderPage() {
     }
   }, [storyId, story?.title]);
 
-  // "All Files" route to zip everything
-  const handleDownloadAllFiles = useCallback(() => {
+  /* ----------- ZIP (owner-only) ----------- */
+  const handleDownloadAllFiles = useCallback(async () => {
     if (!storyId) return;
-    const ownerUid = story?.creator?.uid || '';
-    const url = `/api/download-story-assets?storyId=${encodeURIComponent(
-      storyId
-    )}&ownerUid=${encodeURIComponent(ownerUid)}`;
-    window.open(url, '_blank');
-  }, [storyId, story?.creator?.uid]);
+    try {
+      const token = await auth.currentUser?.getIdToken().catch(() => null);
+      if (!token) {
+        alert('Please sign in as the owner to download all files.');
+        return;
+      }
+      const res = await fetch(
+        `/api/download-story-assets?storyId=${encodeURIComponent(storyId)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(`Assets failed: ${res.status} ${JSON.stringify(err)}`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const safeTitle =
+        (story?.title || 'story').replace(/[^\w\-]+/g, '_').slice(0, 80);
+      a.href = url;
+      a.download = `${safeTitle}-assets.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error(e);
+      alert('Could not download files.');
+    }
+  }, [storyId, story?.title]);
 
-  // Try to subscribe to page changes from StoryReader if it supports it
+  // Only two props that StoryReader actually accepts
   const storyReaderProps: any = {
     story,
     onBack: () => {
       router.push(backHref || '/discover');
       setTimeout(() => window.location.reload(), 100);
     },
-    onPageChange: (idx: number) => setActiveIndex(idx),
   };
 
   // Video selection priority
@@ -311,7 +337,7 @@ export default function EReaderPage() {
       {/* Story Reader */}
       <StoryReader {...storyReaderProps} />
 
-      {/* Bottom-left: PDF + All Files */}
+      {/* Bottom-left: PDF (all) + All Files (owner-only) */}
       <div className="fixed bottom-4 left-4 flex items-center gap-2 z-50">
         <button
           onClick={handleDownloadPdf}
@@ -321,14 +347,17 @@ export default function EReaderPage() {
           <DownloadIcon className="w-4 h-4" />
           <span>PDF</span>
         </button>
-        <button
-          onClick={handleDownloadAllFiles}
-          className="px-4 py-2 rounded-md bg-teal-500 text-white flex items-center gap-2"
-          aria-label="Download all files"
-        >
-          <DownloadIcon className="w-4 h-4" />
-          <span>All Files</span>
-        </button>
+
+        {isOwner && (
+          <button
+            onClick={handleDownloadAllFiles}
+            className="px-4 py-2 rounded-md bg-teal-500 text-white flex items-center gap-2"
+            aria-label="Download all files"
+          >
+            <DownloadIcon className="w-4 h-4" />
+            <span>All Files</span>
+          </button>
+        )}
       </div>
 
       {/* Bottom-center: Video */}

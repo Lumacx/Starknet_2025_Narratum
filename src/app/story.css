@@ -1,3 +1,4 @@
+/*src/app/story.css*/
 /* ────────────────────────────────
    Basic Setup & Fonts
    ──────────────────────────────── */
@@ -548,3 +549,28 @@
       .nav-arrow{ width: 34px; height: 34px; }
       #options-popup{ width: 90%; right: 5%; }
       }
+
+      /* Neon-green glow for the "Next" arrow */
+.nav-arrow.glow-next {
+  color: #76FF03;               /* make the chevron itself green */
+  box-shadow:
+    0 0 10px 2px #76FF03,
+    0 0 22px 8px rgba(118, 255, 3, 0.65);
+  animation: glowPulse 1.15s ease-in-out infinite alternate;
+  border-color: #76FF03;        /* if your .nav-arrow has a border */
+}
+
+@keyframes glowPulse {
+  from {
+    box-shadow:
+      0 0 8px 1px #76FF03,
+      0 0 16px 4px rgba(118, 255, 3, 0.55);
+    transform: translateZ(0);
+  }
+  to {
+    box-shadow:
+      0 0 16px 4px #76FF03,
+      0 0 28px 10px rgba(118, 255, 3, 0.85);
+    transform: translateZ(0);
+  }
+}
