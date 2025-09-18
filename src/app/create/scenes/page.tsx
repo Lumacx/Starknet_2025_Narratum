@@ -76,7 +76,10 @@ type GalleryItem = {
   url: string;
   fullPath: string;
   contentType?: string;
-  meta?: GalleryMeta;
+  meta?: GalleryMeta & {
+    canonicalUrl?: string | null; // normalized watch URL (what we store in scene)
+    thumbUrl?: string | null;
+  };
   size?: number;
 };
 
@@ -250,6 +253,7 @@ function serializeStoryForWrite(story: StoryDoc | null, scenes: Scene[]) {
 
 function inferKindFromPath(path?: string, contentType?: string): 'image' | 'audio' | 'video' | 'unknown' {
   const ct = (contentType || '').toLowerCase();
+  if (ct === 'video/youtube') return 'video';  // ← add this
   if (ct.startsWith('image/')) return 'image';
   if (ct.startsWith('audio/')) return 'audio';
   if (ct.startsWith('video/')) return 'video';
@@ -410,6 +414,21 @@ function youtubeEmbedUrl(id: string): string {
   return `https://www.youtube.com/embed/${id}?rel=0&modestbranding=1&playsinline=1`;
 }
 
+// — YouTube helpers used for both saving & displaying —
+function getYouTubeIdStrict(raw: string): string | null {
+  const id = extractYouTubeId(raw);
+  return id && /^[a-zA-Z0-9_-]{11}$/.test(id) ? id : null;
+}
+
+function normalizeYouTubeWatchUrl(raw: string): string | null {
+  const id = getYouTubeIdStrict(raw || '');
+  return id ? `https://www.youtube.com/watch?v=${id}` : null;
+}
+
+function youtubeThumbUrl(raw: string): string | null {
+  const id = getYouTubeIdStrict(raw || '');
+  return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null;
+}
 
 /* ------------------------------------------------------------------ */
 /* Component                                                           */
@@ -445,6 +464,8 @@ export default function ScenesPage() {
   const [isGenAudio, setIsGenAudio] = useState(false);
   const [isSuggesting, setIsSuggesting] = useState(false);
 
+  const [savingYt, setSavingYt] = useState(false);
+
   // Gallery
   const [activeTab, setActiveTab] = useState<typeof GALLERY_TABS[number]['key']>('characters');
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
@@ -478,14 +499,52 @@ export default function ScenesPage() {
     if (!user) { setGallery([]); return; }
     setLoadingGallery(true);
     try {
+      // Special case: videos are stored as Firestore docs (YouTube), not Storage files
+      if (category === 'videos') {
+        const baseCol = showUncategorized
+          ? collection(db, 'users', user.uid, 'assetIndex', 'uncategorized', 'videos')
+          : selectedStoryId
+            ? collection(db, 'users', user.uid, 'assetIndex', 'stories', selectedStoryId, 'videos')
+            : null;
+  
+        if (!baseCol) { setGallery([]); return; }
+  
+        const qy = query(baseCol, orderBy('createdAt', 'desc'), limit(200));
+        const snap = await getDocs(qy);
+  
+        const items: GalleryItem[] = snap.docs.map(d => {
+          const v = d.data() as any;
+          const canonicalUrl = (v?.url as string) || null;
+          const embedUrl = (v?.embedUrl as string) || (canonicalUrl ? youtubeEmbedUrl(getYouTubeIdStrict(canonicalUrl)!) : '');
+          const thumbUrl = (v?.thumbUrl as string) || null;
+          return {
+            name: v?.name || d.id,
+            url: embedUrl,                // used for preview iframe
+            fullPath: `doc:${d.id}`,      // synthetic path
+            contentType: 'video/youtube',
+            meta: {
+              ...(v || {}),
+              canonicalUrl,               // we’ll assign this back to the scene
+              thumbUrl,
+              createdAt: (v?.createdAt?.toDate?.() || v?.createdAt || undefined) ? 
+                          (v?.createdAt?.toDate?.() || v?.createdAt).toString() : undefined,
+            },
+          };
+        });
+  
+        setGallery(items);
+        return;
+      }
+  
+      // Default path (Storage) for images/audio
       const basePath = showUncategorized
         ? `users/${user.uid}/assetIndex/uncategorized/${category}/`
         : selectedStoryId
           ? `users/${user.uid}/assetIndex/stories/${selectedStoryId}/${category}/`
           : null;
-
+  
       if (!basePath) { setGallery([]); return; }
-
+  
       const base = sref(storage, basePath);
       const res = await listAll(base);
       const items = await Promise.all(res.items.map(async (i) => {
@@ -502,27 +561,26 @@ export default function ScenesPage() {
           },
         } as GalleryItem;
       }));
-
+  
       const sorted = [...items].sort((a, b) => {
         if (sortBy === 'name') {
-          return sortDir === 'asc'
-            ? a.name.localeCompare(b.name)
-            : b.name.localeCompare(a.name);
+          return sortDir === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
         } else {
           const da = a.meta?.createdAt ? new Date(a.meta.createdAt).getTime() : 0;
           const db = b.meta?.createdAt ? new Date(b.meta.createdAt).getTime() : 0;
           return sortDir === 'asc' ? da - db : db - da;
         }
       });
-
+  
       setGallery(sorted);
     } catch (e) {
-      console.error('Failed to load storage gallery:', e);
+      console.error('Failed to load gallery:', e);
       setGallery([]);
     } finally {
       setLoadingGallery(false);
     }
-  }, [user, selectedStoryId, showUncategorized, sortBy, sortDir]);
+  }, [user, selectedStoryId, showUncategorized, sortBy, sortDir, db, storage]);
+  
 
   function applyIdeaToCurrent(idea: { title: string; outline: string; imagePrompt?: string }) {
     if (!currentScene) return;
@@ -744,10 +802,19 @@ export default function ScenesPage() {
 
   function handleSelectForScene(item: GalleryItem) {
     const kind = inferKindFromPath(item.fullPath, item.contentType);
-    if (kind === 'image') updateCurrentScene({ imageUrl: item.url, imageName: item.name });
-    else if (kind === 'audio') updateCurrentScene({ audioUrl: item.url, audioName: item.name });
-    else alert('Only image or audio can be selected directly for a scene.');
+    if (kind === 'image') {
+      updateCurrentScene({ imageUrl: item.url, imageName: item.name });
+    } else if (kind === 'audio') {
+      updateCurrentScene({ audioUrl: item.url, audioName: item.name });
+    } else if (kind === 'video') {
+      // Use canonical watch URL if present, else fall back to whatever we have
+      const canonical = item.meta?.canonicalUrl || item.url;
+      updateCurrentScene({ youtubeVideoUrl: canonical });
+    } else {
+      alert('Unsupported asset type for scene.');
+    }
   }
+  
 
   const [references, setReferences] = useState<Array<{ url: string; name?: string; category?: AssetCategory }>>([]);
   function handleUseAsReference(item: GalleryItem) {
@@ -949,6 +1016,62 @@ export default function ScenesPage() {
       alert('Failed to publish story.');
     }
   }
+
+  async function handleSaveYouTubeToGallery() {
+    if (!user) return;
+    if (!currentScene?.youtubeVideoUrl) {
+      alert('Paste a YouTube URL first.'); 
+      return;
+    }
+  
+    const canonical = normalizeYouTubeWatchUrl(currentScene.youtubeVideoUrl);
+    if (!canonical) { alert('Please enter a valid YouTube URL.'); return; }
+  
+    // Decide Firestore collection: story videos or uncategorized videos
+    const baseCol = showUncategorized
+      ? collection(db, 'users', user.uid, 'assetIndex', 'uncategorized', 'videos')
+      : selectedStoryId
+        ? collection(db, 'users', user.uid, 'assetIndex', 'stories', selectedStoryId, 'videos')
+        : null;
+  
+    if (!baseCol) {
+      alert('Select a story or switch to "Uncategorized" first.');
+      return;
+    }
+  
+    setSavingYt(true);
+    try {
+      const embed = youtubeEmbedUrl(getYouTubeIdStrict(canonical)!);
+      const thumb = youtubeThumbUrl(canonical);
+  
+      await setDoc(
+        // use the 11-char ID as doc id for dedupe; fall back to auto if you prefer
+        fsDoc(baseCol, getYouTubeIdStrict(canonical)!),
+        {
+          name: `YouTube – ${getYouTubeIdStrict(canonical)}`,
+          url: canonical,             // canonical watch URL
+          embedUrl: embed,            // convenience for iframes
+          provider: 'youtube',
+          kind: 'video',
+          thumbUrl: thumb,
+          ownerUid: user.uid,
+          storyId: showUncategorized ? null : selectedStoryId!,
+          contentType: 'video/youtube',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+  
+      alert('Saved to My Gallery → Videos.');
+    } catch (e: any) {
+      console.error(e);
+      alert(e?.message || 'Failed to save YouTube link');
+    } finally {
+      setSavingYt(false);
+    }
+  }
+  
 
   /* -------- Keyboard nav ------------------------------------ */
   useEffect(() => {
@@ -1371,6 +1494,24 @@ export default function ScenesPage() {
                       Supports full URLs (<code className="font-mono">youtube.com/watch?v=…</code>, <code className="font-mono">youtu.be/…</code>, <code className="font-mono">/shorts/…</code>) or a raw 11-char video ID.
                     </p>
                   )}
+
+                  <p className="text-[12px] opacity-70">
+                    Tip: open the <strong>My Gallery → Videos</strong> tab on the right and click <em>Use Video</em> to assign an existing clip to this scene.
+                  </p>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleSaveYouTubeToGallery}
+                      disabled={!currentYouTubeId || savingYt || !(selectedStoryId || showUncategorized)}
+                      className="px-3 py-1.5 rounded bg-[#E97451] text-white disabled:opacity-50"
+                    >
+                      {savingYt ? 'Saving…' : 'Save to My Gallery'}
+                    </button>
+                    <span className="text-[12px] opacity-70">
+                      Saves into {showUncategorized ? 'Uncategorized' : `Story ${selectedStoryId}`} / Videos.
+                    </span>
+                  </div>
+
                 </div>
 
 
@@ -1483,7 +1624,34 @@ export default function ScenesPage() {
                       const kind = inferKindFromPath(it.fullPath, it.contentType);
                       return (
                         <div key={it.fullPath} className="relative group border rounded-md overflow-hidden p-1">
-                          {kind === 'image' ? (
+                          {kind === 'video' ? (
+                            <div className="w-full h-32 relative bg-black rounded overflow-hidden">
+                              {it.meta?.thumbUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={it.meta.thumbUrl} alt={it.name} className="absolute inset-0 w-full h-full object-cover opacity-90" />
+                              ) : (
+                                <iframe
+                                  className="absolute inset-0 w-full h-full"
+                                  src={it.url}
+                                  title={it.name}
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                  allowFullScreen
+                                />
+                              )}
+                              <div className="absolute inset-x-1 bottom-1 flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                                <button
+                                  onClick={() => handleSelectForScene(it)}
+                                  className="w-full text-[11px] px-2 py-1 rounded bg-[#E97451]/90 text-white"
+                                  title="Assign this video to the current scene"
+                                >
+                                  Use Video
+                                </button>
+                              </div>
+                              <div className="absolute top-1 left-1 text-[10px] bg-black/70 text-white px-1.5 py-0.5 rounded">
+                                YouTube
+                              </div>
+                            </div>
+                          ) : kind === 'image' ? (
                             <Image src={it.url} alt={it.name} width={150} height={150} className="w-full h-32 object-cover rounded" />
                           ) : kind === 'audio' ? (
                             <div className="w-full h-32 grid place-items-center bg-zinc-100 dark:bg-zinc-800 rounded">

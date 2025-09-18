@@ -1,13 +1,13 @@
-I0916 19:06:36.129968     836 load.go:31] Reloading schema and connectors...
-I0916 19:06:37.003820     836 control.go:94] [/emulator/studio-v0 fe9e] UpdateResources(): done
+I0918 02:34:25.933249    1056 load.go:31] Reloading schema and connectors...
+I0918 02:34:26.303785    1056 control.go:94] [/emulator/studio-v0 bce4] UpdateResources(): done
 Schema: sources: schema/schema.gql [3721B] 
 Connector "default": sources: connector/mutations.gql [3182B] connector/queries.gql [2742B] 
-I0916 19:06:38.520660     836 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "/home/user/studio/dataconnect-generated/js/default-connector"
-I0916 19:06:38.825586     836 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
-Generated sources: main/implicit.gql [3267B] main/input.gql [116172B] prelude.gql [73251B] main/relation.gql [50194B] main/query.gql [15655B] main/mutation.gql [41655B] 
-I0916 19:06:38.834841     836 collector.go:107] connector "default" javascriptSdk wrote into "/home/user/studio/dataconnect-generated/js/default-connector"
-Generated sources: index.d.ts [24807B] esm/index.esm.js [10374B] esm/package.json [17B] index.cjs.js [12004B] react/package.json [468B] react/esm/package.json [17B] react/index.cjs.js [9597B] react/README.md [119856B] package.json [871B] README.md [116341B] react/index.d.ts [12119B] react/esm/index.esm.js [9027B] 
-I0916 19:06:38.873667     836 installsdk.go:55] Package @firebasegen/default-connector is already installed. Skipping installation
-I0916 19:06:38.873738     836 load.go:109] Finished reloading
-I0916 19:06:38.923759     836 dev.go:102] Listening on address (HTTP + gRPC): 127.0.0.1:50001
-I0916 19:06:39.815545     836 engine.go:171] [/emulator/studio-v0 fe9e] ExecuteGraphqlRead IntrospectionQuery: succeeded. 
+I0918 02:34:26.759359    1056 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "/home/user/studio/dataconnect-generated/js/default-connector"
+I0918 02:34:26.934388    1056 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/mutation.gql [41655B] main/implicit.gql [3267B] main/input.gql [116172B] main/relation.gql [50205B] main/query.gql [15655B] prelude.gql [73251B] 
+I0918 02:34:26.957461    1056 collector.go:107] connector "default" javascriptSdk wrote into "/home/user/studio/dataconnect-generated/js/default-connector"
+Generated sources: esm/index.esm.js [10374B] package.json [871B] README.md [116341B] react/esm/package.json [17B] react/index.cjs.js [9597B] index.d.ts [24807B] esm/package.json [17B] index.cjs.js [12004B] react/index.d.ts [12119B] react/package.json [468B] react/esm/index.esm.js [9027B] react/README.md [119856B] 
+I0918 02:34:27.004656    1056 installsdk.go:55] Package @firebasegen/default-connector is already installed. Skipping installation
+I0918 02:34:27.004721    1056 load.go:109] Finished reloading
+I0918 02:34:27.030627    1056 dev.go:102] Listening on address (HTTP + gRPC): 127.0.0.1:50001
+I0918 02:34:27.328191    1056 engine.go:169] [/emulator/studio-v0 bce4] ExecuteGraphqlRead IntrospectionQuery: succeeded. 

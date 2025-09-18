@@ -8,6 +8,7 @@ import StoryReader from '@/components/StoryReader';
 import YoutubeVideoPlayer from '@/components/YoutubeVideoPlayer';
 import { Download as DownloadIcon, Film as FilmIcon } from 'lucide-react';
 import { storyAssetCol } from '@/lib/firestorePaths';
+import { auth } from '@/lib/firebase';
 
 /* ---------- Types StoryReader uses (extended) ---------- */
 type ReaderPage = {
@@ -206,14 +207,34 @@ export default function EReaderPage() {
     })();
   }, [story?.creator?.uid, story?.id]);
 
-  const handleDownloadPdf = useCallback(() => {
-    if (storyId) {
-      window.open(
+  /* ----------- FIX: define handleDownloadPdf at component level ----------- */
+  const handleDownloadPdf = useCallback(async () => {
+    if (!storyId) return;
+    try {
+      const token = await auth.currentUser?.getIdToken().catch(() => null);
+      const res = await fetch(
         `/api/download-story-pdf?storyId=${encodeURIComponent(storyId)}`,
-        '_blank'
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
       );
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(`PDF failed: ${res.status} ${JSON.stringify(errJson)}`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const safeTitle =
+        (story?.title || 'story').replace(/[^\w\-]+/g, '_').slice(0, 80);
+      a.href = url;
+      a.download = `${safeTitle}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      alert(e?.message || 'Failed to download PDF.');
     }
-  }, [storyId]);
+  }, [storyId, story?.title]);
 
   // "All Files" route to zip everything
   const handleDownloadAllFiles = useCallback(() => {
@@ -235,9 +256,7 @@ export default function EReaderPage() {
     onPageChange: (idx: number) => setActiveIndex(idx),
   };
 
-  // Video selection priority:
-  // 1) Asset scene match  2) Page field youtubeVideoUrl (legacy)
-  // 3) Asset teaser       4) Story premium teaser
+  // Video selection priority
   const sceneVideoFromAssets =
     videos.find(
       (v) => (v.sceneIndex ?? v.pageNumber) === activeIndex && v.youtubeUrl

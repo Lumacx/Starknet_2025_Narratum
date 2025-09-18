@@ -16,6 +16,7 @@ import {
   where,
   orderBy,
   limit,
+  deleteField
 } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
@@ -374,7 +375,7 @@ const ProfilePage: React.FC = () => {
               ? (x.ratingSum ?? 0) / ratingCount
               : undefined;
 
-          owned.push({
+        owned.push({
             id: d.id,
             title: x.title || '(untitled)',
             coverImageUrl: x.coverImageUrl ?? undefined,
@@ -514,20 +515,36 @@ const ProfilePage: React.FC = () => {
         await updateProfile(auth.currentUser, { displayName: displayNameInput });
         await reload(auth.currentUser);
       }
+  
       const uref = doc(db, 'users', auth.currentUser.uid);
-      const payload: Partial<UserProfileDoc> = {
-        bio: bio || undefined,
-        location: location || undefined,
-        website: website || undefined,
-        socials: {
-          twitter: socials.twitter || undefined,
-          instagram: socials.instagram || undefined,
-          discord: socials.discord || undefined,
-        },
-        displayName: displayNameInput || undefined,
-        photoURL: auth.currentUser.photoURL || undefined,
+  
+      const trim = (v?: string) => (v && v.trim() ? v.trim() : '');
+  
+      // Build socials update that *removes* empty fields
+      const socialsUpdate: any = {
+        twitter: trim(socials.twitter) || deleteField(),
+        instagram: trim(socials.instagram) || deleteField(),
+        discord: trim(socials.discord) || deleteField(),
       };
+  
+      // Build top-level fields (delete if user cleared them)
+      const payload: any = {
+        displayName: trim(displayNameInput) || deleteField(),
+        bio: trim(bio) || deleteField(),
+        location: trim(location) || deleteField(),
+        website: trim(website) || deleteField(),
+        socials: socialsUpdate,
+      };
+  
+      // Only set photoURL if it exists; otherwise delete it (prevents undefined)
+      if (auth.currentUser.photoURL) {
+        payload.photoURL = auth.currentUser.photoURL;
+      } else {
+        payload.photoURL = deleteField();
+      }
+  
       await setDoc(uref, payload, { merge: true });
+  
       setMessage('Profile updated.');
       setEditOpen(false);
     } catch (e) {
@@ -564,6 +581,19 @@ const ProfilePage: React.FC = () => {
     }
   };
 
+  // ---- Small presentational helpers ----
+  const Chip = ({ children }: { children: React.ReactNode }) => (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border border-[#4A5C6E] bg-[#0b1220]/50 text-[#E0C9A0]">
+      {children}
+    </span>
+  );
+
+  const CardWrap: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+    <div className="border border-[#4A5C6E] bg-[#0b1220]/50 rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition">
+      {children}
+    </div>
+  );
+
   /* =========================
      RENDER
      ========================= */
@@ -575,7 +605,7 @@ const ProfilePage: React.FC = () => {
         </p>
       </div>
     );
-    }
+  }
 
   return (
     <div
@@ -657,7 +687,6 @@ const ProfilePage: React.FC = () => {
 
               {hasReferralCode ? (
                 <>
-                  {/* High-contrast code chip */}
                   <code
                     className="
                       text-xs px-2 py-1 rounded border font-semibold
@@ -668,7 +697,6 @@ const ProfilePage: React.FC = () => {
                     {referralCode}
                   </code>
 
-                  {/* High-contrast copy button */}
                   <button
                     onClick={async () => {
                       try {
@@ -745,11 +773,167 @@ const ProfilePage: React.FC = () => {
           </div>
         </nav>
 
-        {/* TODO: Your Stories/Drafts/Favorites sections here with IDs:
-            id="my-stories-section", id="drafts-section", id="favorites-section"
-        */}
+        {/* ---------- My Stories ---------- */}
+        {activeTab === 'stories' && (
+          <section id="my-stories-section" className="w-full mt-2">
+            <h2 className="text-2xl md:text-3xl font-bold mb-4 text-center">My Stories</h2>
 
-        {/* Transactions — render ONLY when the tab is selected */}
+            {mineLoading ? (
+              <p className="text-sm text-center text-[#8FA0AF]">Loading your stories…</p>
+            ) : myStories.length === 0 ? (
+              <p className="text-sm text-center text-[#8FA0AF]">
+                You haven’t published any stories yet. Create one in{' '}
+                <Link className="underline" href="/create/begin">Create</Link>.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {myStories.map((s) => (
+                  <CardWrap key={s.id}>
+                    <div className="aspect-[4/3] w-full bg-[#0f172a] overflow-hidden">
+                      <img
+                        src={s.coverImageUrl || '/placeholder-cover.png'}
+                        className="w-full h-full object-cover"
+                        alt={s.title || 'cover'}
+                        loading="lazy"
+                      />
+                    </div>
+                    <div className="p-4 space-y-2">
+                      <h3 className="text-lg font-bold line-clamp-2">{s.title || '(untitled)'}</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {(s.genres || []).slice(0, 3).map((g) => (
+                          <Chip key={g}>{g}</Chip>
+                        ))}
+                        <Chip>Views: {s.views ?? 0}</Chip>
+                        <Chip>
+                          ⭐ {s.averageRating ? s.averageRating.toFixed(1) : '—'}
+                          {s.ratingCount ? ` (${s.ratingCount})` : ''}
+                        </Chip>
+                      </div>
+                      <div className="pt-2 flex gap-2">
+                        <Link
+                          href={`/read/${s.id}`}
+                          className="px-3 py-1.5 rounded-full text-sm font-semibold bg-[#BFA071] text-[#1A2533] hover:bg-[#E0C9A0]"
+                        >
+                          Read
+                        </Link>
+                        <Link
+                          href={`/create/begin?storyId=${s.id}`}
+                          className="px-3 py-1.5 rounded-full text-sm font-semibold bg-[#233446] text-[#E0C9A0] hover:bg-[#2b3e52]"
+                        >
+                          Edit
+                        </Link>
+                      </div>
+                    </div>
+                  </CardWrap>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* ---------- Drafts ---------- */}
+        {activeTab === 'drafts' && (
+          <section id="drafts-section" className="w-full mt-2">
+            <h2 className="text-2xl md:text-3xl font-bold mb-4 text-center">Drafts</h2>
+
+            {mineLoading ? (
+              <p className="text-sm text-center text-[#8FA0AF]">Loading your drafts…</p>
+            ) : myDrafts.length === 0 ? (
+              <p className="text-sm text-center text-[#8FA0AF]">No drafts yet.</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {myDrafts.map((s) => (
+                  <CardWrap key={s.id}>
+                    <div className="aspect-[4/3] w-full bg-[#0f172a] overflow-hidden">
+                      <img
+                        src={s.coverImageUrl || '/placeholder-cover.png'}
+                        className="w-full h-full object-cover"
+                        alt={s.title || 'cover'}
+                        loading="lazy"
+                      />
+                    </div>
+                    <div className="p-4 space-y-2">
+                      <h3 className="text-lg font-bold line-clamp-2">{s.title || '(untitled)'}</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {(s.genres || []).slice(0, 3).map((g) => (
+                          <Chip key={g}>{g}</Chip>
+                        ))}
+                        <Chip>Status: {s.status ?? 'draft'}</Chip>
+                      </div>
+                      <div className="pt-2 flex gap-2">
+                        <Link
+                          href={`/create/begin?storyId=${s.id}`}
+                          className="px-3 py-1.5 rounded-full text-sm font-semibold bg-[#BFA071] text-[#1A2533] hover:bg-[#E0C9A0]"
+                        >
+                          Continue
+                        </Link>
+                        <Link
+                          href={`/read/${s.id}`}
+                          className="px-3 py-1.5 rounded-full text-sm font-semibold bg-[#233446] text-[#E0C9A0] hover:bg-[#2b3e52]"
+                        >
+                          Preview
+                        </Link>
+                      </div>
+                    </div>
+                  </CardWrap>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* ---------- Favorites ---------- */}
+        {activeTab === 'favorites' && (
+          <section id="favorites-section" className="w-full mt-2">
+            <h2 className="text-2xl md:text-3xl font-bold mb-4 text-center">Favorites</h2>
+
+            {favLoading ? (
+              <p className="text-sm text-center text-[#8FA0AF]">Loading favorites…</p>
+            ) : favStories.length === 0 ? (
+              <p className="text-sm text-center text-[#8FA0AF]">
+                You haven’t favorited any stories yet. Explore in{' '}
+                <Link className="underline" href="/discover">Discover</Link>.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {favStories.map((s) => (
+                  <CardWrap key={s.id}>
+                    <div className="aspect-[4/3] w-full bg-[#0f172a] overflow-hidden">
+                      <img
+                        src={s.coverImageUrl || '/placeholder-cover.png'}
+                        className="w-full h-full object-cover"
+                        alt={s.title || 'cover'}
+                        loading="lazy"
+                      />
+                    </div>
+                    <div className="p-4 space-y-2">
+                      <h3 className="text-lg font-bold line-clamp-2">{s.title || '(untitled)'}</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {(s.genres || []).slice(0, 3).map((g) => (
+                          <Chip key={g}>{g}</Chip>
+                        ))}
+                        <Chip>
+                          ⭐ {s.averageRating ? s.averageRating.toFixed(1) : '—'}
+                          {s.ratingCount ? ` (${s.ratingCount})` : ''}
+                        </Chip>
+                      </div>
+                      <div className="pt-2">
+                        <Link
+                          href={`/read/${s.id}`}
+                          className="px-3 py-1.5 rounded-full text-sm font-semibold bg-[#BFA071] text-[#1A2533] hover:bg-[#E0C9A0]"
+                        >
+                          Read
+                        </Link>
+                      </div>
+                    </div>
+                  </CardWrap>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* ---------- Transactions ---------- */}
         {activeTab === 'transactions' && (
           <section id="transactions-section" className="w-full mt-10">
             <h2 className="text-2xl md:text-3xl font-bold mb-4 text-center">Transactions</h2>
@@ -856,7 +1040,6 @@ const ProfilePage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Placeholder note for commissions */}
                 <p className="mt-3 text-xs text-center text-[#9AA6B2]">
                   Referral commissions appear when your backend writes referral transactions (e.g., to{' '}
                   <code>users/&lt;you&gt;/transactions</code> with fields like <code>referrerUid</code> and{' '}
