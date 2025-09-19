@@ -1,34 +1,27 @@
 // src/app/layout.tsx
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import GsiScript from "@/components/GsiScript";
-import { StarknetProvider } from "@/components/Starknet/StarknetProviderComponent";
-import { AuthProvider } from "@/context/AuthContext";
-import Header from "@/components/header";
-import Footer from "@/components/layout/Footer";
-import KeepAliveProvider from "@/app/providers/KeepAliveProvider";
-import PayPalProviderClient from "@/components/PayPalProviderClient";
-import { Suspense } from "react";
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+import GsiScript from '@/components/GsiScript';
+import { StarknetProvider } from '@/components/Starknet/StarknetProviderComponent';
+import { AuthProvider } from '@/context/AuthContext';
+import Header from '@/components/header';
+import Footer from '@/components/layout/Footer';
+import KeepAliveProvider from '@/app/providers/KeepAliveProvider';
+import { Suspense } from 'react';
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: "Narratum",
-  description: "Interactive storytelling with AI",
+  title: 'Narratum',
+  description: 'Interactive storytelling with AI',
   // Optional: icon, themeColor, etc.
 };
-
-const initialPayPalOptions = {
-  clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "test",
-  currency: "USD",
-  intent: "capture",
-} as const;
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const isProd = process.env.NODE_ENV === "production";
+  const isProd = process.env.NODE_ENV === 'production';
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -86,24 +79,19 @@ export default function RootLayout({
         <StarknetProvider>
           <AuthProvider>
             {/* KeepAlive needs client; keep it inside Auth */}
-            <KeepAliveProvider requireAuth rtdbPath="_meta/keepalive">
+            <KeepAliveProvider requireAuth={false} rtdbPath="_meta/keepalive">
               <div className="site-header">
-                <Suspense fallback={<div style={{ height: 56 }} />}>
-                  <Header />
-                </Suspense>
+                <Suspense fallback={<div style={{ height: 56 }} />}><Header /></Suspense>
               </div>
 
-              {/* PayPal provider is client-only; options are safe (public clientId) */}
-              <PayPalProviderClient options={initialPayPalOptions}>
-                <Suspense fallback={<div className="min-h-[40vh] flex items-center justify-center">Loading…</div>}>
-                  {children}
-                </Suspense>
-              </PayPalProviderClient>
+              {/* IMPORTANT: PayPal is no longer injected globally.
+                  Wrap ONLY checkout/donation pages with <PayPalProviderClient enabled> */}
+              <Suspense fallback={<div className="min-h-[40vh] flex items-center justify-center">Loading…</div>}>
+                {children}
+              </Suspense>
 
               <div className="site-footer">
-                <Suspense fallback={null}>
-                  <Footer />
-                </Suspense>
+                <Suspense fallback={null}><Footer /></Suspense>
               </div>
             </KeepAliveProvider>
           </AuthProvider>
