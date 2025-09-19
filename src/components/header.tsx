@@ -42,7 +42,7 @@ const Header: FC = () => {
             Credits: {credits}
           </span>
         )}
-        <Link href="/buy-credits" className={blueButtonClasses}>
+        <Link href="/buy-credits" className={purpleButtonClasses}>
           Buy Credits
         </Link>
         <button onClick={handleLogout} className={blueButtonClasses}>

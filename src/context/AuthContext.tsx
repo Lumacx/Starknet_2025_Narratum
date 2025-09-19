@@ -2,14 +2,14 @@
 
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { onAuthStateChanged, signOut as firebaseSignOut, signInAnonymously, type User } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore'; // Import doc and onSnapshot
-import { auth, db } from '@/lib/firebase'; // Import db
+import { doc, onSnapshot } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
 
 interface AuthContextType {
   user: User | null;
   starknetAddress: string | null;
   loading: boolean;
-  credits: number | null; // Added credits field
+  credits: number | null;
   setStarknetLoginStatus: (address: string | null) => void;
   logout: () => Promise<void>;
 }
@@ -22,11 +22,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [starknetAddress, setStarknetAddressInternal] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [credits, setCredits] = useState<number | null>(null); // New state for credits
+  const [credits, setCredits] = useState<number | null>(null);
+  const [creditsLoaded, setCreditsLoaded] = useState<boolean>(false); // New state for credit loading
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      setLoading(true);
+      setLoading(true); // Always set loading to true when auth state changes
       if (firebaseUser) {
         try { await firebaseUser.reload(); } catch (e) {console.error("Error reloading user",e)}
         setUser(auth.currentUser ?? firebaseUser);
@@ -36,34 +37,49 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         const unsubscribeCredits = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
             const userData = docSnap.data();
-            setCredits(userData.credits || 0); // Default to 0 if not set
+            setCredits(userData.credits || 0);
           } else {
-            setCredits(0); // User document might not exist yet
+            setCredits(0);
           }
+          setCreditsLoaded(true); // Credits are loaded (or defaulted)
         }, (error) => {
           console.error('Error listening to user credits:', error);
-          setCredits(null); // Reset credits on error
+          setCredits(null);
+          setCreditsLoaded(true); // Credits loading failed, but it's still "resolved"
         });
 
+        // Return a cleanup function for the credits listener
         return () => {
-          unsubscribeCredits(); // Clean up credits listener
-          unsubscribeAuth(); // Clean up auth listener
+          unsubscribeCredits();
         };
 
       } else {
         setUser(null);
-        setCredits(null); // Clear credits when user logs out
+        setCredits(null);
+        setCreditsLoaded(true); // No user, so no credits to load. Mark as loaded.
+        setLoading(false); // No user, no credits listener to wait for, so set loading to false here.
       }
-      setLoading(false);
     });
-    return () => unsubscribeAuth(); // Cleanup auth listener on unmount
+
+    // Return a cleanup function for the auth listener
+    return () => unsubscribeAuth();
   }, []);
+
+  // Effect to set global loading state once both user and credits are resolved
+  useEffect(() => {
+    if (user !== null && creditsLoaded) {
+      setLoading(false);
+    } else if (user === null && creditsLoaded) {
+      // If no user and creditsLoaded is true (from previous non-user branch), then we are done loading.
+      setLoading(false);
+    }
+  }, [user, creditsLoaded]);
 
 // 🔐 Si el usuario solo conectó Starknet, crea sesión anónima antes de cualquier lectura
  useEffect(() => {
      if (loading) return;
-     if (user) return;                 // ya hay sesión
-     if (!starknetAddress) return;     // no hay Starknet => no hagas nada
+     if (user) return;
+     if (!starknetAddress) return;
      signInAnonymously(auth).catch((e) => {
        console.warn('Anonymous sign-in failed:', e?.message || e);
      });
@@ -77,7 +93,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       await firebaseSignOut(auth);
       setUser(null);
-      setCredits(null); // Clear credits on logout
+      setCredits(null);
+      setCreditsLoaded(false); // Reset credits loaded state on logout
     } catch (error: unknown) {
       const err = error as Error;
       console.error('Error signing out from Firebase:', err.message);

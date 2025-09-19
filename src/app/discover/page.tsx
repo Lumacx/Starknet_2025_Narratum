@@ -1149,21 +1149,37 @@ function CatalogPageInner() {
                   <div className="absolute inset-1 border border-[#BFA071] rounded-md pointer-events-none z-10"></div>
 
                   {/* Type, Plan, and Credits badges */}
-                  <div className="absolute left-2 top-2 z-30 flex gap-2">
-                    <span className={`px-2 py-0.5 text-[11px] rounded ${typeStyle.badgeBg} ${typeStyle.badgeText} font-bold uppercase tracking-wide inline-flex items-center gap-1.5`}>
-                      {React.createElement(TYPE_STYLES[typeKey].Icon, { size: 13 })} {TYPE_STYLES[typeKey].label}
-                    </span>
-                  </div>
-                  <div className="absolute right-2 top-2 z-30 flex gap-2">
-                    <span className={`px-2 py-0.5 text-[11px] rounded ${planStyle.badgeBg} ${planStyle.badgeText} font-semibold inline-flex items-center gap-1.5`}>
-                      {React.createElement(PLAN_STYLES[planKey].Icon, { size: 13 })} {PLAN_STYLES[planKey].label}
-                    </span>
-                    {creditCost > 0 && (
-                      <span className="px-2 py-0.5 text-[11px] rounded bg-yellow-500/90 text-black font-bold inline-flex items-center gap-1.5">
-                        {creditCost} Credits
+                  {/* Type (row 1) + Credits (row 2) on the LEFT */}
+                    <div className="absolute left-2 top-2 z-30 flex flex-col gap-1">
+                      {/* Row 1: Story Type */}
+                      <span
+                        className={`px-2 py-0.5 text-[11px] rounded ${typeStyle.badgeBg} ${typeStyle.badgeText}
+                                    font-bold uppercase tracking-wide inline-flex items-center gap-1.5`}
+                      >
+                        {React.createElement(TYPE_STYLES[typeKey].Icon, { size: 13 })} {TYPE_STYLES[typeKey].label}
                       </span>
-                    )}
-                  </div>
+
+                      {/* Row 2: Credits */}
+                      {creditCost > 0 && (
+                        <span
+                          className="px-2 py-0.5 text-[11px] rounded bg-yellow-500/90 text-black
+                                    font-bold inline-flex items-center gap-1.5"
+                        >
+                          {creditCost} Credits
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Plan stays on the RIGHT (top row) */}
+                    <div className="absolute right-2 top-2 z-30">
+                      <span
+                        className={`px-2 py-0.5 text-[11px] rounded ${planStyle.badgeBg} ${planStyle.badgeText}
+                                    font-semibold inline-flex items-center gap-1.5`}
+                      >
+                        {React.createElement(PLAN_STYLES[planKey].Icon, { size: 13 })} {PLAN_STYLES[planKey].label}
+                      </span>
+                    </div>
+
 
                   {/* Cover (kept as link to allow open in new tab if desired) */}
                   <Link
@@ -1172,14 +1188,27 @@ function CatalogPageInner() {
                       e.preventDefault();
                       await handlePaidRead(story);
                     }}
-                    className="card-art-container block w-full h-40 mb-4 rounded-sm overflow-hidden relative z-20"
+                    // ⬇️ make the cover its own hover group
+                    className="card-art-container group/cover block w-full h-40 mb-4 rounded-sm overflow-hidden relative z-20"
                   >
                     <img
                       src={(story as any).coverImageUrl || 'https://placehold.co/300x200/BFA071/1A2533?text=Image+Not+Found'}
                       alt={(story as any).title || 'Untitled Story'}
                       className="w-full h-full object-cover block"
                     />
+
+                    {/* Hover synopsis aligned top-center; hidden by default, shows on cover hover */}
+                    <div
+                      className="pointer-events-none opacity-0 group-hover/cover:opacity-100 transition-opacity duration-200
+                                absolute left-2 right-2 top-8 z-40"
+                    >
+                      <div className="bg-black/70 text-white text-xs rounded-md p-3 border border-white/10 shadow-xl text-center">
+                        <div className="font-semibold mb-1">Synopsis</div>
+                        <div className="line-clamp-4 text-[12px]">{getSynopsis(story)}</div>
+                      </div>
+                    </div>
                   </Link>
+
 
                   {/* Title */}
                   <a
@@ -1289,56 +1318,50 @@ function CatalogPageInner() {
                     )}
 
                     {/* NEW: Tip Writer */}
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setTipOpenFor(prev => prev === (story as any).id ? null : (story as any).id)}
-                        className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-white/20 bg-black/40 text-white hover:bg-black/55"
-                        title="Tip the writer"
-                        aria-haspopup="menu"
-                        aria-expanded={tipOpenFor === (story as any).id}
-                        disabled={sendingTip}
-                      >
-                        💝 <span className="text-sm font-semibold">Tip</span>
-                      </button>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setTipOpenFor(prev => prev === (story as any).id ? null : (story as any).id)
+                      }
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-white/20 bg-black/40 text-white hover:bg-black/55"
+                      title="Tip the writer"
+                      aria-haspopup="menu"
+                      aria-expanded={tipOpenFor === (story as any).id}
+                      disabled={sendingTip}
+                    >
+                      💝 <span className="text-sm font-semibold">Tip</span>
+                    </button>
 
-                      {tipOpenFor === (story as any).id && (
-                        <div
-                          className="absolute right-0 mt-2 w-36 bg-[#101418] text-white border border-white/10 rounded-md shadow-xl z-50"
-                          role="menu"
-                        >
-                          <div className="px-3 py-2 text-xs opacity-80">Send a tip</div>
-                          <div className="h-px bg-white/10" />
-                          <ul className="py-1">
-                            {TIP_AMOUNTS.map((amt) => (
-                              <li key={amt}>
-                                <button
-                                  type="button"
-                                  className="w-full text-left px-3 py-2 hover:bg-white/10 text-sm"
-                                  onClick={() => handleSendTip(ownerId, (story as any).id!, amt)}
-                                  disabled={sendingTip}
-                                  role="menuitem"
-                                >
-                                  {amt} credit{amt === 1 ? '' : 's'}
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
+                    {tipOpenFor === (story as any).id && (
+                      <div
+                        // ⬇️ right-side popout, vertically centered to the button
+                        className="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-36
+                                  bg-[#101418] text-white border border-white/10 rounded-md shadow-xl z-50"
+                        role="menu"
+                      >
+                        <div className="px-3 py-2 text-xs opacity-80">Send a tip</div>
+                        <div className="h-px bg-white/10" />
+                        <ul className="py-1">
+                          {TIP_AMOUNTS.map((amt) => (
+                            <li key={amt}>
+                              <button
+                                type="button"
+                                className="w-full text-left px-3 py-2 hover:bg-white/10 text-sm"
+                                onClick={() => handleSendTip(ownerId, (story as any).id!, amt)}
+                                disabled={sendingTip}
+                                role="menuitem"
+                              >
+                                {amt} credit{amt === 1 ? '' : 's'}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
                   </div>
 
-                  {/* Hover info box */}
-                  <div
-                    className="pointer-events-none opacity-0 group-hover/story:opacity-100 transition-opacity duration-200
-                               absolute inset-x-2 bottom-24 z-40"
-                  >
-                    <div className="bg-black/85 text-white text-xs rounded-md p-3 border border-white/10 shadow-xl">
-                      <div className="font-semibold mb-1">Synopsis</div>
-                      <div className="line-clamp-5 text-[12px]">
-                        {getSynopsis(story)}
-                      </div>
                       <div className="mt-2 flex items-center gap-2 text-[12px] opacity-90">
                         <img
                           src={authorPhoto}
@@ -1348,9 +1371,7 @@ function CatalogPageInner() {
                         <span>Created by: <span className="font-medium">{creatorName}</span></span>
                       </div>
                     </div>
-                  </div>
-                </div>
-              );
+               );
             })
           ) : (
             !isLoading && <p className="text-lg text-gray-400">No stories to display.</p>

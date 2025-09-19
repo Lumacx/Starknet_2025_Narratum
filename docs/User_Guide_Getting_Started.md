@@ -8,7 +8,7 @@ The Narratum homepage and Discover page are your gateways to a world of stories.
 
 ### Browsing and Filtering
 
-You can browse stories by various categories and genres. Use the filtering options to narrow down your choices and find exactly what you're looking for.
+You can browse stories by various categories and genres. Use the filtering options to narrow down your choices and find exactly what you're looking for, including filtering by story type, plan type, language, and author.
 
 ### Semantic Search
 
@@ -17,9 +17,10 @@ Narratum features an intelligent semantic search. Instead of just matching keywo
 ### Reading, Rating, and Favoriting
 
 Once you find a story that piques your interest, you can:
-*   **Read:** Dive into the narrative with our immersive Story Reader.
-*   **Rate:** Share your thoughts and help others discover great content by rating stories.
+*   **Read:** Dive into the narrative with our immersive Story Reader. Note that some stories may require credits to read, depending on their plan type.
+*   **Rate:** Share your thoughts and help others discover great content by rating stories using our star rating system. You earn rating stars by reading stories.
 *   **Favorite:** Add stories to your favorites for quick access later from your Profile page.
+*   **Tip Writers:** Show your appreciation to creators by sending them credits as a tip directly from the story card.
 
 ## Account Management
 
@@ -31,6 +32,10 @@ Narratum offers flexible authentication methods:
 *   **Email/Password:** Create a traditional account with your email.
 *   **Google Sign-In:** Use your existing Google account for a quick and easy login.
 *   **Starknet Wallet:** For our blockchain-savvy users, connect your Starknet wallet to access Narratum. Your Starknet address will be linked to an anonymous Firebase user, allowing you to seamlessly use all features while maintaining your web3 identity.
+
+### Credits
+
+Narratum utilizes a credit system for accessing premium stories and features. Your current credit balance is displayed and managed within your user profile. Credits can be purchased or earned through various in-app activities.
 
 ## Creating Your First Story
 

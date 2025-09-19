@@ -9,22 +9,27 @@ import { httpsCallable } from 'firebase/functions';
 import { functions } from '@/lib/firebase';
 
 const PayPalButtons = dynamic(
-  () => import('@paypal/react-paypal-js').then(m => m.PayPalButtons),
+  () => import('@paypal/react-paypal-js').then((m) => m.PayPalButtons),
   { ssr: false }
 );
 
 interface CreditPackage {
   id: string;
-  name: string;
+  tier: 'Tester' | 'Reader' | 'Writer' | 'Creator';
   credits: number;
   price: number;
+  popular?: boolean;
 }
 
 const creditPackages: CreditPackage[] = [
-  { id: 'package_1', name: '100 Credits', credits: 100, price: 9.99 },
-  { id: 'package_2', name: '500 Credits', credits: 500, price: 44.99 },
-  { id: 'package_3', name: '1000 Credits', credits: 1000, price: 79.99 },
+  { id: 'pkg_tester',  tier: 'Tester',  credits: 25,  price: 5.0 },
+  { id: 'pkg_reader',  tier: 'Reader',  credits: 75,  price: 15.0 },
+  { id: 'pkg_writer',  tier: 'Writer',  credits: 125, price: 25.0, popular: true },
+  { id: 'pkg_creator', tier: 'Creator', credits: 250, price: 50.0 },
 ];
+
+const prettyUSD = (n: number) =>
+  n.toLocaleString(undefined, { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
 
 function ButtonsArea({
   selectedPackage,
@@ -37,30 +42,26 @@ function ButtonsArea({
 }) {
   const [{ isPending, isRejected, isResolved }] = usePayPalScriptReducer();
 
-  if (isPending) return <div className="text-center">Loading PayPal…</div>;
-  if (isRejected) return <div className="p-4 rounded border text-sm">PayPal SDK blocked/failed.</div>;
+  if (isPending) return <div className="text-center py-2">Loading PayPal…</div>;
+  if (isRejected) return <div className="p-4 rounded-lg border text-sm">PayPal SDK blocked/failed.</div>;
   if (!isResolved || typeof window === 'undefined' || !(window as any).paypal) {
-    return <div className="p-4 rounded border text-sm">Payment module unavailable.</div>;
+    return <div className="p-4 rounded-lg border text-sm">Payment module unavailable.</div>;
   }
 
   return (
     <PayPalButtons
       style={{ layout: 'vertical' }}
-      createOrder={(_data, actions) => {
-        if (!selectedPackage) {
-          onMessage('error', 'Please select a credit package.');
-          throw new Error('No package selected.');
-        }
-        return actions.order.create({
-          intent: 'CAPTURE', // ← keep intent here
+      createOrder={(_data, actions) =>
+        actions.order.create({
+          intent: 'CAPTURE',
           purchase_units: [
             {
               amount: { value: selectedPackage.price.toFixed(2), currency_code: 'USD' },
-              description: `Narratum Credits - ${selectedPackage.name}`,
+              description: `Narratum Credits — ${selectedPackage.tier}`,
             },
           ],
-        });
-      }}
+        })
+      }
       onApprove={async (_data, actions) => {
         onMessage('pending', 'Processing your payment...');
         const order = await actions.order!.capture();
@@ -81,7 +82,6 @@ const BuyCreditsPage: FC = () => {
   const [selectedPackage, setSelectedPackage] = useState<CreditPackage | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'success' | 'error' | 'pending'>('idle');
   const [message, setMessage] = useState<string>('');
-
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [promoCodeMessage, setPromoCodeMessage] = useState('');
   const [isRedeeming, setIsRedeeming] = useState(false);
@@ -89,12 +89,11 @@ const BuyCreditsPage: FC = () => {
   const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
   const unusable = !clientId || clientId.trim().toLowerCase() === 'test';
 
-  const options: ReactPayPalScriptOptions = useMemo(() => ({
-    clientId: clientId!,
-    currency: 'USD',
-    intent: 'capture',
-    components: 'buttons',
-  }), [clientId]);
+  // ✅ Compute once, pass the variable (no inline hooks in JSX)
+  const options: ReactPayPalScriptOptions = useMemo(
+    () => ({ clientId: clientId!, currency: 'USD', intent: 'capture', components: 'buttons' }),
+    [clientId]
+  );
 
   async function handleApproveSuccess(order: any) {
     try {
@@ -105,11 +104,7 @@ const BuyCreditsPage: FC = () => {
       }
       if (order?.status === 'COMPLETED' && selectedPackage) {
         const processPayment = httpsCallable(functions, 'processPayPalPayment');
-        await processPayment({
-          orderId: order.id,
-          userId: user.uid,
-          amount: selectedPackage.credits,
-        });
+        await processPayment({ orderId: order.id, userId: user.uid, amount: selectedPackage.credits });
         setPaymentStatus('success');
         setMessage(`Successfully purchased ${selectedPackage.credits} credits!`);
       } else {
@@ -123,15 +118,14 @@ const BuyCreditsPage: FC = () => {
     }
   }
 
-  function setMsg(status: 'idle' | 'success' | 'error' | 'pending', msg: string) {
+  const setMsg = (status: 'idle' | 'success' | 'error' | 'pending', msg: string) => {
     setPaymentStatus(status);
     setMessage(msg);
-  }
+  };
 
   const handleRedeemPromoCode = async () => {
     if (!user) return setPromoCodeMessage('You must be logged in to redeem a promo code.');
     if (!promoCodeInput.trim()) return setPromoCodeMessage('Please enter a promo code.');
-
     setIsRedeeming(true);
     setPromoCodeMessage('Redeeming promo code...');
     try {
@@ -148,89 +142,172 @@ const BuyCreditsPage: FC = () => {
     }
   };
 
-  if (authLoading) return <div className="min-h-screen flex items-center justify-center">Loading user data…</div>;
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-xl font-semibold">Loading…</p>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white p-4">
-        <p className="text-lg">Please log in to purchase or redeem credits.</p>
+      <div
+        className={`
+          min-h-screen flex items-center justify-center p-6
+          bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26]
+          text-[#3A4B5C] dark:text-[#E0C9A0] font-sans
+        `}
+      >
+        <p className="text-lg font-['Lato']">Please log in to purchase or redeem credits.</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8 flex flex-col items-center">
-      <h1 className="text-4xl font-bold mb-8">Buy Credits & Redeem Codes</h1>
+    <div
+      className={`
+        min-h-screen relative flex flex-col items-center p-5 md:p-10
+        bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26]
+        text-[#3A4B5C] dark:text-[#E0C9A0] font-sans
+      `}
+    >
+      <div className="w-full max-w-6xl pt-6 pb-20">
+        <header className="text-center mb-8 md:mb-12">
+          <p className="font-['Lato'] text-base md:text-lg font-light tracking-widest mb-1">PURCHASE CREDITS</p>
+          <h1 className="font-['Georgia'] text-4xl md:text-5xl font-bold m-0">Fuel Your Narrative</h1>
+        </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-        {creditPackages.map((pkg) => (
-          <div
-            key={pkg.id}
-            className={`bg-gray-800 p-6 rounded-lg shadow-lg cursor-pointer transition-all duration-200
-              ${selectedPackage?.id === pkg.id ? 'border-4 border-purple-500' : 'border border-gray-700 hover:border-gray-500'}`}
-            onClick={() => { setSelectedPackage(pkg); setMsg('idle', ''); }}
-          >
-            <h2 className="text-2xl font-semibold mb-2">{pkg.name}</h2>
-            <p className="text-lg text-gray-300 mb-4">{pkg.credits} Credits</p>
-            <p className="text-3xl font-bold text-green-400">${pkg.price.toFixed(2)}</p>
-          </div>
-        ))}
-      </div>
+        {/* Packages */}
+        <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 md:gap-8 mb-10">
+          {creditPackages.map((pkg) => {
+            const selected = selectedPackage?.id === pkg.id;
+            return (
+              <button
+                key={pkg.id}
+                onClick={() => { setSelectedPackage(pkg); setMsg('idle', ''); }}
+                className={`
+                  group relative w-full text-left rounded-2xl border-2
+                  transition-all duration-300 ease-in-out focus:outline-none focus:ring-4
+                  p-6 md:p-7
+                  bg-[#F3EADF] border-[#CBBBA0] text-[#3A4B5C]
+                  hover:scale-[1.02] hover:shadow-xl focus:ring-[#CBBBA0]
+                  ${selected ? 'shadow-[0_0_0_4px_rgba(169,131,79,0.35)]' : 'shadow-lg'}
+                  dark:bg-[#2B2622] dark:border-[#6D5A40] dark:text-[#E0C9A0]
+                  dark:hover:shadow-[0_0_30px_rgba(224,201,160,0.20)]
+                `}
+              >
+                {pkg.popular && (
+                  <span className="absolute -top-3 right-5 rounded-full px-3 py-1 text-[10px] font-semibold bg-[#A9834F] text-white shadow-md animate-pulse-slow">
+                    Most Popular
+                  </span>
+                )}
 
-      {selectedPackage && (
-        <div className="w-full max-w-md bg-gray-800 p-6 rounded-lg shadow-lg mb-8">
-          <h2 className="text-xl font-semibold mb-4">Confirm Purchase:</h2>
-          <p className="text-lg mb-4">
-            You selected: <span className="font-bold text-purple-400">{selectedPackage.name}</span> for{' '}
-            <span className="font-bold text-green-400">${selectedPackage.price.toFixed(2)}</span>
-          </p>
+                <div className="flex items-start justify-between">
+                  <h2 className="font-['Georgia'] text-2xl font-bold">{pkg.tier}</h2>
+                  <span className="rounded-full px-3 py-1 text-xs font-semibold bg-[#EADFCC] text-[#3A4B5C] dark:bg-[#3A2B26] dark:text-[#E0C9A0]">
+                    {pkg.credits} credits
+                  </span>
+                </div>
 
-          {message && (
-            <p className={`mb-4 ${paymentStatus === 'success' ? 'text-green-500' : 'text-red-500'}`}>{message}</p>
-          )}
+                <div className="mt-4">
+                  <div className="text-3xl font-bold">{prettyUSD(pkg.price)}</div>
+                  <p className="mt-1 text-xs opacity-80">Avg scenarios split</p>
+                </div>
 
-          {unusable ? (
-            <div className="p-4 rounded border text-sm">
-              <strong>Missing PayPal client ID.</strong> Set <code>NEXT_PUBLIC_PAYPAL_CLIENT_ID</code>.
+                <div className="mt-6 w-full rounded-full py-2 text-center font-semibold transition bg-[#A9834F] text-white hover:brightness-110">
+                  {selected ? 'Selected' : 'Choose package'}
+                </div>
+              </button>
+            );
+          })}
+        </section>
+
+        {/* Confirm + PayPal */}
+        {selectedPackage && (
+          <section className="mx-auto w-full max-w-2xl rounded-2xl border-2 p-6 md:p-7 bg-[#F3EADF] border-[#CBBBA0] text-[#3A4B5C] shadow-xl dark:bg-[#2B2622] dark:border-[#6D5A40] dark:text-[#E0C9A0]">
+            <h3 className="font-['Georgia'] text-2xl font-bold mb-2">Confirm Purchase</h3>
+            <p className="text-sm md:text-base">
+              You selected <span className="font-semibold">{selectedPackage.tier}</span> —{' '}
+              <span className="font-semibold">{selectedPackage.credits} credits</span> for{' '}
+              <span className="font-semibold">{prettyUSD(selectedPackage.price)}</span>.
+            </p>
+
+            {message && (
+              <p
+                className={`
+                  mt-3 text-sm
+                  ${paymentStatus === 'success'
+                    ? 'text-green-700 dark:text-green-300'
+                    : paymentStatus === 'pending'
+                    ? 'text-yellow-700 dark:text-yellow-300'
+                    : paymentStatus === 'error'
+                    ? 'text-red-700 dark:text-red-300'
+                    : 'opacity-90'}
+                `}
+              >
+                {message}
+              </p>
+            )}
+
+            <div className="mt-5">
+              {unusable ? (
+                <div className="p-4 rounded-lg border text-sm">
+                  <strong>Missing PayPal client ID.</strong> Set <code>NEXT_PUBLIC_PAYPAL_CLIENT_ID</code>.
+                </div>
+              ) : (
+                <PayPalProviderClient enabled options={options}>
+                  <ButtonsArea selectedPackage={selectedPackage} onSuccess={handleApproveSuccess} onMessage={setMsg} />
+                </PayPalProviderClient>
+              )}
             </div>
-          ) : (
-            <PayPalProviderClient enabled options={options}>
-              <ButtonsArea
-                selectedPackage={selectedPackage}
-                onSuccess={handleApproveSuccess}
-                onMessage={setMsg}
-              />
-            </PayPalProviderClient>
-          )}
-        </div>
-      )}
+          </section>
+        )}
 
-      {/* Promo Code Redemption */}
-      <div className="w-full max-w-md bg-gray-800 p-6 rounded-lg shadow-lg">
-        <h2 className="text-xl font-semibold mb-4">Redeem Promo Code</h2>
-        <div className="flex flex-col space-y-4">
-          <input
-            type="text"
-            placeholder="Enter promo code"
-            className="p-3 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-purple-500"
-            value={promoCodeInput}
-            onChange={(e) => setPromoCodeInput(e.target.value)}
-            disabled={isRedeeming}
-          />
-          <button
-            onClick={handleRedeemPromoCode}
-            className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isRedeeming}
-          >
-            {isRedeeming ? 'Redeeming…' : 'Redeem Code'}
-          </button>
+        {/* Promo Code */}
+        <section className="mt-10 mx-auto w-full max-w-2xl rounded-2xl border-2 p-6 md:p-7 bg-[#F3EADF] border-[#CBBBA0] text-[#3A4B5C] shadow-xl dark:bg-[#2B2622] dark:border-[#6D5A40] dark:text-[#E0C9A0]">
+          <h3 className="font-['Georgia'] text-2xl font-bold mb-4">Redeem Promo Code</h3>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <input
+              type="text"
+              placeholder="Enter promo code"
+              className="flex-1 rounded-full px-4 py-3 text-sm outline-none bg-white/80 border border-[#CBBBA0] focus:ring-4 focus:ring-[#CBBBA0] dark:bg-[#3A2B26] dark:border-[#6D5A40]"
+              value={promoCodeInput}
+              onChange={(e) => setPromoCodeInput(e.target.value)}
+              disabled={isRedeeming}
+            />
+            <button
+              onClick={handleRedeemPromoCode}
+              disabled={isRedeeming}
+              className="rounded-full px-6 py-3 text-sm font-semibold text-white transition bg-purple-600 hover:bg-purple-700 active:bg-purple-800 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {isRedeeming ? 'Redeeming…' : 'Redeem'}
+            </button>
+          </div>
           {promoCodeMessage && (
-            <p className={`text-sm ${promoCodeMessage.includes('Error') ? 'text-red-500' : 'text-green-500'}`}>
+            <p className={`mt-3 text-sm ${promoCodeMessage.startsWith('Error') ? 'text-red-700 dark:text-red-300' : 'text-green-700 dark:text-green-300'}`}>
               {promoCodeMessage}
             </p>
           )}
-        </div>
+        </section>
+
+        <footer className="text-center mt-12">
+          <p className="font-['Georgia'] italic text-xl">Where your words come to life</p>
+        </footer>
       </div>
+
+      <style jsx global>{`
+        @keyframes pulseGlowLight {
+          0%, 100% { box-shadow: 0 0 22px rgba(58, 75, 92, 0.25); }
+          50% { box-shadow: 0 0 44px rgba(58, 75, 92, 0.6); }
+        }
+        @keyframes pulseGlowDark {
+          0%, 100% { box-shadow: 0 0 8px rgba(255, 255, 255, 0.25); }
+          50% { box-shadow: 0 0 16px rgba(255, 255, 255, 0.6); }
+        }
+        .animate-pulse-slow { animation: pulseGlowLight 2.5s infinite; }
+        .dark .animate-pulse-slow { animation: pulseGlowDark 2.5s infinite; }
+      `}</style>
     </div>
   );
 };

@@ -22,7 +22,7 @@ The `StoryReader` component is the core of the interactive story-reading experie
     *   **Back to App:** A button to return to the previous section of the application (e.g., story editor, discover page).
 *   **Responsive Design:** Adapts its layout and element sizing for optimal viewing on both wide and narrow screens (e.g., desktop vs. mobile).
 *   **Premium Feature Integration:** Supports embedding the ElevenLabs Conversational AI widget and a free navigation index based on story settings.
-*   **User Interaction Logging:** Logs when a user reads a story, which contributes to the rating system's anti-abuse logic.
+*   **User Interaction Logging & Credit Deduction:** Logs when a user reads a story, which contributes to the rating system's anti-abuse logic and triggers credit deduction for paid stories.
 
 ## 3. Component Structure and Props
 
@@ -86,8 +86,8 @@ type ReaderPage = {
 7.  **Premium Features:**
     *   If `story.premium?.convaiAgentId` is present, an `<elevenlabs-convai>` custom element and its required script are conditionally rendered at the bottom of the component, enabling the AI avatar for interactive conversations.
     *   If `story.premium?.freeNavigationIndex` is `true`, a left-side navigation index (chips for each page) is displayed on wider screens, allowing premium users to jump to any page.
-8.  **Reading/Rating Anti-Abuse Logic:**
-    *   The component logs when a user reads a story. This interaction data is used by the backend to implement anti-abuse measures for story ratings and other community features, ensuring genuine engagement.
+8.  **Reading/Rating Anti-Abuse Logic and Credit Deduction:**
+    *   The component logs when a user reads a story. This interaction data is used by the backend to implement anti-abuse measures for story ratings and other community features. For paid stories, reading also triggers a credit deduction via the `deductCreditsForRead` Firebase Function, managed by the `AuthContext` to ensure sufficient user credits.
 
 ## 5. Responsiveness
 

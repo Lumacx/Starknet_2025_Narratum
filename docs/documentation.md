@@ -15,7 +15,7 @@ The Narratum project is organized into several key directories, each serving a s
     - **`discover/page.tsx`**: The page for discovering stories created by other users.
     - **`profile/page.tsx`**: The user's profile page.
   - **`components/`**: Holds the reusable React components used throughout the application. This includes both UI elements (e.g., buttons, cards) and higher-level components (e.g., header, footer).
-  - **`context/`**: Contains the React context providers, such as the `AuthContext` for managing user authentication.
+  - **`context/`**: Contains the React context providers, such as the `AuthContext` for managing user authentication and credit status.
   - **`hooks/`**: Stores custom React hooks that encapsulate reusable logic.
   - **`lib/`**: Includes utility functions and libraries, such as the Firebase configuration.
   - **`ai/`**: This directory contains the AI-related code, including Genkit flows and functions.
@@ -28,6 +28,8 @@ The Narratum project is organized into several key directories, each serving a s
   - **`assetsIndex.ts`**: This function listens to Firebase Storage events (object finalization and deletion) within `users/{uid}/assets/**` paths. It automatically indexes metadata (like `uid`, `path`, `fileName`, `category`, `mediaType`, `size`, `contentType`, `source`, `createdAt`) for these assets into a Firestore collection named `assetsIndex`. This allows for efficient querying and management of user-uploaded content (e.g., avatars, story illustrations, backgrounds) without directly querying Storage.
   - **`authTriggers.ts`**: This function is triggered upon new user creation in Firebase Authentication. It automatically creates a corresponding user profile document in the `users` Firestore collection, populating it with essential details like `uid`, `email`, `username`, `displayName`, `role`, and timestamps. This ensures a standardized and immediate user data structure for new sign-ups.
   - **`commentCounter.ts`**: This function is a Firestore trigger that automatically increments the `commentsCount` field on a `story` document whenever a new comment is added to the `comments` collection. It also updates the `updatedAt` timestamp of the story, providing real-time feedback on story engagement.
+  - **`deductCreditsForRead.ts`**: This callable function is invoked when a user attempts to read a paid story. It deducts the appropriate number of credits from the user's balance based on the story's plan (Basic=1, Premium=5, ConvAI=15). It ensures a user has sufficient credits before allowing access and updates their credit balance in Firestore.
+  - **`sendTipToWriter.ts`**: This callable function allows users to send credits as a tip to story writers. It transfers a specified amount of credits from the tipping user to the writer's credit balance in Firestore.
 
 ## 3. Core Features
 
@@ -40,12 +42,11 @@ Narratum offers a range of features designed to enhance the storytelling experie
 - **Template-Driven Story Creation**: Creators can use predefined templates to structure their stories. The `create/page.tsx` file shows how users can select from a list of mock templates such as "Three-Act Structure", "The Hero's Journey", and "Freytag's Pyramid". The creation process now involves a guided flow (managed by `src/app/create/page.tsx`, `src/app/create/begin/page.tsx`, and `src/app/create/support/page.tsx`) that assists users in defining initial prompts, selecting templates, and providing reference materials.
 - **Story Content Editing**: Users can create and edit the textual content of individual story pages within a dedicated editor. This includes functionality for navigating between pages and an auto-save feature to ensure content is regularly preserved.
 - **AI Writing Prompts**: The application integrates with an AI tool to provide writing prompts. The `src/ai/flows/generate-writing-prompts.ts` file defines a Genkit flow that takes a story template and user input to generate a list of compelling writing prompts.
-- **User Authentication**: Narratum supports multiple authentication methods to provide flexibility for users:
+- **User Authentication & Credit System**: Narratum supports multiple authentication methods and integrates a credit system for accessing premium content.
     *   **Google Sign-In (GSI) Button**: Users can seamlessly sign in using their Google accounts. This method integrates with Firebase Authentication for secure and convenient access.
     *   **Starknet Wallet Connection**: For users in the decentralized ecosystem, Narratum allows login and profile management through Starknet-compatible wallets.
     *   **Email/Password**: Traditional email and password authentication is also supported via Firebase, allowing for straightforward account creation and login.
-
-    The `AuthContext.tsx` file centrally manages the authentication state across all these methods.
+    *   **Credit Management**: The `AuthContext.tsx` file centrally manages the authentication state, including the loading and real-time synchronization of user credits from Firestore. This ensures that the application's UI accurately reflects the user's credit balance, preventing premature rendering before credit data is available.
 - **Story Discovery Page with Search and Filtering**: This page provides a comprehensive interface for users to find stories within the Narratum platform.
     *   **UI Implementation (Completed)**: The user interface for the "Discover" page (`src/app/discover/page.tsx`) has been designed and implemented. It includes a prominent search bar for semantic searches, flexible genre/tag filters via a reusable `GenreMultiSelect` component, and an appealing grid display of story previews (cards).
     *   **Semantic Search Integration (Completed)**: The page is fully integrated with the `src/app/api/semantic-search/route.ts` API endpoint, allowing users to perform AI-powered semantic searches for stories based on themes and concepts. Search results are effectively filtered and displayed.
@@ -53,7 +54,12 @@ Narratum offers a range of features designed to enhance the storytelling experie
         *   **Popularity**: Stories can be sorted to show the most viewed ones.
         *   **Recency**: Stories can be sorted to display the most recently created or published content.
         *   **Genres/Tags**: Users can select one or more genres from a predefined list (e.g., Fantasy, Sci-Fi, Mystery) to narrow down their search, leveraging the updated `genres` array field in the `Story` schema.
-    *   **Enriched Story Cards (Implemented)**: Story preview cards now display additional relevant information including the author's display name and the count of comments, providing more context to users before they click on a story.
+        *   **Story Type**: Filter by 'short', 'novela', or 'campaign'.
+        *   **Plan Type**: Filter by 'basic', 'premium', or 'convai'.
+        *   **Language**: Filter stories by their language.
+        *   **Author**: Filter stories to view all content from a specific creator.
+    *   **Enriched Story Cards (Implemented)**: Story preview cards now display additional relevant information including the author's display name, the count of comments, and the credit cost to read the story, providing more context to users before they click on a story. Users can also add stories to favorites and rate them with a star rating system.
+    *   **Tipping Feature**: Readers can send credits as tips to their favorite writers directly from the story cards on the discover page, facilitated by the `sendTipToWriter` Firebase Function.
 - **Profile Management**: Users can create and manage their profiles, view their created stories, and track their reading progress. Key features include:
     *   **Avatar Management**: Users can personalize their profiles by uploading custom avatars using the `AvatarUploader` component. These uploaded assets are automatically indexed by the `assetsIndex` Firebase Function for streamlined management and retrieval.
     *   **Profile Data**: Update and view personal information associated with their account.
@@ -100,7 +106,7 @@ The application's data is stored in a PostgreSQL database managed by DataConnect
 - **`story`**: Stores the metadata for each story, including the title, description, genre, and creator.
 - **`story_content`**: Contains the actual content of the stories, with each row representing a page or a section of a story.
 - **`template`**: Holds the templates that can be used for creating new stories.
-- **`user`**: Stores user information for authentication and profile management.
+- **`user`**: Stores user information for authentication, profile management, and credit balances.
 
 ## 6. Getting Started
 
