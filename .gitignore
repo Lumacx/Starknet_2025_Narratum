@@ -40,6 +40,7 @@ next-env.d.ts
 .genkit/*
 .env*
 .env.local
+private.pem
 
 secrets/referral-backfill.json
 functions/.runtimeconfig.json

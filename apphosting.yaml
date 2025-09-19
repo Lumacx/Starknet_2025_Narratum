@@ -1,3 +1,36 @@
 env:
 -   variable: FIREBASE_FUNCTIONS_BASE_URL
     value: https://us-central1-narratum.cloudfunctions.net
+
+# --- Firebase Admin (server-only) ---
+  - variable: FIREBASE_PROJECT_ID
+    secret: FIREBASE_PROJECT_ID
+    availability: [RUNTIME]
+
+  - variable: FIREBASE_CLIENT_EMAIL
+    secret: FIREBASE_CLIENT_EMAIL
+    availability: [RUNTIME]
+
+  # Use base64 to avoid newline issues in PEM
+  - variable: FIREBASE_PRIVATE_KEY_BASE64
+    secret: FIREBASE_PRIVATE_KEY_BASE64
+    availability: [RUNTIME]
+
+  # --- PayPal (server-only) ---
+  - variable: PAYPAL_CLIENT_ID
+    secret: PAYPAL_CLIENT_ID
+    availability: [RUNTIME]
+
+  - variable: PAYPAL_SECRET_KEY
+    secret: PAYPAL_SECRET_KEY
+    availability: [RUNTIME]
+
+  - variable: PAYPAL_ENV      # "production" or "development"
+    secret: PAYPAL_ENV
+    availability: [RUNTIME]
+
+  # --- Optional public vars for the browser (prefix NEXT_PUBLIC_) ---
+  # If you want any public config, you can set them as cleartext values:
+  # - variable: NEXT_PUBLIC_SOMETHING
+  #   value: "foo"
+  #   availability: [RUNTIME]
