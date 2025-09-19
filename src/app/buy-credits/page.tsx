@@ -26,6 +26,11 @@ const BuyCreditsPage: FC = () => {
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'success' | 'error' | 'pending'>('idle');
   const [message, setMessage] = useState<string>('');
 
+  // State for promo code functionality
+  const [promoCodeInput, setPromoCodeInput] = useState<string>('');
+  const [promoCodeMessage, setPromoCodeMessage] = useState<string>('');
+  const [isRedeeming, setIsRedeeming] = useState<boolean>(false);
+
   const createOrder = async (data: Record<string, unknown>, actions: any) => {
     if (!selectedPackage) {
       setMessage('Please select a credit package.');
@@ -96,6 +101,40 @@ const BuyCreditsPage: FC = () => {
     setMessage('Payment cancelled.');
   };
 
+  const handleRedeemPromoCode = async () => {
+    if (!user) {
+      setPromoCodeMessage('You must be logged in to redeem a promo code.');
+      return;
+    }
+    if (!promoCodeInput.trim()) {
+      setPromoCodeMessage('Please enter a promo code.');
+      return;
+    }
+
+    setIsRedeeming(true);
+    setPromoCodeMessage('Redeeming promo code...');
+
+    try {
+      const redeemCode = httpsCallable(functions, 'redeemPromoCode');
+      const result = await redeemCode({ promoCode: promoCodeInput });
+
+      if (result.data && (result.data as any).success) {
+        setPromoCodeMessage((result.data as any).message || 'Promo code redeemed successfully!');
+        setPromoCodeInput(''); // Clear input on success
+        // Ideally, refresh user credits here if you have a mechanism for it
+      } else {
+        setPromoCodeMessage((result.data as any).message || 'Failed to redeem promo code.');
+      }
+    } catch (error: any) {
+      console.error('Error redeeming promo code:', error);
+      // Firebase HttpsError will have a .code and .message
+      const errorMessage = error.message || 'An unexpected error occurred during redemption.';
+      setPromoCodeMessage(`Error: ${errorMessage}`);
+    } finally {
+      setIsRedeeming(false);
+    }
+  };
+
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading user data...</div>;
   }
@@ -103,14 +142,14 @@ const BuyCreditsPage: FC = () => {
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white p-4">
-        <p className="text-lg">Please log in to purchase credits.</p>
+        <p className="text-lg">Please log in to purchase or redeem credits.</p>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8 flex flex-col items-center">
-      <h1 className="text-4xl font-bold mb-8">Buy Credits</h1>
+      <h1 className="text-4xl font-bold mb-8">Buy Credits & Redeem Codes</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
         {creditPackages.map((pkg) => (
@@ -132,7 +171,7 @@ const BuyCreditsPage: FC = () => {
       </div>
 
       {selectedPackage && (
-        <div className="w-full max-w-md bg-gray-800 p-6 rounded-lg shadow-lg">
+        <div className="w-full max-w-md bg-gray-800 p-6 rounded-lg shadow-lg mb-8">
           <h2 className="text-xl font-semibold mb-4">Confirm Purchase:</h2>
           <p className="text-lg mb-4">You selected: <span className="font-bold text-purple-400">{selectedPackage.name}</span> for <span className="font-bold text-green-400">${selectedPackage.price.toFixed(2)}</span></p>
 
@@ -157,6 +196,33 @@ const BuyCreditsPage: FC = () => {
           )}
         </div>
       )}
+
+      {/* Promo Code Redemption Section */}
+      <div className="w-full max-w-md bg-gray-800 p-6 rounded-lg shadow-lg">
+        <h2 className="text-xl font-semibold mb-4">Redeem Promo Code</h2>
+        <div className="flex flex-col space-y-4">
+          <input
+            type="text"
+            placeholder="Enter promo code"
+            className="p-3 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-purple-500"
+            value={promoCodeInput}
+            onChange={(e) => setPromoCodeInput(e.target.value)}
+            disabled={isRedeeming}
+          />
+          <button
+            onClick={handleRedeemPromoCode}
+            className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isRedeeming}
+          >
+            {isRedeeming ? 'Redeeming...' : 'Redeem Code'}
+          </button>
+          {promoCodeMessage && (
+            <p className={`text-sm ${promoCodeMessage.includes('Error') ? 'text-red-500' : 'text-green-500'}`}>
+              {promoCodeMessage}
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

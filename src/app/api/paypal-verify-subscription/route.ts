@@ -1,112 +1,151 @@
+// src/app/api/paypal-verify-subscription/route.ts
+import 'server-only';
 import { NextRequest, NextResponse } from 'next/server';
-import { initializeApp, getApps } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getAdminApp, getAdminDb } from '@/lib/firebaseAdmin'; // ✅ lazy Admin
 import { getAuth } from 'firebase-admin/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
+export const maxDuration = 60;
 
-// Initialize Firebase Admin SDK if not already initialized
-if (!getApps().length) {
-  initializeApp();
+// Decide sandbox vs prod via env; default to sandbox unless explicitly "production"
+function resolvePayPalBase(): string {
+  const forced = process.env.PAYPAL_API_BASE?.trim();
+  if (forced) return forced; // allow explicit override
+  const env = (process.env.PAYPAL_ENV || process.env.NODE_ENV || 'development').toLowerCase();
+  return env === 'production'
+    ? 'https://api-m.paypal.com'
+    : 'https://api-m.sandbox.paypal.com';
 }
-const db = getFirestore();
-const auth = getAuth();
 
 export async function POST(req: NextRequest) {
-  const { subscriptionID, planName, billingCycle } = await req.json();
-
-  if (!subscriptionID) {
-    return NextResponse.json({ success: false, error: 'Subscription ID is missing.' }, { status: 400 });
-  }
-
-  const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID;
-  const PAYPAL_SECRET_KEY = process.env.PAYPAL_SECRET_KEY;
-  const PAYPAL_API_BASE = 'https://api-m.sandbox.paypal.com'; // Use 'https://api-m.paypal.com' for production
-
-  if (!PAYPAL_CLIENT_ID || !PAYPAL_SECRET_KEY) {
-    console.error('PayPal API credentials not configured.');
-    return NextResponse.json({ success: false, error: 'PayPal API credentials not configured on the server.' }, { status: 500 });
-  }
-
-  // Verify Firebase ID Token first to authenticate the user
-  const authorizationHeader = req.headers.get('Authorization');
-  if (!authorizationHeader || !authorizationHeader.startsWith('Bearer ')) {
-    console.error('Authorization token not provided or malformed.');
-    return NextResponse.json({ success: false, error: 'Authentication required.' }, { status: 401 });
-  }
-  const idToken = authorizationHeader.split('Bearer ')[1];
-
-  let decodedToken;
   try {
-    decodedToken = await auth.verifyIdToken(idToken);
-  } catch (error) {
-    console.error('Error verifying Firebase ID token:', error);
-    return NextResponse.json({ success: false, error: 'Invalid or expired authentication token.' }, { status: 401 });
-  }
+    const { subscriptionID, planName, billingCycle } = await req.json();
 
-  const userId = decodedToken.uid;
+    if (!subscriptionID) {
+      return NextResponse.json(
+        { success: false, error: 'Subscription ID is missing.' },
+        { status: 400 }
+      );
+    }
 
-  try {
-    // 1. Get an access token from PayPal
+    const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID;
+    const PAYPAL_SECRET_KEY = process.env.PAYPAL_SECRET_KEY;
+
+    if (!PAYPAL_CLIENT_ID || !PAYPAL_SECRET_KEY) {
+      console.error('PayPal API credentials not configured.');
+      return NextResponse.json(
+        { success: false, error: 'PayPal API credentials not configured on the server.' },
+        { status: 500 }
+      );
+    }
+
+    // 🔐 Verify Firebase ID token (Authorization: Bearer <idToken>)
+    const authorizationHeader = req.headers.get('Authorization') || '';
+    const idToken = authorizationHeader.startsWith('Bearer ')
+      ? authorizationHeader.slice('Bearer '.length)
+      : '';
+
+    if (!idToken) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required.' },
+        { status: 401 }
+      );
+    }
+
+    const auth = getAuth(getAdminApp());  // ✅ lazy Admin init
+    let decodedToken;
+    try {
+      decodedToken = await auth.verifyIdToken(idToken);
+    } catch (err) {
+      console.error('Error verifying Firebase ID token:', err);
+      return NextResponse.json(
+        { success: false, error: 'Invalid or expired authentication token.' },
+        { status: 401 }
+      );
+    }
+
+    const userId = decodedToken.uid;
+
+    // 1) Get PayPal access token
+    const base = resolvePayPalBase();
     const authString = Buffer.from(`${PAYPAL_CLIENT_ID}:${PAYPAL_SECRET_KEY}`).toString('base64');
-    const tokenResponse = await fetch(`${PAYPAL_API_BASE}/v1/oauth2/token`, {
+    const tokenRes = await fetch(`${base}/v1/oauth2/token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': `Basic ${authString}`,
+        Authorization: `Basic ${authString}`,
       },
       body: 'grant_type=client_credentials',
+      cache: 'no-store',
     });
 
-    if (!tokenResponse.ok) {
-      const errorData = await tokenResponse.json();
-      console.error('Failed to get PayPal access token:', errorData);
-      return NextResponse.json({ success: false, error: 'Failed to authenticate with PayPal.' }, { status: 500 });
+    if (!tokenRes.ok) {
+      const errBody = await tokenRes.text().catch(() => '');
+      console.error('Failed to get PayPal access token:', tokenRes.status, errBody);
+      return NextResponse.json(
+        { success: false, error: 'Failed to authenticate with PayPal.' },
+        { status: 500 }
+      );
     }
 
-    const { access_token } = await tokenResponse.json();
+    const { access_token } = await tokenRes.json();
 
-    // 2. Get subscription details from PayPal using the access token
-    const subscriptionDetailsResponse = await fetch(`${PAYPAL_API_BASE}/v1/billing/subscriptions/${subscriptionID}`, {
+    // 2) Fetch subscription details
+    const detailsRes = await fetch(`${base}/v1/billing/subscriptions/${subscriptionID}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${access_token}`,
+        Authorization: `Bearer ${access_token}`,
       },
+      cache: 'no-store',
     });
 
-    if (!subscriptionDetailsResponse.ok) {
-      const errorData = await subscriptionDetailsResponse.json();
-      console.error('Failed to get PayPal subscription details:', errorData);
-      return NextResponse.json({ success: false, error: 'Failed to verify subscription with PayPal.' }, { status: 500 });
+    if (!detailsRes.ok) {
+      const errBody = await detailsRes.text().catch(() => '');
+      console.error('Failed to get PayPal subscription details:', detailsRes.status, errBody);
+      return NextResponse.json(
+        { success: false, error: 'Failed to verify subscription with PayPal.' },
+        { status: 500 }
+      );
     }
 
-    const subscriptionDetails = await subscriptionDetailsResponse.json();
-    console.log('PayPal Subscription Details for user', userId, ':', subscriptionDetails);
+    const subscriptionDetails = await detailsRes.json();
+    const status: string = (subscriptionDetails?.status || '').toUpperCase();
 
-    // 3. Verify the subscription status and details
-    if (subscriptionDetails.status === 'ACTIVE' || subscriptionDetails.status === 'APPROVED') {
-      // Update user's subscription status in Firebase Firestore
-      await db.collection('users').doc(userId).set({
-        subscriptionStatus: 'active',
-        paypalSubscriptionId: subscriptionID,
-        planName: planName,
-        billingCycle: billingCycle,
-        paypalSubscriptionDetails: subscriptionDetails, // Store full details for reference
-        subscriptionActivatedAt: new Date().toISOString(),
-      }, { merge: true }); // Use merge to update without overwriting other user data
+    // 3) Mark active if PayPal says ACTIVE or APPROVED
+    if (status === 'ACTIVE' || status === 'APPROVED') {
+      const db = getAdminDb(); // ✅ lazy Admin init
+      await db.collection('users').doc(userId).set(
+        {
+          subscriptionStatus: 'active',
+          paypalSubscriptionId: subscriptionID,
+          planName: planName ?? null,
+          billingCycle: billingCycle ?? null,
+          paypalSubscriptionDetails: subscriptionDetails,
+          subscriptionActivatedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
 
-      return NextResponse.json({ success: true, message: 'Subscription successfully verified and activated.' });
-    } else {
-      console.warn('PayPal subscription not active for user', userId, ':', subscriptionDetails.status);
-      return NextResponse.json({ success: false, error: `Subscription is not active. Current status: ${subscriptionDetails.status}` }, { status: 400 });
+      return NextResponse.json({
+        success: true,
+        message: 'Subscription successfully verified and activated.',
+      });
     }
 
+    console.warn('PayPal subscription not active for user', userId, ':', status);
+    return NextResponse.json(
+      { success: false, error: `Subscription is not active. Current status: ${status}` },
+      { status: 400 }
+    );
   } catch (error) {
-    console.error('Error during PayPal subscription verification for user', userId, ':', error);
-    return NextResponse.json({ success: false, error: 'Internal server error during PayPal verification.' }, { status: 500 });
+    console.error('Error during PayPal subscription verification:', error);
+    return NextResponse.json(
+      { success: false, error: 'Internal server error during PayPal verification.' },
+      { status: 500 }
+    );
   }
 }

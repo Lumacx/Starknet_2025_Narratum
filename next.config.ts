@@ -58,7 +58,7 @@ const nextConfig: NextConfig = {
     contentSecurityPolicy: "script-src 'none'; frame-src 'none'; worker-src 'self';",
   },
 
-  webpack: (config, { dev }) => {
+   webpack: (config, { dev }) => {
     if (!dev) {
       config.cache = { type: 'filesystem', cacheDirectory: '/tmp/webpack-cache' };
     }

@@ -1,4 +1,3 @@
-// functions/src/credits.ts
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { verifyPayPalOrder } from './utils/paypal'; // Corrected import path

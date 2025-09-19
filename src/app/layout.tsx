@@ -1,3 +1,4 @@
+// src/app/layout.tsx
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -6,29 +7,43 @@ import { StarknetProvider } from "@/components/Starknet/StarknetProviderComponen
 import { AuthProvider } from "@/context/AuthContext";
 import Header from "@/components/header";
 import Footer from "@/components/layout/Footer";
-import KeepAliveProvider from "@/app/providers/KeepAliveProvider"; // client
-import { PayPalScriptProvider } from "@paypal/react-paypal-js"; // Import PayPalScriptProvider
+import KeepAliveProvider from "@/app/providers/KeepAliveProvider";
+import PayPalProviderClient from "@/components/PayPalProviderClient";
+import { Suspense } from "react";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Narratum",
   description: "Interactive storytelling with AI",
+  // Optional: icon, themeColor, etc.
 };
 
 const initialPayPalOptions = {
-  clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "YOUR_PAYPAL_CLIENT_ID", // Replace with your actual client ID or environment variable
+  clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "test",
   currency: "USD",
   intent: "capture",
-};
+} as const;
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const isProd = process.env.NODE_ENV === "production";
+
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* basic meta for consistent layout on all devices */}
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        {/* preconnects to speed up fonts and common CDNs */}
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://firebasestorage.googleapis.com" />
+        <link rel="preconnect" href="https://storage.googleapis.com" />
+      </head>
+
       <body className={inter.className}>
-        {/* Oculta Header/Footer y toolbars cuando el StoryReader aplica html.reader-mode */}
+        {/* Hide chrome in reader-mode */}
         <style
           // eslint-disable-next-line react/no-danger
           dangerouslySetInnerHTML={{
@@ -44,24 +59,54 @@ export default function RootLayout({
           }}
         />
 
+        {/* Dev-only: surface silent client errors that can cause "Loading..." forever */}
+        {!isProd && (
+          <script
+            // eslint-disable-next-line react/no-danger
+            dangerouslySetInnerHTML={{
+              __html: `
+                (function () {
+                  if (window.__dbgHooks) return; window.__dbgHooks = true;
+                  window.addEventListener('error', e => {
+                    console.log('[window error]', e.error || e.message);
+                  });
+                  window.addEventListener('unhandledrejection', e => {
+                    console.log('[unhandledrejection]', e.reason);
+                  });
+                })();
+              `,
+            }}
+          />
+        )}
+
+        {/* Google Identity Services (client) */}
         <GsiScript />
+
+        {/* App providers */}
         <StarknetProvider>
-          <PayPalScriptProvider options={initialPayPalOptions}> {/* Wrap with PayPalScriptProvider */}
-            <AuthProvider>
-              {/* ⚠️ Tu KeepAliveProvider sólo acepta requireAuth y rtdbPath */}
-              <KeepAliveProvider requireAuth rtdbPath="_meta/keepalive">
-                <div className="site-header">
+          <AuthProvider>
+            {/* KeepAlive needs client; keep it inside Auth */}
+            <KeepAliveProvider requireAuth rtdbPath="_meta/keepalive">
+              <div className="site-header">
+                <Suspense fallback={<div style={{ height: 56 }} />}>
                   <Header />
-                </div>
+                </Suspense>
+              </div>
 
-                {children}
+              {/* PayPal provider is client-only; options are safe (public clientId) */}
+              <PayPalProviderClient options={initialPayPalOptions}>
+                <Suspense fallback={<div className="min-h-[40vh] flex items-center justify-center">Loading…</div>}>
+                  {children}
+                </Suspense>
+              </PayPalProviderClient>
 
-                <div className="site-footer">
+              <div className="site-footer">
+                <Suspense fallback={null}>
                   <Footer />
-                </div>
-              </KeepAliveProvider>
-            </AuthProvider>
-          </PayPalScriptProvider>
+                </Suspense>
+              </div>
+            </KeepAliveProvider>
+          </AuthProvider>
         </StarknetProvider>
       </body>
     </html>
