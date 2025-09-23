@@ -529,17 +529,21 @@ exports.processPayPalSubscription = functions.https.onCall(async (data, context)
     }
 });
 /* ────────────────────────────────────────────────────────────
-   6) Scheduled — grant monthly free credits
+   6) Scheduled — grant monthly free credits (2:00 AM CR, 1st)
    ──────────────────────────────────────────────────────────── */
-exports.grantMonthlyFreeCredits = functions.pubsub
-    .schedule('every 1st of month 00:00')
-    .timeZone('America/Los_Angeles')
+exports.grantMonthlyFreeCredits = functions
+    .region("us-central1") // keep region explicit
+    .pubsub
+    // ┌─ minute(0) hour(2) day-of-month(1) month(*) day-of-week(*)
+    .schedule("0 2 1 * *") // 2:00 AM on the 1st of each month
+    .timeZone("America/Costa_Rica") // correct IANA TZ with underscore
     .onRun(async () => {
-    const usersRef = firebaseAdmin_1.db.collection('users');
+    const usersRef = firebaseAdmin_1.db.collection("users");
     const freeCreditsAmount = 25;
     const now = firebaseAdmin_1.Timestamp.now();
-    const currentMonth = new Date(now.toDate()).getMonth();
-    const currentYear = new Date(now.toDate()).getFullYear();
+    const current = now.toDate();
+    const currentMonth = current.getMonth();
+    const currentYear = current.getFullYear();
     try {
         const snapshot = await usersRef.get();
         const updates = [];
@@ -552,7 +556,8 @@ exports.grantMonthlyFreeCredits = functions.pubsub
             }
             else {
                 const lastGrantDate = lastGrantTimestamp.toDate();
-                if (lastGrantDate.getMonth() !== currentMonth || lastGrantDate.getFullYear() !== currentYear) {
+                if (lastGrantDate.getMonth() !== currentMonth ||
+                    lastGrantDate.getFullYear() !== currentYear) {
                     shouldGrant = true;
                 }
             }
@@ -567,23 +572,23 @@ exports.grantMonthlyFreeCredits = functions.pubsub
                         credits: currentCredits + freeCreditsAmount,
                         lastMonthlyCreditGrant: now,
                     });
-                    userRef.collection('transactions').doc().set({
-                        type: 'free_monthly_grant',
+                    userRef.collection("transactions").doc().set({
+                        type: "free_monthly_grant",
                         creditsDelta: freeCreditsAmount,
                         timestamp: now,
                         description: `Received ${freeCreditsAmount} free monthly credits.`,
-                        status: 'confirmed',
+                        status: "confirmed",
                     });
                 }));
             }
         });
         await Promise.all(updates);
-        console.log('Monthly free credits granted to eligible users.');
+        console.log("Monthly free credits granted to eligible users.");
         return null;
     }
     catch (error) {
-        console.error('Error granting monthly free credits:', error);
-        throw new functions.https.HttpsError('internal', 'Failed to grant monthly free credits.', error.message);
+        console.error("Error granting monthly free credits:", error);
+        throw new functions.https.HttpsError("internal", "Failed to grant monthly free credits.", error.message);
     }
 });
 //# sourceMappingURL=credits.js.map
