@@ -1,18 +1,16 @@
 // functions/src/authTriggers.ts
-import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
-
-if (!admin.apps.length) admin.initializeApp();
-const db = admin.firestore();
+import { db, FieldValue } from './firebaseAdmin';
+import type { UserRecord } from 'firebase-admin/auth';
 
 export const createuserprofile = functions
   .region('us-central1')
   .auth.user()
-  .onCreate(async (user: admin.auth.UserRecord) => {
+  .onCreate(async (user: UserRecord) => {
     const { uid, email, displayName } = user;
 
     const username = displayName || `user_${uid.slice(0, 8)}`;
-    const now = admin.firestore.FieldValue.serverTimestamp();
+    const now = FieldValue.serverTimestamp();
 
     const userProfile = {
       id: uid,

@@ -1,8 +1,8 @@
+//functions/src/propagateUserProfile.ts
 import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
-import * as admin from 'firebase-admin';
+import { db, FieldValue, Timestamp } from './firebaseAdmin';
+import { FieldPath } from 'firebase-admin/firestore'; // type/utility is fine to import
 
-if (!admin.apps.length) admin.initializeApp();
-const db = admin.firestore();
 
 export const propagateUserProfileToStories = onDocumentUpdated('users/{uid}', async (event) => {
   const uid = event.params.uid as string;
@@ -19,7 +19,7 @@ export const propagateUserProfileToStories = onDocumentUpdated('users/{uid}', as
   for (;;) {
     let q = db.collection('stories')
       .where('ownerUid', '==', uid)
-      .orderBy(admin.firestore.FieldPath.documentId())
+      .orderBy(FieldPath.documentId())
       .limit(pageSize);
 
     if (cursor) q = q.startAfter(cursor);
@@ -35,7 +35,7 @@ export const propagateUserProfileToStories = onDocumentUpdated('users/{uid}', as
           creator: { uid, name, photoURL },
           authorName: name,
           authorPhotoURL: photoURL,
-          authorUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          authorUpdatedAt: FieldValue.serverTimestamp(),
         },
         { merge: true }
       );

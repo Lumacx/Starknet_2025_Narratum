@@ -1,12 +1,8 @@
 // functions/src/assetsIndex.ts
 // Gen2 Storage indexer — ONLY index under users/{uid}/assetIndex/(stories|uncategorized)/{category}/...
 
-import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
-
-if (!admin.apps.length) admin.initializeApp();
-const db = getFirestore();
+import { db, Timestamp } from './firebaseAdmin';
 
 /**
  * Ruta válida:

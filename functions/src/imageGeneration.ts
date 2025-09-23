@@ -1,16 +1,11 @@
 // functions/src/imageGeneration.ts
-import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
 import { v4 as uuidv4 } from 'uuid';
 import { Buffer } from 'node:buffer';
-
-// Your local wrapper for the model
 import { ai, type Part } from './genkit';
+import { db, storage, FieldValue } from './firebaseAdmin';
 
-if (!admin.apps.length) admin.initializeApp();
-
-const db = admin.firestore();
-const bucket = admin.storage().bucket();
+const bucket = storage.bucket();
 
 interface GenerateImageRequestData {
   description?: string;
@@ -114,7 +109,7 @@ export const generateNarratumImage = functions
         url: publicUrl,
         promptText: description,
         mediaType: mime,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
         storyId: storyId || null,
         assetCategory: assetCategoryFolder,
       });

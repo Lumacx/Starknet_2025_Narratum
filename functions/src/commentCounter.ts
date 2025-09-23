@@ -1,9 +1,6 @@
 // functions/src/commentCounter.ts
-import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
-
-if (!admin.apps.length) admin.initializeApp();
-const db = admin.firestore();
+import { db, FieldValue, Timestamp } from './firebaseAdmin';
 
 /**
  * On new comment, increment commentsCount on /stories/{storyId}.
@@ -24,8 +21,8 @@ export const incrementCommentCount = functions
     try {
       await db.collection('stories').doc(storyId).set(
         {
-          commentsCount: admin.firestore.FieldValue.increment(1),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          commentsCount: FieldValue.increment(1),
+          updatedAt: FieldValue.serverTimestamp(),
         },
         { merge: true }
       );

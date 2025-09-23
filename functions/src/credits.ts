@@ -1,10 +1,8 @@
 // functions/src/credits.ts
 import * as functions from 'firebase-functions';
-import * as admin from 'firebase-admin';
+import { db, adminAuth, FieldValue, Timestamp } from './firebaseAdmin';
 import { verifyPayPalOrder } from './utils/paypal';
 
-admin.initializeApp();
-const db = admin.firestore();
 
 // Narratum Admin User ID for internal credit distribution
 const NARRATUM_ADMIN_UID = 'bOKyhlO8sofk5O4dGRTZAIfdYSx2';
@@ -88,7 +86,7 @@ export const processPayPalPayment = functions.https.onRequest(async (req, res) =
         type: 'purchase',
         creditsDelta: amount,                 // credits purchased
         amountUsd: paypalAmount,              // USD paid (from PayPal)
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        timestamp: FieldValue.serverTimestamp(),
         description: `Purchased ${amount} credits via PayPal (Order ID: ${orderId})`,
         paypalOrderId: orderId,
         status: 'confirmed',
@@ -169,7 +167,7 @@ export const deductCreditsForRead = functions.https.onCall(async (data, context)
         type: 'read',
         creditsDelta: -cost,
         storyId,
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        timestamp: FieldValue.serverTimestamp(),
         description: `Deducted ${cost} credits for reading story: ${storyDoc.data()?.title || storyId}`,
         status: 'confirmed',
       });
@@ -188,7 +186,7 @@ export const deductCreditsForRead = functions.https.onCall(async (data, context)
         adminRef.collection('transactions').doc().set({
           type: 'profit',
           creditsDelta: adminTotal,
-          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          timestamp: FieldValue.serverTimestamp(),
           description: `Credit profit (AI+Storage: ${aiStorageAmount}, App Cut: ${appCutAmount}) from story read by ${readerUid} for story ${storyId}`,
           sourceUid: readerUid,
           storyId,
@@ -208,7 +206,7 @@ export const deductCreditsForRead = functions.https.onCall(async (data, context)
             ownerRef.collection('transactions').doc().set({
               type: 'profit',
               creditsDelta: royaltyAmount,
-              timestamp: admin.firestore.FieldValue.serverTimestamp(),
+              timestamp: FieldValue.serverTimestamp(),
               description: `Royalty earnings from ${readerUid} for story ${storyDoc.data()?.title || storyId}`,
               sourceUid: readerUid,
               storyId,
@@ -227,7 +225,7 @@ export const deductCreditsForRead = functions.https.onCall(async (data, context)
           referrerRef!.collection('transactions').doc().set({
             type: 'profit',
             creditsDelta: referralAmount,
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            timestamp: FieldValue.serverTimestamp(),
             description: `Referral earnings from ${readerUid} reading story ${storyId}`,
             sourceUid: readerUid,
             storyId,
@@ -240,7 +238,7 @@ export const deductCreditsForRead = functions.https.onCall(async (data, context)
           adminRef.collection('transactions').doc().set({
             type: 'profit',
             creditsDelta: referralAmount,
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            timestamp: FieldValue.serverTimestamp(),
             description: `Referral fallback from ${readerUid} reading story ${storyId}`,
             sourceUid: readerUid,
             storyId,
@@ -258,7 +256,7 @@ export const deductCreditsForRead = functions.https.onCall(async (data, context)
         adminRef.collection('transactions').doc().set({
           type: 'profit',
           creditsDelta: remainder,
-          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          timestamp: FieldValue.serverTimestamp(),
           description: `Rounding adjustment from ${readerUid} reading ${storyId}`,
           sourceUid: readerUid,
           storyId,
@@ -329,7 +327,7 @@ export const deductCreditsForCreation = functions.https.onCall(async (data, cont
       creatorRef.collection('transactions').doc().set({
         type: 'create',
         creditsDelta: -cost,
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        timestamp: FieldValue.serverTimestamp(),
         description: `Deducted ${cost} credits for creating a ${storyType} story.`,
         storyType,
         status: 'confirmed',
@@ -349,7 +347,7 @@ export const deductCreditsForCreation = functions.https.onCall(async (data, cont
         adminRef.collection('transactions').doc().set({
           type: 'profit',
           creditsDelta: adminTotal,
-          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          timestamp: FieldValue.serverTimestamp(),
           description: `Credit profit (AI+Storage: ${aiStorageAmount}, App Cut: ${appCutAmount}) from ${creatorUid} creating a ${storyType} story`,
           sourceUid: creatorUid,
           storyType,
@@ -366,7 +364,7 @@ export const deductCreditsForCreation = functions.https.onCall(async (data, cont
           referrerRef!.collection('transactions').doc().set({
             type: 'profit',
             creditsDelta: referralAmount,
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            timestamp: FieldValue.serverTimestamp(),
             description: `Referral earnings from ${creatorUid} creating a ${storyType} story`,
             sourceUid: creatorUid,
             storyType,
@@ -379,7 +377,7 @@ export const deductCreditsForCreation = functions.https.onCall(async (data, cont
           adminRef.collection('transactions').doc().set({
             type: 'profit',
             creditsDelta: referralAmount,
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            timestamp: FieldValue.serverTimestamp(),
             description: `Referral fallback from ${creatorUid} creating a ${storyType} story`,
             sourceUid: creatorUid,
             storyType,
@@ -399,7 +397,7 @@ export const deductCreditsForCreation = functions.https.onCall(async (data, cont
         adminRef.collection('transactions').doc().set({
           type: 'profit',
           creditsDelta: remainder,
-          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          timestamp: FieldValue.serverTimestamp(),
           description: `Rounding adjustment from ${creatorUid} creating a ${storyType} story`,
           sourceUid: creatorUid,
           storyType,
@@ -459,7 +457,7 @@ export const sendTipToWriter = functions.https.onCall(async (data, context) => {
         type: 'tip_given',
         creditsDelta: -amount,
         targetUid,
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        timestamp: FieldValue.serverTimestamp(),
         description: `Sent ${amount} credits as a tip to ${targetDoc.data()?.displayName || targetUid}.`,
         status: 'confirmed',
       });
@@ -471,7 +469,7 @@ export const sendTipToWriter = functions.https.onCall(async (data, context) => {
         type: 'tip_received',
         creditsDelta: amount,
         sourceUid: senderUid,
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        timestamp: FieldValue.serverTimestamp(),
         description: `Received ${amount} credits as a tip from ${senderDoc.data()?.displayName || senderUid}.`,
         status: 'confirmed',
       });
@@ -513,7 +511,7 @@ export const processPayPalSubscription = functions.https.onCall(async (data, con
       ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}/api/paypal-verify-subscription`
       : 'http://localhost:3000/api/paypal-verify-subscription';
 
-    const firebaseAuthToken = await admin.auth().createCustomToken(userId);
+    const firebaseAuthToken = await adminAuth.createCustomToken(userId);
 
     const resp = await fetch(verifySubscriptionUrl, {
       method: 'POST',
@@ -565,7 +563,7 @@ export const grantMonthlyFreeCredits = functions.pubsub
     const usersRef = db.collection('users');
     const freeCreditsAmount = 25;
 
-    const now = admin.firestore.Timestamp.now();
+    const now = Timestamp.now();
     const currentMonth = new Date(now.toDate()).getMonth();
     const currentYear  = new Date(now.toDate()).getFullYear();
 
@@ -575,7 +573,7 @@ export const grantMonthlyFreeCredits = functions.pubsub
 
       snapshot.forEach((doc) => {
         const userData = doc.data();
-        const lastGrantTimestamp = userData?.lastMonthlyCreditGrant as admin.firestore.Timestamp | undefined;
+        const lastGrantTimestamp = userData?.lastMonthlyCreditGrant as Timestamp | undefined;
 
         let shouldGrant = false;
         if (!lastGrantTimestamp) {

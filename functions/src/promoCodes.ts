@@ -1,8 +1,6 @@
+//functions/src/promoCodes.ts
 import * as functions from 'firebase-functions';
-import * as admin from 'firebase-admin';
-
-admin.initializeApp();
-const db = admin.firestore();
+import { db, FieldValue, Timestamp } from './firebaseAdmin';
 
 export const redeemPromoCode = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
@@ -36,7 +34,7 @@ export const redeemPromoCode = functions.https.onCall(async (data, context) => {
       const creditsToGrant = promoData?.credits as number || 0;
       const maxUsesPerUser = promoData?.maxUsesPerUser as number | undefined;
       const globalMaxUses = promoData?.globalMaxUses as number | undefined;
-      const expirationDate = promoData?.expirationDate as admin.firestore.Timestamp | undefined;
+      const expirationDate = promoData?.expirationDate as Timestamp | undefined;
       const usedBy: string[] = promoData?.usedBy || [];
       const timesUsed: number = promoData?.timesUsed || 0;
 
@@ -67,7 +65,7 @@ export const redeemPromoCode = functions.https.onCall(async (data, context) => {
       transaction.set(userTransactionRef, {
         type: 'promo_code_redeemed',
         creditsDelta: creditsToGrant,
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        timestamp: FieldValue.serverTimestamp(),
         description: `Redeemed promo code: ${promoCode}`,
         promoCode: promoCode,
         status: 'confirmed',
@@ -75,8 +73,8 @@ export const redeemPromoCode = functions.https.onCall(async (data, context) => {
 
       // Update the promo code's usage information
       transaction.update(promoCodeRef, {
-        usedBy: admin.firestore.FieldValue.arrayUnion(userId),
-        timesUsed: admin.firestore.FieldValue.increment(1),
+        usedBy: FieldValue.arrayUnion(userId),
+        timesUsed: FieldValue.increment(1),
       });
 
       return { success: true, message: `${creditsToGrant} credits added successfully!` };

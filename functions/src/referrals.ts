@@ -1,11 +1,6 @@
 // functions/src/referrals.ts
-import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
-
-if (!admin.apps.length) {
-  admin.initializeApp();
-}
-const db = admin.firestore();
+import { db, FieldValue, Timestamp } from './firebaseAdmin';
 
 const USERS = 'users';
 const MAX_SUFFIX_TRIES = 50;
@@ -90,7 +85,7 @@ export const ensureReferralCodeOnCreate = functions.firestore
     const updates: Record<string, any> = {};
 
     if (!data.createdAt) {
-      updates.createdAt = admin.firestore.FieldValue.serverTimestamp();
+      updates.createdAt = FieldValue.serverTimestamp();
     }
     if (Object.keys(updates).length) {
       await snap.ref.set(updates, { merge: true });

@@ -326,3 +326,5 @@ Generated sources: package.json [871B] react/index.d.ts [12119B] react/package.j
 [debug] [2025-09-23T05:34:02.522Z] [Firebase Plugin] Received emulators shutdown notification.
 [debug] [2025-09-23T06:51:03.302Z] [Firebase Plugin] Received CLI notification.
 [debug] [2025-09-23T06:51:04.108Z] [Firebase Plugin] Received emulators shutdown notification.
+[debug] [2025-09-23T07:05:52.588Z] [Firebase Plugin] Received CLI notification.
+[debug] [2025-09-23T07:05:53.380Z] [Firebase Plugin] Received emulators shutdown notification.
