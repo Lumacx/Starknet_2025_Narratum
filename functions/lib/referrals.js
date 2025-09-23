@@ -35,12 +35,8 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ensureReferralCodeOnUpdate = exports.ensureReferralCodeOnCreate = void 0;
 // functions/src/referrals.ts
-const admin = __importStar(require("firebase-admin"));
 const functions = __importStar(require("firebase-functions"));
-if (!admin.apps.length) {
-    admin.initializeApp();
-}
-const db = admin.firestore();
+const firebaseAdmin_1 = require("./firebaseAdmin");
 const USERS = 'users';
 const MAX_SUFFIX_TRIES = 50;
 /** Slugify displayName: lowercase, alphanumeric + dashes */
@@ -61,7 +57,7 @@ function monthYearFromDate(d) {
 }
 /** Check if a referralCode already exists on any user */
 async function codeExists(code) {
-    const snap = await db.collection(USERS)
+    const snap = await firebaseAdmin_1.db.collection(USERS)
         .where('referralCode', '==', code)
         .limit(1)
         .get();
@@ -97,7 +93,7 @@ async function maybeStampReferralCode(uid, userData) {
     const { mm, yyyy } = monthYearFromDate(createdAt);
     const base = `${slug}-${mm}${yyyy}`;
     const unique = await buildUniqueCode(base);
-    await db.collection(USERS).doc(uid).set({ referralCode: unique }, { merge: true });
+    await firebaseAdmin_1.db.collection(USERS).doc(uid).set({ referralCode: unique }, { merge: true });
     console.log(`Stamped referralCode for ${uid}: ${unique}`);
 }
 /**
@@ -112,7 +108,7 @@ exports.ensureReferralCodeOnCreate = functions.firestore
     const data = snap.data() || {};
     const updates = {};
     if (!data.createdAt) {
-        updates.createdAt = admin.firestore.FieldValue.serverTimestamp();
+        updates.createdAt = firebaseAdmin_1.FieldValue.serverTimestamp();
     }
     if (Object.keys(updates).length) {
         await snap.ref.set(updates, { merge: true });

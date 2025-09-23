@@ -34,10 +34,9 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.redeemPromoCode = void 0;
+//functions/src/promoCodes.ts
 const functions = __importStar(require("firebase-functions"));
-const admin = __importStar(require("firebase-admin"));
-admin.initializeApp();
-const db = admin.firestore();
+const firebaseAdmin_1 = require("./firebaseAdmin");
 exports.redeemPromoCode = functions.https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
@@ -47,10 +46,10 @@ exports.redeemPromoCode = functions.https.onCall(async (data, context) => {
     if (typeof promoCode !== 'string' || promoCode.trim() === '') {
         throw new functions.https.HttpsError('invalid-argument', 'A valid promo code is required.');
     }
-    const promoCodeRef = db.collection('promoCodes').doc(promoCode.toUpperCase());
-    const userRef = db.collection('users').doc(userId);
+    const promoCodeRef = firebaseAdmin_1.db.collection('promoCodes').doc(promoCode.toUpperCase());
+    const userRef = firebaseAdmin_1.db.collection('users').doc(userId);
     try {
-        const result = await db.runTransaction(async (transaction) => {
+        const result = await firebaseAdmin_1.db.runTransaction(async (transaction) => {
             const promoDoc = await transaction.get(promoCodeRef);
             const userDoc = await transaction.get(userRef);
             if (!userDoc.exists) {
@@ -89,15 +88,15 @@ exports.redeemPromoCode = functions.https.onCall(async (data, context) => {
             transaction.set(userTransactionRef, {
                 type: 'promo_code_redeemed',
                 creditsDelta: creditsToGrant,
-                timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                timestamp: firebaseAdmin_1.FieldValue.serverTimestamp(),
                 description: `Redeemed promo code: ${promoCode}`,
                 promoCode: promoCode,
                 status: 'confirmed',
             });
             // Update the promo code's usage information
             transaction.update(promoCodeRef, {
-                usedBy: admin.firestore.FieldValue.arrayUnion(userId),
-                timesUsed: admin.firestore.FieldValue.increment(1),
+                usedBy: firebaseAdmin_1.FieldValue.arrayUnion(userId),
+                timesUsed: firebaseAdmin_1.FieldValue.increment(1),
             });
             return { success: true, message: `${creditsToGrant} credits added successfully!` };
         });

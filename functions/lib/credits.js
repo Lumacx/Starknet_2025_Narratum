@@ -36,10 +36,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.grantMonthlyFreeCredits = exports.processPayPalSubscription = exports.sendTipToWriter = exports.deductCreditsForCreation = exports.deductCreditsForRead = exports.processPayPalPayment = void 0;
 // functions/src/credits.ts
 const functions = __importStar(require("firebase-functions"));
-const admin = __importStar(require("firebase-admin"));
+const firebaseAdmin_1 = require("./firebaseAdmin");
 const paypal_1 = require("./utils/paypal");
-admin.initializeApp();
-const db = admin.firestore();
 // Narratum Admin User ID for internal credit distribution
 const NARRATUM_ADMIN_UID = 'bOKyhlO8sofk5O4dGRTZAIfdYSx2';
 // Credit split configuration
@@ -96,8 +94,8 @@ exports.processPayPalPayment = functions.https.onRequest(async (req, res) => {
         // Optional: validate payment amount (USD) from PayPal
         const purchaseUnit = orderDetails.purchase_units?.[0];
         const paypalAmount = purchaseUnit?.amount?.value ? parseFloat(purchaseUnit.amount.value) : 0;
-        const userRef = db.collection('users').doc(userId);
-        await db.runTransaction(async (transaction) => {
+        const userRef = firebaseAdmin_1.db.collection('users').doc(userId);
+        await firebaseAdmin_1.db.runTransaction(async (transaction) => {
             const userDoc = await transaction.get(userRef);
             if (!userDoc.exists) {
                 throw new functions.https.HttpsError('not-found', 'User not found.');
@@ -110,7 +108,7 @@ exports.processPayPalPayment = functions.https.onRequest(async (req, res) => {
                 type: 'purchase',
                 creditsDelta: amount, // credits purchased
                 amountUsd: paypalAmount, // USD paid (from PayPal)
-                timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                timestamp: firebaseAdmin_1.FieldValue.serverTimestamp(),
                 description: `Purchased ${amount} credits via PayPal (Order ID: ${orderId})`,
                 paypalOrderId: orderId,
                 status: 'confirmed',
@@ -142,10 +140,10 @@ exports.deductCreditsForRead = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError('invalid-argument', 'Story ID is required.');
     }
     try {
-        const storyRef = db.collection('stories').doc(storyId);
-        const readerRef = db.collection('users').doc(readerUid);
-        const adminRef = db.collection('users').doc(NARRATUM_ADMIN_UID);
-        return db.runTransaction(async (transaction) => {
+        const storyRef = firebaseAdmin_1.db.collection('stories').doc(storyId);
+        const readerRef = firebaseAdmin_1.db.collection('users').doc(readerUid);
+        const adminRef = firebaseAdmin_1.db.collection('users').doc(NARRATUM_ADMIN_UID);
+        return firebaseAdmin_1.db.runTransaction(async (transaction) => {
             const [storyDoc, readerDoc, adminDoc] = await Promise.all([
                 transaction.get(storyRef),
                 transaction.get(readerRef),
@@ -179,7 +177,7 @@ exports.deductCreditsForRead = functions.https.onCall(async (data, context) => {
             }
             // Optional referrer
             const referrerUid = readerDoc.data()?.referredBy;
-            const referrerRef = referrerUid ? db.collection('users').doc(referrerUid) : null;
+            const referrerRef = referrerUid ? firebaseAdmin_1.db.collection('users').doc(referrerUid) : null;
             const referrerDoc = referrerRef ? await transaction.get(referrerRef) : null;
             // Deduct from reader
             transaction.update(readerRef, { credits: readerCredits - cost });
@@ -187,7 +185,7 @@ exports.deductCreditsForRead = functions.https.onCall(async (data, context) => {
                 type: 'read',
                 creditsDelta: -cost,
                 storyId,
-                timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                timestamp: firebaseAdmin_1.FieldValue.serverTimestamp(),
                 description: `Deducted ${cost} credits for reading story: ${storyDoc.data()?.title || storyId}`,
                 status: 'confirmed',
             });
@@ -203,7 +201,7 @@ exports.deductCreditsForRead = functions.https.onCall(async (data, context) => {
                 adminRef.collection('transactions').doc().set({
                     type: 'profit',
                     creditsDelta: adminTotal,
-                    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                    timestamp: firebaseAdmin_1.FieldValue.serverTimestamp(),
                     description: `Credit profit (AI+Storage: ${aiStorageAmount}, App Cut: ${appCutAmount}) from story read by ${readerUid} for story ${storyId}`,
                     sourceUid: readerUid,
                     storyId,
@@ -215,14 +213,14 @@ exports.deductCreditsForRead = functions.https.onCall(async (data, context) => {
             if (ownerUid && ownerUid !== readerUid) {
                 const royaltyAmount = Math.floor(cost * split.ROYALTY);
                 if (royaltyAmount > 0) {
-                    const ownerRef = db.collection('users').doc(ownerUid);
+                    const ownerRef = firebaseAdmin_1.db.collection('users').doc(ownerUid);
                     const ownerDoc = await transaction.get(ownerRef);
                     if (ownerDoc.exists) {
                         transaction.update(ownerRef, { credits: (ownerDoc.data()?.credits || 0) + royaltyAmount });
                         ownerRef.collection('transactions').doc().set({
                             type: 'profit',
                             creditsDelta: royaltyAmount,
-                            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                            timestamp: firebaseAdmin_1.FieldValue.serverTimestamp(),
                             description: `Royalty earnings from ${readerUid} for story ${storyDoc.data()?.title || storyId}`,
                             sourceUid: readerUid,
                             storyId,
@@ -240,7 +238,7 @@ exports.deductCreditsForRead = functions.https.onCall(async (data, context) => {
                     referrerRef.collection('transactions').doc().set({
                         type: 'profit',
                         creditsDelta: referralAmount,
-                        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                        timestamp: firebaseAdmin_1.FieldValue.serverTimestamp(),
                         description: `Referral earnings from ${readerUid} reading story ${storyId}`,
                         sourceUid: readerUid,
                         storyId,
@@ -254,7 +252,7 @@ exports.deductCreditsForRead = functions.https.onCall(async (data, context) => {
                     adminRef.collection('transactions').doc().set({
                         type: 'profit',
                         creditsDelta: referralAmount,
-                        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                        timestamp: firebaseAdmin_1.FieldValue.serverTimestamp(),
                         description: `Referral fallback from ${readerUid} reading story ${storyId}`,
                         sourceUid: readerUid,
                         storyId,
@@ -271,7 +269,7 @@ exports.deductCreditsForRead = functions.https.onCall(async (data, context) => {
                 adminRef.collection('transactions').doc().set({
                     type: 'profit',
                     creditsDelta: remainder,
-                    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                    timestamp: firebaseAdmin_1.FieldValue.serverTimestamp(),
                     description: `Rounding adjustment from ${readerUid} reading ${storyId}`,
                     sourceUid: readerUid,
                     storyId,
@@ -301,9 +299,9 @@ exports.deductCreditsForCreation = functions.https.onCall(async (data, context) 
         throw new functions.https.HttpsError('invalid-argument', 'Invalid story type provided.');
     }
     try {
-        const creatorRef = db.collection('users').doc(creatorUid);
-        const adminRef = db.collection('users').doc(NARRATUM_ADMIN_UID);
-        return db.runTransaction(async (transaction) => {
+        const creatorRef = firebaseAdmin_1.db.collection('users').doc(creatorUid);
+        const adminRef = firebaseAdmin_1.db.collection('users').doc(NARRATUM_ADMIN_UID);
+        return firebaseAdmin_1.db.runTransaction(async (transaction) => {
             const [creatorDoc, adminDoc] = await Promise.all([
                 transaction.get(creatorRef),
                 transaction.get(adminRef),
@@ -332,14 +330,14 @@ exports.deductCreditsForCreation = functions.https.onCall(async (data, context) 
             }
             // Optional referrer
             const referrerUid = creatorDoc.data()?.referredBy;
-            const referrerRef = referrerUid ? db.collection('users').doc(referrerUid) : null;
+            const referrerRef = referrerUid ? firebaseAdmin_1.db.collection('users').doc(referrerUid) : null;
             const referrerDoc = referrerRef ? await transaction.get(referrerRef) : null;
             // Deduct from creator
             transaction.update(creatorRef, { credits: creatorCredits - cost });
             creatorRef.collection('transactions').doc().set({
                 type: 'create',
                 creditsDelta: -cost,
-                timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                timestamp: firebaseAdmin_1.FieldValue.serverTimestamp(),
                 description: `Deducted ${cost} credits for creating a ${storyType} story.`,
                 storyType,
                 status: 'confirmed',
@@ -356,7 +354,7 @@ exports.deductCreditsForCreation = functions.https.onCall(async (data, context) 
                 adminRef.collection('transactions').doc().set({
                     type: 'profit',
                     creditsDelta: adminTotal,
-                    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                    timestamp: firebaseAdmin_1.FieldValue.serverTimestamp(),
                     description: `Credit profit (AI+Storage: ${aiStorageAmount}, App Cut: ${appCutAmount}) from ${creatorUid} creating a ${storyType} story`,
                     sourceUid: creatorUid,
                     storyType,
@@ -372,7 +370,7 @@ exports.deductCreditsForCreation = functions.https.onCall(async (data, context) 
                     referrerRef.collection('transactions').doc().set({
                         type: 'profit',
                         creditsDelta: referralAmount,
-                        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                        timestamp: firebaseAdmin_1.FieldValue.serverTimestamp(),
                         description: `Referral earnings from ${creatorUid} creating a ${storyType} story`,
                         sourceUid: creatorUid,
                         storyType,
@@ -386,7 +384,7 @@ exports.deductCreditsForCreation = functions.https.onCall(async (data, context) 
                     adminRef.collection('transactions').doc().set({
                         type: 'profit',
                         creditsDelta: referralAmount,
-                        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                        timestamp: firebaseAdmin_1.FieldValue.serverTimestamp(),
                         description: `Referral fallback from ${creatorUid} creating a ${storyType} story`,
                         sourceUid: creatorUid,
                         storyType,
@@ -404,7 +402,7 @@ exports.deductCreditsForCreation = functions.https.onCall(async (data, context) 
                 adminRef.collection('transactions').doc().set({
                     type: 'profit',
                     creditsDelta: remainder,
-                    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                    timestamp: firebaseAdmin_1.FieldValue.serverTimestamp(),
                     description: `Rounding adjustment from ${creatorUid} creating a ${storyType} story`,
                     sourceUid: creatorUid,
                     storyType,
@@ -437,9 +435,9 @@ exports.sendTipToWriter = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError('invalid-argument', 'Cannot send a tip to yourself.');
     }
     try {
-        const senderRef = db.collection('users').doc(senderUid);
-        const targetRef = db.collection('users').doc(targetUid);
-        return db.runTransaction(async (transaction) => {
+        const senderRef = firebaseAdmin_1.db.collection('users').doc(senderUid);
+        const targetRef = firebaseAdmin_1.db.collection('users').doc(targetUid);
+        return firebaseAdmin_1.db.runTransaction(async (transaction) => {
             const [senderDoc, targetDoc] = await Promise.all([
                 transaction.get(senderRef),
                 transaction.get(targetRef),
@@ -458,7 +456,7 @@ exports.sendTipToWriter = functions.https.onCall(async (data, context) => {
                 type: 'tip_given',
                 creditsDelta: -amount,
                 targetUid,
-                timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                timestamp: firebaseAdmin_1.FieldValue.serverTimestamp(),
                 description: `Sent ${amount} credits as a tip to ${targetDoc.data()?.displayName || targetUid}.`,
                 status: 'confirmed',
             });
@@ -469,7 +467,7 @@ exports.sendTipToWriter = functions.https.onCall(async (data, context) => {
                 type: 'tip_received',
                 creditsDelta: amount,
                 sourceUid: senderUid,
-                timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                timestamp: firebaseAdmin_1.FieldValue.serverTimestamp(),
                 description: `Received ${amount} credits as a tip from ${senderDoc.data()?.displayName || senderUid}.`,
                 status: 'confirmed',
             });
@@ -499,7 +497,7 @@ exports.processPayPalSubscription = functions.https.onCall(async (data, context)
         const verifySubscriptionUrl = process.env.NEXT_PUBLIC_VERCEL_URL
             ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}/api/paypal-verify-subscription`
             : 'http://localhost:3000/api/paypal-verify-subscription';
-        const firebaseAuthToken = await admin.auth().createCustomToken(userId);
+        const firebaseAuthToken = await firebaseAdmin_1.adminAuth.createCustomToken(userId);
         const resp = await fetch(verifySubscriptionUrl, {
             method: 'POST',
             headers: {
@@ -537,9 +535,9 @@ exports.grantMonthlyFreeCredits = functions.pubsub
     .schedule('every 1st of month 00:00')
     .timeZone('America/Los_Angeles')
     .onRun(async () => {
-    const usersRef = db.collection('users');
+    const usersRef = firebaseAdmin_1.db.collection('users');
     const freeCreditsAmount = 25;
-    const now = admin.firestore.Timestamp.now();
+    const now = firebaseAdmin_1.Timestamp.now();
     const currentMonth = new Date(now.toDate()).getMonth();
     const currentYear = new Date(now.toDate()).getFullYear();
     try {
@@ -560,7 +558,7 @@ exports.grantMonthlyFreeCredits = functions.pubsub
             }
             if (shouldGrant) {
                 const userRef = doc.ref;
-                updates.push(db.runTransaction(async (transaction) => {
+                updates.push(firebaseAdmin_1.db.runTransaction(async (transaction) => {
                     const userDoc = await transaction.get(userRef);
                     if (!userDoc.exists)
                         return;

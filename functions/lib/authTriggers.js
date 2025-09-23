@@ -35,18 +35,15 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createuserprofile = void 0;
 // functions/src/authTriggers.ts
-const admin = __importStar(require("firebase-admin"));
 const functions = __importStar(require("firebase-functions"));
-if (!admin.apps.length)
-    admin.initializeApp();
-const db = admin.firestore();
+const firebaseAdmin_1 = require("./firebaseAdmin");
 exports.createuserprofile = functions
     .region('us-central1')
     .auth.user()
     .onCreate(async (user) => {
     const { uid, email, displayName } = user;
     const username = displayName || `user_${uid.slice(0, 8)}`;
-    const now = admin.firestore.FieldValue.serverTimestamp();
+    const now = firebaseAdmin_1.FieldValue.serverTimestamp();
     const userProfile = {
         id: uid,
         email: email ?? 'no-email@example.com',
@@ -57,7 +54,7 @@ exports.createuserprofile = functions
         updatedAt: now,
     };
     try {
-        await db.collection('users').doc(uid).set(userProfile, { merge: true });
+        await firebaseAdmin_1.db.collection('users').doc(uid).set(userProfile, { merge: true });
         console.log(`Profile created for user ${uid}`);
     }
     catch (e) {

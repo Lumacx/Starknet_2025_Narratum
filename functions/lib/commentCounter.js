@@ -35,11 +35,8 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.incrementCommentCount = void 0;
 // functions/src/commentCounter.ts
-const admin = __importStar(require("firebase-admin"));
 const functions = __importStar(require("firebase-functions"));
-if (!admin.apps.length)
-    admin.initializeApp();
-const db = admin.firestore();
+const firebaseAdmin_1 = require("./firebaseAdmin");
 /**
  * On new comment, increment commentsCount on /stories/{storyId}.
  * If your parent collection is different, change 'stories' below.
@@ -56,9 +53,9 @@ exports.incrementCommentCount = functions
         return null;
     }
     try {
-        await db.collection('stories').doc(storyId).set({
-            commentsCount: admin.firestore.FieldValue.increment(1),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        await firebaseAdmin_1.db.collection('stories').doc(storyId).set({
+            commentsCount: firebaseAdmin_1.FieldValue.increment(1),
+            updatedAt: firebaseAdmin_1.FieldValue.serverTimestamp(),
         }, { merge: true });
         return null;
     }

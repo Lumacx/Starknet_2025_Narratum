@@ -35,16 +35,12 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateNarratumImage = void 0;
 // functions/src/imageGeneration.ts
-const admin = __importStar(require("firebase-admin"));
 const functions = __importStar(require("firebase-functions"));
 const uuid_1 = require("uuid");
 const node_buffer_1 = require("node:buffer");
-// Your local wrapper for the model
 const genkit_1 = require("./genkit");
-if (!admin.apps.length)
-    admin.initializeApp();
-const db = admin.firestore();
-const bucket = admin.storage().bucket();
+const firebaseAdmin_1 = require("./firebaseAdmin");
+const bucket = firebaseAdmin_1.storage.bucket();
 exports.generateNarratumImage = functions
     .region('us-central1')
     .https.onCall(async (data, context) => {
@@ -117,17 +113,17 @@ exports.generateNarratumImage = functions
         const publicUrl = file.publicUrl();
         // 5) Index minimal metadata in Firestore - UPDATED PATH
         const newFirestorePath = storyId
-            ? db.collection("users").doc(uid)
+            ? firebaseAdmin_1.db.collection("users").doc(uid)
                 .collection("assetIndex").doc("stories")
                 .collection(storyId).doc(assetCategoryFolder)
                 .collection("assets").doc(imageId)
-            : db.collection('users').doc(uid).collection('assetIndex').doc('uncategorized').collection(assetCategoryFolder).doc(imageId);
+            : firebaseAdmin_1.db.collection('users').doc(uid).collection('assetIndex').doc('uncategorized').collection(assetCategoryFolder).doc(imageId);
         await newFirestorePath.set({
             path: filePath,
             url: publicUrl,
             promptText: description,
             mediaType: mime,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: firebaseAdmin_1.FieldValue.serverTimestamp(),
             storyId: storyId || null,
             assetCategory: assetCategoryFolder,
         });

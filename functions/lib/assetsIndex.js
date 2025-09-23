@@ -36,12 +36,8 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.removeIndexOnDelete = exports.indexAssetOnFinalize = void 0;
-const admin = __importStar(require("firebase-admin"));
 const functions = __importStar(require("firebase-functions"));
-const firestore_1 = require("firebase-admin/firestore");
-if (!admin.apps.length)
-    admin.initializeApp();
-const db = (0, firestore_1.getFirestore)();
+const firebaseAdmin_1 = require("./firebaseAdmin");
 /**
  * Ruta válida:
  * users/{uid}/assetIndex/(stories/{storyId}|uncategorized)/{category}/{filename...}
@@ -102,12 +98,12 @@ exports.indexAssetOnFinalize = functions
         'upload';
     // createdAt consistente
     const createdAt = obj.timeCreated
-        ? firestore_1.Timestamp.fromDate(new Date(obj.timeCreated))
-        : firestore_1.Timestamp.now();
+        ? firebaseAdmin_1.Timestamp.fromDate(new Date(obj.timeCreated))
+        : firebaseAdmin_1.Timestamp.now();
     // Campo storyId también puede venir como metadata y lo priorizamos si es coherente
     const mdStoryId = md['narratum:storyId']?.trim() || null;
     const finalStoryId = mdStoryId && storyId ? storyId : (storyId || mdStoryId || null);
-    await db.collection('assetsIndex').add({
+    await firebaseAdmin_1.db.collection('assetsIndex').add({
         uid,
         storyId: finalStoryId, // null si uncategorized
         category, // p.ej. covers | characters | ...
@@ -134,7 +130,7 @@ exports.removeIndexOnDelete = functions
         console.log('[assetsIndex] delete skip (non-assetIndex path):', path);
         return null;
     }
-    const snap = await db
+    const snap = await firebaseAdmin_1.db
         .collection('assetsIndex')
         .where('path', '==', path)
         .get();
@@ -142,7 +138,7 @@ exports.removeIndexOnDelete = functions
         console.log('[assetsIndex] delete: no index docs for', path);
         return null;
     }
-    const batch = db.batch();
+    const batch = firebaseAdmin_1.db.batch();
     snap.forEach((d) => batch.delete(d.ref));
     await batch.commit();
     console.log('[assetsIndex] delete: removed', snap.size, 'docs for', path);
