@@ -45,7 +45,7 @@ service firebase.storage {
       );
     }
 
-    /* ----------------- /users/{uid}/assets categories ----------------- */
+    /* ----------------- Categories & folders ----------------- */
     function isImageCategory(cat) {
       return cat in ['covers','avatars','characters','locations','backgrounds','generatedImages'];
     }
@@ -73,9 +73,8 @@ service firebase.storage {
         ));
     }
 
-    /* ----------------- New story folders validation ----------------- */
+    // New canonical story folders (to pair with Asset Hub types)
     function allowedStoryFolder(folder) {
-      // Added 'narration' to align with asset hub: images, audio, narration, soundfx, videos
       return folder in ['images','audio','narration','soundfx','videos'];
     }
     function fileValidForStoryFolder(folder) {
@@ -87,24 +86,23 @@ service firebase.storage {
         (folder == 'videos'    && isMp4()                && sizeBetween(0.5*1024*1024, 64*1024*1024));
     }
 
-    /* ----------------- Rutas principales ----------------- */
+    /* ----------------- Routes ----------------- */
 
-    // Avatares de perfil
+    // Profile avatars
     match /avatars/{uid}/{file=**} {
       allow read: if true;
       allow create, update: if isOwner(uid) && isImg() && sizeBetween(10*1024, 5*1024*1024);
       allow delete: if isOwner(uid);
     }
 
-    // Galería personal (legacy): /users/{uid}/assets/{category}/{file...}
+    // Personal gallery (legacy): /users/{uid}/assets/{category}/{file...}
     match /users/{uid}/assets/{category}/{file=**} {
       allow read: if isOwner(uid);
       allow create, update: if isOwner(uid) && assetValidForCategory(category);
       allow delete: if isOwner(uid);
     }
 
-    // Assets de historias: /users/{uid}/stories/{storyId}/{folder}/{file...}
-    // READ: owner OR story is public (was: open to all — tightened here)
+    // Story assets (non-assetIndex route): /users/{uid}/stories/{storyId}/{folder}/{file...}
     match /users/{uid}/stories/{storyId}/{folder}/{file=**} {
       allow read: if (isOwner(uid) || storyIsPublic(storyId)) && allowedStoryFolder(folder);
       allow create, update: if isOwner(uid) && allowedStoryFolder(folder) && fileValidForStoryFolder(folder);
@@ -115,9 +113,9 @@ service firebase.storage {
       allow list: if (isOwner(uid) || storyIsPublic(storyId)) && allowedStoryFolder(folder);
     }
 
-    /* ----------------- assetIndex (tu galería privada) ----------------- */
-
-    // OBJETOS (files)
+    // Your uploader paths (assetIndex storage buckets):
+    // /users/{uid}/assetIndex/stories/{storyId}/{category}/{file...}
+    // /users/{uid}/assetIndex/uncategorized/{category}/{file...}
     match /users/{uid}/assetIndex/stories/{storyId}/{category}/{file=**} {
       allow read: if isOwner(uid);
       allow create, update: if isOwner(uid) && assetValidForCategory(category);
@@ -128,8 +126,7 @@ service firebase.storage {
       allow create, update: if isOwner(uid) && assetValidForCategory(category);
       allow delete: if isOwner(uid);
     }
-
-    // CARPETAS (prefix) — requerido por listAll()
+    // list() for listAll on assetIndex
     match /users/{uid}/assetIndex/stories/{storyId}/{category} {
       allow list: if isOwner(uid);
     }
@@ -137,7 +134,7 @@ service firebase.storage {
       allow list: if isOwner(uid);
     }
 
-    // Deny por defecto
+    // Default deny
     match /{path=**} {
       allow read, write, list: if false;
     }

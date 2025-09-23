@@ -1,8 +1,9 @@
+# apphosting.yaml
 env:
--   variable: FIREBASE_FUNCTIONS_BASE_URL
+  - variable: FIREBASE_FUNCTIONS_BASE_URL
     value: https://us-central1-narratum.cloudfunctions.net
 
-# --- Firebase Admin (server-only) ---
+  # --- Firebase Admin (server-only) ---
   - variable: FIREBASE_PROJECT_ID
     secret: FIREBASE_PROJECT_ID
     availability: [RUNTIME]
@@ -25,12 +26,14 @@ env:
     secret: PAYPAL_SECRET_KEY
     availability: [RUNTIME]
 
-  - variable: PAYPAL_ENV      # "production" or "development"
+  # "production" or "development"
+  - variable: PAYPAL_ENV
     secret: PAYPAL_ENV
     availability: [RUNTIME]
 
-  # --- Optional public vars for the browser (prefix NEXT_PUBLIC_) ---
-  # If you want any public config, you can set them as cleartext values:
-  # - variable: NEXT_PUBLIC_SOMETHING
-  #   value: "foo"
+  # --- Optional public vars for the browser (cleartext is fine) ---
+  # Example: make PayPal client ID available to Next.js client code
+  # (Only include this if you actually want it exposed in the browser)
+  # - variable: NEXT_PUBLIC_PAYPAL_CLIENT_ID
+  #   value: YOUR_PUBLIC_CLIENT_ID
   #   availability: [RUNTIME]

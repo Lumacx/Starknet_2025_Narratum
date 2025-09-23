@@ -11,6 +11,7 @@ import {
   getDownloadURL,
   listAll,
   deleteObject,
+  uploadBytesResumable,           // ⬅️ add this
 } from 'firebase/storage';
 import {
   doc as fsDoc,
@@ -445,17 +446,17 @@ export default function UploadImageReference({
 
   async function handleSaveOriginal() {
     if (!currentUser || !selectedFile || !nameToSave.trim()) return;
-
+  
     try {
       const ext = extFromMime(selectedFile.type);
       const cleanName = sanitizeId(nameToSave);
       const filename = `${cleanName}.${ext}`;
       const sid = storyIdRef.current;
       const path = pathFor(currentUser.uid, sid, assetCategory, filename);
-
+  
       const storageRef = sref(storage, path);
-      const dataUrl = await fileToDataUrl(selectedFile);
-
+  
+      // Optional custom metadata
       const meta: Record<string, string> = {
         displayName: cleanName,
         category: assetCategory,
@@ -464,14 +465,39 @@ export default function UploadImageReference({
         'narratum:role': variant,
       };
       if (sid) meta['narratum:storyId'] = sid;
-
-      await uploadString(storageRef, dataUrl, 'data_url', { customMetadata: meta });
-      const downloadUrl = await getDownloadURL(storageRef);
-      const item: GalleryItem = { name: filename, url: downloadUrl, fullPath: path, contentType: selectedFile.type };
+  
+      // 🚀 Resumable upload with progress
+      const task = uploadBytesResumable(storageRef, selectedFile, {
+        contentType: selectedFile.type || undefined,
+        customMetadata: meta,
+      });
+  
+      await new Promise<void>((resolve, reject) => {
+        task.on(
+          'state_changed',
+          (snap) => {
+            // (Optional) you can reflect this in UI if you add a progress state here
+            // const pct = (snap.bytesTransferred / snap.totalBytes) * 100;
+            // setSomeProgressState(pct);
+          },
+          (err) => reject(err),
+          () => resolve()
+        );
+      });
+  
+      const downloadUrl = await getDownloadURL(task.snapshot.ref);
+  
+      // Update local gallery
+      const item: GalleryItem = {
+        name: filename,
+        url: downloadUrl,
+        fullPath: path,
+        contentType: selectedFile.type,
+      };
       setGallery((g) => [item, ...g]);
       onSaved?.(item);
-
-      // Firestore index doc (NEW: add nameLower, storagePath, updatedAt)
+  
+      // Write/merge Firestore index doc
       try {
         const { path: docPath } = buildIndexTarget({
           uid: currentUser.uid,
@@ -499,21 +525,22 @@ export default function UploadImageReference({
       } catch (err) {
         console.warn('Failed to write index doc for original upload:', err);
       }
-
+  
       alert('Saved to gallery!');
       resetUploader();
-
-      // After write, reload from index to reflect correct sort position
+  
+      // Reload from index to reflect sort/pagination
       loadGallery(true);
     } catch (e: any) {
       const msg = String(e?.message || e);
       if (msg.includes('storage/unauthorized')) {
-        alert('Upload blocked by Storage rules. Confirm allow list for users/{uid}/assetIndex/... and that UID matches request.auth.uid.');
+        alert('Upload blocked by Storage rules. Check users/{uid}/assetIndex/** paths and that UID matches request.auth.uid.');
       } else {
         alert(e?.message || 'Save failed');
       }
     }
   }
+  
 
   function handleGenerate() {
     onGenerateRequest?.(mainPrompt);

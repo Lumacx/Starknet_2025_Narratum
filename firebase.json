@@ -1,11 +1,7 @@
 {
   "hosting": {
     "public": "out",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ]
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"]
   },
   "functions": {
     "source": "functions",
@@ -22,31 +18,12 @@
     "rules": "storage.rules"
   },
   "emulators": {
-    "auth": {
-      "port": 9099,
-      "host": "127.0.0.1"
-    },
-    "firestore": {
-      "port": 8080,
-      "host": "127.0.0.1"
-    },
-    "functions": {
-      "port": 5001,
-      "host": "127.0.0.1"
-    },
-    "storage": {
-      "port": 9199,
-      "host": "127.0.0.1"
-    },
-    "hosting": {
-      "port": 5000,
-      "host": "127.0.0.1"
-    },
-    "ui": {
-      "enabled": true,
-      "port": 4005,
-      "host": "127.0.0.1"
-    },
+    "auth": { "port": 9099, "host": "127.0.0.1" },
+    "firestore": { "port": 8080, "host": "127.0.0.1" },
+    "functions": { "port": 5001, "host": "127.0.0.1" },
+    "storage": { "port": 9199, "host": "127.0.0.1" },
+    "hosting": { "port": 5000, "host": "127.0.0.1" },
+    "ui": { "enabled": true, "port": 4005, "host": "127.0.0.1" },
     "dataconnect": {
       "dataDir": "dataconnect/.dataconnect/pgliteData"
     }
@@ -54,21 +31,11 @@
   "dataconnect": {
     "source": "dataconnect"
   },
+
   "apphosting": [
     {
       "backendId": "studio",
-      "rootDir": "/home/user/studio/firebase.json",
-      "ignore": [
-        "node_modules",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log",
-        "functions"
-      ]
-    },
-    {
-      "backendId": "studio",
-      "rootDir": "firebase.json",
+      "rootDir": ".",
       "ignore": [
         "node_modules",
         ".git",

@@ -320,3 +320,7 @@ Generated sources: package.json [871B] react/index.d.ts [12119B] react/package.j
  {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0923 02:28:17.107856     693 dev.go:102] Listening on address (HTTP + gRPC): 127.0.0.1:50001\n"}}
 [debug] [2025-09-23T02:28:29.174Z] I0923 02:28:28.842490     693 engine.go:169] [/emulator/studio-v0 8cc7] ExecuteGraphqlRead IntrospectionQuery: succeeded. 
  {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0923 02:28:28.842490     693 engine.go:169] [/emulator/studio-v0 8cc7] ExecuteGraphqlRead IntrospectionQuery: succeeded. \n"}}
+[debug] [2025-09-23T05:19:11.179Z] [Firebase Plugin] Received CLI notification.
+[debug] [2025-09-23T05:19:11.970Z] [Firebase Plugin] Received emulators shutdown notification.
+[debug] [2025-09-23T05:34:01.655Z] [Firebase Plugin] Received CLI notification.
+[debug] [2025-09-23T05:34:02.522Z] [Firebase Plugin] Received emulators shutdown notification.

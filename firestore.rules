@@ -1,4 +1,3 @@
-// firestore.rules
 rules_version = '2';
 
 service cloud.firestore {
@@ -6,31 +5,25 @@ service cloud.firestore {
 
     /* ----------------- Global Helpers ----------------- */
     function isSignedIn() { return request.auth != null; }
+    function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
 
     // existing doc -> owner (requires { ownerUid } on the doc)
     function isOwnerDoc() {
       return isSignedIn() && resource.data.ownerUid == request.auth.uid;
     }
-
     // incoming payload -> owner (requires { ownerUid } in request)
     function isOwnerCreate() {
       return isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
     }
 
-    function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
-
-    // Require that a set of fields do NOT change across an update
+    // Disallow changes to specific fields on update
     function unchanged(fields) {
       return !request.resource.data.diff(resource.data).changedKeys().hasAny(fields);
     }
 
-    // Published helpers
-    function isPublishedBool(d) {
-      return d.published == true;
-    }
-    function isPublishedAtNow(d) {
-      return (d.publishedAt is timestamp) && d.publishedAt <= request.time;
-    }
+    // "Published" helpers for public reads
+    function isPublishedBool(d)        { return d.published == true; }
+    function isPublishedAtNow(d)       { return (d.publishedAt is timestamp) && d.publishedAt <= request.time; }
     function isPublicishData(d) {
       return isPublishedBool(d) ||
              isPublishedAtNow(d) ||
@@ -38,9 +31,7 @@ service cloud.firestore {
              (d.visibility == "public") ||
              (d.isPublic == true);
     }
-    function isPublicStory() {
-      return isPublicishData(resource.data);
-    }
+    function isPublicStory()           { return isPublicishData(resource.data); }
 
     // Story helpers
     function isStoryOwner(storyId) {
@@ -55,85 +46,59 @@ service cloud.firestore {
       return storyIsPublic(storyId) || isStoryOwner(storyId);
     }
 
-    function isTimestampOrMissing(field) {
-      return !(field in request.resource.data) || (request.resource.data[field] is timestamp);
-    }
-    function isStringOrMissing(field) {
-      return !(field in request.resource.data) || (request.resource.data[field] is string);
-    }
-    
+    // Type guards
+    function isTimestampOrMissing(field) { return !(field in request.resource.data) || (request.resource.data[field] is timestamp); }
+    function isStringOrMissing(field)    { return !(field in request.resource.data) || (request.resource.data[field] is string); }
+    function hasTimestampOrMissing(v)    { return !(v in request.resource.data) || (request.resource.data[v] is timestamp); }
+
     // Valid story types
     function isValidStoryType(type) {
-        return type in ['basic', 'premium', 'convai'];
+      return type in ['basic', 'premium', 'convai'];
     }
 
-    // Validates a YouTube link doc stored in the gallery
-    function validVideoLink(d, uid, storyId) {
+    /* --------- Gallery index doc (flat lists shown in UploadImageReference) --------- */
+    function validAssetIndexDoc(d, uid, storyId) {
       return
-        (d.ownerUid == uid) &&
-        // storyId must match (or be null for uncategorized)
+        // Optional ownerUid: allow either absent or matching user
+        ( !('ownerUid' in d) || d.ownerUid == uid ) &&
+        // Story scoping: null for uncategorized, exact match for story-scoped
         (
           (storyId == null && (!('storyId' in d) || d.storyId == null)) ||
           (storyId != null && d.storyId == storyId)
         ) &&
-        (d.url is string) &&                            // canonical watch URL
-        ( !('embedUrl' in d)   || (d.embedUrl   is string) ) &&
-        ( !('thumbUrl' in d)   || (d.thumbUrl   is string) ) &&
-        ( !('provider' in d)   || (d.provider   in ['youtube']) ) &&
-        ( !('kind' in d)       || (d.kind       in ['video']) ) &&
-        ( !('contentType' in d)|| (d.contentType is string) ) &&
+        // Required basics used by your component
+        (d.url is string) &&
+        ( !('fileName' in d)    || (d.fileName is string) ) &&
+        ( !('contentType' in d) || (d.contentType is string) ) &&
+        ( !('name' in d)        || (d.name is string) ) &&
+        ( !('nameLower' in d)   || (d.nameLower is string) ) &&
+        ( !('storagePath' in d) || (d.storagePath is string) ) &&
+        ( !('source' in d)      || (d.source is string) ) &&
+        ( !('role' in d)        || (d.role is string) ) &&
         isTimestampOrMissing('createdAt') &&
         isTimestampOrMissing('updatedAt');
     }
 
-
-    /* --------- Legacy Asset helpers (under /users/{uid}/assetIndex) --------- */
-    function allowedCategory(cat) {
-      return cat in [
-        'covers','avatars','characters','locations','backgrounds',
-        'audioNarrations','audioEffects','generatedImages','others'
-      ];
-    }
-    function hasTimestampOrMissing(v) {
-      return !(v in request.resource.data) || (request.resource.data[v] is timestamp);
-    }
-    function validAssetDoc(d) {
-      return (d.url is string) &&
-             (d.fileName is string) &&
-             (d.contentType is string) &&
-             (d.createdAt is timestamp) &&
-             hasTimestampOrMissing('updatedAt') &&
-             ( !('name' in d) || (d.name is string) ) &&
-             ( !('nameLower' in d) || (d.nameLower is string) ) &&
-             ( !('storagePath' in d) || (d.storagePath is string) ) &&
-             ( !('role' in d) || (d.role is string) ) &&
-             ( !('source' in d) || (d.source is string) ) &&
-             ( !('storyId' in d) || (d.storyId is string || d.storyId == null) );
-    }
-
-    /* --------- NEW Asset-Hub helpers (Option B) --------- */
+    /* --------- StoryAssets hub (Option B) --------- */
     function allowedAssetType(t) {
       return t in ['images','audio','narration','soundfx','videos'];
     }
-    
     function validStoryAsset(d, uid, storyId, assetType) {
-      // Required fields
       return
         (d.ownerUid == uid) &&
         (d.storyId == storyId) &&
         (d.assetType == assetType) &&
 
-        // Optional but type-checked
-        ( !('kind' in d) || (d.kind in ['page','teaser','raw']) ) &&
-        ( !('source' in d) || (d.source in ['storage','youtube']) ) &&
+        ( !('kind' in d)        || (d.kind in ['page','teaser','raw']) ) &&
+        ( !('source' in d)      || (d.source in ['storage','youtube']) ) &&
         isStringOrMissing('youtubeUrl') &&
         isStringOrMissing('storagePath') &&
         isStringOrMissing('mimeType') &&
-        isTimestampOrMissing('createdAt') &&   // recommend serverTimestamp()
-        ( !('pageNumber' in d) || (d.pageNumber is int || d.pageNumber == null) ) &&
-        ( !('sceneIndex' in d) || (d.sceneIndex is int || d.sceneIndex == null) ) &&
-        ( !('name' in d) || (d.name is string) ) &&
-        ( !('tags' in d) || (d.tags is list) );
+        isTimestampOrMissing('createdAt') &&
+        ( !('pageNumber' in d)  || (d.pageNumber is int  || d.pageNumber == null) ) &&
+        ( !('sceneIndex' in d)  || (d.sceneIndex is int  || d.sceneIndex == null) ) &&
+        ( !('name' in d)        || (d.name is string) ) &&
+        ( !('tags' in d)        || (d.tags is list) );
     }
 
     /* ===========================================================
@@ -155,7 +120,6 @@ service cloud.firestore {
       allow create: if isOwner(uid)
         && !('plan' in request.resource.data)
         && !('subscriptionTier' in request.resource.data)
-        // Allow 'credits' and 'lastMonthlyCreditGrant' to be set on creation by server (e.g., auth trigger)
         && ( !('credits' in request.resource.data) || (request.resource.data.credits is int && request.resource.data.credits >= 0) )
         && ( !('lastMonthlyCreditGrant' in request.resource.data) || (request.resource.data.lastMonthlyCreditGrant is timestamp) )
         && !('ownerUid' in request.resource.data)
@@ -165,12 +129,11 @@ service cloud.firestore {
         && ( !('referredBy' in request.resource.data) || (request.resource.data.referredBy is string) );
 
       // UPDATE: owner may edit ONLY profile fields; server fields immutable
-      // Credits and lastMonthlyCreditGrant can only be changed by server-side functions (Admin SDK)
       allow update: if isOwner(uid)
         && request.resource.data.diff(resource.data).changedKeys().hasOnly([
           'displayName','bio','location','website','socials','walletAddress','photoURL'
         ])
-        && unchanged(['plan','subscriptionTier','credits','ownerUid','email','createdAt','referredBy','referralCode', 'lastMonthlyCreditGrant']);
+        && unchanged(['plan','subscriptionTier','credits','ownerUid','email','createdAt','referredBy','referralCode','lastMonthlyCreditGrant']);
 
       allow delete: if isOwner(uid);
 
@@ -178,136 +141,76 @@ service cloud.firestore {
         allow read, write: if isOwner(uid);
       }
 
-      match /assets/{assetId} {
-        allow read, write: if isOwner(uid);
-      }
-
-      match /favorites/{favId} {
-        allow read, write: if isOwner(uid);
-      }
-
-      match /reads/{storyId} {
-        allow read, write: if isOwner(uid);
-      }
-
-      match /ratings/{storyId} {
-        allow read, write: if isOwner(uid);
-      }
+      match /assets/{assetId}            { allow read, write: if isOwner(uid); }
+      match /favorites/{favId}           { allow read, write: if isOwner(uid); }
+      match /reads/{storyId}             { allow read, write: if isOwner(uid); }
+      match /ratings/{storyId}           { allow read, write: if isOwner(uid); }
 
       match /stories/{storyId} {
         allow read, write: if isOwner(uid);
+        match /scenes/{sceneId} { allow read, write: if isOwner(uid); }
+        match /assets/{assetId} { allow read, write: if isOwner(uid); }
+      }
 
-        match /scenes/{sceneId} {
-          allow read, write: if isOwner(uid);
+      /* ===========================================================
+         NEW canonical assetIndex (with required 'default' doc layer)
+         ============================================================ */
+      match /assetIndex/{docId} {
+        allow read, write: if isOwner(uid) && docId == 'default';
+
+        // STORY-SCOPED FLAT COLLECTIONS (e.g., images, characters, videos indexes)
+        match /stories/{storyId}/{category}/{docId2} {
+          // Read: owner or if story is public
+          allow read: if isOwner(uid) || storyIsPublic(storyId);
+
+          // Create/Update/Delete: owner only; validate shape used by gallery lists
+          allow create: if isOwner(uid) && validAssetIndexDoc(request.resource.data, uid, storyId);
+          allow update: if isOwner(uid)
+            && validAssetIndexDoc(request.resource.data, uid, storyId);
+          allow delete: if isOwner(uid);
         }
-        match /assets/{assetId} {
-          allow read, write: if isOwner(uid);
+
+        // STORY-ASSETS HUB: /assetIndex/default/stories/{storyId}/storyAssets/default/{assetType}/{assetId}
+        match /stories/{storyId}/storyAssets/{hubId} {
+          allow read: if isOwner(uid) || storyIsPublic(storyId);
+          allow write, update, delete: if isOwner(uid) && hubId == 'default';
+
+          match /{assetType}/{assetId} {
+            allow read: if (isOwner(uid) || storyIsPublic(storyId)) && allowedAssetType(assetType);
+            allow create: if isOwner(uid)
+              && allowedAssetType(assetType)
+              && validStoryAsset(request.resource.data, uid, storyId, assetType);
+            allow update: if isOwner(uid)
+              && allowedAssetType(assetType)
+              && validStoryAsset(request.resource.data, uid, storyId, assetType)
+              && (request.resource.data.ownerUid  == resource.data.ownerUid)
+              && (request.resource.data.storyId   == resource.data.storyId)
+              && (request.resource.data.assetType == resource.data.assetType);
+            allow delete: if isOwner(uid) && allowedAssetType(assetType);
+          }
+        }
+
+        // UNCATEGORIZED FLAT COLLECTIONS
+        match /uncategorized/{category}/{docId3} {
+          // Only the owner reads/writes uncategorized items
+          allow read: if isOwner(uid);
+          allow create, update: if isOwner(uid)
+            && validAssetIndexDoc(request.resource.data, uid, null);
+          allow delete: if isOwner(uid);
         }
       }
 
-      /* ---------- Legacy: users/{uid}/assetIndex/stories/{storyId}/{category}/{assetId} ---------- */
+      /* ====== (Optional) Legacy paths — keep READ ONLY to ease migration ======
+         If you still have any data under these, you can leave these "read" rules
+         temporarily. Remove them once migrated.
+      */
       match /assetIndex/stories/{storyId}/{category}/{assetId} {
         allow read: if isOwner(uid) || storyIsPublic(storyId);
-        allow create: if isOwner(uid)
-          && allowedCategory(category)
-          && validAssetDoc(request.resource.data)
-          && ( !('storyId' in request.resource.data) || request.resource.data.storyId == storyId );
-        allow update: if isOwner(uid)
-          && allowedCategory(category)
-          && validAssetDoc(request.resource.data)
-          && (resource.data.storyId == request.resource.data.storyId);
-        allow delete: if isOwner(uid);
+        allow create, update, delete: if false; // prevent new writes to legacy path
       }
-      
-      /* ---------- Legacy: users/{uid}/assetIndex/stories/{storyId}/videos/{videoId} (6 segments after users/{uid}/) ---------- */
-      // This rule is added to handle the video path with 6 segments.
-      match /assetIndex/stories/{storyId}/videos/{videoId} {
-        allow read: if isOwner(uid) || storyIsPublic(storyId);
-
-        allow create: if isOwner(uid)
-          && validVideoLink(request.resource.data, uid, storyId);
-
-        allow update: if isOwner(uid)
-          && validVideoLink(request.resource.data, uid, storyId)
-          && (request.resource.data.ownerUid == resource.data.ownerUid)
-          && (request.resource.data.storyId  == resource.data.storyId);
-
-        allow delete: if isOwner(uid);
-      }
-
-
-      /* ---------- Legacy: users/{uid}/assetIndex/uncategorized/{category}/{assetId} ---------- */
       match /assetIndex/uncategorized/{category}/{assetId} {
-        allow read: if isOwner(uid) || storyIsPublic(storyId);
-        allow create, update: if isOwner(uid)
-          && allowedCategory(category)
-          && validAssetDoc(request.resource.data)
-          && ( !('storyId' in request.resource.data) || request.resource.data.storyId == null );
-        allow delete: if isOwner(uid);
-      }
-
-      /* ---------- NEW: assetIndex videos (7 segments) ---------- */
-      /* Story-scoped: users/{uid}/assetIndex/default/stories/{storyId}/videos/{videoId} */
-      match /assetIndex/default/stories/{storyId}/videos/{videoId} {
-        // Read in editor by owner; optionally allow if the story is public
-        allow read: if isOwner(uid) || storyIsPublic(storyId);
-
-        allow create: if isOwner(uid)
-          && validVideoLink(request.resource.data, uid, storyId);
-
-        allow update: if isOwner(uid)
-          && validVideoLink(request.resource.data, uid, storyId)
-          && (request.resource.data.ownerUid == resource.data.ownerUid)
-          && (request.resource.data.storyId  == resource.data.storyId);
-
-        allow delete: if isOwner(uid);
-      }
-
-      /* Uncategorized: users/{uid}/assetIndex/default/uncategorized/videos/{videoId} */
-      match /assetIndex/default/uncategorized/videos/{videoId} {
-        allow read: if isOwner(uid) || storyIsPublic(storyId);
-
-        allow create, update: if isOwner(uid)
-          && validVideoLink(request.resource.data, uid, null);
-
-        allow delete: if isOwner(uid);
-      }
-
-
-      /* ---------- NEW: Asset Hub (Option B) ---------- */
-      // Hub document itself (e.g., /assetIndex/default/stories/{storyId}/storyAssets/default)
-      match /assetIndex/default/stories/{storyId}/storyAssets/{storyAssetsDoc} {
-        // Readable by owner OR if the corresponding story is public
-        allow read: if isOwner(uid) || storyIsPublic(storyId);
-        // Only owner can write/manage the hub doc
-        allow write, update, delete: if isOwner(uid);
-      }
-
-      // Asset collections under the hub doc (images, audio, narration, soundfx, videos)
-      match /assetIndex/default/stories/{storyId}/storyAssets/{storyAssetsDoc}/{assetType}/{assetId} {
-        allow read: if (isOwner(uid) || storyIsPublic(storyId))
-                    && allowedAssetType(assetType);
-
-        allow create: if isOwner(uid)
-                      && allowedAssetType(assetType)
-                      && validStoryAsset(request.resource.data, uid, storyId, assetType);
-
-        allow update: if isOwner(uid)
-                      && allowedAssetType(assetType)
-                      && validStoryAsset(request.resource.data, uid, storyId, assetType)
-                      && (request.resource.data.ownerUid == resource.data.ownerUid)
-                      && (request.resource.data.storyId == resource.data.storyId)
-                      && (request.resource.data.assetType == resource.data.assetType);
-
-        allow delete: if isOwner(uid) && allowedAssetType(assetType);
-      }
-
-      /* users/{uid}/transactions — client read-only */
-      match /transactions/{txId} {
-        allow read: if isOwner(uid); // Only owner can read their own transactions
-        allow create: if false; // Only server can create transactions
-        allow update, delete: if false;
-        // Further validation for transaction fields will be in Cloud Functions for server-side writes
+        allow read: if isOwner(uid);
+        allow create, update, delete: if false;
       }
     }
 
@@ -319,12 +222,11 @@ service cloud.firestore {
       allow read: if isPublicStory() || isOwnerDoc();
       allow update, delete: if isOwnerDoc()
         && request.resource.data.ownerUid == resource.data.ownerUid
-        && ( !('type' in request.resource.data) || isValidStoryType(request.resource.data.type) ) // Allow type update by owner, with validation
-        && unchanged(['ownerUid']); // ownerUid should not change on update
+        && ( !('type' in request.resource.data) || isValidStoryType(request.resource.data.type) )
+        && unchanged(['ownerUid']);
 
       match /ratings/{raterUid} {
-        allow read: if canReadStoryById(storyId)
-                || (isSignedIn() && request.auth.uid == raterUid);
+        allow read: if canReadStoryById(storyId) || (isSignedIn() && request.auth.uid == raterUid);
         allow create, update, delete: if isSignedIn() && request.auth.uid == raterUid;
       }
 
