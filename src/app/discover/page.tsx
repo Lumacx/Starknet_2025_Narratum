@@ -1142,8 +1142,9 @@ function CatalogPageInner() {
               return (
                 <div
                   key={(story as any).id}
-                  className={`group/story story-card bg-[#233446] border-2 ${typeStyle.border} p-2.5 rounded-lg w-64 text-[#E0C9A0] relative transition-all duration-300 ease-in-out hover:translate-y-[-5px] hover:shadow-2xl ${typeStyle.glow}`}
+                  className={`group/story story-card bg-[#233446] border-2 ${typeStyle.border} p-2.5 rounded-lg w-64 text-[#E0C9A0] relative transition-all duration-300 ease-in-out hover:translate-y-[-5px] hover:shadow-2xl ${typeStyle.glow} ${tipOpenFor === (story as any).id ? 'z-[999]' : 'z-10'}`}
                 >
+
                   <FavoriteButton storyId={(story as any).id!} initialIsFav={!!userFavorites[(story as any).id!]}/>
 
                   <div className="absolute inset-1 border border-[#BFA071] rounded-md pointer-events-none z-10"></div>

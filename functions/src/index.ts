@@ -11,7 +11,7 @@ import { generateWithGemini, generateWithImagen } from './smartGenerateImage';
 import { downloadStoryPdf } from './downloadStoryPdf';
 
 // 👇 NEW: Credit System Functions
-import { processPayPalPayment, deductCreditsForRead, deductCreditsForCreation, sendTipToWriter, grantMonthlyFreeCredits } from './credits';
+import { processPayPalPayment, deductCreditsForRead, deductCreditsForCreation, sendTipToWriter, grantMonthlyFreeCredits, processPayPalSubscription } from './credits';
 // 👇 NEW: Promo Code Functions
 import { redeemPromoCode } from './promoCodes';
 
@@ -30,6 +30,7 @@ export {
   deductCreditsForCreation,
   sendTipToWriter,
   grantMonthlyFreeCredits,
+  processPayPalSubscription,
   // Promo Code Exports
   redeemPromoCode,
 };

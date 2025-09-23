@@ -1,6 +1,7 @@
+// functions/src/credits.ts
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import { verifyPayPalOrder } from './utils/paypal'; // Corrected import path
+import { verifyPayPalOrder } from './utils/paypal';
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -24,39 +25,50 @@ const CREDIT_SPLIT_CONFIG = {
   },
 };
 
-// 1. HTTP Cloud Function to process PayPal payments
+/* ────────────────────────────────────────────────────────────
+   Safe JSON helpers
+   ──────────────────────────────────────────────────────────── */
+type JsonObject = Record<string, unknown>;
+
+function hasStringMessage(x: unknown): x is { message: string } {
+  return typeof x === 'object' && x !== null && 'message' in x && typeof (x as JsonObject).message === 'string';
+}
+
+function extractMessage(x: unknown, fallback: string) {
+  if (typeof x === 'string') return x;
+  if (hasStringMessage(x)) return x.message;
+  try { return JSON.stringify(x); } catch { return fallback; }
+}
+
+/* ────────────────────────────────────────────────────────────
+   1) HTTP Cloud Function — process PayPal one-time payments
+   ──────────────────────────────────────────────────────────── */
 export const processPayPalPayment = functions.https.onRequest(async (req, res) => {
   if (req.method !== 'POST') {
     res.status(405).send('Method Not Allowed');
-    return; // Explicitly return void
+    return;
   }
 
   try {
-    const { orderId, userId, amount } = req.body; // Expecting orderId from frontend
+    const { orderId, userId, amount } = req.body as { orderId?: string; userId?: string; amount?: number };
 
     if (!orderId || !userId || typeof amount !== 'number' || amount <= 0) {
       res.status(400).send('Invalid request body: orderId, userId, and a positive amount are required.');
-      return; // Explicitly return void
+      return;
     }
 
-    // Verify the PayPal order
+    // Verify the PayPal order (server-side)
     const orderDetails = await verifyPayPalOrder(orderId);
 
     if (!orderDetails || orderDetails.status !== 'COMPLETED') {
       console.error('PayPal order not completed:', orderDetails);
       res.status(400).send('PayPal order not completed or invalid.');
-      return; // Explicitly return void
+      return;
     }
 
-    // You might want to do further checks here, e.g., verify the amount paid matches what you expect for `amount`
-    // For example, iterate through purchase_units and check amount.value
-    const purchaseUnit = orderDetails.purchase_units[0];
-    const paypalAmount = parseFloat(purchaseUnit.amount.value);
-    // The `amount` from request body is credits, not USD. Need to adjust verification.
-    // For now, let's assume `amount` in req.body refers to credits and the price match is handled client-side
-    // or by another function that calls this with pre-verified credits.
-    // The previous implementation had a direct comparison: `if (paypalAmount !== amount)` which is incorrect
-    // if `amount` is credits. We'll proceed assuming `amount` here means the credits purchased.
+    // Optional: validate payment amount (USD) from PayPal
+    const purchaseUnit = orderDetails.purchase_units?.[0];
+    const paypalAmount = purchaseUnit?.amount?.value ? parseFloat(purchaseUnit.amount.value) : 0;
 
     const userRef = db.collection('users').doc(userId);
 
@@ -70,42 +82,43 @@ export const processPayPalPayment = functions.https.onRequest(async (req, res) =
       const newCredits = currentCredits + amount;
 
       transaction.update(userRef, { credits: newCredits });
-      // Corrected: Use userRef.collection('transactions').doc() to get a new document reference within the subcollection
+
       const newTransactionRef = userRef.collection('transactions').doc();
       transaction.set(newTransactionRef, {
         type: 'purchase',
-        creditsDelta: amount, // Use creditsDelta for credit changes
-        amountUsd: paypalAmount, // Store actual USD amount paid
+        creditsDelta: amount,                 // credits purchased
+        amountUsd: paypalAmount,              // USD paid (from PayPal)
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
         description: `Purchased ${amount} credits via PayPal (Order ID: ${orderId})`,
         paypalOrderId: orderId,
-        status: 'confirmed', // Assuming confirmed after PayPal capture and Firestore update
+        status: 'confirmed',
       });
     });
 
     res.status(200).send('Credits added successfully.');
-    return; // Explicitly return void
+    return;
 
   } catch (error) {
     console.error('Error processing PayPal payment:', error);
-    // Check if it's an HttpsError to re-throw, otherwise wrap it
     if (error instanceof functions.https.HttpsError) {
       res.status(error.code === 'not-found' ? 404 : 500).send(error.message);
-      return; // Explicitly return void
+      return;
     }
     res.status(500).send('Internal Server Error');
-    return; // Explicitly return void
+    return;
   }
 });
 
-// 2. Callable Cloud Function to deduct credits for reading a story
+/* ────────────────────────────────────────────────────────────
+   2) Callable — deduct credits for reading a story
+   ──────────────────────────────────────────────────────────── */
 export const deductCreditsForRead = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'The function must be called while authenticated.');
   }
 
   const readerUid = context.auth.uid;
-  const { storyId } = data; // `cost` is now derived from storyType
+  const { storyId } = data as { storyId?: string };
 
   if (!storyId) {
     throw new functions.https.HttpsError('invalid-argument', 'Story ID is required.');
@@ -117,99 +130,88 @@ export const deductCreditsForRead = functions.https.onCall(async (data, context)
     const adminRef = db.collection('users').doc(NARRATUM_ADMIN_UID);
 
     return db.runTransaction(async (transaction) => {
-      const storyDoc = await transaction.get(storyRef);
-      const readerDoc = await transaction.get(readerRef);
-      const adminDoc = await transaction.get(adminRef);
+      const [storyDoc, readerDoc, adminDoc] = await Promise.all([
+        transaction.get(storyRef),
+        transaction.get(readerRef),
+        transaction.get(adminRef),
+      ]);
 
-      if (!storyDoc.exists) {
-        throw new functions.https.HttpsError('not-found', 'Story not found.');
-      }
-      if (!readerDoc.exists) {
-        throw new functions.https.HttpsError('not-found', 'Reader user not found.');
-      }
+      if (!storyDoc.exists) throw new functions.https.HttpsError('not-found', 'Story not found.');
+      if (!readerDoc.exists) throw new functions.https.HttpsError('not-found', 'Reader user not found.');
       if (!adminDoc.exists) {
-        throw new functions.https.HttpsError('not-found', 'Narratum Admin user not found. Please ensure the admin user exists with UID: ' + NARRATUM_ADMIN_UID);
+        throw new functions.https.HttpsError('not-found', `Narratum Admin user not found (UID: ${NARRATUM_ADMIN_UID})`);
       }
 
-      const storyType = storyDoc.data()?.type || 'basic'; // Default to basic
+      const storyType = (storyDoc.data()?.type as string) || 'basic';
       let cost = 0;
-      let ownerUid = storyDoc.data()?.ownerUid;
+      let ownerUid = storyDoc.data()?.ownerUid as string | undefined;
 
       switch (storyType) {
-        case 'basic':
-          cost = 1;
-          break;
-        case 'premium':
-          cost = 5;
-          break;
-        case 'convai':
-          cost = 15;
-          break;
-        default:
-          cost = 1;
+        case 'basic':   cost = 1;  break;
+        case 'premium': cost = 5;  break;
+        case 'convai':  cost = 15; break;
+        default:        cost = 1;
       }
 
       const readerCredits = (readerDoc.data()?.credits || 0) as number;
-
       if (readerCredits < cost) {
         throw new functions.https.HttpsError('failed-precondition', 'Insufficient credits to read this story.', { remainingCredits: readerCredits });
       }
 
-      // Get referrer UID
+      // Optional referrer
       const referrerUid = readerDoc.data()?.referredBy as string | undefined;
       const referrerRef = referrerUid ? db.collection('users').doc(referrerUid) : null;
       const referrerDoc = referrerRef ? await transaction.get(referrerRef) : null;
 
-      // Deduct credits from reader
+      // Deduct from reader
       transaction.update(readerRef, { credits: readerCredits - cost });
-      const readerTransactionRef = readerRef.collection('transactions').doc();
-      transaction.set(readerTransactionRef, {
+      readerRef.collection('transactions').doc().set({
         type: 'read',
         creditsDelta: -cost,
-        storyId: storyId,
+        storyId,
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
         description: `Deducted ${cost} credits for reading story: ${storyDoc.data()?.title || storyId}`,
         status: 'confirmed',
       });
 
-      // Distribute credits based on split configuration
+      // Split distribution
       const split = CREDIT_SPLIT_CONFIG.read;
       let totalDistributed = 0;
 
-      // Narratum Admin (AI+Storage & App Cut)
+      // Admin (AI+Storage + App cut)
       const aiStorageAmount = Math.floor(cost * split.AI_STORAGE);
-      const appCutAmount = Math.floor(cost * split.APP_CUT);
-      const adminTotalProfit = aiStorageAmount + appCutAmount;
+      const appCutAmount    = Math.floor(cost * split.APP_CUT);
+      const adminTotal      = aiStorageAmount + appCutAmount;
 
-      if (adminTotalProfit > 0) {
-        transaction.update(adminRef, { credits: (adminDoc.data()?.credits || 0) + adminTotalProfit });
+      if (adminTotal > 0) {
+        transaction.update(adminRef, { credits: (adminDoc.data()?.credits || 0) + adminTotal });
         adminRef.collection('transactions').doc().set({
           type: 'profit',
-          creditsDelta: adminTotalProfit,
+          creditsDelta: adminTotal,
           timestamp: admin.firestore.FieldValue.serverTimestamp(),
           description: `Credit profit (AI+Storage: ${aiStorageAmount}, App Cut: ${appCutAmount}) from story read by ${readerUid} for story ${storyId}`,
           sourceUid: readerUid,
-          storyId: storyId,
+          storyId,
           status: 'confirmed',
         });
-        totalDistributed += adminTotalProfit;
+        totalDistributed += adminTotal;
       }
 
-      // Story Owner (Royalty)
+      // Author royalty
       if (ownerUid && ownerUid !== readerUid) {
         const royaltyAmount = Math.floor(cost * split.ROYALTY);
         if (royaltyAmount > 0) {
           const ownerRef = db.collection('users').doc(ownerUid);
-          const ownerDoc = await transaction.get(ownerRef); // Re-fetch to ensure latest in transaction
+          const ownerDoc = await transaction.get(ownerRef);
           if (ownerDoc.exists) {
             transaction.update(ownerRef, { credits: (ownerDoc.data()?.credits || 0) + royaltyAmount });
             ownerRef.collection('transactions').doc().set({
               type: 'profit',
               creditsDelta: royaltyAmount,
               timestamp: admin.firestore.FieldValue.serverTimestamp(),
-              description: `Royalty earnings from story read by ${readerUid} for story ${storyDoc.data()?.title || storyId}`,
+              description: `Royalty earnings from ${readerUid} for story ${storyDoc.data()?.title || storyId}`,
               sourceUid: readerUid,
-              storyId: storyId,
+              storyId,
               status: 'confirmed',
             });
             totalDistributed += royaltyAmount;
@@ -221,7 +223,6 @@ export const deductCreditsForRead = functions.https.onCall(async (data, context)
       const referralAmount = Math.floor(cost * split.REFERRAL);
       if (referralAmount > 0) {
         if (referrerUid && referrerDoc?.exists && referrerUid !== readerUid) {
-          // Referrer exists and is not the reader themselves
           transaction.update(referrerRef!, { credits: (referrerDoc.data()?.credits || 0) + referralAmount });
           referrerRef!.collection('transactions').doc().set({
             type: 'profit',
@@ -229,65 +230,62 @@ export const deductCreditsForRead = functions.https.onCall(async (data, context)
             timestamp: admin.firestore.FieldValue.serverTimestamp(),
             description: `Referral earnings from ${readerUid} reading story ${storyId}`,
             sourceUid: readerUid,
-            storyId: storyId,
+            storyId,
             status: 'confirmed',
           });
           totalDistributed += referralAmount;
         } else {
-          // No valid referrer, redirect referral percentage to Narratum Admin
-          const adminCurrentCredits = (adminDoc.data()?.credits || 0) as number;
-          transaction.update(adminRef, { credits: adminCurrentCredits + referralAmount });
+          const adminCurrent = (adminDoc.data()?.credits || 0) as number;
+          transaction.update(adminRef, { credits: adminCurrent + referralAmount });
           adminRef.collection('transactions').doc().set({
             type: 'profit',
             creditsDelta: referralAmount,
             timestamp: admin.firestore.FieldValue.serverTimestamp(),
-            description: `Credit profit (Referral fallback) from story read by ${readerUid} for story ${storyId}`,
+            description: `Referral fallback from ${readerUid} reading story ${storyId}`,
             sourceUid: readerUid,
-            storyId: storyId,
+            storyId,
             status: 'confirmed',
           });
           totalDistributed += referralAmount;
         }
       }
 
-      // Optional: Log any remainder if floor() operations result in less than 100% distribution
+      // Remainder after floors
       const remainder = cost - totalDistributed;
       if (remainder > 0) {
-        // Distribute remainder to Admin App Cut as a common practice
-        const adminCurrentCredits = (adminDoc.data()?.credits || 0) as number;
-        transaction.update(adminRef, { credits: adminCurrentCredits + remainder });
+        const adminCurrent = (adminDoc.data()?.credits || 0) as number;
+        transaction.update(adminRef, { credits: adminCurrent + remainder });
         adminRef.collection('transactions').doc().set({
           type: 'profit',
           creditsDelta: remainder,
           timestamp: admin.firestore.FieldValue.serverTimestamp(),
-          description: `Credit profit (Rounding adjustment) from story read by ${readerUid} for story ${storyId}`,
+          description: `Rounding adjustment from ${readerUid} reading ${storyId}`,
           sourceUid: readerUid,
-          storyId: storyId,
+          storyId,
           status: 'confirmed',
         });
       }
-
 
       return { success: true, message: 'Credits deducted and distributed successfully.', remainingCredits: readerCredits - cost };
     });
 
   } catch (error: any) {
     console.error('Error deducting credits for read:', error);
-    if (error instanceof functions.https.HttpsError) {
-      throw error;
-    }
+    if (error instanceof functions.https.HttpsError) throw error;
     throw new functions.https.HttpsError('internal', 'Failed to deduct credits for read.', error.message);
   }
 });
 
-// 3. Callable Cloud Function to deduct credits for story creation
+/* ────────────────────────────────────────────────────────────
+   3) Callable — deduct credits for story creation
+   ──────────────────────────────────────────────────────────── */
 export const deductCreditsForCreation = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'The function must be called while authenticated.');
   }
 
   const creatorUid = context.auth.uid;
-  const { storyType } = data; // `cost` is now derived from storyType
+  const { storyType } = data as { storyType?: 'basic' | 'premium' | 'convai' };
 
   if (!storyType || !['basic', 'premium', 'convai'].includes(storyType)) {
     throw new functions.https.HttpsError('invalid-argument', 'Invalid story type provided.');
@@ -295,85 +293,75 @@ export const deductCreditsForCreation = functions.https.onCall(async (data, cont
 
   try {
     const creatorRef = db.collection('users').doc(creatorUid);
-    const adminRef = db.collection('users').doc(NARRATUM_ADMIN_UID);
+    const adminRef   = db.collection('users').doc(NARRATUM_ADMIN_UID);
 
     return db.runTransaction(async (transaction) => {
-      const creatorDoc = await transaction.get(creatorRef);
-      const adminDoc = await transaction.get(adminRef);
+      const [creatorDoc, adminDoc] = await Promise.all([
+        transaction.get(creatorRef),
+        transaction.get(adminRef),
+      ]);
 
-      if (!creatorDoc.exists) {
-        throw new functions.https.HttpsError('not-found', 'Creator user not found.');
-      }
+      if (!creatorDoc.exists) throw new functions.https.HttpsError('not-found', 'Creator user not found.');
       if (!adminDoc.exists) {
-        throw new functions.https.HttpsError('not-found', 'Narratum Admin user not found. Please ensure the admin user exists with UID: ' + NARRATUM_ADMIN_UID);
+        throw new functions.https.HttpsError('not-found', `Narratum Admin user not found (UID: ${NARRATUM_ADMIN_UID})`);
       }
 
       let cost = 0;
       switch (storyType) {
-        case 'basic':
-          cost = 5;
-          break;
-        case 'premium':
-          cost = 10;
-          break;
-        case 'convai':
-          cost = 15;
-          break;
-        default: // Fallback to a default if storyType is somehow invalid (though checked above)
-          cost = 5;
+        case 'basic':  cost = 5;  break;
+        case 'premium':cost = 10; break;
+        case 'convai': cost = 15; break;
+        default:       cost = 5;
       }
 
       const creatorCredits = (creatorDoc.data()?.credits || 0) as number;
-
       if (creatorCredits < cost) {
         throw new functions.https.HttpsError('failed-precondition', 'Insufficient credits to create this story.', { remainingCredits: creatorCredits });
       }
 
-      // Get referrer UID
+      // Optional referrer
       const referrerUid = creatorDoc.data()?.referredBy as string | undefined;
       const referrerRef = referrerUid ? db.collection('users').doc(referrerUid) : null;
       const referrerDoc = referrerRef ? await transaction.get(referrerRef) : null;
 
-      // Deduct credits from creator
+      // Deduct from creator
       transaction.update(creatorRef, { credits: creatorCredits - cost });
-      const creatorTransactionRef = creatorRef.collection('transactions').doc();
-      transaction.set(creatorTransactionRef, {
+      creatorRef.collection('transactions').doc().set({
         type: 'create',
         creditsDelta: -cost,
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
         description: `Deducted ${cost} credits for creating a ${storyType} story.`,
-        storyType: storyType,
+        storyType,
         status: 'confirmed',
       });
 
-      // Distribute credits based on split configuration
+      // Split distribution
       const split = CREDIT_SPLIT_CONFIG.create;
       let totalDistributed = 0;
 
-      // Narratum Admin (AI+Storage & App Cut)
+      // Admin (AI+Storage + App cut)
       const aiStorageAmount = Math.floor(cost * split.AI_STORAGE);
-      const appCutAmount = Math.floor(cost * split.APP_CUT);
-      const adminTotalProfit = aiStorageAmount + appCutAmount;
+      const appCutAmount    = Math.floor(cost * split.APP_CUT);
+      const adminTotal      = aiStorageAmount + appCutAmount;
 
-      if (adminTotalProfit > 0) {
-        transaction.update(adminRef, { credits: (adminDoc.data()?.credits || 0) + adminTotalProfit });
+      if (adminTotal > 0) {
+        transaction.update(adminRef, { credits: (adminDoc.data()?.credits || 0) + adminTotal });
         adminRef.collection('transactions').doc().set({
           type: 'profit',
-          creditsDelta: adminTotalProfit,
+          creditsDelta: adminTotal,
           timestamp: admin.firestore.FieldValue.serverTimestamp(),
-          description: `Credit profit (AI+Storage: ${aiStorageAmount}, App Cut: ${appCutAmount}) from story creation by ${creatorUid} for a ${storyType} story`,
+          description: `Credit profit (AI+Storage: ${aiStorageAmount}, App Cut: ${appCutAmount}) from ${creatorUid} creating a ${storyType} story`,
           sourceUid: creatorUid,
-          storyType: storyType,
+          storyType,
           status: 'confirmed',
         });
-        totalDistributed += adminTotalProfit;
+        totalDistributed += adminTotal;
       }
 
       // Referral
       const referralAmount = Math.floor(cost * split.REFERRAL);
       if (referralAmount > 0) {
         if (referrerUid && referrerDoc?.exists && referrerUid !== creatorUid) {
-          // Referrer exists and is not the creator themselves
           transaction.update(referrerRef!, { credits: (referrerDoc.data()?.credits || 0) + referralAmount });
           referrerRef!.collection('transactions').doc().set({
             type: 'profit',
@@ -381,42 +369,40 @@ export const deductCreditsForCreation = functions.https.onCall(async (data, cont
             timestamp: admin.firestore.FieldValue.serverTimestamp(),
             description: `Referral earnings from ${creatorUid} creating a ${storyType} story`,
             sourceUid: creatorUid,
-            storyType: storyType,
+            storyType,
             status: 'confirmed',
           });
           totalDistributed += referralAmount;
         } else {
-          // No valid referrer, redirect referral percentage to Narratum Admin
-          const adminCurrentCredits = (adminDoc.data()?.credits || 0) as number;
-          transaction.update(adminRef, { credits: adminCurrentCredits + referralAmount });
+          const adminCurrent = (adminDoc.data()?.credits || 0) as number;
+          transaction.update(adminRef, { credits: adminCurrent + referralAmount });
           adminRef.collection('transactions').doc().set({
             type: 'profit',
             creditsDelta: referralAmount,
             timestamp: admin.firestore.FieldValue.serverTimestamp(),
-            description: `Credit profit (Referral fallback) from story creation by ${creatorUid} for a ${storyType} story`,
+            description: `Referral fallback from ${creatorUid} creating a ${storyType} story`,
             sourceUid: creatorUid,
-            storyType: storyType,
+            storyType,
             status: 'confirmed',
           });
           totalDistributed += referralAmount;
         }
       }
 
-      // Royalty is 0% for creation as clarified, so no distribution here.
+      // No royalty on creation (per config)
 
-      // Optional: Log any remainder if floor() operations result in less than 100% distribution
+      // Remainder after floors
       const remainder = cost - totalDistributed;
       if (remainder > 0) {
-        // Distribute remainder to Admin App Cut as a common practice
-        const adminCurrentCredits = (adminDoc.data()?.credits || 0) as number;
-        transaction.update(adminRef, { credits: adminCurrentCredits + remainder });
+        const adminCurrent = (adminDoc.data()?.credits || 0) as number;
+        transaction.update(adminRef, { credits: adminCurrent + remainder });
         adminRef.collection('transactions').doc().set({
           type: 'profit',
           creditsDelta: remainder,
           timestamp: admin.firestore.FieldValue.serverTimestamp(),
-          description: `Credit profit (Rounding adjustment) from story creation by ${creatorUid} for a ${storyType} story`,
+          description: `Rounding adjustment from ${creatorUid} creating a ${storyType} story`,
           sourceUid: creatorUid,
-          storyType: storyType,
+          storyType,
           status: 'confirmed',
         });
       }
@@ -426,22 +412,21 @@ export const deductCreditsForCreation = functions.https.onCall(async (data, cont
 
   } catch (error: any) {
     console.error('Error deducting credits for creation:', error);
-    if (error instanceof functions.https.HttpsError) {
-      throw error;
-    }
+    if (error instanceof functions.https.HttpsError) throw error;
     throw new functions.https.HttpsError('internal', 'Failed to deduct credits for creation.', error.message);
   }
 });
 
-
-// 4. Callable Cloud Function to send a tip to a writer
+/* ────────────────────────────────────────────────────────────
+   4) Callable — send a tip to a writer
+   ──────────────────────────────────────────────────────────── */
 export const sendTipToWriter = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'The function must be called while authenticated.');
   }
 
   const senderUid = context.auth.uid;
-  const { targetUid, amount } = data;
+  const { targetUid, amount } = data as { targetUid?: string; amount?: number };
 
   if (!targetUid || typeof amount !== 'number' || amount <= 0) {
     throw new functions.https.HttpsError('invalid-argument', 'Target UID and a positive amount are required.');
@@ -455,29 +440,25 @@ export const sendTipToWriter = functions.https.onCall(async (data, context) => {
     const targetRef = db.collection('users').doc(targetUid);
 
     return db.runTransaction(async (transaction) => {
-      const senderDoc = await transaction.get(senderRef);
-      const targetDoc = await transaction.get(targetRef);
+      const [senderDoc, targetDoc] = await Promise.all([
+        transaction.get(senderRef),
+        transaction.get(targetRef),
+      ]);
 
-      if (!senderDoc.exists) {
-        throw new functions.https.HttpsError('not-found', 'Sender user not found.');
-      }
-      if (!targetDoc.exists) {
-        throw new functions.https.HttpsError('not-found', 'Target writer user not found.');
-      }
+      if (!senderDoc.exists) throw new functions.https.HttpsError('not-found', 'Sender user not found.');
+      if (!targetDoc.exists) throw new functions.https.HttpsError('not-found', 'Target writer user not found.');
 
       const senderCredits = (senderDoc.data()?.credits || 0) as number;
-
       if (senderCredits < amount) {
         throw new functions.https.HttpsError('failed-precondition', 'Insufficient credits to send this tip.');
       }
 
       // Deduct from sender
       transaction.update(senderRef, { credits: senderCredits - amount });
-      const senderTransactionRef = senderRef.collection('transactions').doc();
-      transaction.set(senderTransactionRef, {
+      senderRef.collection('transactions').doc().set({
         type: 'tip_given',
         creditsDelta: -amount,
-        targetUid: targetUid,
+        targetUid,
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
         description: `Sent ${amount} credits as a tip to ${targetDoc.data()?.displayName || targetUid}.`,
         status: 'confirmed',
@@ -486,8 +467,7 @@ export const sendTipToWriter = functions.https.onCall(async (data, context) => {
       // Add to target writer
       const targetCredits = (targetDoc.data()?.credits || 0) as number;
       transaction.update(targetRef, { credits: targetCredits + amount });
-      const targetTransactionRef = targetRef.collection('transactions').doc();
-      transaction.set(targetTransactionRef, {
+      targetRef.collection('transactions').doc().set({
         type: 'tip_received',
         creditsDelta: amount,
         sourceUid: senderUid,
@@ -501,71 +481,140 @@ export const sendTipToWriter = functions.https.onCall(async (data, context) => {
 
   } catch (error: any) {
     console.error('Error sending tip to writer:', error);
-    if (error instanceof functions.https.HttpsError) {
-      throw error;
-    }
+    if (error instanceof functions.https.HttpsError) throw error;
     throw new functions.https.HttpsError('internal', 'Failed to send tip.', error.message);
   }
 });
 
-// 5. Scheduled Cloud Function to grant monthly free credits
+/* ────────────────────────────────────────────────────────────
+   5) Callable — process PayPal subscriptions (proxies to Next API)
+   ──────────────────────────────────────────────────────────── */
+export const processPayPalSubscription = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'The function must be called while authenticated.');
+  }
+
+  const userId = context.auth.uid;
+  const { subscriptionID, planId, frequency, price, credits, referredBy } = data as {
+    subscriptionID?: string;
+    planId?: string;
+    frequency?: 'weekly' | 'monthly';
+    price?: number;
+    credits?: number;
+    referredBy?: string;
+  };
+
+  if (!planId || !frequency || typeof price !== 'number' || price <= 0 || typeof credits !== 'number' || credits <= 0) {
+    throw new functions.https.HttpsError('invalid-argument', 'Missing or invalid subscription details.');
+  }
+
+  try {
+    const verifySubscriptionUrl = process.env.NEXT_PUBLIC_VERCEL_URL
+      ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}/api/paypal-verify-subscription`
+      : 'http://localhost:3000/api/paypal-verify-subscription';
+
+    const firebaseAuthToken = await admin.auth().createCustomToken(userId);
+
+    const resp = await fetch(verifySubscriptionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${firebaseAuthToken}`,
+      },
+      body: JSON.stringify({
+        subscriptionID, // optional
+        planName: planId,
+        billingCycle: frequency,
+        price,
+        credits,
+        referredBy,
+      }),
+    });
+
+    const body: unknown = await resp.json();
+
+    if (!resp.ok) {
+      const msg = extractMessage(body, `Upstream error ${resp.status}`);
+      throw new functions.https.HttpsError('unknown', msg);
+    }
+
+    interface VerifySubResult {
+      success: boolean;
+      message?: string;
+      subscriptionId?: string;
+      payerId?: string;
+    }
+
+    const result = body as VerifySubResult;
+    return result;
+
+  } catch (error: any) {
+    console.error('Error processing PayPal subscription:', error);
+    if (error instanceof functions.https.HttpsError) throw error;
+    throw new functions.https.HttpsError('internal', 'Failed to process PayPal subscription.', error?.message ?? 'Unknown error');
+  }
+});
+
+/* ────────────────────────────────────────────────────────────
+   6) Scheduled — grant monthly free credits
+   ──────────────────────────────────────────────────────────── */
 export const grantMonthlyFreeCredits = functions.pubsub
-  .schedule('every 1st of month 00:00') // Run at 00:00 on the 1st of every month
-  .timeZone('America/Los_Angeles') // Specify your desired time zone
-  .onRun(async (context) => {
+  .schedule('every 1st of month 00:00')
+  .timeZone('America/Los_Angeles')
+  .onRun(async () => {
     const usersRef = db.collection('users');
     const freeCreditsAmount = 25;
 
     const now = admin.firestore.Timestamp.now();
     const currentMonth = new Date(now.toDate()).getMonth();
-    const currentYear = new Date(now.toDate()).getFullYear();
+    const currentYear  = new Date(now.toDate()).getFullYear();
 
     try {
       const snapshot = await usersRef.get();
+      const updates: Promise<unknown>[] = [];
 
-      const updates: Promise<any>[] = [];
-
-      snapshot.forEach(doc => {
+      snapshot.forEach((doc) => {
         const userData = doc.data();
         const lastGrantTimestamp = userData?.lastMonthlyCreditGrant as admin.firestore.Timestamp | undefined;
-        let shouldGrant = false;
 
+        let shouldGrant = false;
         if (!lastGrantTimestamp) {
-          shouldGrant = true; // User has never received credits
+          shouldGrant = true;
         } else {
           const lastGrantDate = lastGrantTimestamp.toDate();
           if (lastGrantDate.getMonth() !== currentMonth || lastGrantDate.getFullYear() !== currentYear) {
-            shouldGrant = true; // Last grant was in a different month/year
+            shouldGrant = true;
           }
         }
 
         if (shouldGrant) {
           const userRef = doc.ref;
-          updates.push(db.runTransaction(async (transaction) => {
-            const userDoc = await transaction.get(userRef);
-            if (!userDoc.exists) return; // Should not happen
+          updates.push(
+            db.runTransaction(async (transaction) => {
+              const userDoc = await transaction.get(userRef);
+              if (!userDoc.exists) return;
 
-            const currentCredits = (userDoc.data()?.credits || 0) as number;
-            transaction.update(userRef, {
-              credits: currentCredits + freeCreditsAmount,
-              lastMonthlyCreditGrant: now,
-            });
-            const userTransactionRef = userRef.collection('transactions').doc();
-            transaction.set(userTransactionRef, {
-              type: 'free_monthly_grant',
-              creditsDelta: freeCreditsAmount,
-              timestamp: now,
-              description: `Received ${freeCreditsAmount} free monthly credits.`,
-              status: 'confirmed',
-            });
-          }));
+              const currentCredits = (userDoc.data()?.credits || 0) as number;
+              transaction.update(userRef, {
+                credits: currentCredits + freeCreditsAmount,
+                lastMonthlyCreditGrant: now,
+              });
+
+              userRef.collection('transactions').doc().set({
+                type: 'free_monthly_grant',
+                creditsDelta: freeCreditsAmount,
+                timestamp: now,
+                description: `Received ${freeCreditsAmount} free monthly credits.`,
+                status: 'confirmed',
+              });
+            })
+          );
         }
       });
 
       await Promise.all(updates);
       console.log('Monthly free credits granted to eligible users.');
       return null;
-
     } catch (error) {
       console.error('Error granting monthly free credits:', error);
       throw new functions.https.HttpsError('internal', 'Failed to grant monthly free credits.', (error as Error).message);

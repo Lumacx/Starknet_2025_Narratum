@@ -2,6 +2,7 @@
 
 import React, { FC, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import PayPalProviderClient from '@/components/PayPalProviderClient';
 import { usePayPalScriptReducer, type ReactPayPalScriptOptions } from '@paypal/react-paypal-js';
 import { useAuth } from '@/context/AuthContext';
@@ -172,6 +173,16 @@ const BuyCreditsPage: FC = () => {
         text-[#3A4B5C] dark:text-[#E0C9A0] font-sans
       `}
     >
+
+    <div className="fixed top-7 right-4 z-50">
+        <Link
+          href="/"
+          className="px-6 py-3 bg-gray-600 text-white font-semibold rounded-full shadow-md hover:bg-gray-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300"
+        >
+          Back to Landing
+        </Link>
+      </div>
+
       <div className="w-full max-w-6xl pt-6 pb-20">
         <header className="text-center mb-8 md:mb-12">
           <p className="font-['Lato'] text-base md:text-lg font-light tracking-widest mb-1">PURCHASE CREDITS</p>
@@ -294,7 +305,12 @@ const BuyCreditsPage: FC = () => {
         <footer className="text-center mt-12">
           <p className="font-['Georgia'] italic text-xl">Where your words come to life</p>
         </footer>
-      </div>
+
+         {/* Back link (optional) */}
+                <div className="text-center mt-10">
+                  <Link href="/" className="text-sm underline opacity-80 hover:opacity-100">Back to landing</Link>
+                </div>
+              </div>    
 
       <style jsx global>{`
         @keyframes pulseGlowLight {

@@ -20,7 +20,7 @@ const Header: FC = () => {
 
   const blueButtonClasses = "px-6 py-3 bg-[#1877F2] text-white font-semibold rounded-full shadow-md hover:bg-[#166FE5] transition duration-300 flex items-center justify-center text-sm";
   const purpleButtonClasses = "px-6 py-3 bg-purple-600 text-white font-semibold rounded-full shadow-md hover:bg-purple-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-purple-300 text-sm";
-  const creditDisplayClasses = "px-4 py-2 bg-gray-700 text-white rounded-full text-sm font-medium";
+  const creditDisplayClasses = "px-4 py-2 bg-gradient-to-r from-green-500 to-teal-600 text-white font-semibold rounded-lg";
 
   let loginLogoutContent;
   if (loading) {
