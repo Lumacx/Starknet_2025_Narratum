@@ -559,10 +559,13 @@
   "alertSceneGenerationError": "Scene generation error",
 
   "alertPasteValidYouTube": "Please paste a valid YouTube URL.",
-  "alertSaveYouTubeFailed": "Could not save the YouTube link."
-
-
-
-
-}
+  "alertSaveYouTubeFailed": "Could not save the YouTube link.",
   
+  "legalDisclaimerPageTitle": "LEGAL DISCLAIMER",
+  "legalDisclaimerIntro": "By accessing or using this website, you agree to our ",
+  "termsAndConditions": "Terms and Conditions",
+  "thankYouForAccepting": "Thank you for accepting the terms and conditions.",
+  "pleaseAcceptTerms": "Please accept the terms and conditions to proceed.",
+  "iAcceptTerms": "I accept the terms and conditions",
+  "accept": "ACCEPT"
+}

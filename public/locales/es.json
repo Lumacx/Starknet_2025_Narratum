@@ -546,7 +546,14 @@
   "alertSceneGenerationError": "Error al generar la escena",
 
   "alertPasteValidYouTube": "Pega una URL válida de YouTube.",
-  "alertSaveYouTubeFailed": "No se pudo guardar el enlace de YouTube."
+  "alertSaveYouTubeFailed": "No se pudo guardar el enlace de YouTube.",
 
+  "legalDisclaimerPageTitle": "AVISO LEGAL",
+  "legalDisclaimerIntro": "Al acceder o utilizar este sitio web, usted acepta nuestros ",
+  "termsAndConditions": "Términos y Condiciones",
+  "thankYouForAccepting": "Gracias por aceptar los términos y condiciones.",
+  "pleaseAcceptTerms": "Por favor, acepte los términos y condiciones para continuar.",
+  "iAcceptTerms": "Acepto los términos y condiciones",
+  "accept": "ACEPTAR"
 
 }
