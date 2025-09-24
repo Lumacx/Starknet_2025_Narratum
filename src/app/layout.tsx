@@ -2,116 +2,37 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import GsiScript from '@/components/GsiScript';
-import { StarknetProvider } from '@/components/Starknet/StarknetProviderComponent';
-import { AuthProvider } from '@/context/AuthContext';
-import { LocaleProvider, useLocale } from '@/context/LocaleContext'; // Import useLocale as well
-import Header from '@/components/header';
-import Footer from '@/components/layout/Footer';
-import KeepAliveProvider from '@/app/providers/KeepAliveProvider';
-import { Suspense, useEffect } from 'react';
+import ClientShell from './ClientShell';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Narratum',
   description: 'Interactive storytelling with AI',
-  // Optional: icon, themeColor, etc.
 };
 
-function AppContent({ children }: { children: React.ReactNode }) {
-  const { locale } = useLocale();
-
-  useEffect(() => {
-    document.documentElement.lang = locale; // Set the lang attribute dynamically
-  }, [locale]);
-
-  const isProd = process.env.NODE_ENV === 'production';
-
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
-        {/* basic meta for consistent layout on all devices */}
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        {/* preconnects to speed up fonts and common CDNs */}
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://firebasestorage.googleapis.com" />
         <link rel="preconnect" href="https://storage.googleapis.com" />
+        <style>{`
+          html.reader-mode .site-header,
+          html.reader-mode .site-footer,
+          html.reader-mode .subscriptions-bar,
+          html.reader-mode .global-toolbar,
+          html.reader-mode .floating-toolbar {
+            display: none !important;
+          }
+        `}</style>
       </head>
-
       <body className={inter.className}>
-        {/* Hide chrome in reader-mode */}
-        <style
-          // eslint-disable-next-line react/no-danger
-          dangerouslySetInnerHTML={{
-            __html: `
-              html.reader-mode .site-header,
-              html.reader-mode .site-footer,
-              html.reader-mode .subscriptions-bar,
-              html.reader-mode .global-toolbar,
-              html.reader-mode .floating-toolbar {
-                display: none !important;
-              }
-            `,
-          }}
-        />
-
-        {/* Dev-only: surface silent client errors that can cause "Loading..." forever */}
-        {!isProd && (
-          <script
-            // eslint-disable-next-line react/no-danger
-            dangerouslySetInnerHTML={{
-              __html: `
-                (function () {
-                  if (window.__dbgHooks) return; window.__dbgHooks = true;
-                  window.addEventListener('error', e => {
-                    console.log('[window error]', e.error || e.message);
-                  });
-                  window.addEventListener('unhandledrejection', e => {
-                    console.log('[unhandledrejection]', e.reason);
-                  });
-                })();
-              `,
-            }}
-          />
-        )}
-
-        {/* Google Identity Services (client) */}
-        <GsiScript />
-
-        {/* App providers */}
-        <StarknetProvider>
-          <AuthProvider>
-            {/* KeepAlive needs client; keep it inside Auth */}
-            <KeepAliveProvider requireAuth={false} rtdbPath="_meta/keepalive">
-              <div className="site-header">
-                <Suspense fallback={<div style={{ height: 56 }} />}><Header /></Suspense>
-              </div>
-
-              {/* IMPORTANT: PayPal is no longer injected globally.
-                  Wrap ONLY checkout/donation pages with <PayPalProviderClient enabled> */}
-              <Suspense fallback={<div className="min-h-[40vh] flex items-center justify-center">Loading…</div>}>
-                {children}
-              </Suspense>
-
-              <div className="site-footer">
-                <Suspense fallback={null}><Footer /></Suspense>
-              </div>
-            </KeepAliveProvider>
-          </AuthProvider>
-        </StarknetProvider>
+        <ClientShell>{children}</ClientShell>
       </body>
     </html>
-  );
-}
-
-export default function RootLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
-  return (
-    <LocaleProvider>
-      <AppContent>{children}</AppContent>
-    </LocaleProvider>
   );
 }
