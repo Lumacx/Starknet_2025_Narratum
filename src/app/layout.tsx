@@ -5,10 +5,11 @@ import './globals.css';
 import GsiScript from '@/components/GsiScript';
 import { StarknetProvider } from '@/components/Starknet/StarknetProviderComponent';
 import { AuthProvider } from '@/context/AuthContext';
+import { LocaleProvider, useLocale } from '@/context/LocaleContext'; // Import useLocale as well
 import Header from '@/components/header';
 import Footer from '@/components/layout/Footer';
 import KeepAliveProvider from '@/app/providers/KeepAliveProvider';
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -18,13 +19,17 @@ export const metadata: Metadata = {
   // Optional: icon, themeColor, etc.
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
+function AppContent({ children }: { children: React.ReactNode }) {
+  const { locale } = useLocale();
+
+  useEffect(() => {
+    document.documentElement.lang = locale; // Set the lang attribute dynamically
+  }, [locale]);
+
   const isProd = process.env.NODE_ENV === 'production';
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <head>
         {/* basic meta for consistent layout on all devices */}
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -98,5 +103,15 @@ export default function RootLayout({
         </StarknetProvider>
       </body>
     </html>
+  );
+}
+
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <LocaleProvider>
+      <AppContent>{children}</AppContent>
+    </LocaleProvider>
   );
 }

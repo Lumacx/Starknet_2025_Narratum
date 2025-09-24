@@ -5,12 +5,13 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import ThemeToggle from '@/components/ThemeToggle';
 import { useState } from 'react';
+import { useLocale } from '@/context/LocaleContext';
 
 const Header: FC = () => {
   const { user, starknetAddress, logout, loading, credits } = useAuth();
+  const { locale, setLocale, t } = useLocale();
   const isLoggedIn = !!user || !!starknetAddress;
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [language, setLanguage] = useState('en'); // 'en' for English, 'es' for Español
 
   const handleLogout = async () => {
     try {
@@ -27,7 +28,7 @@ const Header: FC = () => {
   };
 
   const toggleLanguage = () => {
-    setLanguage((prevLang) => (prevLang === 'en' ? 'es' : 'en'));
+    setLocale((prevLocale) => (prevLocale === 'en' ? 'es' : 'en'));
   };
 
   const blueButtonClasses = "px-6 py-3 bg-[#1877F2] text-white font-semibold rounded-full shadow-md hover:bg-[#166FE5] transition duration-300 flex items-center justify-center text-sm";
@@ -37,11 +38,11 @@ const Header: FC = () => {
 
   let loginLogoutContent;
   let dropdownLogoutContent;
-  let buttonText = 'Login';
+  let buttonText = t('login'); // Default to translated Login
 
   if (loading) {
-    loginLogoutContent = <p className="text-white text-sm">Loading...</p>;
-    dropdownLogoutContent = <p className={dropdownItemClasses}>Loading...</p>;
+    loginLogoutContent = <p className="text-white text-sm">{t('loading')}</p>;
+    dropdownLogoutContent = <p className={dropdownItemClasses}>{t('loading')}</p>;
   } else if (isLoggedIn) {
     if (starknetAddress) {
       buttonText = `${starknetAddress.substring(0, 6)}...${starknetAddress.substring(starknetAddress.length - 4)}`;
@@ -52,97 +53,94 @@ const Header: FC = () => {
     }
     
     loginLogoutContent = (
-      <div className="hidden md:flex items-center space-x-2">
+      <>
         {credits !== null && (
           <span className={creditDisplayClasses}>
-            Credits: {credits}
+            {t('credits')} {credits}
           </span>
         )}
         <Link href="/buy-credits" className={purpleButtonClasses}>
-          Buy Credits
+          {t('buyCredits')}
         </Link>
         <button onClick={handleLogout} className={blueButtonClasses}>
-          {buttonText} (Logout)
+          {buttonText} {t('logoutSuffix')}
         </button>
-      </div>
+      </>
     );
     dropdownLogoutContent = (
       <>
         {credits !== null && (
           <span className={`${dropdownItemClasses} flex justify-between items-center`}>
-            <span>Credits:</span> <span className="font-bold">{credits}</span>
+            <span>{t('credits')}</span> <span className="font-bold">{credits}</span>
           </span>
         )}
         <Link href="/buy-credits" className={dropdownItemClasses} onClick={() => setIsDropdownOpen(false)}>
-          Buy Credits
+          {t('buyCredits')}
         </Link>
         <button onClick={handleLogout} className={`${dropdownItemClasses} w-full text-left`}>
-          {buttonText} (Logout)
+          {buttonText} {t('logoutSuffix')}
         </button>
       </>
     );
   } else {
     loginLogoutContent = (
-      <Link href="/login" className={`${blueButtonClasses} hidden md:flex`}>
-        Login
+      <Link href="/login" className={blueButtonClasses}>
+        {t('login')}
       </Link>
     );
     dropdownLogoutContent = (
       <Link href="/login" className={dropdownItemClasses} onClick={() => setIsDropdownOpen(false)}>
-        Login
+        {t('login')}
       </Link>
     );
   }
 
   return (
     <header className="py-4 px-4 md:px-8 bg-gray-800 text-white shadow-md"> 
-      <div className="container mx-auto flex items-center justify-between">
+      <div className="container mx-auto flex items-center justify-start space-x-4">
         {/* Left side: Language Toggle, Theme Toggle, and Hamburger Menu on small screens */}
-        <div className="flex items-center space-x-4">
-          {/* Language Toggle */}
+        <button 
+          onClick={toggleLanguage} 
+          className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-700 text-white hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
+          aria-label="Toggle language"
+        >
+          {locale === 'en' ? 'EN' : 'ES'}
+        </button>
+
+        <ThemeToggle />
+
+        {/* Hamburger menu for small screens */}
+        <div className="md:hidden relative">
           <button 
-            onClick={toggleLanguage} 
-            className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-700 text-white hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
-            aria-label="Toggle language"
+            onClick={toggleDropdown} 
+            className="flex items-center space-x-2 text-white hover:text-gray-300 focus:outline-none"
+            aria-label="Toggle navigation"
           >
-            {language === 'en' ? 'EN' : 'ES'}
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+            </svg>
+            <span className="text-sm">{t('details')}</span>
           </button>
 
-          <ThemeToggle />
-
-          {/* Hamburger menu for small screens */}
-          <div className="md:hidden relative">
-            <button 
-              onClick={toggleDropdown} 
-              className="flex items-center space-x-2 text-white hover:text-gray-300 focus:outline-none"
-              aria-label="Toggle navigation"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7"></path>
-              </svg>
-              <span className="text-sm">+ Details</span>
-            </button>
-
-            {isDropdownOpen && (
-              <div className="absolute left-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg z-20">
-                <div className="py-1">
-                  <Link href="/subscription" className={dropdownItemClasses} onClick={() => setIsDropdownOpen(false)}>
-                    Subscriptions
-                  </Link>
-                  {dropdownLogoutContent}
-                </div>
+          {isDropdownOpen && (
+            <div className="absolute left-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg z-20">
+              <div className="py-1">
+                <Link href="/subscription" className={dropdownItemClasses} onClick={() => setIsDropdownOpen(false)}>
+                  {t('subscriptions')}
+                </Link>
+                {dropdownLogoutContent}
               </div>
-            )}
-          </div>
-
-          {/* Regular buttons for medium and larger screens */}
-          <Link href="/subscription" className={`${purpleButtonClasses} hidden md:flex`}>
-            Subscriptions
-          </Link>
+            </div>
+          )}
         </div>
 
-        {/* Right side: Login/Logout and Credits on medium and larger screens */}
-        {loginLogoutContent}
+        {/* Regular buttons for medium and larger screens */}
+        <div className="hidden md:flex items-center space-x-4">
+          <Link href="/subscription" className={purpleButtonClasses}>
+            {t('subscriptions')}
+          </Link>
+          {loginLogoutContent}
+        </div>
       </div>
     </header>
   );

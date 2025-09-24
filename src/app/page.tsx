@@ -5,17 +5,18 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import YoutubeVideoPlayer from '../components/YoutubeVideoPlayer';
-//import ThemeToggle from '../components/ThemeToggle';
+import { useLocale } from '@/context/LocaleContext';
 
 const LandingPage: React.FC = () => {
   const { user, starknetAddress, loading } = useAuth();
+  const { t } = useLocale();
   const isLoggedIn = !!user || !!starknetAddress;
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-xl font-semibold">Loading...</p>
+        <p className="text-xl font-semibold">{t('loading')}</p>
       </div>
     );
   }
@@ -33,8 +34,8 @@ const LandingPage: React.FC = () => {
 
       <div className="max-w-4xl w-full text-center pt-10 md:pt-16 pb-28">
         <header className="mb-10 md:mb-16">
-          <p className="font-['Lato'] text-xl md:text-2xl font-light tracking-widest mb-1">WELCOME TO</p>
-          <h1 className="font-['Georgia'] text-6xl md:text-7xl lg:text-8xl font-bold m-0">NARRATUM</h1>
+          <p className="font-['Lato'] text-xl md:text-2xl font-light tracking-widest mb-1">{t('welcomeTo')}</p>
+          <h1 className="font-['Georgia'] text-6xl md:text-7xl lg:text-8xl font-bold m-0">{t('narratum')}</h1>
         </header>
 
         {/* Top cards */}
@@ -48,8 +49,8 @@ const LandingPage: React.FC = () => {
             `}
           >
             <i className="fas fa-book-open text-5xl md:text-6xl text-[#A9834F] mb-6 md:mb-8" />
-            <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase">DISCOVER</span>
-            <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase">STORIES</span>
+            <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase">{t('discover')}</span>
+            <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase">{t('stories')}</span>
           </Link>
 
           <Link
@@ -64,8 +65,8 @@ const LandingPage: React.FC = () => {
             tabIndex={!isLoggedIn ? -1 : undefined}
           >
             <i className="fas fa-feather-alt text-5xl md:text-6xl text-[#A9834F] mb-6 md:mb-8" />
-            <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase">CREATE</span>
-            <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase">STORY</span>
+            <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase">{t('create')}</span>
+            <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase">{t('story')}</span>
           </Link>
 
           <Link
@@ -77,8 +78,8 @@ const LandingPage: React.FC = () => {
             `}
           >
             <i className="fas fa-user-circle text-5xl md:text-6xl text-[#A9834F] mb-6 md:mb-8" />
-            <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase">MY</span>
-            <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase">PROFILE</span>
+            <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase">{t('my')}</span>
+            <span className="font-['Georgia'] font-bold text-lg md:text-xl uppercase">{t('profile')}</span>
           </Link>
         </nav>
 
@@ -92,7 +93,7 @@ const LandingPage: React.FC = () => {
               transition transform hover:scale-105 animate-pulse-slow
             `}
           >
-            🎬 Watch Teaser
+            {t('watchTeaser')}
           </button>
 
           <button
@@ -103,7 +104,7 @@ const LandingPage: React.FC = () => {
               transition transform hover:scale-105 animate-pulse-slow
             `}
           >
-            📘 Watch Tutorial
+            {t('watchTutorial')}
           </button>
 
           <a
@@ -117,12 +118,12 @@ const LandingPage: React.FC = () => {
               hover:shadow-lg hover:scale-105 transition animate-pulse-slow
             `}
           >
-            💡 Provide Feedback
+            {t('provideFeedback')}
           </a>
         </div>
 
         <footer className="font-['Georgia'] italic text-xl md:text-2xl mt-8">
-          <p>Where your words come to life</p>
+          <p>{t('whereWordsComeToLife')}</p>
         </footer>
       </div>
 

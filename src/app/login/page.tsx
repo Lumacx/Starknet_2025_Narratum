@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 import { useAuth } from '@/context/AuthContext';
+import { useLocale } from '@/context/LocaleContext';
 import { auth, db } from '@/lib/firebase';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithCredential, updateProfile } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -33,6 +34,7 @@ const LoginPage: React.FC = () => {
 
   const router = useRouter();
   const { user, loading, setStarknetLoginStatus, starknetAddress } = useAuth();
+  const { t } = useLocale();
   const { address, account, status } = useAccount();
   const { connect } = useConnect();
 
@@ -62,12 +64,12 @@ const LoginPage: React.FC = () => {
       router.push('/');
     } catch (err: any) {
       console.error('[⚠️ Starknet TX Error]', err);
-      setMessage(err.message || 'Transaction error.');
+      setMessage(err.message || t('transactionError')); // Assuming 'transactionError' key for generic transaction errors
       setHasAttemptedExecute(false);
     } finally {
       setIsExecuting(false);
     }
-  }, [account, address, calls, router, isExecuting, hasAttemptedExecute, setStarknetLoginStatus]);
+  }, [account, address, calls, router, isExecuting, hasAttemptedExecute, setStarknetLoginStatus, t]);
 
   useEffect(() => {
     if (status === 'connected' && address && account && !isExecuting && !hasAttemptedExecute) {
@@ -82,7 +84,7 @@ const LoginPage: React.FC = () => {
       await signInWithEmailAndPassword(auth, email, password);
       setStarknetLoginStatus(null);
     } catch (error: any) {
-      setMessage(`Login error: ${error.message}`);
+      setMessage(`${t('loginError')}${error.message}`);
     }
   };
 
@@ -93,7 +95,7 @@ const LoginPage: React.FC = () => {
       const connection = await connectStarknetkit({});
       if (connection?.connector) await connect({ connector: connection.connector });
     } catch (error: any) {
-      setMessage(`Wallet connection error: ${error.message}`);
+      setMessage(`${t('walletConnectionError')}${error.message}`); // Assuming 'walletConnectionError' key
     } finally {
       setIsConnecting(false);
     }
@@ -130,19 +132,19 @@ const LoginPage: React.FC = () => {
       setStarknetLoginStatus(null);
       router.push('/');
     } catch (error: any) {
-      setMessage(`Google Sign-In error: ${error.message}`);
+      setMessage(`${t('googleSignInError')}${error.message}`); // Assuming 'googleSignInError' key
     }
   };
 
   if (loading || isExecuting || isConnecting) {
-    return <div className="min-h-screen flex items-center justify-center"><p>Loading...</p></div>;
+    return <div className="min-h-screen flex items-center justify-center"><p>{t('loading')}</p></div>;
   }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26] p-4">
       <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12 max-w-md w-full text-center">
-        <h1 className="text-4xl font-bold text-[#475B6D] mb-4">NARRATUM</h1>
-        <p className="text-gray-700 mb-6">Sign in with Google, Starknet or email.</p>
+        <h1 className="text-4xl font-bold text-[#475B6D] mb-4">{t('narratum')}</h1>
+        <p className="text-gray-700 mb-6">{t('signInWithGoogleStarknetOrEmail')}</p>
 
         {message && <div className="mb-4 p-3 rounded-lg text-sm bg-red-100 text-red-700">{message}</div>}
 
@@ -153,7 +155,7 @@ const LoginPage: React.FC = () => {
 
         <div className="my-4 flex items-center text-gray-500 text-sm">
           <span className="flex-grow border-b border-gray-300" />
-          <span className="mx-4">OR</span>
+          <span className="mx-4">{t('or')}</span>
           <span className="flex-grow border-b border-gray-300" />
         </div>
 
@@ -162,22 +164,22 @@ const LoginPage: React.FC = () => {
           className="w-full py-3 px-6 bg-[#1877F2] text-white font-semibold rounded-full hover:bg-[#166FE5] transition"
           disabled={!!starknetAddress}
         >
-          {starknetAddress ? 'Wallet Connected' : 'Login with Starknet'}
+          {starknetAddress ? t('walletConnected') : t('loginWithStarknet')}
         </button>
 
         <form onSubmit={handleEmailLogin} className="mt-4 space-y-4">
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="w-full px-4 py-2 border rounded-lg text-gray-700" required />
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" className="w-full px-4 py-2 border rounded-lg text-gray-700" required />
-          <button type="submit" className="w-full py-3 bg-[#627C90] text-white rounded-full hover:bg-[#536A7D]">Login with Email</button>
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('emailPlaceholder')} className="w-full px-4 py-2 border rounded-lg text-gray-700" required />
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('passwordPlaceholder')} className="w-full px-4 py-2 border rounded-lg text-gray-700" required />
+          <button type="submit" className="w-full py-3 bg-[#627C90] text-white rounded-full hover:bg-[#536A7D]">{t('loginWithEmail')}</button>
         </form>
 
         <div className="text-sm text-gray-600 mt-6">
-          <p className="mb-2">New to Narratum? <Link href="/signup" className="text-blue-600 font-bold hover:underline">Sign up</Link></p>
-          <button onClick={() => {}} className="text-blue-600 hover:underline">Forgot password?</button>
+          <p className="mb-2">{t('newToNarratum')}<Link href="/signup" className="text-blue-600 font-bold hover:underline">{t('signUp')}</Link></p>
+          <button onClick={() => {}} className="text-blue-600 hover:underline">{t('forgotPassword')}</button>
         </div>
 
         <Link href="/" className="mt-6 inline-block px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-lg hover:bg-gray-400 transition">
-          Back to Landing
+          {t('backToLanding')}
         </Link>
       </div>
     </div>
