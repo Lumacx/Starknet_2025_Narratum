@@ -118,7 +118,6 @@
   "tipSentSuccessfully": "Thanks! Tip sent successfully.",
   "transactionError": "Transaction error.",
 
-
   "purchaseCredits": "PURCHASE CREDITS",
   "fuelYourNarrative": "Fuel Your Narrative",
   "mostPopular": "Most Popular",
@@ -155,8 +154,42 @@
   "redeemingPromoCode": "Redeeming promo code...",
   "promoCodeRedeemed": "Promo code redeemed!",
   "failedToRedeemPromo": "Failed to redeem promo code.",
-  "errorWithMessage": "Error: {message}"
+  "errorWithMessage": "Error: {message}",
 
-
+  "creditsAndPlans": "Credits & Plans",
+  "oneTime": "One-time",
+  "subscriptionsToggle": "Subscriptions",
+  "weekly": "Weekly",
+  "monthly": "Monthly",
+  "tierOGFree": "OG Free",
+  "tagStarter": "Starter",
+  "tagPopular": "Popular",
+  "tagMostPopular": "Most Popular",
+  "tagPowerUser": "Power user",
+  "tagBestValue": "Best value",
+  "tagFree": "Free",
+  "freeUpper": "FREE",
+  "confirmSelection": "Confirm Selection",
+  "youSelectedOneTime": "You selected {name} — {credits} {unit} for {price}.",
+  "youSelectedSubscription": "You selected {name} — {credits} {unit} for {price} / {frequency}.",
+  "referredBy": "Referred By",
+  "referredByPlaceholder": "Friend, creator, code, or link",
+  "paypalErrorTryAgain": "PayPal error. Try again.",
+  "planIdNotSet": "Plan ID not set.",
+  "replacePlanIds": "Replace the placeholder PLAN IDs.",
+  "activatingSubscription": "Activating your subscription…",
+  "subscriptionCancelled": "Subscription cancelled.",
+  "paypalSubscriptionError": "PayPal subscription error. Try again.",
+  "mustBeLoggedInAndHaveSelection": "You must be logged in and have a selection.",
+  "purchasedCreditsSuccess": "Successfully purchased {credits} credits!",
+  "paypalPaymentNotCompleted": "PayPal payment not completed.",
+  "unexpectedError": "Unexpected error.",
+  "subscriptionActivated": "Subscription to {name} ({frequency}) activated!",
+  "paypalOneTimeDescription": "Narratum Credits (One-time) — {name}{ref}",
+  "paypalSubscriptionDescription": "Narratum Subscription — {name} / {frequency}{ref}",
+  "activateFreePlan": "Activate Free Plan",
+  "pleaseLoginToManage": "Please log in to manage subscriptions or buy credits."
+  
+  
 }
   
