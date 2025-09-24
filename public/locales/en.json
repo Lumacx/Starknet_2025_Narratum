@@ -116,10 +116,47 @@
   "noWriterForThisStory": "No writer for this story.",
   "couldNotSendTip": "Could not send tip.",
   "tipSentSuccessfully": "Thanks! Tip sent successfully.",
-  "transactionError": "Transaction error."
+  "transactionError": "Transaction error.",
 
 
+  "purchaseCredits": "PURCHASE CREDITS",
+  "fuelYourNarrative": "Fuel Your Narrative",
+  "mostPopular": "Most Popular",
+  "tierTester": "Tester",
+  "tierReader": "Reader",
+  "tierWriter": "Writer",
+  "tierCreator": "Creator",
+  "creditsLabel": "{count} {unit}",
+  "avgScenariosSplit": "Avg scenarios split",
+  "selected": "Selected",
+  "choosePackage": "Choose package",
+  "confirmPurchase": "Confirm Purchase",
+  "youSelectedSummary": "You selected {tier} — {credits} {unit} for {price}.",
+  "loadingPaypal": "Loading PayPal…",
+  "paypalSdkBlocked": "PayPal SDK blocked/failed.",
+  "paymentModuleUnavailable": "Payment module unavailable.",
+  "paypalDescription": "Narratum Credits — {tier}",
+  "processingPayment": "Processing your payment...",
+  "paymentCancelled": "Payment cancelled.",
+  "paypalError": "PayPal payment encountered an error. Please try again.",
+  "mustBeLoggedInToPurchase": "You must be logged in to complete this purchase.",
+  "paymentCompletedSuccess": "Successfully purchased {credits} credits!",
+  "paymentNotCompleted": "Payment not completed by PayPal.",
+  "paymentFailed": "Payment failed: {message}",
+  "pleaseLoginToPurchaseOrRedeem": "Please log in to purchase or redeem credits.",
+  "missingPaypalClientId": "Missing PayPal client ID.",
+  "setEnvVar": "Set {envVar}.",
+  "redeemPromoCode": "Redeem Promo Code",
+  "enterPromoCode": "Enter promo code",
+  "redeeming": "Redeeming…",
+  "redeem": "Redeem",
+  "mustBeLoggedInToRedeem": "You must be logged in to redeem a promo code.",
+  "pleaseEnterPromoCode": "Please enter a promo code.",
+  "redeemingPromoCode": "Redeeming promo code...",
+  "promoCodeRedeemed": "Promo code redeemed!",
+  "failedToRedeemPromo": "Failed to redeem promo code.",
+  "errorWithMessage": "Error: {message}"
 
-  
+
 }
   

@@ -8,11 +8,26 @@ import { usePayPalScriptReducer, type ReactPayPalScriptOptions } from '@paypal/r
 import { useAuth } from '@/context/AuthContext';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '@/lib/firebase';
+import { useLocale } from '@/context/LocaleContext';
 
 const PayPalButtons = dynamic(
   () => import('@paypal/react-paypal-js').then((m) => m.PayPalButtons),
   { ssr: false }
 );
+
+// --- small formatter to allow {vars} since your t() takes 1 arg
+function formatT(
+  t: (k: string) => string,
+  key: string,
+  vars?: Record<string, string | number>
+) {
+  let out = t(key);
+  if (!vars) return out;
+  for (const [k, v] of Object.entries(vars)) {
+    out = out.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
+  }
+  return out;
+}
 
 interface CreditPackage {
   id: string;
@@ -32,6 +47,17 @@ const creditPackages: CreditPackage[] = [
 const prettyUSD = (n: number) =>
   n.toLocaleString(undefined, { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
 
+// map internal tier to localized label
+function getTierLabel(t: (k: string) => string, tier: CreditPackage['tier']) {
+  switch (tier) {
+    case 'Tester': return t('tierTester');
+    case 'Reader': return t('tierReader');
+    case 'Writer': return t('tierWriter');
+    case 'Creator': return t('tierCreator');
+    default: return tier;
+  }
+}
+
 function ButtonsArea({
   selectedPackage,
   onSuccess,
@@ -41,13 +67,16 @@ function ButtonsArea({
   onSuccess: (order: any) => void;
   onMessage: (status: 'idle' | 'success' | 'error' | 'pending', msg: string) => void;
 }) {
+  const { t } = useLocale();
   const [{ isPending, isRejected, isResolved }] = usePayPalScriptReducer();
 
-  if (isPending) return <div className="text-center py-2">Loading PayPal…</div>;
-  if (isRejected) return <div className="p-4 rounded-lg border text-sm">PayPal SDK blocked/failed.</div>;
+  if (isPending) return <div className="text-center py-2">{t('loadingPaypal')}</div>;
+  if (isRejected) return <div className="p-4 rounded-lg border text-sm">{t('paypalSdkBlocked')}</div>;
   if (!isResolved || typeof window === 'undefined' || !(window as any).paypal) {
-    return <div className="p-4 rounded-lg border text-sm">Payment module unavailable.</div>;
+    return <div className="p-4 rounded-lg border text-sm">{t('paymentModuleUnavailable')}</div>;
   }
+
+  const tierLabel = getTierLabel(t, selectedPackage.tier);
 
   return (
     <PayPalButtons
@@ -58,26 +87,27 @@ function ButtonsArea({
           purchase_units: [
             {
               amount: { value: selectedPackage.price.toFixed(2), currency_code: 'USD' },
-              description: `Narratum Credits — ${selectedPackage.tier}`,
+              description: formatT(t, 'paypalDescription', { tier: tierLabel }),
             },
           ],
         })
       }
       onApprove={async (_data, actions) => {
-        onMessage('pending', 'Processing your payment...');
+        onMessage('pending', t('processingPayment'));
         const order = await actions.order!.capture();
         onSuccess(order);
       }}
-      onCancel={() => onMessage('idle', 'Payment cancelled.')}
+      onCancel={() => onMessage('idle', t('paymentCancelled'))}
       onError={(err) => {
         console.error('PayPal onError:', err);
-        onMessage('error', 'PayPal payment encountered an error. Please try again.');
+        onMessage('error', t('paypalError'));
       }}
     />
   );
 }
 
 const BuyCreditsPage: FC = () => {
+  const { t } = useLocale();
   const { user, loading: authLoading } = useAuth();
 
   const [selectedPackage, setSelectedPackage] = useState<CreditPackage | null>(null);
@@ -90,7 +120,6 @@ const BuyCreditsPage: FC = () => {
   const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
   const unusable = !clientId || clientId.trim().toLowerCase() === 'test';
 
-  // ✅ Compute once, pass the variable (no inline hooks in JSX)
   const options: ReactPayPalScriptOptions = useMemo(
     () => ({ clientId: clientId!, currency: 'USD', intent: 'capture', components: 'buttons' }),
     [clientId]
@@ -100,22 +129,22 @@ const BuyCreditsPage: FC = () => {
     try {
       if (!user) {
         setPaymentStatus('error');
-        setMessage('You must be logged in to complete this purchase.');
+        setMessage(t('mustBeLoggedInToPurchase'));
         return;
       }
       if (order?.status === 'COMPLETED' && selectedPackage) {
         const processPayment = httpsCallable(functions, 'processPayPalPayment');
         await processPayment({ orderId: order.id, userId: user.uid, amount: selectedPackage.credits });
         setPaymentStatus('success');
-        setMessage(`Successfully purchased ${selectedPackage.credits} credits!`);
+        setMessage(formatT(t, 'paymentCompletedSuccess', { credits: selectedPackage.credits }));
       } else {
         setPaymentStatus('error');
-        setMessage('Payment not completed by PayPal.');
+        setMessage(t('paymentNotCompleted'));
       }
     } catch (error: any) {
       console.error('Error during approval handling:', error);
       setPaymentStatus('error');
-      setMessage(`Payment failed: ${error.message || 'Unexpected error.'}`);
+      setMessage(formatT(t, 'paymentFailed', { message: error.message || 'Unexpected error.' }));
     }
   }
 
@@ -125,28 +154,32 @@ const BuyCreditsPage: FC = () => {
   };
 
   const handleRedeemPromoCode = async () => {
-    if (!user) return setPromoCodeMessage('You must be logged in to redeem a promo code.');
-    if (!promoCodeInput.trim()) return setPromoCodeMessage('Please enter a promo code.');
+    if (!user) return setPromoCodeMessage(t('mustBeLoggedInToRedeem'));
+    if (!promoCodeInput.trim()) return setPromoCodeMessage(t('pleaseEnterPromoCode'));
     setIsRedeeming(true);
-    setPromoCodeMessage('Redeeming promo code...');
+    setPromoCodeMessage(t('redeemingPromoCode'));
     try {
       const redeemCode = httpsCallable(functions, 'redeemPromoCode');
       const result = await redeemCode({ promoCode: promoCodeInput });
       const ok = (result.data as any)?.success;
-      setPromoCodeMessage((result.data as any)?.message || (ok ? 'Promo code redeemed!' : 'Failed to redeem promo code.'));
+      setPromoCodeMessage(
+        (result.data as any)?.message || (ok ? t('promoCodeRedeemed') : t('failedToRedeemPromo'))
+      );
       if (ok) setPromoCodeInput('');
     } catch (e: any) {
       console.error(e);
-      setPromoCodeMessage(`Error: ${e.message || 'Unexpected error'}`);
+      setPromoCodeMessage(formatT(t, 'errorWithMessage', { message: e.message || 'Unexpected error' }));
     } finally {
       setIsRedeeming(false);
     }
   };
 
+  const unit = (n: number) => (n === 1 ? t('creditSingular') : t('creditsPlural'));
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-xl font-semibold">Loading…</p>
+        <p className="text-xl font-semibold">{t('loading')}</p>
       </div>
     );
   }
@@ -160,7 +193,7 @@ const BuyCreditsPage: FC = () => {
           text-[#3A4B5C] dark:text-[#E0C9A0] font-sans
         `}
       >
-        <p className="text-lg font-['Lato']">Please log in to purchase or redeem credits.</p>
+        <p className="text-lg font-['Lato']">{t('pleaseLoginToPurchaseOrRedeem')}</p>
       </div>
     );
   }
@@ -173,26 +206,26 @@ const BuyCreditsPage: FC = () => {
         text-[#3A4B5C] dark:text-[#E0C9A0] font-sans
       `}
     >
-
-    <div className="fixed top-7 right-4 z-50">
+      <div className="fixed top-7 right-4 z-50">
         <Link
           href="/"
           className="px-6 py-3 bg-gray-600 text-white font-semibold rounded-full shadow-md hover:bg-gray-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300"
         >
-          Back to Landing
+          {t('backToLanding')}
         </Link>
       </div>
 
       <div className="w-full max-w-6xl pt-6 pb-20">
         <header className="text-center mb-8 md:mb-12">
-          <p className="font-['Lato'] text-base md:text-lg font-light tracking-widest mb-1">PURCHASE CREDITS</p>
-          <h1 className="font-['Georgia'] text-4xl md:text-5xl font-bold m-0">Fuel Your Narrative</h1>
+          <p className="font-['Lato'] text-base md:text-lg font-light tracking-widest mb-1">{t('purchaseCredits')}</p>
+          <h1 className="font-['Georgia'] text-4xl md:text-5xl font-bold m-0">{t('fuelYourNarrative')}</h1>
         </header>
 
         {/* Packages */}
         <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 md:gap-8 mb-10">
           {creditPackages.map((pkg) => {
             const selected = selectedPackage?.id === pkg.id;
+            const tierLabel = getTierLabel(t, pkg.tier);
             return (
               <button
                 key={pkg.id}
@@ -210,24 +243,24 @@ const BuyCreditsPage: FC = () => {
               >
                 {pkg.popular && (
                   <span className="absolute -top-3 right-5 rounded-full px-3 py-1 text-[10px] font-semibold bg-[#A9834F] text-white shadow-md animate-pulse-slow">
-                    Most Popular
+                    {t('mostPopular')}
                   </span>
                 )}
 
                 <div className="flex items-start justify-between">
-                  <h2 className="font-['Georgia'] text-2xl font-bold">{pkg.tier}</h2>
+                  <h2 className="font-['Georgia'] text-2xl font-bold">{tierLabel}</h2>
                   <span className="rounded-full px-3 py-1 text-xs font-semibold bg-[#EADFCC] text-[#3A4B5C] dark:bg-[#3A2B26] dark:text-[#E0C9A0]">
-                    {pkg.credits} credits
+                    {formatT(t, 'creditsLabel', { count: pkg.credits, unit: unit(pkg.credits) })}
                   </span>
                 </div>
 
                 <div className="mt-4">
                   <div className="text-3xl font-bold">{prettyUSD(pkg.price)}</div>
-                  <p className="mt-1 text-xs opacity-80">Avg scenarios split</p>
+                  <p className="mt-1 text-xs opacity-80">{t('avgScenariosSplit')}</p>
                 </div>
 
                 <div className="mt-6 w-full rounded-full py-2 text-center font-semibold transition bg-[#A9834F] text-white hover:brightness-110">
-                  {selected ? 'Selected' : 'Choose package'}
+                  {selected ? t('selected') : t('choosePackage')}
                 </div>
               </button>
             );
@@ -237,11 +270,14 @@ const BuyCreditsPage: FC = () => {
         {/* Confirm + PayPal */}
         {selectedPackage && (
           <section className="mx-auto w-full max-w-2xl rounded-2xl border-2 p-6 md:p-7 bg-[#F3EADF] border-[#CBBBA0] text-[#3A4B5C] shadow-xl dark:bg-[#2B2622] dark:border-[#6D5A40] dark:text-[#E0C9A0]">
-            <h3 className="font-['Georgia'] text-2xl font-bold mb-2">Confirm Purchase</h3>
+            <h3 className="font-['Georgia'] text-2xl font-bold mb-2">{t('confirmPurchase')}</h3>
             <p className="text-sm md:text-base">
-              You selected <span className="font-semibold">{selectedPackage.tier}</span> —{' '}
-              <span className="font-semibold">{selectedPackage.credits} credits</span> for{' '}
-              <span className="font-semibold">{prettyUSD(selectedPackage.price)}</span>.
+              {formatT(t, 'youSelectedSummary', {
+                tier: getTierLabel(t, selectedPackage.tier),
+                credits: selectedPackage.credits,
+                unit: unit(selectedPackage.credits),
+                price: prettyUSD(selectedPackage.price)
+              })}
             </p>
 
             {message && (
@@ -264,7 +300,7 @@ const BuyCreditsPage: FC = () => {
             <div className="mt-5">
               {unusable ? (
                 <div className="p-4 rounded-lg border text-sm">
-                  <strong>Missing PayPal client ID.</strong> Set <code>NEXT_PUBLIC_PAYPAL_CLIENT_ID</code>.
+                  <strong>{t('missingPaypalClientId')}</strong> {formatT(t, 'setEnvVar', { envVar: 'NEXT_PUBLIC_PAYPAL_CLIENT_ID' })}
                 </div>
               ) : (
                 <PayPalProviderClient enabled options={options}>
@@ -277,11 +313,11 @@ const BuyCreditsPage: FC = () => {
 
         {/* Promo Code */}
         <section className="mt-10 mx-auto w-full max-w-2xl rounded-2xl border-2 p-6 md:p-7 bg-[#F3EADF] border-[#CBBBA0] text-[#3A4B5C] shadow-xl dark:bg-[#2B2622] dark:border-[#6D5A40] dark:text-[#E0C9A0]">
-          <h3 className="font-['Georgia'] text-2xl font-bold mb-4">Redeem Promo Code</h3>
+          <h3 className="font-['Georgia'] text-2xl font-bold mb-4">{t('redeemPromoCode')}</h3>
           <div className="flex flex-col sm:flex-row gap-3">
             <input
               type="text"
-              placeholder="Enter promo code"
+              placeholder={t('enterPromoCode')}
               className="flex-1 rounded-full px-4 py-3 text-sm outline-none bg-white/80 border border-[#CBBBA0] focus:ring-4 focus:ring-[#CBBBA0] dark:bg-[#3A2B26] dark:border-[#6D5A40]"
               value={promoCodeInput}
               onChange={(e) => setPromoCodeInput(e.target.value)}
@@ -292,7 +328,7 @@ const BuyCreditsPage: FC = () => {
               disabled={isRedeeming}
               className="rounded-full px-6 py-3 text-sm font-semibold text-white transition bg-purple-600 hover:bg-purple-700 active:bg-purple-800 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {isRedeeming ? 'Redeeming…' : 'Redeem'}
+              {isRedeeming ? t('redeeming') : t('redeem')}
             </button>
           </div>
           {promoCodeMessage && (
@@ -303,14 +339,14 @@ const BuyCreditsPage: FC = () => {
         </section>
 
         <footer className="text-center mt-12">
-          <p className="font-['Georgia'] italic text-xl">Where your words come to life</p>
+          <p className="font-['Georgia'] italic text-xl">{t('whereWordsComeToLife')}</p>
         </footer>
 
-         {/* Back link (optional) */}
-                <div className="text-center mt-10">
-                  <Link href="/" className="text-sm underline opacity-80 hover:opacity-100">Back to landing</Link>
-                </div>
-              </div>    
+        {/* Back link (optional) */}
+        <div className="text-center mt-10">
+          <Link href="/" className="text-sm underline opacity-80 hover:opacity-100">{t('backToLanding')}</Link>
+        </div>
+      </div>
 
       <style jsx global>{`
         @keyframes pulseGlowLight {
