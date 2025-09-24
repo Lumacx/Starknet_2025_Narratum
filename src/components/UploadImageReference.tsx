@@ -5,13 +5,14 @@ import { Trash2, Copy, CheckCircle2 } from 'lucide-react';
 import Image from 'next/image';
 import { storage, db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
+import { useLocale } from '@/context/LocaleContext';
 import {
   ref as sref,
   uploadString,
   getDownloadURL,
   listAll,
   deleteObject,
-  uploadBytesResumable,           // ⬅️ add this
+  uploadBytesResumable,
 } from 'firebase/storage';
 import {
   doc as fsDoc,
@@ -39,9 +40,7 @@ export type GalleryItem = {
   url: string;
   fullPath: string;
   contentType?: string;
-  /** Firestore index doc id (if available) */
   indexId?: string;
-  /** Storage path string saved to the index (if available) */
   storagePath?: string;
 };
 type AssetCategory =
@@ -78,13 +77,11 @@ type Props = {
   accept?: string;
   showInnerDescribe?: boolean;
   preferredLanguage?: LangCode;
-  storyId?: string; // story-scoped when defined; otherwise uncategorized
+  storyId?: string;
   disableSaveButtons?: boolean;
-
-  /** NEW: sorting + pagination (consumed from Support/page) */
-  sortField?: SortField; // 'name' | 'createdAt' | 'updatedAt'
-  sortDir?: SortDir;     // 'asc' | 'desc'
-  pageSize?: number;     // default 24
+  sortField?: SortField;
+  sortDir?: SortDir;
+  pageSize?: number;
 };
 
 /* ---------- Helpers ---------- */
@@ -94,7 +91,6 @@ const isImageCategory = (c: AssetCategory) =>
 const KB = 1024;
 const MB = 1024 * KB;
 
-// Align limits with Storage rules (images 10KB–12MB, MP3/WAV ≤16MB, MP4 1–64MB)
 const LIMITS: Record<string, { min: number; max: number }> = {
   'image/png':  { min: 10 * KB, max: 12 * MB },
   'image/jpeg': { min: 10 * KB, max: 12 * MB },
@@ -108,11 +104,13 @@ const LIMITS: Record<string, { min: number; max: number }> = {
 };
 const fmt = (bytes: number) => (bytes >= MB ? `${(bytes / MB).toFixed(1)} MB` : `${Math.round(bytes / KB)} KB`);
 
-function validate(file: File) {
+function validate(file: File, t: (k: string) => string) {
   const l = LIMITS[file.type];
-  if (!l) return { ok: false, msg: `Unsupported type: ${file.type}. Use PNG/JPG/GIF/WebP/MP3/WAV/MP4.` };
-  if (file.size < l.min) return { ok: false, msg: `File too small. Min ${fmt(l.min)}.` };
-  if (file.size > l.max) return { ok: false, msg: `File too large. Max ${fmt(l.max)}.` };
+  if (!l) {
+    return { ok: false, msg: t('uploader.unsupportedType').replace('{type}', file.type) };
+  }
+  if (file.size < l.min) return { ok: false, msg: t('uploader.fileTooSmall').replace('{min}', fmt(l.min)) };
+  if (file.size > l.max) return { ok: false, msg: t('uploader.fileTooLarge').replace('{max}', fmt(l.max)) };
   return { ok: true as const };
 }
 
@@ -141,15 +139,12 @@ function extFromMime(mime: string) {
   return parts[1] || 'bin';
 }
 
-// Firestore index path (doc)
 function buildIndexTarget(params: { uid: string; storyId?: string; category: string; docId: string }) {
   const base = params.storyId
     ? `users/${params.uid}/assetIndex/stories/${params.storyId}/${params.category}`
     : `users/${params.uid}/assetIndex/uncategorized/${params.category}`;
   return { path: `${base}/${params.docId}` };
 }
-
-// Firestore index path (collection)
 function buildIndexCollectionPath(params: { uid: string; storyId?: string; category: string }) {
   return params.storyId
     ? `users/${params.uid}/assetIndex/stories/${params.storyId}/${params.category}`
@@ -174,20 +169,17 @@ export default function UploadImageReference({
   maxSelection = 1,
   storyId,
   disableSaveButtons,
-
-  // NEW sort/pagination props (with local defaults)
   sortField = 'updatedAt',
   sortDir = 'desc',
   pageSize = 24,
 }: Props) {
+  const { t } = useLocale();
   const { user: currentUser } = useAuth();
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  // keep latest storyId available to async callbacks
   const storyIdRef = useRef<string | undefined>(storyId);
   useEffect(() => { storyIdRef.current = storyId; }, [storyId]);
 
-  // build storage path (no leading or trailing slash)
   const pathFor = useCallback((uid: string, sid: string | undefined, category: string, name?: string) => {
     const base = sid
       ? `users/${uid}/assetIndex/stories/${sid}/${category}`
@@ -196,8 +188,9 @@ export default function UploadImageReference({
   }, []);
 
   const noun =
-    nounOverride ?? (variant === 'character' ? 'Character' : variant === 'location' ? 'Location' : 'Cover');
-  const generateCta = `Generate ${noun} Image (AI)`;
+    nounOverride ??
+    (variant === 'character' ? t('noun.character') : variant === 'location' ? t('noun.location') : t('noun.cover'));
+  const generateCta = t('uploader.generateCta').replace('{noun}', noun);
 
   const tipDocForOne =
     assetCategory === 'locations'
@@ -217,13 +210,11 @@ export default function UploadImageReference({
   const [err, setErr] = useState('');
   const [localGeneratedUrl, setLocalGeneratedUrl] = useState('');
 
-  /** NEW: pagination state (Firestore) */
   const [loadingGallery, setLoadingGallery] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const lastDocRef = useRef<QueryDocumentSnapshot<DocumentData> | null>(null);
-  const [usedIndex, setUsedIndex] = useState<boolean>(false); // whether index was used for this load
+  const [usedIndex, setUsedIndex] = useState<boolean>(false);
 
-  // ⬇️ place this INSIDE the component, after the hooks
   const resetUploader = useCallback(() => {
     if (inputRef.current) {
       try { inputRef.current.value = ''; } catch {}
@@ -235,8 +226,6 @@ export default function UploadImageReference({
     setPreviewUrl('');
     setNameToSave('');
     setSuggestedPrompt('');
-    // If you want to also clear the main prompt:
-    // setMainPrompt('');
   }, [previewUrl]);
 
   const accept = useMemo(() => {
@@ -269,7 +258,6 @@ export default function UploadImageReference({
     return () => { if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl); };
   }, [previewUrl]);
 
-  /** Build the Firestore query for the index */
   const buildIndexQuery = useCallback(() => {
     if (!currentUser) return null;
     const sid = storyIdRef.current;
@@ -280,7 +268,6 @@ export default function UploadImageReference({
     });
     const colRef = collection(db, colPath);
 
-    // Map UI sortField to actual index fields. We store nameLower, createdAt, updatedAt.
     const fieldMap: Record<SortField, string> = {
       name: 'nameLower',
       createdAt: 'createdAt',
@@ -291,10 +278,6 @@ export default function UploadImageReference({
 
     let qBase = query(colRef, orderBy(primaryField as any, dir as any), limit(pageSize));
 
-    // If we want fully deterministic ordering when many entries share null/identical values,
-    // we could add a tie-breaker:
-    // qBase = query(colRef, orderBy(primaryField as any, dir as any), orderBy('__name__', dir as any), limit(pageSize));
-
     if (lastDocRef.current) {
       qBase = query(qBase, startAfter(lastDocRef.current));
     }
@@ -302,7 +285,6 @@ export default function UploadImageReference({
     return qBase;
   }, [currentUser, assetCategory, sortField, sortDir, pageSize]);
 
-  /** Load a page from Firestore index; fall back to Storage listAll on error/empty */
   const loadGallery = useCallback(async (reset = true) => {
     if (!currentUser) {
       setGallery([]);
@@ -312,7 +294,6 @@ export default function UploadImageReference({
 
     setLoadingGallery(true);
     try {
-      // Reset pagination if needed
       if (reset) {
         lastDocRef.current = null;
         setGallery([]);
@@ -333,7 +314,7 @@ export default function UploadImageReference({
               return {
                 name: (x.fileName || x.name || d.id) as string,
                 url: (x.url as string) ?? '',
-                fullPath: (x.storagePath as string) ?? '', // we save it on write; may be empty for legacy
+                fullPath: (x.storagePath as string) ?? '',
                 contentType: (x.contentType as string) ?? undefined,
                 indexId: d.id,
                 storagePath: (x.storagePath as string) ?? undefined,
@@ -345,21 +326,17 @@ export default function UploadImageReference({
             setHasMore(docs.length === pageSize);
             setUsedIndex(true);
           } else {
-            // No docs in this page
             if (reset) {
-              // fall back only if first page is empty
               usedIndexThisCall = false;
             }
             setHasMore(false);
           }
         } catch (indexErr) {
-          // e.g., missing indexes or missing fields
           console.warn('Index query failed; will fall back to Storage listAll:', indexErr);
         }
       }
 
       if (!usedIndexThisCall) {
-        // Fallback: Storage listAll (no paging)
         try {
           const base = sref(storage, pathFor(currentUser.uid, sid, assetCategory));
           const res = await listAll(base);
@@ -371,7 +348,6 @@ export default function UploadImageReference({
             }))
           );
 
-          // Sort locally by name according to UI direction (name only)
           const sorted = items.sort((a, b) => {
             const av = a.name.toLowerCase();
             const bv = b.name.toLowerCase();
@@ -380,7 +356,6 @@ export default function UploadImageReference({
             return 0;
           });
 
-          // Emulate page size for fallback
           const pageSlice = sorted.slice(0, pageSize);
           setGallery(pageSlice);
           setHasMore(sorted.length > pageSlice.length);
@@ -390,9 +365,11 @@ export default function UploadImageReference({
           console.error(`Failed to load gallery (fallback) for ${sid ? `story ${sid}` : 'uncategorized'}:`, e);
           const msg = String(e?.message || e);
           if (msg.includes('storage/unauthorized')) {
-            setErr('Permission error listing your gallery. Check Storage rules: allow list on users/{uid}/assetIndex/(stories|uncategorized)/{category}.');
+            setErr(
+              t('uploader.uploadBlocked').replace('{uid}', currentUser.uid)
+            );
           } else {
-            setErr(`Failed to load gallery: ${msg}`);
+            setErr(`${t('uploader.saveFailed')}: ${msg}`);
           }
           setGallery([]);
           setHasMore(false);
@@ -403,15 +380,13 @@ export default function UploadImageReference({
     } finally {
       setLoadingGallery(false);
     }
-  }, [assetCategory, currentUser, pageSize, pathFor, sortDir, buildIndexQuery]);
+  }, [assetCategory, currentUser, pageSize, pathFor, sortDir, buildIndexQuery, t]);
 
-  /** Reset and reload any time story/category/sort or page size changes */
   useEffect(() => {
     loadGallery(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assetCategory, storyId, sortField, sortDir, pageSize]);
 
-  /** Load next page (only when using Firestore index) */
   const loadMore = useCallback(() => {
     if (usedIndex && hasMore && !loadingGallery) {
       loadGallery(false);
@@ -421,7 +396,7 @@ export default function UploadImageReference({
   async function onChoose(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
-    const check = validate(f);
+    const check = validate(f, t);
     if (!check.ok) {
       setErr(check.msg!);
       return;
@@ -438,7 +413,7 @@ export default function UploadImageReference({
     if (!selectedFile) return;
     setIsDescribing(true);
     try {
-      setSuggestedPrompt('(Use “Describe Selected” above to analyze the current image).');
+      setSuggestedPrompt(t('uploader.aiWillPlaceHere'));
     } finally {
       setIsDescribing(false);
     }
@@ -446,17 +421,16 @@ export default function UploadImageReference({
 
   async function handleSaveOriginal() {
     if (!currentUser || !selectedFile || !nameToSave.trim()) return;
-  
+
     try {
       const ext = extFromMime(selectedFile.type);
       const cleanName = sanitizeId(nameToSave);
       const filename = `${cleanName}.${ext}`;
       const sid = storyIdRef.current;
       const path = pathFor(currentUser.uid, sid, assetCategory, filename);
-  
+
       const storageRef = sref(storage, path);
-  
-      // Optional custom metadata
+
       const meta: Record<string, string> = {
         displayName: cleanName,
         category: assetCategory,
@@ -465,29 +439,18 @@ export default function UploadImageReference({
         'narratum:role': variant,
       };
       if (sid) meta['narratum:storyId'] = sid;
-  
-      // 🚀 Resumable upload with progress
+
       const task = uploadBytesResumable(storageRef, selectedFile, {
         contentType: selectedFile.type || undefined,
         customMetadata: meta,
       });
-  
+
       await new Promise<void>((resolve, reject) => {
-        task.on(
-          'state_changed',
-          (snap) => {
-            // (Optional) you can reflect this in UI if you add a progress state here
-            // const pct = (snap.bytesTransferred / snap.totalBytes) * 100;
-            // setSomeProgressState(pct);
-          },
-          (err) => reject(err),
-          () => resolve()
-        );
+        task.on('state_changed', () => {}, (err) => reject(err), () => resolve());
       });
-  
+
       const downloadUrl = await getDownloadURL(task.snapshot.ref);
-  
-      // Update local gallery
+
       const item: GalleryItem = {
         name: filename,
         url: downloadUrl,
@@ -496,8 +459,7 @@ export default function UploadImageReference({
       };
       setGallery((g) => [item, ...g]);
       onSaved?.(item);
-  
-      // Write/merge Firestore index doc
+
       try {
         const { path: docPath } = buildIndexTarget({
           uid: currentUser.uid,
@@ -525,22 +487,20 @@ export default function UploadImageReference({
       } catch (err) {
         console.warn('Failed to write index doc for original upload:', err);
       }
-  
-      alert('Saved to gallery!');
+
+      alert(t('uploader.savedToGallery'));
       resetUploader();
-  
-      // Reload from index to reflect sort/pagination
+
       loadGallery(true);
     } catch (e: any) {
       const msg = String(e?.message || e);
       if (msg.includes('storage/unauthorized')) {
-        alert('Upload blocked by Storage rules. Check users/{uid}/assetIndex/** paths and that UID matches request.auth.uid.');
+        alert(t('uploader.uploadBlocked').replace('{uid}', currentUser?.uid ?? ''));
       } else {
-        alert(e?.message || 'Save failed');
+        alert(t('uploader.saveFailed'));
       }
     }
   }
-  
 
   function handleGenerate() {
     onGenerateRequest?.(mainPrompt);
@@ -573,7 +533,6 @@ export default function UploadImageReference({
       setGallery((g) => [item, ...g]);
       onSaved?.(item);
 
-      // Firestore index doc (NEW: add nameLower, storagePath, updatedAt)
       try {
         const { path: docPath } = buildIndexTarget({
           uid: currentUser.uid,
@@ -602,18 +561,17 @@ export default function UploadImageReference({
         console.warn('Failed to write index doc for generated upload:', err);
       }
 
-      alert('Generated image saved!');
+      alert(t('uploader.savedToGallery'));
       resetUploader();
       setLocalGeneratedUrl('');
 
-      // After write, reload from index to reflect correct sort position
       loadGallery(true);
     } catch (e: any) {
       const msg = String(e?.message || e);
       if (msg.includes('storage/unauthorized')) {
-        alert('Save blocked by Storage rules. Verify allow list and path for assetIndex.');
+        alert(t('uploader.saveBlocked'));
       } else {
-        alert(e?.message || 'Save failed');
+        alert(t('uploader.saveFailed'));
       }
     }
   }
@@ -623,11 +581,9 @@ export default function UploadImageReference({
   }
 
   async function handleDelete(item: GalleryItem) {
-    if (!confirm(`Delete "${item.name}"?`)) return;
+    if (!confirm(t('uploader.deleteConfirmName').replace('{name}', item.name))) return;
     try {
-      // Delete from Storage
       await deleteObject(sref(storage, item.fullPath));
-      // Try delete matching index doc if we have its id
       if (currentUser) {
         const sid = storyIdRef.current;
         if (item.indexId) {
@@ -638,7 +594,6 @@ export default function UploadImageReference({
           });
           await deleteDoc(fsDoc(db, `${colPath}/${item.indexId}`));
         } else if (item.storagePath) {
-          // Legacy: if storagePath matches doc id scheme (cleanName), try best-effort:
           const maybeId = item.name.replace(/\.[^.]+$/, '');
           const colPath = buildIndexCollectionPath({
             uid: currentUser.uid,
@@ -651,7 +606,7 @@ export default function UploadImageReference({
 
       setGallery((g) => g.filter((x) => x.fullPath !== item.fullPath));
     } catch (e: any) {
-      alert(e?.message || 'Delete failed');
+      alert(t('uploader.deleteFailed'));
     }
   }
 
@@ -663,7 +618,7 @@ export default function UploadImageReference({
         newSelection = selection.filter((url) => url !== item.url);
       } else {
         if (selection.length >= maxSelection) {
-          alert(`You can only select up to ${maxSelection} items.`);
+          alert(t('gallery.maxSelectionAlert').replace('{count}', String(maxSelection)));
           return;
         }
         newSelection = [...selection, item.url];
@@ -681,7 +636,7 @@ export default function UploadImageReference({
         <div className="mt-3">
           <Image
             src={previewUrl}
-            alt="preview"
+            alt={t('uploader.alt.preview')}
             width={240}
             height={240}
             className="mx-auto max-h-48 rounded-md border object-contain"
@@ -711,17 +666,17 @@ export default function UploadImageReference({
     return (
       <div className="space-y-4">
         <label className="block text-sm font-bold text-[#3D4F60] mb-2 uppercase tracking-wide">
-          {isImageCategory(assetCategory) ? 'Upload Image' : 'Upload File'}
+          {isImageCategory(assetCategory) ? t('uploader.uploadImage') : t('uploader.uploadFile')}
         </label>
         <div className="border-2 border-dashed border-[#B0C4DE] rounded-md p-4 text-center">
           <input ref={inputRef} type="file" accept={accept} className="hidden" onChange={onChoose} />
           <button className="cursor-pointer text-[#E97451] font-semibold" onClick={() => inputRef.current?.click()}>
-            Click to Upload Image
+            {t('uploader.clickToUploadImage')}
           </button>
-          <p className="text-sm text-[#3D4F60]/70 mt-1">or drag and drop</p>
+          <p className="text-sm text-[#3D4F60]/70 mt-1">{t('uploader.orDragDrop')}</p>
           {selectedFile && (
             <div className="mt-3 text-sm">
-              Selected: <span className="font-medium">{selectedFile.name}</span>
+              {t('uploader.selected')} <span className="font-medium">{selectedFile.name}</span>
             </div>
           )}
           <PreviewBlock />
@@ -731,7 +686,7 @@ export default function UploadImageReference({
           <div className="flex gap-2">
             <input
               className="flex-1 p-2 border-2 border-[#B0C4DE] rounded-md"
-              placeholder="Name to save"
+              placeholder={t('uploader.nameToSave')}
               value={nameToSave}
               onChange={(e) => setNameToSave(e.target.value)}
               disabled={disableSaveButtons}
@@ -741,7 +696,7 @@ export default function UploadImageReference({
               className="px-4 py-2 rounded-md bg-[#3D4F60] text-white disabled:opacity-50"
               disabled={disableSaveButtons}
             >
-              Save to My Gallery
+              {t('uploader.saveToGallery')}
             </button>
           </div>
         )}
@@ -754,11 +709,11 @@ export default function UploadImageReference({
             {showInnerDescribe && (
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <h4 className="font-semibold">Suggested Prompt Description (from AI)</h4>
+                  <h4 className="font-semibold">{t('uploader.suggestedPromptTitle')}</h4>
 
                   {tipDocForOne && (
                     <InfoPopover
-                      title={assetCategory === 'locations' ? 'Location Template' : 'Character Template'}
+                      title={assetCategory === 'locations' ? t('uploader.locationTemplate') : t('uploader.characterTemplate')}
                       docHref={tipDocForOne}
                       onUsePrompt={(text) => setMainPrompt(text)}
                     />
@@ -767,11 +722,11 @@ export default function UploadImageReference({
                   {!!suggestedPrompt && (
                     <button
                       type="button"
-                      title="Copy"
+                      title={t('uploader.copy')}
                       className="ml-auto inline-flex items-center gap-1"
                       onClick={() => navigator.clipboard.writeText(suggestedPrompt)}
                     >
-                      <Copy size={14} /> Copy
+                      <Copy size={14} /> {t('uploader.copy')}
                     </button>
                   )}
                 </div>
@@ -782,11 +737,11 @@ export default function UploadImageReference({
                     disabled={!selectedFile || isDescribing}
                     className="px-3 py-2 rounded-md border bg-white disabled:opacity-50"
                   >
-                    {isDescribing ? 'Describing…' : 'AI Describe'}
+                    {isDescribing ? t('uploader.describing') : t('uploader.aiDescribe')}
                   </button>
                   <textarea
                     className="flex-1 min-h-[90px] border rounded-md p-2"
-                    placeholder="AI will place the description here…"
+                    placeholder={t('uploader.aiWillPlaceHere')}
                     value={suggestedPrompt}
                     onChange={(e) => setSuggestedPrompt(e.target.value)}
                   />
@@ -796,9 +751,11 @@ export default function UploadImageReference({
 
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <h4 className="font-semibold">{mainPromptLabel ?? `${noun} Description`}</h4>
+                <h4 className="font-semibold">
+                  {mainPromptLabel ?? t('uploader.mainPromptTitleDefault').replace('{noun}', noun)}
+                </h4>
                 <InfoPopover
-                  title="Pro Tips for Prompting"
+                  title={t('uploader.proTipsPrompting')}
                   docHref={tipDocForTwo}
                   onUsePrompt={(text) => setMainPrompt(text)}
                 />
@@ -806,7 +763,7 @@ export default function UploadImageReference({
 
               <textarea
                 className="w-full min-h-[120px] border rounded-md p-2"
-                placeholder={`Describe the ${noun.toLowerCase()} you want the AI to generate…`}
+                placeholder={t('uploader.describeNounPlaceholder').replace('{noun}', noun.toLowerCase())}
                 value={mainPrompt}
                 onChange={(e) => setMainPrompt(e.target.value)}
                 disabled={disableSaveButtons}
@@ -822,7 +779,7 @@ export default function UploadImageReference({
                 {isGenerating ? (
                   <span className="inline-flex items-center gap-2">
                     <span className="animate-spin inline-block h-5 w-5 rounded-full border-2" />
-                    Generating…
+                    {t('uploader.generating')}
                   </span>
                 ) : (
                   generateCta
@@ -832,7 +789,7 @@ export default function UploadImageReference({
               <div className="flex flex-col md:flex-row gap-2">
                 <input
                   className="flex-1 border rounded-md px-3 py-2"
-                  placeholder="Name to save"
+                  placeholder={t('uploader.nameToSave')}
                   value={nameToSave}
                   onChange={(e) => setNameToSave(e.target.value)}
                   disabled={disableSaveButtons}
@@ -842,20 +799,20 @@ export default function UploadImageReference({
                   onClick={handleSaveGenerated}
                   disabled={disableSaveButtons}
                 >
-                  Save to My Gallery
+                  {t('uploader.saveToGallery')}
                 </button>
                 <button className="px-4 py-2 rounded-md border" onClick={handleRegenerate}>
-                  Regenerate
+                  {t('uploader.regenerate')}
                 </button>
               </div>
             )}
 
             {localGeneratedUrl && (
               <div className="mt-3 border rounded-xl p-3">
-                <p className="text-sm mb-2">Generated Image</p>
+                <p className="text-sm mb-2">{t('uploader.generatedImage')}</p>
                 <Image
                   src={localGeneratedUrl}
-                  alt="generated"
+                  alt={t('uploader.alt.generated')}
                   width={512}
                   height={512}
                   className="max-w-full rounded-md"
@@ -871,8 +828,8 @@ export default function UploadImageReference({
 
   function GalleryUI() {
     const galleryMessage = storyIdRef.current
-      ? (gallery.length === 0 && !loadingGallery ? 'No files yet for this story. Upload or generate one!' : null)
-      : (gallery.length === 0 && !loadingGallery ? 'No uncategorized files found. Upload or generate one with no story selected!' : null);
+      ? (gallery.length === 0 && !loadingGallery ? t('gallery.noFilesForStory') : null)
+      : (gallery.length === 0 && !loadingGallery ? t('gallery.noUncategorized') : null);
 
     return (
       <div>
@@ -905,7 +862,7 @@ export default function UploadImageReference({
                       unoptimized
                     />
                     <button
-                      title="Delete"
+                      title={t('gallery.deleteTitle')}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleDelete(it);
@@ -928,16 +885,20 @@ export default function UploadImageReference({
             {/* Pager */}
             <div className="mt-3 flex items-center justify-between">
               <div className="text-xs opacity-60">
-                {usedIndex ? 'Indexed ' : 'Fallback '} • Sort {sortField} ({sortDir}) • Page size {pageSize}
+                {(usedIndex ? t('gallery.pager.indexed') : t('gallery.pager.fallback')) + ' '}•{' '}
+                {t('gallery.pager.sort')
+                  .replace('{field}', sortField)
+                  .replace('{dir}', sortDir)
+                  .replace('{size}', String(pageSize))}
               </div>
               <div className="flex items-center gap-2">
-                {loadingGallery && <span className="text-xs opacity-70">Loading…</span>}
+                {loadingGallery && <span className="text-xs opacity-70">{t('gallery.loading')}</span>}
                 {usedIndex && hasMore && !loadingGallery && (
                   <button
                     className="px-3 py-1.5 rounded-md border text-sm"
                     onClick={loadMore}
                   >
-                    Load more
+                    {t('gallery.loadMore')}
                   </button>
                 )}
               </div>

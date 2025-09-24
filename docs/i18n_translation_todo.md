@@ -56,8 +56,8 @@ This list focuses on files likely to contain significant user-facing text, start
 - [x] `src/components/InfoPopover.tsx`
 - [x] `src/components/PayPalProviderClient.tsx`
 - [x] `src/components/ReaderSkinPicker.tsx`
-- [ ] `src/components/StoryReader.tsx`
-- [ ] `src/components/UploadImageReference.tsx`
+- [x] `src/components/StoryReader.tsx`
+- [x] `src/components/UploadImageReference.tsx`
 - [ ] `src/components/YoutubeVideoPlayer.tsx`
 - [ ] `src/components/ai-writing-prompts.tsx`
 - [ ] `src/components/interactive-story-display.tsx`
