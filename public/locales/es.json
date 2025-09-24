@@ -580,8 +580,28 @@
   "tableNoData": "No se encontraron datos.",
 
   "createNewStoryBtn": "Crear nueva historia",
-  "discoverStoriesBtn": "Descubrir historias"
+  "discoverStoriesBtn": "Descubrir historias",
 
+  "missingParam": "Falta {param}.",
+  "loadingEllipsis": "Cargando…",
+  "previewError": "Error de vista previa",
 
-  
+  "downloadPdfAria": "Descargar PDF",
+  "buttonPdf": "PDF",
+
+  "downloadAllFilesAria": "Descargar todos los archivos",
+  "buttonAllFiles": "Todos los archivos",
+
+  "playVideoAria": "Reproducir video",
+  "playVideoTitle": "Reproducir video",
+  "noVideoTitle": "No hay video disponible",
+  "buttonVideo": "Video",
+
+  "alertSignInOwner": "Inicia sesión como propietario para descargar todos los archivos.",
+  "alertDownloadPdfFailed": "No se pudo descargar el PDF.",
+  "alertDownloadFilesFailed": "No se pudieron descargar los archivos.",
+
+  "storyNotFound": "Historia no encontrada.",
+  "failedToLoadStory": "No se pudo cargar la historia."
+
 }

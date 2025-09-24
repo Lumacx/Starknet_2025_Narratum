@@ -593,8 +593,28 @@
   "tableNoData": "No data found.",
 
   "createNewStoryBtn": "Create New Story",
-  "discoverStoriesBtn": "Discover Stories"
+  "discoverStoriesBtn": "Discover Stories",
 
-  
+  "missingParam": "Missing {param}.",
+  "loadingEllipsis": "Loading…",
+  "previewError": "Preview error",
+
+  "downloadPdfAria": "Download PDF",
+  "buttonPdf": "PDF",
+
+  "downloadAllFilesAria": "Download all files",
+  "buttonAllFiles": "All Files",
+
+  "playVideoAria": "Play video",
+  "playVideoTitle": "Play video",
+  "noVideoTitle": "No video available",
+  "buttonVideo": "Video",
+
+  "alertSignInOwner": "Please sign in as the owner to download all files.",
+  "alertDownloadPdfFailed": "Failed to download PDF.",
+  "alertDownloadFilesFailed": "Could not download files.",
+
+  "storyNotFound": "Story not found.",
+  "failedToLoadStory": "Failed to load story."
 
 }
