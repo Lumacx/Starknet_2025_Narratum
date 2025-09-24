@@ -331,5 +331,137 @@
   "alertsPickToContinue": "Elige una historia para continuar.",
   "alertsCouldNotScenes": "No se pudo continuar a Escenas.",
   "alertsCoverFirst": "Primero selecciona una imagen de portada.",
-  "aiDescribeFailed": "No se pudo describir la imagen."
+  "aiDescribeFailed": "No se pudo describir la imagen.",
+
+  "checkingSession": "Verificando tu sesión…",
+  "signInRequired": "Se requiere iniciar sesión",
+  "pleaseSignInToEditScenes": "Por favor inicia sesión para editar escenas.",
+  "goToLogin": "Ir al Login",
+  "backArrow": "← Volver",
+
+  "narratumBrand": "Narratum",
+  "createSlash": "/ Crear /",
+  "scenesTab": "Escenas",
+  "progressScene": "Escena",
+  "storyLabel": "Historia:",
+  "loadingStories": "Cargando historias...",
+  "allUncategorizedAssets": "Todos los recursos sin categoría",
+  "viewingUncategorized": "Viendo sin categoría",
+  "beginTab": "Inicio",
+  "supportTab": "Soporte",
+  "previewStory": "Previsualizar historia",
+  "publish": "Publicar",
+
+  "storyTitlePlaceholder": "Título de la historia",
+  "previous": "← Anterior",
+  "next": "Siguiente →",
+  "saveScene": "Guardar escena",
+  "saveSceneAndNext": "Guardar escena y siguiente",
+
+  "scenesHeader": "Escenas",
+  "selectedPages": "Páginas seleccionadas:",
+  "noImage": "Sin imagen",
+  "audioBadge": "MP3/WAV",
+  "addNewSceneTitle": "Agregar nueva escena",
+  "addScene": "Agregar escena",
+
+  "storyPreview": "Vista previa de la historia",
+  "noImageSelected": "No hay imagen seleccionada",
+  "play": "▶ Reproducir",
+  "pause": "❚❚ Pausar",
+  "buffering": "Cargando…",
+  "noNarrationSelected": "No hay narración seleccionada",
+
+  "sceneTitleLabel": "Título de la escena",
+  "sceneTitlePlaceholder": "Título de la escena {n}",
+  "autoSuggest": "Auto-Sugerir (texto + imagen)",
+
+  "sceneTextLabel": "Texto de la escena",
+  "sceneTextPlaceholder": "Escribe el texto de la historia para esta escena…",
+
+  "imageDescriptionLabel": "Descripción de la imagen",
+  "imageDescriptionPlaceholder": "Describe el visual de esta escena (o usa Auto-Sugerir)…",
+  "generateImageAI": "Generar imagen (IA)",
+
+  "aiDescriptionLabel": "Descripción IA",
+  "aiDescriptionPlaceholder": "Cuando uses IA para describir una imagen, la descripción aparecerá aquí…",
+
+  "narrationLabel": "Narración",
+  "narrationPlaceholder": "Escribe o pega la narración a hablar (si está vacío usa el Texto de la Escena)…",
+  "voiceNuna": "Nuna (Femenina, Firme)",
+  "voicePuck": "Scythe (Masculino, Animado)",
+  "voiceZephyr": "Belle (Femenina, Juvenil)",
+  "voiceAchird": "Raj (Masculino, Erudito)",
+  "voiceJuniper": "Juniper (Femenina, Elegante)",
+  "voiceArgus": "Argus (Masculino, Misterioso)",
+
+  "toneNormal": "Tono normal",
+  "toneCheerful": "Tono alegre",
+  "toneSad": "Tono triste",
+  "toneExcited": "Tono emocionado",
+  "toneWhispering": "Tono en susurro",
+
+  "regenNarration": "Re-generar narración (IA)",
+  "genNarration": "Generar narración (IA)",
+  "download": "Descargar",
+
+  "youTubeUrlLabel": "URL de video de YouTube",
+  "youTubeUrlPlaceholder": "Pega un enlace de YouTube para esta escena (p. ej. https://youtu.be/XXXXXXXXXXX)…",
+  "supportsFullUrls": "Soporta URLs completas (youtube.com/watch?v=…, youtu.be/…, /shorts/…) o un ID crudo de 11 caracteres.",
+  "tipOpenGallery": "Tip: abre la pestaña Mi Galería → Videos a la derecha y haz clic en Usar video para asignar un clip existente a esta escena.",
+  "saveToMyGallery": "Guardar en Mi Galería",
+  "savesInto": "Guarda en",
+  "youTubeBadge": "YouTube",
+
+  "ideasHeader": "Ideas de esquema de escena (IA)",
+  "generateIdeas": "Generar ideas",
+  "generating": "Generando…",
+  "ideasEmptyHint": "Haz clic en “Generar ideas” para obtener compases de escena que puedes insertar o agregar como nuevas escenas.",
+  "insertIntoCurrent": "Insertar en la actual",
+  "addAsNewScene": "Agregar como nueva escena",
+
+  "myGallery": "Mi Galería",
+  "sortBy": "Ordenar por:",
+  "sortDate": "Fecha",
+  "sortName": "Nombre",
+  "aiLanguage": "Idioma de IA:",
+  "noUncategorizedFound": "No se encontraron archivos sin categoría.",
+  "noFilesInTab": "No hay archivos aún para esta historia en",
+  "describe": "Describir",
+  "reference": "Referencia",
+  "select": "Seleccionar",
+  "useAudio": "Usar audio",
+  "useVideo": "Usar video",
+
+  "sceneReferences": "Referencias de la escena",
+
+  "footerHint": "Usa Auto-Sugerir, Generar imagen y Generar narración.",
+
+  "alertSelectStoryForImage": "Selecciona una historia activa del desplegable para generar una imagen.",
+  "alertWriteImageOrSynopsis": "Escribe una descripción de imagen o completa la sinopsis/géneros en la página Inicio.",
+  "alertImageGenFailed": "Fallo al generar imagen",
+  "alertNoImageReturned": "El generador no devolvió imagen.",
+  "alertSignInToSaveGenerated": "Debes iniciar sesión para guardar imágenes generadas.",
+
+  "alertSelectStoryForSuggest": "Selecciona una historia activa del desplegable para obtener sugerencias de escena.",
+  "alertSuggestFailed": "La sugerencia falló",
+  "alertNoSuggestions": "No se devolvieron sugerencias.",
+
+  "alertSelectStoryForNarration": "Selecciona una historia activa del desplegable para generar narración.",
+  "alertEnterNarrationFirst": "Ingresa primero el texto de la narración.",
+  "alertTtsFailed": "La síntesis de voz falló",
+
+  "alertSelectStoryBeforeSaving": "Selecciona una historia antes de guardar escenas.",
+  "alertSaveFailed": "Error al guardar la escena.",
+  "alertSceneSaved": "Escena guardada.",
+  "alertReachedPageLimit": "Se alcanzó el límite de páginas seleccionadas.",
+
+  "alertSelectStoryBeforePublish": "Selecciona una historia antes de publicar.",
+  "alertPublished": "¡Historia publicada! Ahora aparecerá en Descubrir y en tu Perfil.",
+  "alertPublishFailed": "Error al publicar la historia.",
+
+  "alertPasteYouTubeFirst": "Primero pega una URL de YouTube.",
+  "alertValidYouTube": "Ingresa una URL de YouTube válida.",
+  "alertSelectStoryOrUncat": "Selecciona una historia o cambia a \"Sin categoría\" primero.",
+  "alertSavedToGallery": "Guardado en Mi Galería → Videos."
 }

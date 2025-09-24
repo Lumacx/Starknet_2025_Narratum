@@ -344,7 +344,138 @@
   "alertsPickToContinue": "Pick a story to continue.",
   "alertsCouldNotScenes": "Could not continue to Scenes.",
   "alertsCoverFirst": "Please select a cover image first.",
-  "aiDescribeFailed": "Failed to describe image."
+  "aiDescribeFailed": "Failed to describe image.",
 
+  "checkingSession": "Checking your session…",
+  "signInRequired": "Sign in required",
+  "pleaseSignInToEditScenes": "Please sign in to edit scenes.",
+  "goToLogin": "Go to Login",
+  "backArrow": "← Back",
+
+  "narratumBrand": "Narratum",
+  "createSlash": "/ Create /",
+  "scenesTab": "Scenes",
+  "progressScene": "Scene",
+  "storyLabel": "Story:",
+  "loadingStories": "Loading stories...",
+  "allUncategorizedAssets": "All Uncategorized Assets",
+  "viewingUncategorized": "Viewing Uncategorized",
+  "beginTab": "Begin",
+  "supportTab": "Support",
+  "previewStory": "Preview Story",
+  "publish": "Publish",
+
+  "storyTitlePlaceholder": "Story title",
+  "previous": "← Previous",
+  "next": "Next →",
+  "saveScene": "Save Scene",
+  "saveSceneAndNext": "Save Scene & Next",
+
+  "scenesHeader": "Scenes",
+  "selectedPages": "Selected pages:",
+  "noImage": "No image",
+  "audioBadge": "MP3/WAV",
+  "addNewSceneTitle": "Add new scene",
+  "addScene": "Add scene",
+
+  "storyPreview": "Story Preview",
+  "noImageSelected": "No image selected",
+  "play": "▶ Play",
+  "pause": "❚❚ Pause",
+  "buffering": "Buffering…",
+  "noNarrationSelected": "No narration selected",
+
+  "sceneTitleLabel": "Scene Title",
+  "sceneTitlePlaceholder": "Scene {n} title",
+  "autoSuggest": "Auto-Suggest (text + image)",
+
+  "sceneTextLabel": "Scene Text",
+  "sceneTextPlaceholder": "Write the story text for this scene…",
+
+  "imageDescriptionLabel": "Image Description",
+  "imageDescriptionPlaceholder": "Describe the visual for this scene (or use Auto-Suggest)…",
+  "generateImageAI": "Generate Image (AI)",
+
+  "aiDescriptionLabel": "AI Description",
+  "aiDescriptionPlaceholder": "When you use AI Describe on an image, the description appears here…",
+
+  "narrationLabel": "Narration",
+  "narrationPlaceholder": "Write or paste the narration to speak (defaults to the Scene Text if empty)…",
+  "voiceNuna": "Nuna (Female, Firm)",
+  "voicePuck": "Scythe (Male, Upbeat)",
+  "voiceZephyr": "Belle (Female, Youthful)",
+  "voiceAchird": "Raj (Male, Scholar)",
+  "voiceJuniper": "Juniper (Female, Elegant)",
+  "voiceArgus": "Argus (Male, Mysterious)",
+
+  "toneNormal": "Normal Tone",
+  "toneCheerful": "Cheerful Tone",
+  "toneSad": "Sad Tone",
+  "toneExcited": "Excited Tone",
+  "toneWhispering": "Whispering Tone",
+
+  "regenNarration": "Re-generate Narration (AI)",
+  "genNarration": "Generate Narration (AI)",
+  "download": "Download",
+
+  "youTubeUrlLabel": "YouTube Video URL",
+  "youTubeUrlPlaceholder": "Paste a YouTube link for this scene (e.g. https://youtu.be/XXXXXXXXXXX)…",
+  "supportsFullUrls": "Supports full URLs (youtube.com/watch?v=…, youtu.be/…, /shorts/…) or a raw 11-char video ID.",
+  "tipOpenGallery": "Tip: open the My Gallery → Videos tab on the right and click Use Video to assign an existing clip to this scene.",
+  "saveToMyGallery": "Save to My Gallery",
+  "savesInto": "Saves into",
+  "youTubeBadge": "YouTube",
+
+  "ideasHeader": "Scene-Outline Ideas (AI)",
+  "generateIdeas": "Generate ideas",
+  "generating": "Generating…",
+  "ideasEmptyHint": "Click “Generate ideas” to get scene beats you can insert or add as new scenes.",
+  "insertIntoCurrent": "Insert into current",
+  "addAsNewScene": "Add as new scene",
+
+  "myGallery": "My Gallery",
+  "sortBy": "Sort by:",
+  "sortDate": "Date",
+  "sortName": "Name",
+  "aiLanguage": "AI language:",
+  "noUncategorizedFound": "No uncategorized files found.",
+  "noFilesInTab": "No files yet for this story in",
+  "describe": "Describe",
+  "reference": "Reference",
+  "select": "Select",
+  "useAudio": "Use Audio",
+  "useVideo": "Use Video",
+
+  "sceneReferences": "Scene References",
+  
+  "footerHint": "Use Auto-Suggest, Generate Image, and Generate Narration.",
+
+  "alertSelectStoryForImage": "Please select an active story from the dropdown to generate an image.",
+  "alertWriteImageOrSynopsis": "Please write an image description or fill the story synopsis/genres on the Begin page.",
+  "alertImageGenFailed": "Image generation failed",
+  "alertNoImageReturned": "No image returned by generator.",
+  "alertSignInToSaveGenerated": "You must be signed in to save generated images.",
+
+  "alertSelectStoryForSuggest": "Please select an active story from the dropdown to get scene suggestions.",
+  "alertSuggestFailed": "Suggest failed",
+  "alertNoSuggestions": "No suggestions returned.",
+
+  "alertSelectStoryForNarration": "Please select an active story from the dropdown to generate narration.",
+  "alertEnterNarrationFirst": "Enter narration text first.",
+  "alertTtsFailed": "TTS failed",
+
+  "alertSelectStoryBeforeSaving": "Please select a story before saving scenes.",
+  "alertSaveFailed": "Failed to save scene.",
+  "alertSceneSaved": "Scene saved.",
+  "alertReachedPageLimit": "Reached selected page limit.",
+
+  "alertSelectStoryBeforePublish": "Please select a story before publishing.",
+  "alertPublished": "Story published! It will now appear in Discovery and your Profile.",
+  "alertPublishFailed": "Failed to publish story.",
+
+  "alertPasteYouTubeFirst": "Paste a YouTube URL first.",
+  "alertValidYouTube": "Please enter a valid YouTube URL.",
+  "alertSelectStoryOrUncat": "Select a story or switch to \"Uncategorized\" first.",
+  "alertSavedToGallery": "Saved to My Gallery → Videos."
 }
   

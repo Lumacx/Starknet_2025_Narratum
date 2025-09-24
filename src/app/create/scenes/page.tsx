@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 
 import { useAuth } from '@/context/AuthContext';
+import { useLocale } from '@/context/LocaleContext'; // ✅ i18n
 import { db, storage } from '@/lib/firebase';
 import {
   setDoc,
@@ -438,6 +439,7 @@ function youtubeThumbUrl(raw: string): string | null {
 
 export default function ScenesPage() {
   const { user, loading } = useAuth();
+  const { t } = useLocale(); // ✅ i18n hook
   const router = useRouter();
   const searchParams = useSearchParams();
   const storyId = searchParams.get('storyId') || undefined;
@@ -1090,10 +1092,13 @@ export default function ScenesPage() {
   }, [currentIndex, scenes.length]);
 
   /* -------- UI ---------------------------------------------------------- */
+  // Localized progress label
+  const intlProgressLabel = `${t('progressScene')} ${Math.min(currentIndex + 1, selectedPages)} / ${selectedPages}`;
+
   if (loading) {
     return (
       <div className="min-h-screen grid place-items-center text-sm opacity-70">
-        <Loader2 className="animate-spin mr-2" /> Checking your session…
+        <Loader2 className="animate-spin mr-2" /> {t('checkingSession')}
       </div>
     );
   }
@@ -1101,11 +1106,11 @@ export default function ScenesPage() {
     return (
       <div className="min-h-screen p-6">
         <div className="max-w-xl mx-auto bg-[#F3EADF] rounded-xl p-8">
-          <h1 className="text-2xl font-bold mb-2">Sign in required</h1>
-          <p className="mb-6">Please sign in to edit scenes.</p>
+          <h1 className="text-2xl font-bold mb-2">{t('signInRequired')}</h1>
+          <p className="mb-6">{t('pleaseSignInToEditScenes')}</p>
           <div className="flex gap-3">
-            <Link href="/login" className="px-5 py-2 rounded-md bg-[#3D4F60] text-white">Go to Login</Link>
-            <button onClick={() => router.back()} className="px-5 py-2 rounded-md border-2">← Back</button>
+            <Link href="/login" className="px-5 py-2 rounded-md bg-[#3D4F60] text-white">{t('goToLogin')}</Link>
+            <button onClick={() => router.back()} className="px-5 py-2 rounded-md border-2">{t('backArrow')}</button>
           </div>
         </div>
       </div>
@@ -1129,7 +1134,7 @@ export default function ScenesPage() {
                   'min-w-[90px] max-w-[110px] shrink-0 rounded-lg border p-1 text-[11px] text-left',
                   isActive ? 'border-[#E97451] ring-2 ring-[#E97451]/40 bg-white' : 'border-[#3D4F60]/20 bg-white/70',
                 )}
-                title={sc?.title || `Scene ${i + 1}`}
+                title={sc?.title || `${t('progressScene')} ${i + 1}`}
               >
                 <div className="relative h-16 w-full rounded overflow-hidden bg-zinc-100 grid place-items-center">
                   {hasImg ? (
@@ -1137,7 +1142,7 @@ export default function ScenesPage() {
                     <img src={sc!.imageUrl!} alt={`S${i + 1}`} className="w-full h-full object-cover" />
                   ) : (
                     <div className="flex items-center gap-1 text-zinc-500">
-                      <ImgIcon size={14} /> No image
+                      <ImgIcon size={14} /> {t('noImage')}
                     </div>
                   )}
                   <div className="absolute top-1 left-1 text-[10px] bg-black/60 text-white px-1 rounded">
@@ -1145,11 +1150,11 @@ export default function ScenesPage() {
                   </div>
                   {hasAudio && (
                     <div className="absolute bottom-1 right-1 text-[10px] bg-black/70 text-white px-1 rounded inline-flex items-center gap-1">
-                      <Volume2 size={12} /> MP3/WAV
+                      <Volume2 size={12} /> {t('audioBadge')}
                     </div>
                   )}
                 </div>
-                <div className="mt-1 line-clamp-1">{sc?.title || `Scene ${i + 1}`}</div>
+                <div className="mt-1 line-clamp-1">{sc?.title || `${t('progressScene')} ${i + 1}`}</div>
               </button>
             );
           })}
@@ -1164,10 +1169,10 @@ export default function ScenesPage() {
                 setCurrentIndex(scenes.length);
               }}
               className="min-w-[90px] max-w-[110px] shrink-0 rounded-lg border border-dashed p-1 grid place-items-center text-[11px] text-zinc-600 bg-white/60"
-              title="Add new scene"
+              title={t('addNewSceneTitle')}
             >
               <PlusCircle className="w-5 h-5" />
-              Add scene
+              {t('addScene')}
             </button>
           )}
         </div>
@@ -1189,15 +1194,15 @@ export default function ScenesPage() {
       <header className="sticky top-0 z-30 backdrop-blur bg-white/70 dark:bg-[#0d1520]/70 border-b border-[#3D4F60]/10 dark:border-[#4B5A6B]/20">
         <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/" className="text-sm font-semibold text-[#3D4F60] dark:text-[#E0C9A0]">Narratum</Link>
-            <span className="text-sm opacity-60">/ Create /</span>
-            <span className="text-sm font-semibold">Scenes</span>
-            <span className="ml-3 text-xs opacity-70 px-2 py-1 rounded bg-white/60 border">{progressLabel}</span>
+            <Link href="/" className="text-sm font-semibold text-[#3D4F60] dark:text-[#E0C9A0]">{t('narratumBrand')}</Link>
+            <span className="text-sm opacity-60">{t('createSlash')}</span>
+            <span className="text-sm font-semibold">{t('scenesTab')}</span>
+            <span className="ml-3 text-xs opacity-70 px-2 py-1 rounded bg-white/60 border">{intlProgressLabel}</span>
 
             {/* Story Selector */}
             <div className="flex items-center gap-2 ml-4">
               <label htmlFor="scene-story-selector" className="text-sm font-semibold whitespace-nowrap hidden sm:inline">
-                Story:
+                {t('storyLabel')}
               </label>
               <select
                 id="scene-story-selector"
@@ -1210,23 +1215,23 @@ export default function ScenesPage() {
                 }}
                 disabled={userStoriesLoading}
               >
-                <option value="">{userStoriesLoading ? 'Loading stories...' : 'Select a story...'}</option>
-                <option value="__UNCAT__">All Uncategorized Assets</option>
+                <option value="">{userStoriesLoading ? t('loadingStories') : t('storyLabel')}</option>
+                <option value="__UNCAT__">{t('allUncategorizedAssets')}</option>
                 {userStories.map((s) => (
                   <option key={s.id} value={s.id}>{s.title || '(untitled)'}</option>
                 ))}
               </select>
               {showUncategorized ? (
                 <span className="text-xs ml-2 px-2 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200">
-                  Viewing Uncategorized
+                  {t('viewingUncategorized')}
                 </span>
               ) : null}
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/create/begin" className="text-xs px-3 py-1.5 rounded-lg bg-white border-2 border-[#3D4F60]/20 dark:bg-[#1A2533] dark:border-[#4B5A6B]/20">Begin</Link>
-            <Link href={selectedStoryId ? `/create/support?storyId=${selectedStoryId}` : '/create/support'} className="text-xs px-3 py-1.5 rounded-lg bg-white border-2 border-[#3D4F60]/20 dark:bg-[#1A2533] dark:border-[#4B5A6B]/20">Support</Link>
-            <span className="text-xs px-3 py-1.5 rounded-lg bg-[#E97451] text-white">Scenes</span>
+            <Link href="/create/begin" className="text-xs px-3 py-1.5 rounded-lg bg-white border-2 border-[#3D4F60]/20 dark:bg-[#1A2533] dark:border-[#4B5A6B]/20">{t('beginTab')}</Link>
+            <Link href={selectedStoryId ? `/create/support?storyId=${selectedStoryId}` : '/create/support'} className="text-xs px-3 py-1.5 rounded-lg bg-white border-2 border-[#3D4F60]/20 dark:bg-[#1A2533] dark:border-[#4B5A6B]/20">{t('supportTab')}</Link>
+            <span className="text-xs px-3 py-1.5 rounded-lg bg-[#E97451] text-white">{t('scenesTab')}</span>
           </div>
         </div>
       </header>
@@ -1240,30 +1245,30 @@ export default function ScenesPage() {
             <div className="flex min-w-0 items-center gap-2">
               <input
                 className="min-w-0 flex-1 rounded-lg border border-[#3D4F60]/30 dark:border-[#4B5A6B]/30 bg-white dark:bg-[#0e1520] px-3 py-2 text-sm"
-                placeholder="Story title"
+                placeholder={t('storyTitlePlaceholder')}
                 value={story?.title || ''}
                 onChange={(e) => updateStoryPatch({ title: e.target.value })}
               />
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={goPrev} disabled={currentIndex <= 0} className="rounded-lg border px-3 py-2 text-sm bg-white/70 dark:bg-[#1A2533] disabled:opacity-50">← Previous</button>
-              <button onClick={goNext} disabled={currentIndex >= Math.max(0, scenes.length - 1)} className="rounded-lg border px-3 py-2 text-sm bg-white/70 dark:bg-[#1A2533] disabled:opacity-50">Next →</button>
+              <button onClick={goPrev} disabled={currentIndex <= 0} className="rounded-lg border px-3 py-2 text-sm bg-white/70 dark:bg-[#1A2533] disabled:opacity-50">{t('previous')}</button>
+              <button onClick={goNext} disabled={currentIndex >= Math.max(0, scenes.length - 1)} className="rounded-lg border px-3 py-2 text-sm bg-white/70 dark:bg-[#1A2533] disabled:opacity-50">{t('next')}</button>
 
               <button onClick={handleSaveScene} disabled={!canManageAssets} className="rounded-lg border border-emerald-600/60 bg-emerald-600/20 px-3 py-2 text-sm text-emerald-900 dark:text-emerald-200 hover:bg-emerald-600/30 disabled:opacity-50">
-                Save Scene
+                {t('saveScene')}
               </button>
               <button onClick={handleSaveSceneAndNext} disabled={!canManageAssets} className="rounded-lg border border-teal-600/60 bg-teal-600/20 px-3 py-2 text-sm text-teal-900 dark:text-teal-200 hover:bg-teal-600/30 disabled:opacity-50">
-                Save Scene & Next
+                {t('saveSceneAndNext')}
               </button>
 
               <Link href={readerHref} className={classNames(
                 'rounded-lg border border-indigo-600/60 bg-indigo-600/20 px-3 py-2 text-sm',
                 canManageAssets ? 'text-indigo-900 dark:text-indigo-200 hover:bg-indigo-600/30' : 'opacity-60 pointer-events-none text-indigo-900 dark:text-indigo-200'
               )}>
-                Preview Story
+                {t('previewStory')}
               </Link>
               <button onClick={handlePublishStory} disabled={!canManageAssets} className="rounded-lg border border-amber-600/60 bg-amber-600/20 px-3 py-2 text-sm text-amber-900 dark:text-amber-200 hover:bg-amber-600/30 disabled:opacity-50">
-                Publish
+                {t('publish')}
               </button>
             </div>
           </div>
@@ -1271,8 +1276,8 @@ export default function ScenesPage() {
           {/* Scene strip */}
           <div className="mb-4 rounded-2xl border-2 border-[#3D4F60]/10 dark:border-[#4B5A6B]/20 bg-white/70 dark:bg-[#0f1620]/70 p-3">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold">Scenes</h3>
-              <div className="text-xs opacity-70">Selected pages: <strong>{selectedPages}</strong></div>
+              <h3 className="text-sm font-semibold">{t('scenesHeader')}</h3>
+              <div className="text-xs opacity-70">{t('selectedPages')} <strong>{selectedPages}</strong></div>
             </div>
             <SceneStrip />
           </div>
@@ -1287,8 +1292,8 @@ export default function ScenesPage() {
               >
                 <div className="backdrop-blur bg-white/60 dark:bg-[#0f1620]/60 p-3">
                   <div className="flex items-center justify-between mb-2">
-                    <h2 className="text-sm font-semibold flex items-center gap-2"><ImageIcon className="w-4 h-4" /> Story Preview</h2>
-                    <div className="text-xs opacity-70">{progressLabel}</div>
+                    <h2 className="text-sm font-semibold flex items-center gap-2"><ImageIcon className="w-4 h-4" /> {t('storyPreview')}</h2>
+                    <div className="text-xs opacity-70">{intlProgressLabel}</div>
                   </div>
 
                   <div className="flex items-center gap-2 mb-2">
@@ -1302,7 +1307,7 @@ export default function ScenesPage() {
                     {currentScene?.imageUrl ? (
                       <Image src={currentScene.imageUrl} alt={currentScene?.imageName ?? 'scene image'} width={1024} height={768} className="w-full h-full object-cover" priority />
                     ) : (
-                      <div className="text-xs opacity-70">No image selected</div>
+                      <div className="text-xs opacity-70">{t('noImageSelected')}</div>
                     )}
                   </div>
 
@@ -1311,16 +1316,16 @@ export default function ScenesPage() {
                       {currentScene?.audioUrl ? (
                         <>
                           {!isPlaying ? (
-                            <button onClick={onUserGesturePlay} className="px-3 py-1.5 rounded bg-[#3D4F60] text-white">▶ Play</button>
+                            <button onClick={onUserGesturePlay} className="px-3 py-1.5 rounded bg-[#3D4F60] text-white">{t('play')}</button>
                           ) : (
-                            <button onClick={onPause} className="px-3 py-1.5 rounded bg-[#3D4F60] text-white">❚❚ Pause</button>
+                            <button onClick={onPause} className="px-3 py-1.5 rounded bg-[#3D4F60] text-white">{t('pause')}</button>
                           )}
                           <div className="text-xs opacity-70">
-                            {isBuffering ? 'Buffering… ' : ''}{formatTime(currentTime)} / {formatTime(duration)}
+                            {isBuffering ? `${t('buffering')} ` : ''}{formatTime(currentTime)} / {formatTime(duration)}
                           </div>
                         </>
                       ) : (
-                        <div className="text-xs opacity-70">No narration selected</div>
+                        <div className="text-xs opacity-70">{t('noNarrationSelected')}</div>
                       )}
                     </div>
                     <audio ref={audioRef} preload="metadata" className="hidden" />
@@ -1331,12 +1336,12 @@ export default function ScenesPage() {
               {/* Scene text + helpers */}
               <div className="rounded-2xl border-2 border-[#3D4F60]/10 dark:border-[#4B5A6B]/20 bg-white/70 dark:bg-[#0f1620]/70 shadow-sm p-3 space-y-3">
                 <div className="flex items-center gap-2">
-                  <label className="text-xs font-semibold">Scene Title</label>
+                  <label className="text-xs font-semibold">{t('sceneTitleLabel')}</label>
                   <input
                     value={currentScene?.title || ''}
                     onChange={(e) => updateCurrentScene({ title: e.target.value })}
                     className="ml-2 flex-1 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm"
-                    placeholder={`Scene ${currentIndex + 1} title`}
+                    placeholder={t('sceneTitlePlaceholder').replace('{n}', String(currentIndex + 1))}
                   />
                   <button
                     type="button"
@@ -1344,28 +1349,28 @@ export default function ScenesPage() {
                     className="ml-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs"
                   >
                     {isSuggesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Quote className="w-4 h-4" />}
-                    Auto-Suggest (text + image)
+                    {t('autoSuggest')}
                   </button>
                 </div>
 
-                <label className="text-xs font-semibold">Scene Text</label>
+                <label className="text-xs font-semibold">{t('sceneTextLabel')}</label>
                 <textarea
                   value={currentScene?.text || ''}
                   onChange={e => updateCurrentScene({ text: e.target.value })}
                   rows={6}
                   className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-2 text-sm"
-                  placeholder="Write the story text for this scene…"
+                  placeholder={t('sceneTextPlaceholder')}
                 />
 
                 <div className="grid md:grid-cols-2 gap-3">
                   <div className="rounded-xl border border-zinc-200/60 dark:border-zinc-800/60 p-3 bg-white/60 dark:bg-zinc-900/60 asset-scope">
-                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Image Description</label>
+                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300">{t('imageDescriptionLabel')}</label>
                     <textarea
                       value={imagePrompt}
                       onChange={e => setImagePrompt(e.target.value)}
                       rows={3}
                       className="mt-1 w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-2 text-sm"
-                      placeholder="Describe the visual for this scene (or use Auto-Suggest)…"
+                      placeholder={t('imageDescriptionPlaceholder')}
                     />
                     <button
                       onClick={handleGenerateImage}
@@ -1373,32 +1378,32 @@ export default function ScenesPage() {
                       className="mt-2 inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[#E97451] text-white disabled:opacity-60"
                     >
                       {isGenImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
-                      Generate Image (AI)
+                      {t('generateImageAI')}
                     </button>
                   </div>
 
                   <div className="rounded-xl border border-zinc-200/60 dark:border-zinc-800/60 p-3 bg-white/60 dark:bg-zinc-900/60 asset-scope">
-                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300">AI Description</label>
+                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300">{t('aiDescriptionLabel')}</label>
                     <textarea
                       value={imageDesc}
                       onChange={e => setImageDesc(e.target.value)}
                       rows={3}
                       className="mt-1 w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-2 text-sm"
-                      placeholder="When you use AI Describe on an image, the description appears here…"
+                      placeholder={t('aiDescriptionPlaceholder')}
                     />
                   </div>
                 </div>
 
                 <div className="rounded-xl border border-zinc-200/60 dark:border-zinc-800/60 p-3 bg-white/60 dark:bg-zinc-900/60 asset-scope">
                   <div className="flex items-center gap-2">
-                    <label className="text-xs font-semibold">Narration</label>
+                    <label className="text-xs font-semibold">{t('narrationLabel')}</label>
                   </div>
                   <textarea
                     value={narrationText}
                     onChange={e => setNarrationText(e.target.value)}
                     rows={4}
                     className="mt-1 w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-2 text-sm"
-                    placeholder="Write or paste the narration to speak (defaults to the Scene Text if empty)…"
+                    placeholder={t('narrationPlaceholder')}
                   />
                   <div className="grid sm:grid-cols-2 gap-2 mt-2">
                     <select
@@ -1406,31 +1411,31 @@ export default function ScenesPage() {
                       value={voice}
                       onChange={e => applyVoiceAvatarUpdate(e.target.value)}
                     >
-                      <option value="Nuna">Nuna (Female, Firm)</option>
-                      <option value="Puck">Scythe (Male, Upbeat)</option>
-                      <option value="Zephyr">Belle (Female, Youthful)</option>
-                      <option value="en-IN-Chirp3-HD-Achird">Raj (Male, Scholar)</option>
-                      <option value="Juniper">Juniper (Female, Elegant)</option>
-                      <option value="Argus">Argus (Male, Mysterious)</option>
+                      <option value="Nuna">{t('voiceNuna')}</option>
+                      <option value="Puck">{t('voicePuck')}</option>
+                      <option value="Zephyr">{t('voiceZephyr')}</option>
+                      <option value="en-IN-Chirp3-HD-Achird">{t('voiceAchird')}</option>
+                      <option value="Juniper">{t('voiceJuniper')}</option>
+                      <option value="Argus">{t('voiceArgus')}</option>
                     </select>
                     <select
                       className="w-full p-2 rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-white text-[#3D4F60]"
                       value={tone}
                       onChange={e => setTone(e.target.value as any)}
                     >
-                      <option value="a normal">Normal Tone</option>
-                      <option value="a cheerful">Cheerful Tone</option>
-                      <option value="a sad">Sad Tone</option>
-                      <option value="an excited">Excited Tone</option>
-                      <option value="a whispering">Whispering Tone</option>
+                      <option value="a normal">{t('toneNormal')}</option>
+                      <option value="a cheerful">{t('toneCheerful')}</option>
+                      <option value="a sad">{t('toneSad')}</option>
+                      <option value="an excited">{t('toneExcited')}</option>
+                      <option value="a whispering">{t('toneWhispering')}</option>
                     </select>
                   </div>
                   <div className="flex gap-2 mt-2">
                     <button
                       onClick={async () => {
                         const base = (narrationText || currentScene?.text || '').trim();
-                        if (!canManageAssets) { alert('Please select an active story from the dropdown to generate narration.'); return; }
-                        if (!base || !currentScene) { alert('Enter narration text first.'); return; }
+                        if (!canManageAssets) { alert(t('alertSelectStoryForNarration')); return; }
+                        if (!base || !currentScene) { alert(t('alertEnterNarrationFirst')); return; }
                         setIsGenAudio(true);
                         try {
                           const lang = (story?.language || 'en') as LangCode;
@@ -1445,11 +1450,11 @@ export default function ScenesPage() {
                             }),
                           });
                           const json = await r.json();
-                          if (!r.ok) throw new Error(json?.error || 'TTS failed');
-                          if (!json?.audioUrl) throw new Error('No audioUrl returned by TTS route.');
+                          if (!r.ok) throw new Error(json?.error || t('alertTtsFailed'));
+                          if (!json?.audioUrl) throw new Error(t('alertTtsFailed'));
                           updateCurrentScene({ audioUrl: json.audioUrl, audioName: `scene-${currentIndex + 1}-narration`, voiceId: voice });
                         } catch (e: any) {
-                          alert((e?.message || 'TTS failed') + '\n\nTip: ensure /api/generate-audio reads { ssml, tone, style, toneHint } to bias delivery.');
+                          alert(t('alertTtsFailed') + '\n\nTip: ensure /api/generate-audio reads { ssml, tone, style, toneHint } to bias delivery.');
                         } finally {
                           setIsGenAudio(false);
                         }
@@ -1458,83 +1463,82 @@ export default function ScenesPage() {
                       className="px-4 py-2 rounded-md bg-[#3D4F60] text-white disabled:opacity-60"
                     >
                       {isGenAudio ? <Loader2 className="w-4 h-4 animate-spin inline mr-2" /> : null}
-                      {currentScene?.audioUrl ? 'Re-generate Narration (AI)' : 'Generate Narration (AI)'}
+                      {currentScene?.audioUrl ? t('regenNarration') : t('genNarration')}
                     </button>
                     {currentScene?.audioUrl && (
                       <a href={currentScene.audioUrl} className="px-4 py-2 rounded-md border" download>
-                        Download
+                        {t('download')}
                       </a>
                     )}
                   </div>
                 </div>
               </div>
 
-                {/* YouTube Video URL input + preview */}
-                <div className="rounded-2xl border-2 border-[#3D4F60]/10 dark:border-[#4B5A6B]/20 bg-white/70 dark:bg-[#0f1620]/70 shadow-sm p-3 space-y-2">
-                  <label className="text-xs font-semibold">YouTube Video URL</label>
-                  <input
-                    type="url"
-                    value={currentScene?.youtubeVideoUrl || ''}
-                    onChange={(e) => updateCurrentScene({ youtubeVideoUrl: e.target.value })}
-                    placeholder="Paste a YouTube link for this scene (e.g. https://youtu.be/XXXXXXXXXXX)…"
-                    className="mt-1 w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm"
-                  />
+              {/* YouTube Video URL input + preview */}
+              <div className="rounded-2xl border-2 border-[#3D4F60]/10 dark:border-[#4B5A6B]/20 bg-white/70 dark:bg-[#0f1620]/70 shadow-sm p-3 space-y-2">
+                <label className="text-xs font-semibold">{t('youTubeUrlLabel')}</label>
+                <input
+                  type="url"
+                  value={currentScene?.youtubeVideoUrl || ''}
+                  onChange={(e) => updateCurrentScene({ youtubeVideoUrl: e.target.value })}
+                  placeholder={t('youTubeUrlPlaceholder')}
+                  className="mt-1 w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm"
+                />
 
-                  {/* Live preview */}
-                  {currentYouTubeId ? (
-                    <div className="mt-2 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-black">
-                      <div className="aspect-[16/9] w-full">
-                        <iframe
-                          key={currentYouTubeId} // force refresh if ID changes
-                          src={youtubeEmbedUrl(currentYouTubeId)}
-                          title="YouTube preview"
-                          loading="lazy"
-                          allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                          allowFullScreen
-                          className="w-full h-full"
-                        />
-                      </div>
+                {/* Live preview */}
+                {currentYouTubeId ? (
+                  <div className="mt-2 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-black">
+                    <div className="aspect-[16/9] w-full">
+                      <iframe
+                        key={currentYouTubeId}
+                        src={youtubeEmbedUrl(currentYouTubeId)}
+                        title="YouTube preview"
+                        loading="lazy"
+                        allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                        className="w-full h-full"
+                      />
                     </div>
-                  ) : (
-                    <p className="text-[12px] opacity-70">
-                      Supports full URLs (<code className="font-mono">youtube.com/watch?v=…</code>, <code className="font-mono">youtu.be/…</code>, <code className="font-mono">/shorts/…</code>) or a raw 11-char video ID.
-                    </p>
-                  )}
-
-                  <p className="text-[12px] opacity-70">
-                    Tip: open the <strong>My Gallery → Videos</strong> tab on the right and click <em>Use Video</em> to assign an existing clip to this scene.
-                  </p>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleSaveYouTubeToGallery}
-                      disabled={!currentYouTubeId || savingYt || !(selectedStoryId || showUncategorized)}
-                      className="px-3 py-1.5 rounded bg-[#E97451] text-white disabled:opacity-50"
-                    >
-                      {savingYt ? 'Saving…' : 'Save to My Gallery'}
-                    </button>
-                    <span className="text-[12px] opacity-70">
-                      Saves into {showUncategorized ? 'Uncategorized' : `Story ${selectedStoryId}`} / Videos.
-                    </span>
                   </div>
+                ) : (
+                  <p className="text-[12px] opacity-70">
+                    {t('supportsFullUrls')}
+                  </p>
+                )}
 
+                <p className="text-[12px] opacity-70">
+                  {t('tipOpenGallery')}
+                </p>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleSaveYouTubeToGallery}
+                    disabled={!currentYouTubeId || savingYt || !(selectedStoryId || showUncategorized)}
+                    className="px-3 py-1.5 rounded bg-[#E97451] text-white disabled:opacity-50"
+                  >
+                    {savingYt ? t('generating') : t('saveToMyGallery')}
+                  </button>
+                  <span className="text-[12px] opacity-70">
+                    {t('savesInto')} {showUncategorized ? 'Uncategorized' : `Story ${selectedStoryId}`} / Videos.
+                  </span>
                 </div>
 
+              </div>
 
               {/* AI ideas */}
               <div className="rounded-2xl border-2 border-[#3D4F60]/10 dark:border-[#4B5A6B]/20 bg-white/70 dark:bg-[#0f1620]/70 p-3">
                 <div className="mb-2 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold">Scene-Outline Ideas (AI)</h3>
+                  <h3 className="text-sm font-semibold">{t('ideasHeader')}</h3>
                   <button
                     onClick={handleGenerateIdeas}
                     disabled={ideasLoading || !canManageAssets}
                     className="rounded-lg border border-fuchsia-600/60 bg-fuchsia-600/20 px-3 py-2 text-xs text-fuchsia-900 dark:text-fuchsia-200 hover:bg-fuchsia-600/30 disabled:opacity-50"
                   >
-                    {ideasLoading ? 'Generating…' : 'Generate ideas'}
+                    {ideasLoading ? t('generating') : t('generateIdeas')}
                   </button>
                 </div>
                 {ideas.length === 0 && !ideasLoading && (
-                  <p className="text-xs opacity-70">Click “Generate ideas” to get scene beats you can insert or add as new scenes.</p>
+                  <p className="text-xs opacity-70">{t('ideasEmptyHint')}</p>
                 )}
                 <ul className="space-y-3">
                   {ideas.map((idea, idx) => (
@@ -1548,7 +1552,7 @@ export default function ScenesPage() {
                           onClick={() => applyIdeaToCurrent(idea)}
                           className="rounded-md border border-emerald-500/50 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-700 dark:text-emerald-200 hover:bg-emerald-500/20"
                         >
-                          Insert into current
+                          {t('insertIntoCurrent')}
                         </button>
                         <button
                           onClick={() => {
@@ -1560,7 +1564,7 @@ export default function ScenesPage() {
                           }}
                           className="rounded-md border border-indigo-500/50 bg-indigo-500/10 px-2 py-1 text-xs text-indigo-700 dark:text-indigo-200 hover:bg-indigo-500/20"
                         >
-                          Add as new scene
+                          {t('addAsNewScene')}
                         </button>
                       </div>
                     </li>
@@ -1572,16 +1576,16 @@ export default function ScenesPage() {
             {/* RIGHT – My Gallery */}
             <section className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold">My Gallery</h3>
+                <h3 className="text-sm font-semibold">{t('myGallery')}</h3>
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="opacity-70">Sort by:</span>
+                  <span className="opacity-70">{t('sortBy')}</span>
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as 'name' | 'date')}
                     className="border rounded px-2 py-1 text-sm"
                   >
-                    <option value="date">Date</option>
-                    <option value="name">Name</option>
+                    <option value="date">{t('sortDate')}</option>
+                    <option value="name">{t('sortName')}</option>
                   </select>
                   <button
                     onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}
@@ -1593,35 +1597,35 @@ export default function ScenesPage() {
                 </div>
               </div>
 
-              <div className="text-xs opacity-70">AI language: <strong>{langLabel}</strong></div>
+              <div className="text-xs opacity-70">{t('aiLanguage')} <strong>{langLabel}</strong></div>
 
               <div className="flex flex-wrap gap-2">
-                {GALLERY_TABS.map(t => (
+                {GALLERY_TABS.map(tTab => (
                   <button
-                    key={t.key}
-                    onClick={() => setActiveTab(t.key)}
+                    key={tTab.key}
+                    onClick={() => setActiveTab(tTab.key)}
                     className={classNames(
                       'inline-flex items-center gap-2 px-3 py-1.5 rounded-full border transition',
-                      activeTab === t.key
+                      activeTab === tTab.key
                         ? 'bg-[#E97451] text-white border-[#E97451] shadow'
                         : 'bg-white text-[#3D4F60] border-[#3D4F60]/20 hover:border-[#3D4F60]/40 dark:bg-[#1A2533] dark:text-[#F0D1B0] dark:border-[#4B5A6B]/20 dark:hover:border-[#4B5A6B]/40'
                     )}
                   >
-                    {t.kind === 'image' ? <ImageIcon size={16} /> : t.kind === 'audio' ? <Music size={16} /> : <Upload size={16} />}
-                    <span className="text-sm font-semibold">{t.label}</span>
+                    {tTab.kind === 'image' ? <ImageIcon size={16} /> : tTab.kind === 'audio' ? <Music size={16} /> : <Upload size={16} />}
+                    <span className="text-sm font-semibold">{tTab.label}</span>
                   </button>
                 ))}
               </div>
 
               <div className="rounded-xl border-2 border-[#3D4F60] dark:border-[#4B5A6B] p-3 bg-white/60 dark:bg-transparent">
                 {loadingGallery ? (
-                  <div className="text-sm opacity-70 flex items-center gap-2"><Loader2 className="animate-spin" /> Loading…</div>
+                  <div className="text-sm opacity-70 flex items-center gap-2"><Loader2 className="animate-spin" /> {t('loadingStories')}</div>
                 ) : gallery.length === 0 ? (
                   <div className="text-sm opacity-70 flex items-center gap-2">
                     <Info className="w-4 h-4" />
                     {showUncategorized
-                      ? 'No uncategorized files found.'
-                      : `No files yet for this story in ${GALLERY_TABS.find(x => x.key === activeTab)?.label}.`
+                      ? t('noUncategorizedFound')
+                      : `${t('noFilesInTab')} ${GALLERY_TABS.find(x => x.key === activeTab)?.label}.`
                     }
                   </div>
                 ) : (
@@ -1648,13 +1652,13 @@ export default function ScenesPage() {
                                 <button
                                   onClick={() => handleSelectForScene(it)}
                                   className="w-full text-[11px] px-2 py-1 rounded bg-[#E97451]/90 text-white"
-                                  title="Assign this video to the current scene"
+                                  title={t('useVideo')}
                                 >
-                                  Use Video
+                                  {t('useVideo')}
                                 </button>
                               </div>
                               <div className="absolute top-1 left-1 text-[10px] bg-black/70 text-white px-1.5 py-0.5 rounded">
-                                YouTube
+                                {t('youTubeBadge')}
                               </div>
                             </div>
                           ) : kind === 'image' ? (
@@ -1692,19 +1696,19 @@ export default function ScenesPage() {
                           <div className="absolute inset-x-1 bottom-1 flex gap-1 opacity-0 group-hover:opacity-100 transition">
                             {kind === 'image' ? (
                               <>
-                                <button onClick={() => handleDescribe(it)} className="flex-1 text-[11px] px-2 py-1 rounded bg-blue-500/90 text-white" title="AI Describe">
-                                  Describe
+                                <button onClick={() => handleDescribe(it)} className="flex-1 text-[11px] px-2 py-1 rounded bg-blue-500/90 text-white" title={t('describe')}>
+                                  {t('describe')}
                                 </button>
-                                <button onClick={() => handleUseAsReference(it)} className="flex-1 text-[11px] px-2 py-1 rounded bg-zinc-800/90 text-white" title="Use as Reference">
-                                  Reference
+                                <button onClick={() => handleUseAsReference(it)} className="flex-1 text-[11px] px-2 py-1 rounded bg-zinc-800/90 text-white" title={t('reference')}>
+                                  {t('reference')}
                                 </button>
-                                <button onClick={() => handleSelectForScene(it)} className="flex-1 text-[11px] px-2 py-1 rounded bg-[#E97451]/90 text-white" title="Select for Scene">
-                                  Select
+                                <button onClick={() => handleSelectForScene(it)} className="flex-1 text-[11px] px-2 py-1 rounded bg-[#E97451]/90 text-white" title={t('select')}>
+                                  {t('select')}
                                 </button>
                               </>
                             ) : (
-                              <button onClick={() => handleSelectForScene(it)} className="w-full text-[11px] px-2 py-1 rounded bg-[#E97451]/90 text-white" title="Select for Scene (Audio)">
-                                Use Audio
+                              <button onClick={() => handleSelectForScene(it)} className="w-full text-[11px] px-2 py-1 rounded bg-[#E97451]/90 text-white" title={t('useAudio')}>
+                                {t('useAudio')}
                               </button>
                             )}
                           </div>
@@ -1718,7 +1722,7 @@ export default function ScenesPage() {
               {/* References quick list */}
               {references.length > 0 && (
                 <div className="rounded-xl border-2 border-[#3D4F60]/40 dark:border-[#4B5A6B]/40 p-3 bg-white/50 dark:bg-[#0f1620]/50">
-                  <div className="text-xs font-semibold mb-2">Scene References</div>
+                  <div className="text-xs font-semibold mb-2">{t('sceneReferences')}</div>
                   <ul className="flex flex-wrap gap-2">
                     {references.map((r, i) => (
                       <li key={i} className="px-2 py-1 text-xs rounded bg-zinc-100 dark:bg-zinc-800">
@@ -1737,38 +1741,38 @@ export default function ScenesPage() {
       <footer className="sticky bottom-0 z-30 border-t border-[#3D4F60]/10 dark:border-[#4B5A6B]/20 bg-white/80 dark:bg-[#0d1520]/80 backdrop-blur">
         <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
           <div className="text-xs opacity-70">
-            {progressLabel} • Use <span className="font-medium">Auto-Suggest</span>, <span className="font-medium">Generate Image</span>, and <span className="font-medium">Generate Narration</span>.
+            {intlProgressLabel} • {t('footerHint')}
           </div>
           <div className="flex items-center gap-2">
             <button onClick={goPrev} className="text-xs px-3 py-1.5 rounded-lg bg-white border-2 border-[#3D4F60]/20 dark:bg-[#1A2533] dark:border-[#4B5A6B]/20 disabled:opacity-50" disabled={currentIndex <= 0}>
-              Prev
+              {t('previous')}
             </button>
             <button onClick={goNext} className="text-xs px-3 py-1.5 rounded-lg bg-white border-2 border-[#3D4F60]/20 dark:bg-[#1A2533] dark:border-[#4B5A6B]/20 disabled:opacity-50" disabled={currentIndex >= Math.max(0, scenes.length - 1)}>
-              Next
+              {t('next')}
             </button>
 
             <button onClick={handleSaveScene} disabled={!canManageAssets} className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600/20 border-2 border-emerald-600/40 text-emerald-900 dark:text-emerald-200 disabled:opacity-50">
-              Save Scene
+              {t('saveScene')}
             </button>
             <button onClick={handleSaveSceneAndNext} disabled={!canManageAssets} className="text-xs px-3 py-1.5 rounded-lg bg-teal-600/20 border-2 border-teal-600/40 text-teal-900 dark:text-teal-200 disabled:opacity-50">
-              Save Scene & Next
+              {t('saveSceneAndNext')}
             </button>
 
             <Link href={readerHref} className={classNames(
               'text-xs px-3 py-1.5 rounded-lg bg-white border-2 border-[#3D4F60]/20 dark:bg-[#1A2533] dark:border-[#4B5A6B]/20',
               canManageAssets ? '' : 'opacity-60 pointer-events-none'
             )}>
-              Preview
+              {t('previewStory')}
             </Link>
             <button onClick={handlePublishStory} disabled={!canManageAssets} className="text-xs px-3 py-1.5 rounded-lg bg-amber-600/20 border-2 border-amber-600/40 text-amber-900 dark:text-amber-200 disabled:opacity-50">
-              Publish
+              {t('publish')}
             </button>
           </div>
         </div>
       </footer>
     </div>
   );
-}
+} 
 
 /* ------------------------------------------------------------------ */
 /* Utils                                                               */
