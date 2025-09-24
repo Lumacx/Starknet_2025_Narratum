@@ -8,33 +8,34 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input'; // Though not used, good to keep consistent import
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { generateWritingPrompts, type GenerateWritingPromptsInput } from '@/ai/flows/generate-writing-prompts';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sparkles, Feather } from 'lucide-react';
+import { useLocale } from '@/context/LocaleContext';
 
-const formSchema = z.object({
-  templateTitle: z.string().min(1, { message: 'Please select a template.' }),
-  userInput: z.string().min(10, { message: 'Please provide some input (at least 10 characters).' }).max(500, { message: 'Input must be 500 characters or less.' }),
-});
-
-type FormData = z.infer<typeof formSchema>;
-
-const storyTemplates = [
-  { id: 'hero_journey', title: "Hero's Journey" },
-  { id: 'mystery_novel', title: 'Mystery Novel' },
-  { id: 'sci_fi_adventure', title: 'Sci-Fi Adventure' },
-  { id: 'fantasy_quest', title: 'Fantasy Quest' },
-  { id: 'romance_story', title: 'Romance Story' },
-];
+type FormData = {
+  templateTitle: string;
+  userInput: string;
+};
 
 const AiWritingPrompts: FC = () => {
+  const { t } = useLocale();
   const [prompts, setPrompts] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  // Build schema here so we can use translations
+  const formSchema = z.object({
+    templateTitle: z.string().min(1, { message: t('validation.template.required') }),
+    userInput: z
+      .string()
+      .min(10, { message: t('validation.userInput.min').replace('{min}', '10') })
+      .max(500, { message: t('validation.userInput.max').replace('{max}', '500') }),
+  });
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -43,6 +44,14 @@ const AiWritingPrompts: FC = () => {
       userInput: '',
     },
   });
+
+  const storyTemplates = [
+    { id: 'hero_journey', title: t('templates.heroJourney') },
+    { id: 'mystery_novel', title: t('templates.mysteryNovel') },
+    { id: 'sci_fi_adventure', title: t('templates.sciFiAdventure') },
+    { id: 'fantasy_quest', title: t('templates.fantasyQuest') },
+    { id: 'romance_story', title: t('templates.romanceStory') },
+  ];
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
     setIsLoading(true);
@@ -56,18 +65,19 @@ const AiWritingPrompts: FC = () => {
       if (result && result.writingPrompts) {
         setPrompts(result.writingPrompts);
         toast({
-          title: 'Prompts Generated!',
-          description: 'Your creative writing prompts are ready.',
+          title: t('aiPrompts.toastSuccessTitle'),
+          description: t('aiPrompts.toastSuccessDesc'),
         });
       } else {
-        throw new Error('No prompts returned from AI.');
+        throw new Error(t('aiPrompts.error.noPrompts'));
       }
     } catch (error) {
       console.error('Error generating prompts:', error);
       toast({
         variant: 'destructive',
-        title: 'Error Generating Prompts',
-        description: (error as Error).message || 'An unexpected error occurred. Please try again.',
+        title: t('aiPrompts.toastErrorTitle'),
+        description:
+          (error as Error).message || t('aiPrompts.toastErrorDescFallback'),
       });
     } finally {
       setIsLoading(false);
@@ -81,10 +91,12 @@ const AiWritingPrompts: FC = () => {
           <CardHeader>
             <div className="flex items-center space-x-3 mb-2">
               <Feather className="h-8 w-8 text-accent" />
-              <CardTitle id="ai-prompts-title" className="text-2xl md:text-3xl font-titles">Ignite Your Creativity</CardTitle>
+              <CardTitle id="ai-prompts-title" className="text-2xl md:text-3xl font-titles">
+                {t('aiPrompts.title')}
+              </CardTitle>
             </div>
             <CardDescription>
-              Select a story template and provide some initial ideas. Our AI will conjure up unique writing prompts to inspire your next masterpiece.
+              {t('aiPrompts.description')}
             </CardDescription>
           </CardHeader>
           <Form {...form}>
@@ -95,11 +107,11 @@ const AiWritingPrompts: FC = () => {
                   name="templateTitle"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Story Template</FormLabel>
+                      <FormLabel>{t('aiPrompts.storyTemplate')}</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Choose a template..." />
+                            <SelectValue placeholder={t('aiPrompts.chooseTemplate')} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -119,10 +131,10 @@ const AiWritingPrompts: FC = () => {
                   name="userInput"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Your Ideas (Keywords, Summary, or a Starting Snippet)</FormLabel>
+                      <FormLabel>{t('aiPrompts.yourIdeasLabel')}</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="e.g., A young mage discovers a hidden power..."
+                          placeholder={t('aiPrompts.yourIdeasPlaceholder')}
                           className="resize-none"
                           rows={5}
                           {...field}
@@ -138,12 +150,12 @@ const AiWritingPrompts: FC = () => {
                   {isLoading ? (
                     <>
                       <Sparkles className="mr-2 h-4 w-4 animate-spin" />
-                      Generating...
+                      {t('aiPrompts.generating')}
                     </>
                   ) : (
                     <>
                       <Sparkles className="mr-2 h-4 w-4" />
-                      Generate Prompts
+                      {t('aiPrompts.generate')}
                     </>
                   )}
                 </Button>
@@ -153,7 +165,9 @@ const AiWritingPrompts: FC = () => {
 
           {prompts.length > 0 && (
             <div className="p-6 border-t">
-              <h3 className="text-xl font-titles font-semibold mb-4 text-foreground">Suggested Prompts:</h3>
+              <h3 className="text-xl font-titles font-semibold mb-4 text-foreground">
+                {t('aiPrompts.suggestedPrompts')}
+              </h3>
               <ScrollArea className="h-60 w-full rounded-md border p-4 bg-muted/50">
                 <ul className="space-y-3">
                   {prompts.map((prompt, index) => (

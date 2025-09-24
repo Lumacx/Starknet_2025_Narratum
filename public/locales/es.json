@@ -859,6 +859,43 @@
   "gallery.maxSelectionAlert": "Solo puedes seleccionar hasta {count} elementos.",
   "noun.character": "Personaje",
   "noun.location": "Ubicación",
-  "noun.cover": "Portada"
+  "noun.cover": "Portada",
+
+  "yt.title": "Video de YouTube",
+  "yt.close": "Cerrar video",
+
+  "aiPrompts.title": "Enciende tu creatividad",
+  "aiPrompts.description": "Selecciona una plantilla de historia y comparte algunas ideas iniciales. Nuestra IA creará indicaciones únicas para inspirar tu próxima obra maestra.",
+  "aiPrompts.storyTemplate": "Plantilla de historia",
+  "aiPrompts.chooseTemplate": "Elige una plantilla...",
+  "aiPrompts.yourIdeasLabel": "Tus ideas (palabras clave, resumen o un inicio)",
+  "aiPrompts.yourIdeasPlaceholder": "p. ej., Un joven mago descubre un poder oculto...",
+  "aiPrompts.generating": "Generando...",
+  "aiPrompts.generate": "Generar indicaciones",
+  "aiPrompts.suggestedPrompts": "Indicaciones sugeridas:",
+  "aiPrompts.toastSuccessTitle": "¡Indicaciones generadas!",
+  "aiPrompts.toastSuccessDesc": "Tus indicaciones creativas están listas.",
+  "aiPrompts.toastErrorTitle": "Error al generar indicaciones",
+  "aiPrompts.toastErrorDescFallback": "Ocurrió un error inesperado. Inténtalo de nuevo.",
+  "aiPrompts.error.noPrompts": "La IA no devolvió indicaciones.",
+  "validation.template.required": "Por favor, selecciona una plantilla.",
+  "validation.userInput.min": "Proporciona algo de texto (al menos {min} caracteres).",
+  "validation.userInput.max": "El texto debe tener {max} caracteres o menos.",
+  "templates.heroJourney": "El viaje del héroe",
+  "templates.mysteryNovel": "Novela de misterio",
+  "templates.sciFiAdventure": "Aventura de ciencia ficción",
+  "templates.fantasyQuest": "Búsqueda fantástica",
+  "templates.romanceStory": "Historia de romance",
+
+  "interactive.title": "Historia destacada",
+  "interactive.summaryFallback": "Un relato de Narratum.",
+  "interactive.untitled": "Sin título",
+  "interactive.noCover": "Sin portada",
+
+  "storyCreation.title": "Crea tu narrativa",
+  "storyCreation.subtitle": "Da vida a tus historias con nuestras plantillas guiadas y la asistencia de escritura con IA.",
+  "storyCreation.editorTitle": "Editor de historias",
+  "storyCreation.editorDescription": "Aquí seleccionarás una plantilla y escribirás tu historia. Los campos de contenido para texto, imágenes y opciones aparecerán según la plantilla elegida.",
+  "storyCreation.editorPlaceholder": "Marcador de posición de la interfaz del editor de historias"
 
 }

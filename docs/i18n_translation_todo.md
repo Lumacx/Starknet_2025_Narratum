@@ -58,10 +58,10 @@ This list focuses on files likely to contain significant user-facing text, start
 - [x] `src/components/ReaderSkinPicker.tsx`
 - [x] `src/components/StoryReader.tsx`
 - [x] `src/components/UploadImageReference.tsx`
-- [ ] `src/components/YoutubeVideoPlayer.tsx`
-- [ ] `src/components/ai-writing-prompts.tsx`
-- [ ] `src/components/interactive-story-display.tsx`
-- [ ] `src/components/template-driven-story-creation.tsx`
-- [ ] `src/components/Starknet/StarknetProviderComponent.tsx`
-- [ ] `src/components/premium/ElevenLabsConvai.tsx`
-- [ ] Any relevant `src/components/ui/*.tsx` components as they are encountered.
+- [x] `src/components/YoutubeVideoPlayer.tsx`
+- [x] `src/components/ai-writing-prompts.tsx`
+- [x] `src/components/interactive-story-display.tsx`
+- [x] `src/components/template-driven-story-creation.tsx`
+- [x] `src/components/Starknet/StarknetProviderComponent.tsx`
+- [x] `src/components/premium/ElevenLabsConvai.tsx`
+- [x] Any relevant `src/components/ui/*.tsx` components as they are encountered.

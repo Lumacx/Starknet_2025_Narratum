@@ -872,6 +872,43 @@
   "gallery.maxSelectionAlert": "You can only select up to {count} items.",
   "noun.character": "Character",
   "noun.location": "Location",
-  "noun.cover": "Cover"
+  "noun.cover": "Cover",
+
+  "yt.title": "YouTube video",
+  "yt.close": "Close video",
+
+  "aiPrompts.title": "Ignite Your Creativity",
+  "aiPrompts.description": "Select a story template and provide some initial ideas. Our AI will conjure up unique writing prompts to inspire your next masterpiece.",
+  "aiPrompts.storyTemplate": "Story Template",
+  "aiPrompts.chooseTemplate": "Choose a template...",
+  "aiPrompts.yourIdeasLabel": "Your Ideas (Keywords, Summary, or a Starting Snippet)",
+  "aiPrompts.yourIdeasPlaceholder": "e.g., A young mage discovers a hidden power...",
+  "aiPrompts.generating": "Generating...",
+  "aiPrompts.generate": "Generate Prompts",
+  "aiPrompts.suggestedPrompts": "Suggested Prompts:",
+  "aiPrompts.toastSuccessTitle": "Prompts Generated!",
+  "aiPrompts.toastSuccessDesc": "Your creative writing prompts are ready.",
+  "aiPrompts.toastErrorTitle": "Error Generating Prompts",
+  "aiPrompts.toastErrorDescFallback": "An unexpected error occurred. Please try again.",
+  "aiPrompts.error.noPrompts": "No prompts returned from AI.",
+  "validation.template.required": "Please select a template.",
+  "validation.userInput.min": "Please provide some input (at least {min} characters).",
+  "validation.userInput.max": "Input must be {max} characters or less.",
+  "templates.heroJourney": "Hero's Journey",
+  "templates.mysteryNovel": "Mystery Novel",
+  "templates.sciFiAdventure": "Sci-Fi Adventure",
+  "templates.fantasyQuest": "Fantasy Quest",
+  "templates.romanceStory": "Romance Story",
+
+  "interactive.title": "Featured Story",
+  "interactive.summaryFallback": "A Narratum tale.",
+  "interactive.untitled": "Untitled",
+  "interactive.noCover": "No Cover",
+
+  "storyCreation.title": "Craft Your Narrative",
+  "storyCreation.subtitle": "Bring your stories to life with our guided templates and AI-powered writing assistance.",
+  "storyCreation.editorTitle": "Story Editor",
+  "storyCreation.editorDescription": "This is where you'll select a template and write your story. Content fields for text, images, and choices will appear based on the chosen template.",
+  "storyCreation.editorPlaceholder": "Story Editor Interface Placeholder"
 
 }

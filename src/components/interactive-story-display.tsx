@@ -12,15 +12,21 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { useListPublishedStories } from '@/hooks/useListPublishedStories';
+import { useLocale } from '@/context/LocaleContext';
 
 const InteractiveStoryDisplay: FC = () => {
+  const { t } = useLocale();
   const { data = [], isLoading } = useListPublishedStories();
   const feature = data[0]; // later: choose by "featured" flag
 
   if (isLoading) return null;
   if (!feature) return null;
 
-  const summary = feature.description || 'A Narratum tale.';
+  const summary = feature.description || t('interactive.summaryFallback');
+
+  const placeholderUrl = `https://placehold.co/800x400?text=${encodeURIComponent(
+    t('interactive.noCover')
+  )}`;
 
   return (
     <section aria-labelledby="interactive-story-title" className="py-8 md:py-12">
@@ -29,14 +35,14 @@ const InteractiveStoryDisplay: FC = () => {
           id="interactive-story-title"
           className="text-3xl md:text-4xl font-titles font-bold text-center mb-8 text-foreground"
         >
-          Featured Story
+          {t('interactive.title')}
         </h2>
         <Link href={`/story/${feature.id}`}>
           <Card className="w-full max-w-2xl mx-auto shadow-xl overflow-hidden hover:shadow-2xl transition">
             <CardHeader className="p-0">
               <Image
-                src={feature.coverImageUrl || 'https://placehold.co/800x400?text=No+Cover'}
-                alt={feature.title || 'Untitled'}
+                src={feature.coverImageUrl || placeholderUrl}
+                alt={feature.title || t('interactive.untitled')}
                 width={800}
                 height={400}
                 className="w-full h-auto object-cover"
@@ -44,7 +50,7 @@ const InteractiveStoryDisplay: FC = () => {
             </CardHeader>
             <CardContent className="p-6">
               <CardTitle className="text-2xl font-titles mb-2">
-                {feature.title || 'Untitled'}
+                {feature.title || t('interactive.untitled')}
               </CardTitle>
               <CardDescription className="text-base mb-4 line-clamp-3">
                 {summary}

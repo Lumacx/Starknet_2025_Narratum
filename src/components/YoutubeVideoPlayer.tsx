@@ -2,6 +2,7 @@
 'use client';
 
 import React from 'react';
+import { useLocale } from '@/context/LocaleContext';
 
 interface YoutubeVideoPlayerProps {
   videoUrl: string | null;
@@ -10,6 +11,8 @@ interface YoutubeVideoPlayerProps {
 }
 
 const YoutubeVideoPlayer: React.FC<YoutubeVideoPlayerProps> = ({ videoUrl, isOpen, onClose }) => {
+  const { t } = useLocale();
+
   if (!isOpen || !videoUrl) {
     return null;
   }
@@ -19,7 +22,7 @@ const YoutubeVideoPlayer: React.FC<YoutubeVideoPlayerProps> = ({ videoUrl, isOpe
       <div className="relative bg-black rounded-2xl shadow-lg w-full max-w-4xl aspect-video">
         <iframe
           src={videoUrl}
-          title="YouTube video"
+          title={t('yt.title')}
           className="w-full h-full rounded-2xl"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowFullScreen
@@ -27,7 +30,8 @@ const YoutubeVideoPlayer: React.FC<YoutubeVideoPlayerProps> = ({ videoUrl, isOpe
         <button
           onClick={onClose}
           className="absolute -top-3 -right-3 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-md hover:bg-red-700"
-          aria-label="Close video"
+          aria-label={t('yt.close')}
+          title={t('yt.close')}
         >
           ✕
         </button>
