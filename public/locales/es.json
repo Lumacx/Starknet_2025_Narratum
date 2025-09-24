@@ -646,6 +646,14 @@
   "aiImageGeneration": "Generación de imágenes con IA",
   "imagePromptPlaceholder": "Un dragón volando sobre un castillo...",
   "generateImage": "Generar imagen",
-  "pleaseEnterImagePrompt": "Por favor, escribe una sugerencia para la imagen."
+  "pleaseEnterImagePrompt": "Por favor, escribe una sugerencia para la imagen.",
+
+  "avatar.uploadCta": "Subir nueva foto (Máx 4 MB)",
+  "avatar.uploading": "Subiendo...",
+  "avatar.uploadFailed": "Error al subir",
+  "avatar.noUser": "No hay usuario de Firebase (¿llamaste a signInAnonymously para Starknet?)",
+  "avatar.selectImage": "Por favor selecciona una imagen.",
+  "avatar.tooLarge": "Imagen demasiado grande (máx. 4 MB)."
+
 
 }

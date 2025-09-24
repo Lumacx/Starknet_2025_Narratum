@@ -659,8 +659,13 @@
   "aiImageGeneration": "AI Image Generation",
   "imagePromptPlaceholder": "A dragon soaring over a castle...",
   "generateImage": "Generate Image",
-  "pleaseEnterImagePrompt": "Please enter a prompt for the image."
+  "pleaseEnterImagePrompt": "Please enter a prompt for the image.",
 
-  
+  "avatar.uploadCta": "Upload new photo (Max 4MB)",
+  "avatar.uploading": "Uploading...",
+  "avatar.uploadFailed": "Upload failed",
+  "avatar.noUser": "No Firebase user (did you call signInAnonymously for Starknet?)",
+  "avatar.selectImage": "Please select an image.",
+  "avatar.tooLarge": "Image too large (max 4 MB)."
   
 }
