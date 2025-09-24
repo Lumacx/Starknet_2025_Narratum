@@ -622,6 +622,14 @@
   "aboutUsTitle": "ABOUT US",
   "aboutUsQuote": "Narratum is a gateway between worlds, where every voice finds its story.",
   "clickImageToVisit": "Click image to visit Narratum website",
-  "aboutUsImageAlt": "A magical portal door. Click to visit the Narratum website."
+  "aboutUsImageAlt": "A magical portal door. Click to visit the Narratum website.",
+
+  "checkoutTitle": "Checkout",
+  "paypalLoading": "Loading PayPal…",
+  "paypalSdkFailed": "PayPal SDK failed to load.",
+  "paypalTestDescription": "Narratum test checkout",
+  "paymentComplete": "Payment complete! 🎉",
+  "missingPaypalIdTitle": "Missing PayPal client ID.",
+  "setPaypalIdEnv": "Set NEXT_PUBLIC_PAYPAL_CLIENT_ID."
 
 }

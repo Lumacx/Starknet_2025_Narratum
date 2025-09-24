@@ -4,6 +4,7 @@ import React, { useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import PayPalProviderClient from '@/components/PayPalProviderClient';
 import { usePayPalScriptReducer, type ReactPayPalScriptOptions } from '@paypal/react-paypal-js';
+import { useLocale } from '@/context/LocaleContext';
 
 const PayPalButtons = dynamic(
   () => import('@paypal/react-paypal-js').then(m => m.PayPalButtons),
@@ -12,11 +13,12 @@ const PayPalButtons = dynamic(
 
 function ButtonsArea() {
   const [{ isPending, isRejected, isResolved }] = usePayPalScriptReducer();
+  const { t } = useLocale();
 
-  if (isPending) return <div className="p-4">Loading PayPal…</div>;
-  if (isRejected) return <div className="p-4 rounded border text-sm">PayPal SDK failed to load.</div>;
+  if (isPending) return <div className="p-4">{t('paypalLoading')}</div>;
+  if (isRejected) return <div className="p-4 rounded border text-sm">{t('paypalSdkFailed')}</div>;
   if (!isResolved || typeof window === 'undefined' || !(window as any).paypal) {
-    return <div className="p-4 rounded border text-sm">Payment module unavailable.</div>;
+    return <div className="p-4 rounded border text-sm">{t('paymentModuleUnavailable')}</div>;
   }
 
   return (
@@ -24,19 +26,21 @@ function ButtonsArea() {
       style={{ layout: 'vertical' }}
       createOrder={(_data, actions) =>
         actions.order.create({
-          intent: 'CAPTURE', // ← add intent
+          intent: 'CAPTURE',
           purchase_units: [
             {
               amount: { value: '5.00', currency_code: 'USD' },
-              description: 'Narratum test checkout',
+              description: t('paypalTestDescription'),
             },
           ],
         })
       }
-      onApprove={(_data, actions) => actions.order!.capture().then((details) => {
-        console.log('Order captured:', details);
-        alert('Payment complete! 🎉');
-      })}
+      onApprove={(_data, actions) =>
+        actions.order!.capture().then((details) => {
+          console.log('Order captured:', details);
+          alert(t('paymentComplete'));
+        })
+      }
       onError={(err) => console.error('PayPalButtons error', err)}
     />
   );
@@ -45,6 +49,7 @@ function ButtonsArea() {
 export default function CheckoutPage() {
   const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
   const unusable = !clientId || clientId.trim().toLowerCase() === 'test';
+  const { t } = useLocale();
 
   const options: ReactPayPalScriptOptions = useMemo(() => ({
     clientId: clientId!,
@@ -55,11 +60,12 @@ export default function CheckoutPage() {
 
   return (
     <main className="max-w-xl mx-auto py-12">
-      <h1 className="text-2xl font-semibold mb-6">Checkout</h1>
+      <h1 className="text-2xl font-semibold mb-6">{t('checkoutTitle')}</h1>
 
       {unusable ? (
         <div className="p-4 rounded border text-sm">
-          <strong>Missing PayPal client ID.</strong> Set <code>NEXT_PUBLIC_PAYPAL_CLIENT_ID</code>.
+          <strong>{t('missingPaypalIdTitle')}</strong>{' '}
+          <code>{t('setPaypalIdEnv')}</code>
         </div>
       ) : (
         <PayPalProviderClient enabled options={options}>
