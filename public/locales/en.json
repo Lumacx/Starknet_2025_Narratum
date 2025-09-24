@@ -617,6 +617,11 @@
   "storyNotFound": "Story not found.",
   "failedToLoadStory": "Failed to load story.",
 
-  "missingReaderBase": "Missing reader base path."
+  "missingReaderBase": "Missing reader base path.",
+
+  "aboutUsTitle": "ABOUT US",
+  "aboutUsQuote": "Narratum is a gateway between worlds, where every voice finds its story.",
+  "clickImageToVisit": "Click image to visit Narratum website",
+  "aboutUsImageAlt": "A magical portal door. Click to visit the Narratum website."
 
 }

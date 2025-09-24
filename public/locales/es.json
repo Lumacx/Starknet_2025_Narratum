@@ -604,8 +604,11 @@
   "storyNotFound": "Historia no encontrada.",
   "failedToLoadStory": "No se pudo cargar la historia.",
 
-  "missingReaderBase": "Falta la ruta base del lector."
+  "missingReaderBase": "Falta la ruta base del lector.",
 
-  
+  "aboutUsTitle": "SOBRE NOSOTROS",
+  "aboutUsQuote": "Narratum es un portal entre mundos, donde cada voz encuentra su historia.",
+  "clickImageToVisit": "Haz clic en la imagen para visitar el sitio de Narratum",
+  "aboutUsImageAlt": "Una puerta mágica. Haz clic para visitar el sitio de Narratum."
 
 }
