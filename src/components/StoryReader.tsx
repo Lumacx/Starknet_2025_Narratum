@@ -17,6 +17,7 @@ import {
 import "../app/story.css";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import { useLocale } from "@/context/LocaleContext";
 
 /* ------------------------------------------------------------------ */
 /* Types                                                              */
@@ -72,6 +73,8 @@ const PAGE_FLIP_SFX = "/story_reader_audio/page-flip.mp3";
 /* Component                                                           */
 /* ------------------------------------------------------------------ */
 const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
+  const { t } = useLocale();
+
   /** 0 = cover */
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
 
@@ -126,7 +129,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
 
   // compute % and set width of the green bar
   const updateProgress = React.useCallback(() => {
-    const a = currentNarrationAudioRef.current; // Use the dedicated ref here
+    const a = currentNarrationAudioRef.current;
     const fill = progressFillRef.current;
     if (!a || !fill) return;
     const pct = a.duration > 0 ? (a.currentTime / a.duration) * 100 : 0;
@@ -151,89 +154,58 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
 
   /** 🔔 When narration ends, show green glow on next arrow */
   const onEnded = React.useCallback(() => {
-    console.log("!!! onEnded triggered (via native event or fallback) for audio:", currentNarrationAudioRef.current?.src);
-    console.log("Audio currentTime at end:", currentNarrationAudioRef.current?.currentTime, "duration:", currentNarrationAudioRef.current?.duration);
-
-    // Clear any pending fallback timeout if the native 'ended' event fired
     if (endedTimeoutRef.current) {
       clearTimeout(endedTimeoutRef.current);
       endedTimeoutRef.current = null;
-      console.log("Cleared fallback timeout as native 'ended' event fired.");
     }
-
     stopRaf();
     updateProgress(); // ensure it ends at 100%
-    console.log("Narration ended. currentPageIndex:", currentPageIndex, "sortedStoryContent.length:", sortedStoryContent.length);
     if (currentPageIndex > 0 && currentPageIndex < sortedStoryContent.length) {
       setShowNextHint(true);
-      console.log("Setting showNextHint to true.");
-    } else {
-      console.log("Condition for glowing not met (onEnded).");
     }
   }, [stopRaf, updateProgress, currentPageIndex, sortedStoryContent.length]);
 
   // attach listeners to the *current* narration element
   function wireNarration(audio: HTMLAudioElement) {
-    console.log("Wiring narration audio element.", audio.src);
-
-    // Remove listeners from previous audio element if it exists
     if (currentNarrationAudioRef.current && currentNarrationAudioRef.current !== audio) {
       const prev = currentNarrationAudioRef.current;
       prev.removeEventListener("play", startRaf);
       prev.removeEventListener("pause", stopRaf);
-      prev.removeEventListener("loadedmetadata", () => {}); // No-op for cleanup
+      prev.removeEventListener("loadedmetadata", () => {});
       prev.removeEventListener("ended", onEnded);
-      console.log("Removed listeners from previous audio element.", prev.src);
     }
 
-    // Clear any existing fallback timeout before wiring new audio
     if (endedTimeoutRef.current) {
       clearTimeout(endedTimeoutRef.current);
       endedTimeoutRef.current = null;
-      console.log("Cleared previous fallback timeout before wiring new audio.");
     }
 
-    // Assign the new audio element to the ref
     currentNarrationAudioRef.current = audio;
 
-    // Attach listeners to new audio
     audio.addEventListener("play", () => {
-      console.log("Narration audio started playing.", audio.src);
-      // any time new narration starts, clear the glow hint
       setShowNextHint(false);
       startRaf();
     });
     audio.addEventListener("pause", stopRaf);
     audio.addEventListener("loadedmetadata", () => {
       updateProgress();
-      console.log("Loaded metadata for (current):", audio.src, "duration:", audio.duration);
 
-      // --- FALLBACK FOR ENDED EVENT --- //
       if (audio.duration && Number.isFinite(audio.duration)) {
-        const delay = (audio.duration * 1000) + 500; // duration in ms + 500ms buffer
-        console.log(`Attempting to set fallback 'ended' timeout for ${delay}ms for audio:`, audio.src);
-        // Always clear existing before setting a new one, though it should be clear already
+        const delay = audio.duration * 1000 + 500;
         if (endedTimeoutRef.current) clearTimeout(endedTimeoutRef.current);
         endedTimeoutRef.current = setTimeout(() => {
-          console.log("Fallback 'ended' timeout triggered.", audio.src);
-          // Manually call onEnded, ensuring the event is processed
           onEnded();
         }, delay);
-      } else {
-        console.warn("Audio duration not available, fallback timeout not set for:", audio.src);
       }
-      // --- END FALLBACK --- //
     });
     audio.addEventListener("ended", onEnded);
-    console.log("Attached 'ended' listener to new audio element.", audio.src);
 
-    // reset bar (0% until metadata lands, then we update)
     updateProgress();
   }
 
   // allow click-to-seek on the bar
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
-    const a = currentNarrationAudioRef.current; // Use the dedicated ref here
+    const a = currentNarrationAudioRef.current;
     if (!a || !a.duration) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const ratio = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
@@ -258,7 +230,6 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
       return;
     }
 
-    // fallback: use any parent-provided onBack, else browser history
     if (onBack) {
       onBack();
       return;
@@ -274,21 +245,19 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
   useEffect(() => {
     return () => {
       stopRaf();
-      if (currentNarrationAudioRef.current) { // Use the dedicated ref here
+      if (currentNarrationAudioRef.current) {
         const a = currentNarrationAudioRef.current;
         a.removeEventListener("play", startRaf);
         a.removeEventListener("pause", stopRaf);
-        a.removeEventListener("loadedmetadata", () => {}); // placeholder for cleanup
+        a.removeEventListener("loadedmetadata", () => {});
         a.removeEventListener("ended", onEnded);
-        console.log("Cleaned up listeners on unmount.", a.src);
       }
       if (endedTimeoutRef.current) {
-        console.log("Clearing pending fallback timeout on unmount.");
         clearTimeout(endedTimeoutRef.current);
         endedTimeoutRef.current = null;
       }
     };
-  }, [stopRaf, startRaf, onEnded]); // Removed updateProgress from deps as it's not used in cleanup here
+  }, [stopRaf, startRaf, onEnded]);
 
   /* Init SFX once */
   useEffect(() => {
@@ -303,7 +272,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
 
     return () => {
       backgroundMusicRef.current?.pause();
-      currentNarrationAudioRef.current?.pause(); // Use the dedicated ref here
+      currentNarrationAudioRef.current?.pause();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -364,10 +333,10 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
   const pageSize = indexCols * 2; // exactly 2 rows
   const indexItems = useMemo(
     () => [
-      { label: "Cover", idx: 0 },
+      { label: t("reader.index.cover"), idx: 0 },
       ...sortedStoryContent.map((_, i) => ({ label: String(i + 1), idx: i + 1 })),
     ],
-    [sortedStoryContent]
+    [sortedStoryContent, t]
   );
   const totalIndexPages = Math.max(1, Math.ceil(indexItems.length / pageSize));
   const pageStart = indexPage * pageSize;
@@ -375,7 +344,6 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
   const canPrevIndex = indexPage > 0;
   const canNextIndex = indexPage < totalIndexPages - 1;
 
-  // keep the current page's chip visible if user navigates via arrows
   useEffect(() => {
     const cur = currentPageIndex; // 0..N
     const requiredPage = Math.floor(cur / pageSize);
@@ -397,27 +365,20 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
 
   const playNarration = (audioUrl: string) => {
     if (!audioUrl) return;
-    // Pause any currently playing narration *before* creating a new one
     if (currentNarrationAudioRef.current) currentNarrationAudioRef.current.pause();
 
     const newAudio = new Audio(audioUrl);
-    currentNarrationAudioRef.current = newAudio; // Set the ref immediately
-
-    // 🔄 any new narration clears hint immediately
+    currentNarrationAudioRef.current = newAudio;
     setShowNextHint(false);
-
-    wireNarration(newAudio); // Pass the new audio element directly
-
-    newAudio
-      .play()
-      .catch((e) => console.error("Narration play failed:", e));
+    wireNarration(newAudio);
+    newAudio.play().catch(() => {});
   };
 
   const goToIndex = (nextIndex: number) => {
     if (nextIndex < 0 || nextIndex > sortedStoryContent.length) return;
     pageTurnSoundRef.current?.play();
     setCurrentPageIndex(nextIndex);
-    setShowNextHint(false); // navigating hides the hint
+    setShowNextHint(false);
     const pg = nextIndex > 0 ? sortedStoryContent[nextIndex - 1] : null;
     if (pg?.audioUrl) playNarration(pg.audioUrl);
   };
@@ -458,6 +419,8 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
     story.coverImageUrl || sortedStoryContent[0]?.imageUrl || "";
   const storyImageSrc = currentPageContent?.imageUrl || coverImage || "";
 
+  const startLabel = t("reader.startStory");
+
   return (
     <div id="app-container" ref={rootRef} onClick={handleUserInteraction}>
       {/* ----------------------- Header ----------------------- */}
@@ -466,20 +429,20 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
           <button
             onClick={handleBackClick}
             className="header-icon-btn"
-            aria-label="Back"
-            title="Back"
+            aria-label={t("reader.back")}
+            title={t("reader.back")}
           >
-            ← Back
+            ← {t("reader.back")}
           </button>
 
-          <div id="welcome-text">{story.title ?? "Untitled"}</div>
+          <div id="welcome-text">{story.title ?? t("reader.untitled")}</div>
         </div>
 
         <div id="header-icons">
           <button
             className="header-icon-btn"
-            aria-label="Font size"
-            title="Font size"
+            aria-label={t("reader.icon.fontSize")}
+            title={t("reader.icon.fontSize")}
             onClick={bumpFont}
           >
             <FontAwesomeIcon icon={faFont} />
@@ -487,8 +450,8 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
 
           <button
             className="header-icon-btn"
-            aria-label="Change background"
-            title="Change background"
+            aria-label={t("reader.icon.changeBackground")}
+            title={t("reader.icon.changeBackground")}
             onClick={cycleBackground}
           >
             <FontAwesomeIcon icon={faPaintBrush} />
@@ -498,8 +461,8 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
             onClick={toggleBackgroundMusic}
             id="play-music-button"
             className="header-icon-btn"
-            aria-label="Toggle music"
-            title="Toggle music"
+            aria-label={t("reader.icon.toggleMusic")}
+            title={t("reader.icon.toggleMusic")}
           >
             <FontAwesomeIcon icon={musicPlaying ? faVolumeMute : faVolumeUp} />
           </button>
@@ -507,8 +470,8 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
           <button
             id="options-button-new"
             className="header-icon-btn"
-            aria-label="Settings"
-            title="Settings"
+            aria-label={t("reader.icon.settings")}
+            title={t("reader.icon.settings")}
             onClick={() => setShowSettings((v) => !v)}
           >
             <FontAwesomeIcon icon={faCog} />
@@ -522,22 +485,32 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
           id="options-popup"
           className="visible"
           role="dialog"
-          aria-label="Reader Settings"
+          aria-label={t("reader.settings.aria")}
         >
           <button id="close-popup-button" onClick={() => setShowSettings(false)}>
             ×
           </button>
-          <h4>Reader Settings</h4>
+          <h4>{t("reader.settings.title")}</h4>
           <div className="popup-option">
-            <label>Font scale</label>
-            <div>{fontScale.toFixed(1)} (max 1.2)</div>
+            <label>{t("reader.settings.fontScale")}</label>
+            <div>
+              {fontScale.toFixed(1)}{" "}
+              {t("reader.settings.maxLabel").replace("{max}", "1.2")}
+            </div>
           </div>
           <div className="popup-option">
-            <label>Background</label>
+            <label>{t("reader.settings.background")}</label>
             <div>
               {bgIdx === 0
-                ? "Story default"
-                : `Choice ${(bgIdx - 1 + BG_CHOICES.length) % BG_CHOICES.length + 1}/${BG_CHOICES.length}`}
+                ? t("reader.settings.storyDefault")
+                : t("reader.settings.choiceOf")
+                    .replace(
+                      "{current}",
+                      String(
+                        (bgIdx - 1 + BG_CHOICES.length) % BG_CHOICES.length + 1
+                      )
+                    )
+                    .replace("{total}", String(BG_CHOICES.length))}
             </div>
           </div>
         </div>
@@ -549,8 +522,8 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
           id="arrow-left"
           onClick={previousPage}
           className={`nav-arrow ${currentPageIndex === 0 ? "hidden" : ""}`}
-          aria-label="Previous Page"
-          title="Previous Page"
+          aria-label={t("reader.nav.prevPage")}
+          title={t("reader.nav.prevPage")}
         >
           <FontAwesomeIcon icon={faChevronLeft} />
         </button>
@@ -558,11 +531,12 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
         <button
           id="narration-pause-play-button"
           className="nav-arrow"
-          aria-label="Pause/Play Narration"
-          title="Pause/Play Narration"
+          aria-label={t("reader.nav.pausePlayNarration")}
+          title={t("reader.nav.pausePlayNarration")}
           onClick={() => {
             if (!currentNarrationAudioRef.current) return;
-            if (currentNarrationAudioRef.current.paused) currentNarrationAudioRef.current.play();
+            if (currentNarrationAudioRef.current.paused)
+              currentNarrationAudioRef.current.play();
             else currentNarrationAudioRef.current.pause();
           }}
         >
@@ -583,8 +557,8 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
           className={`nav-arrow ${
             currentPageIndex === sortedStoryContent.length ? "hidden" : ""
           } ${showNextHint ? "glow-next" : ""}`}
-          aria-label="Next Page"
-          title="Next Page"
+          aria-label={t("reader.nav.nextPage")}
+          title={t("reader.nav.nextPage")}
         >
           <FontAwesomeIcon icon={faChevronRight} />
         </button>
@@ -598,7 +572,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
             <img
               id="avatar-image"
               src={avatarUrl}
-              alt="Narrator Avatar"
+              alt={t("reader.alt.narratorAvatar")}
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).src = DEFAULT_AVATAR;
               }}
@@ -607,13 +581,13 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
 
           {currentPageIndex === 0 && (
             <button id="start-story-button" onClick={startStory}>
-              Start Story
+              {startLabel}
             </button>
           )}
 
           {hasFreeNav && sortedStoryContent.length > 0 && (
             <div className="index-box" style={{ width: "100%" }}>
-              <div className="index-title">Overview Index</div>
+              <div className="index-title">{t("reader.index.title")}</div>
 
               {totalIndexPages > 1 && (
                 <div className="index-pager">
@@ -621,8 +595,8 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
                     className="index-nav"
                     disabled={!canPrevIndex}
                     onClick={() => setIndexPage((p) => Math.max(0, p - 1))}
-                    aria-label="Previous index page"
-                    title="Previous"
+                    aria-label={t("reader.index.prevAria")}
+                    title={t("reader.index.prev")}
                   >
                     ‹
                   </button>
@@ -635,8 +609,8 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
                     onClick={() =>
                       setIndexPage((p) => Math.min(totalIndexPages - 1, p + 1))
                     }
-                    aria-label="Next index page"
-                    title="Next"
+                    aria-label={t("reader.index.nextAria")}
+                    title={t("reader.index.next")}
                   >
                     ›
                   </button>
@@ -656,7 +630,11 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
                     className={`chip-btn ${
                       currentPageIndex === it.idx ? "active" : ""
                     }`}
-                    title={it.idx === 0 ? "Cover" : `Page ${it.idx}`}
+                    title={
+                      it.idx === 0
+                        ? t("reader.index.cover")
+                        : t("reader.index.page").replace("{num}", String(it.idx))
+                    }
                   >
                     {it.label}
                   </button>
@@ -674,7 +652,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
                 id="story-image"
                 className="story-img"
                 src={storyImageSrc}
-                alt="Story Image"
+                alt={t("reader.alt.storyImage")}
               />
             ) : null}
           </div>
@@ -685,7 +663,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
       <div id="text-area" style={{ marginTop: "min(2.4vh, 20px)" }}>
         <div id="text-bubble">
           {currentPageIndex === 0
-            ? 'Click "Start Story" to begin.'
+            ? t("reader.text.clickToStart").replace("{startLabel}", startLabel)
             : currentPageContent?.textContent || ""}
         </div>
 
@@ -694,7 +672,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
             id="read-again-button"
             onClick={() => playNarration(currentPageContent.audioUrl!)}
           >
-            <FontAwesomeIcon icon={faRedo} /> Read it again
+            <FontAwesomeIcon icon={faRedo} /> {t("reader.readAgain")}
           </button>
         )}
       </div>
@@ -702,9 +680,9 @@ const StoryReader: React.FC<StoryReaderProps> = ({ story, onBack }) => {
       {/* ------------------------ Footer ---------------------- */}
       <footer id="app-footer">
         <div id="page-info">
-          {currentPageIndex === 0
-            ? `Page 0 of ${sortedStoryContent.length}`
-            : `Page ${currentPageIndex} of ${sortedStoryContent.length}`}
+          {t("reader.pageInfo")
+            .replace("{current}", String(currentPageIndex))
+            .replace("{total}", String(sortedStoryContent.length))}
         </div>
       </footer>
 

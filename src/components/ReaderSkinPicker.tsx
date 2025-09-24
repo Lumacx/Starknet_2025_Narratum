@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { storage } from '@/lib/firebase';
 import { ref, listAll, getDownloadURL, uploadBytes, deleteObject } from 'firebase/storage';
 import { useAuth } from '@/context/AuthContext';
+import { useLocale } from '@/context/LocaleContext';
 
 const PUBLIC_AVATARS = [
   '/story_reader_avatars/Default.png',
@@ -32,6 +33,7 @@ export default function ReaderSkinPicker({
   initialBackgroundUrl,
   onChange,
 }: Props) {
+  const { t } = useLocale();
   const { user } = useAuth();
   const [tabAva, setTabAva] = useState<Tab>('public');
   const [tabBg, setTabBg] = useState<Tab>('public');
@@ -67,7 +69,7 @@ export default function ReaderSkinPicker({
   useEffect(() => { onChange({ avatarUrl, backgroundUrl }); }, [avatarUrl, backgroundUrl, onChange]);
 
   async function upload(kind: 'avatar' | 'background', file: File) {
-    if (!user) return alert('Sign in to upload.');
+    if (!user) return alert(t('readerSkin.signInToUpload'));
     const base = `users/${user.uid}/reader/${kind === 'avatar' ? 'avatars' : 'backgrounds'}`;
     const dest = ref(storage, `${base}/${file.name}`);
     await uploadBytes(dest, file);
@@ -83,7 +85,7 @@ export default function ReaderSkinPicker({
 
   async function remove(fullPath?: string) {
     if (!fullPath) return;
-    if (!confirm('Delete this asset?')) return;
+    if (!confirm(t('readerSkin.deleteConfirm'))) return;
     await deleteObject(ref(storage, fullPath));
     setMyAvatars((g) => g.filter((x) => x.fullPath !== fullPath));
     setMyBackgrounds((g) => g.filter((x) => x.fullPath !== fullPath));
@@ -94,19 +96,19 @@ export default function ReaderSkinPicker({
       {/* AVATAR */}
       <div className="border rounded-xl p-4 bg-white/80">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-[#3D4F60]">Reader Avatar</h3>
+          <h3 className="font-semibold text-[#3D4F60]">{t('readerSkin.readerAvatar')}</h3>
           <div className="flex gap-2">
             <button
               className={`px-3 py-1 rounded ${tabAva === 'public' ? 'bg-[#E97451] text-white' : 'border'}`}
               onClick={() => setTabAva('public')}
             >
-              Public
+              {t('readerSkin.tab.public')}
             </button>
             <button
               className={`px-3 py-1 rounded ${tabAva === 'my' ? 'bg-[#E97451] text-white' : 'border'}`}
               onClick={() => setTabAva('my')}
             >
-              My uploads
+              {t('readerSkin.tab.myUploads')}
             </button>
           </div>
         </div>
@@ -120,11 +122,11 @@ export default function ReaderSkinPicker({
                 className={`border rounded overflow-hidden ${avatarUrl === u ? 'ring-2 ring-[#E97451]' : ''}`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={u} alt="avatar" className="w-full h-20 object-cover" />
+                <img src={u} alt={t('readerSkin.alt.avatar')} className="w-full h-20 object-cover" />
               </button>
             ))}
             <button onClick={() => setAvatarUrl(null)} className="border rounded p-2 text-sm">
-              None
+              {t('readerSkin.none')}
             </button>
           </div>
         ) : (
@@ -138,22 +140,27 @@ export default function ReaderSkinPicker({
                 onChange={(e) => e.target.files?.[0] && upload('avatar', e.target.files[0])}
               />
               <button className="border rounded px-3 py-1" onClick={() => uploadARef.current?.click()}>
-                Upload avatar
+                {t('readerSkin.uploadAvatar')}
               </button>
             </div>
             <div className="grid grid-cols-4 gap-3">
               {myAvatars.map((it) => (
                 <div key={it.url} className={`border rounded overflow-hidden ${avatarUrl === it.url ? 'ring-2 ring-[#E97451]' : ''}`}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={it.url} alt={it.name} className="w-full h-20 object-cover cursor-pointer" onClick={() => setAvatarUrl(it.url)} />
+                  <img
+                    src={it.url}
+                    alt={it.name}
+                    className="w-full h-20 object-cover cursor-pointer"
+                    onClick={() => setAvatarUrl(it.url)}
+                  />
                   <div className="flex items-center justify-between text-xs p-1">
                     <span className="truncate">{it.name}</span>
-                    <button className="text-red-600" onClick={() => remove(it.fullPath)}>✕</button>
+                    <button className="text-red-600" onClick={() => remove(it.fullPath)} aria-label="delete">✕</button>
                   </div>
                 </div>
               ))}
               <button onClick={() => setAvatarUrl(null)} className="border rounded p-2 text-sm">
-                None
+                {t('readerSkin.none')}
               </button>
             </div>
           </div>
@@ -163,19 +170,19 @@ export default function ReaderSkinPicker({
       {/* BACKGROUND */}
       <div className="border rounded-xl p-4 bg-white/80">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-[#3D4F60]">Reader Background</h3>
+          <h3 className="font-semibold text-[#3D4F60]">{t('readerSkin.readerBackground')}</h3>
           <div className="flex gap-2">
             <button
               className={`px-3 py-1 rounded ${tabBg === 'public' ? 'bg-[#E97451] text-white' : 'border'}`}
               onClick={() => setTabBg('public')}
             >
-              Public
+              {t('readerSkin.tab.public')}
             </button>
             <button
               className={`px-3 py-1 rounded ${tabBg === 'my' ? 'bg-[#E97451] text-white' : 'border'}`}
               onClick={() => setTabBg('my')}
             >
-              My uploads
+              {t('readerSkin.tab.myUploads')}
             </button>
           </div>
         </div>
@@ -189,11 +196,11 @@ export default function ReaderSkinPicker({
                 className={`border rounded overflow-hidden ${backgroundUrl === u ? 'ring-2 ring-[#E97451]' : ''}`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={u} alt="bg" className="w-full h-20 object-cover" />
+                <img src={u} alt={t('readerSkin.alt.background')} className="w-full h-20 object-cover" />
               </button>
             ))}
             <button onClick={() => setBackgroundUrl(null)} className="border rounded p-2 text-sm">
-              None
+              {t('readerSkin.none')}
             </button>
           </div>
         ) : (
@@ -207,22 +214,27 @@ export default function ReaderSkinPicker({
                 onChange={(e) => e.target.files?.[0] && upload('background', e.target.files[0])}
               />
               <button className="border rounded px-3 py-1" onClick={() => uploadBRef.current?.click()}>
-                Upload background
+                {t('readerSkin.uploadBackground')}
               </button>
             </div>
             <div className="grid grid-cols-4 gap-3">
               {myBackgrounds.map((it) => (
                 <div key={it.url} className={`border rounded overflow-hidden ${backgroundUrl === it.url ? 'ring-2 ring-[#E97451]' : ''}`}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={it.url} alt={it.name} className="w-full h-20 object-cover cursor-pointer" onClick={() => setBackgroundUrl(it.url)} />
+                  <img
+                    src={it.url}
+                    alt={it.name}
+                    className="w-full h-20 object-cover cursor-pointer"
+                    onClick={() => setBackgroundUrl(it.url)}
+                  />
                   <div className="flex items-center justify-between text-xs p-1">
                     <span className="truncate">{it.name}</span>
-                    <button className="text-red-600" onClick={() => remove(it.fullPath)}>✕</button>
+                    <button className="text-red-600" onClick={() => remove(it.fullPath)} aria-label="delete">✕</button>
                   </div>
                 </div>
               ))}
               <button onClick={() => setBackgroundUrl(null)} className="border rounded p-2 text-sm">
-                None
+                {t('readerSkin.none')}
               </button>
             </div>
           </div>

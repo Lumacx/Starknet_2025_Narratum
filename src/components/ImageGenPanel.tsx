@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useLocale } from '@/context/LocaleContext';
 
 export default function ImageGenPanel() {
+  const { t } = useLocale();
   const [prompt, setPrompt] = useState('');
-  const [aspectRatio, setAspectRatio] = useState<'1:1'|'16:9'|'9:16'>('1:1');
-  const [img, setImg] = useState<string|undefined>();
+  const [aspectRatio, setAspectRatio] = useState<'1:1' | '16:9' | '9:16'>('1:1');
+  const [img, setImg] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string|undefined>();
+  const [error, setError] = useState<string | undefined>();
 
   const generate = async () => {
     setLoading(true);
@@ -23,7 +25,7 @@ export default function ImageGenPanel() {
       if (!res.ok || error) throw new Error(error || `HTTP ${res.status}`);
       setImg(dataUrl);
     } catch (e: any) {
-      setError(e?.message || 'Failed to generate image');
+      setError(e?.message || t('imageGen.errorFallback'));
     } finally {
       setLoading(false);
     }
@@ -31,15 +33,15 @@ export default function ImageGenPanel() {
 
   return (
     <div className="flex flex-col gap-3 p-4 rounded-xl border">
-      <label className="text-sm font-medium">Prompt</label>
+      <label className="text-sm font-medium">{t('imageGen.promptLabel')}</label>
       <textarea
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
         className="w-full min-h-24 p-2 rounded border bg-transparent"
-        placeholder="Robot holding a red skateboard"
+        placeholder={t('imageGen.promptPlaceholder')}
       />
       <div className="flex items-center gap-3">
-        <label className="text-sm">Aspect Ratio</label>
+        <label className="text-sm">{t('imageGen.aspectRatioLabel')}</label>
         <select
           value={aspectRatio}
           onChange={(e) => setAspectRatio(e.target.value as any)}
@@ -54,16 +56,16 @@ export default function ImageGenPanel() {
           disabled={loading || !prompt.trim()}
           className="px-4 py-2 rounded-lg bg-black text-white disabled:opacity-50"
         >
-          {loading ? 'Generating…' : 'Generate'}
+          {loading ? t('imageGen.generating') : t('imageGen.generate')}
         </button>
       </div>
 
       {error && <p className="text-red-500 text-sm">{error}</p>}
       {img && (
         <div className="mt-2">
-          <img src={img} alt="generated" className="max-w-full rounded-lg" />
-          <a href={img} download="imagen.png" className="text-blue-500 underline text-sm">
-            Download PNG
+          <img src={img} alt={t('imageGen.generatedAlt')} className="max-w-full rounded-lg" />
+          <a href={img} download="image.png" className="text-blue-500 underline text-sm">
+            {t('imageGen.downloadPng')}
           </a>
         </div>
       )}

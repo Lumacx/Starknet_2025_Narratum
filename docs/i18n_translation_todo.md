@@ -52,10 +52,10 @@ This list focuses on files likely to contain significant user-facing text, start
 - [x] `src/components/CoverImageManager.tsx`
 - [x] `src/components/GSIButton.tsx`
 - [x] `src/components/GenreMultiSelect.tsx`
-- [ ] `src/components/ImageGenPanel.tsx`
-- [ ] `src/components/InfoPopover.tsx`
-- [ ] `src/components/PayPalProviderClient.tsx`
-- [ ] `src/components/ReaderSkinPicker.tsx`
+- [x] `src/components/ImageGenPanel.tsx`
+- [x] `src/components/InfoPopover.tsx`
+- [x] `src/components/PayPalProviderClient.tsx`
+- [x] `src/components/ReaderSkinPicker.tsx`
 - [ ] `src/components/StoryReader.tsx`
 - [ ] `src/components/UploadImageReference.tsx`
 - [ ] `src/components/YoutubeVideoPlayer.tsx`

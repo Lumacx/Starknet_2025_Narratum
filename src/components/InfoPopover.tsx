@@ -5,13 +5,11 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Info, X, Clipboard, Check, ExternalLink } from 'lucide-react';
+import { useLocale } from '@/context/LocaleContext';
 
 type InfoPopoverProps = {
   title: string;
-  /** Path to a markdown or image file under /public, e.g.:
-   *  - /info_tips/character-creation-template.md
-   *  - /info_tips/master_prompt_guidance.PNG
-   */
+  /** Path to a markdown or image file under /public */
   docHref: string;
   /** Called when a fenced ```prompt block is used (only for MD files) */
   onUsePrompt?: (text: string) => void;
@@ -37,6 +35,7 @@ export default function InfoPopover({
   size = 16,
   imageAlt,
 }: InfoPopoverProps) {
+  const { t } = useLocale();
   const [open, setOpen] = useState(false);
   const [md, setMd] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -61,10 +60,10 @@ export default function InfoPopover({
         const res = await fetch(url, { cache: 'no-store' });
         const text = res.ok
           ? await res.text()
-          : `⚠️ Could not load: ${docHref}\n\nHTTP ${res.status}`;
+          : `⚠️ ${t('infoPopover.unsupportedFor').replace('{path}', docHref)}\n\nHTTP ${res.status}`;
         if (!cancelled) setMd(text);
       } catch (e: any) {
-        if (!cancelled) setMd(`⚠️ Error loading ${docHref}\n\n${e?.message || e}`);
+        if (!cancelled) setMd(`⚠️ ${t('infoPopover.unsupportedFor').replace('{path}', docHref)}\n\n${e?.message || e}`);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -72,7 +71,7 @@ export default function InfoPopover({
     return () => {
       cancelled = true;
     };
-  }, [open, docHref, kind]);
+  }, [open, docHref, kind, t]);
 
   // Extract fenced ```prompt blocks to show “Use in App” / Copy (MD only)
   const promptBlocks = useMemo(() => {
@@ -126,7 +125,7 @@ export default function InfoPopover({
       <button
         type="button"
         className="inline-flex items-center justify-center w-6 h-6 rounded-full border text-xs hover:bg-black/5 dark:hover:bg-white/10"
-        aria-label={`Open: ${title}`}
+        aria-label={t('infoPopover.openAria').replace('{title}', title)}
         onClick={() => setOpen(true)}
       >
         <Info size={size} />
@@ -144,14 +143,14 @@ export default function InfoPopover({
               <h3 className="font-semibold flex-1 truncate">{title}</h3>
               {kind === 'markdown' && promptBlocks.length > 0 && (
                 <div className="text-xs px-2 py-1 rounded-full border">
-                  {promptBlocks.length} prompt{promptBlocks.length > 1 ? 's' : ''} found
+                  {t('infoPopover.promptsFound').replace('{count}', String(promptBlocks.length))}
                 </div>
               )}
               <button
                 type="button"
                 className="ml-2 p-1 rounded hover:bg-black/10 dark:hover:bg-white/10"
                 onClick={() => setOpen(false)}
-                aria-label="Close"
+                aria-label={t('infoPopover.closeAria')}
               >
                 <X size={18} />
               </button>
@@ -161,10 +160,10 @@ export default function InfoPopover({
               <article className="p-4 overflow-auto prose prose-sm md:prose max-w-none dark:prose-invert">
                 {kind === 'markdown' ? (
                   loading ? (
-                    <div className="opacity-70 text-sm">Loading…</div>
+                    <div className="opacity-70 text-sm">{t('infoPopover.loading')}</div>
                   ) : (
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {md || '_No content_'}
+                      {md || `_${t('infoPopover.noContent')}_`}
                     </ReactMarkdown>
                   )
                 ) : kind === 'image' ? (
@@ -178,13 +177,14 @@ export default function InfoPopover({
                   </div>
                 ) : (
                   <div className="opacity-70 text-sm">
-                    Unsupported file type for: <code>{docHref}</code>
+                    {t('infoPopover.unsupportedFor').replace('{path}', docHref)}{' '}
+                    <code>{docHref}</code>
                   </div>
                 )}
               </article>
 
               <aside className="p-4 border-t md:border-t-0 md:border-l flex flex-col gap-3">
-                <div className="font-semibold text-sm">Actions</div>
+                <div className="font-semibold text-sm">{t('infoPopover.actions')}</div>
 
                 {kind === 'markdown' ? (
                   promptBlocks.length === 0 ? (
@@ -193,33 +193,35 @@ export default function InfoPopover({
                         className="px-3 py-2 rounded bg-[#E97451] text-white text-sm"
                         onClick={() => useInApp(md.trim())}
                       >
-                        Use entire doc in app
+                        {t('infoPopover.useEntireDoc')}
                       </button>
                       <button
                         className="px-3 py-2 rounded border text-sm"
                         onClick={() => copy(md.trim(), 0)}
                       >
-                        Copy entire doc
+                        {t('infoPopover.copyEntireDoc')}
                       </button>
                     </>
                   ) : (
                     promptBlocks.map((p, i) => (
                       <div key={i} className="rounded-lg border p-2">
-                        <div className="text-xs mb-2 font-semibold">Prompt #{i + 1}</div>
+                        <div className="text-xs mb-2 font-semibold">
+                          {t('infoPopover.promptTitle').replace('{num}', String(i + 1))}
+                        </div>
                         <div className="flex gap-2">
                           <button
                             className="flex-1 px-3 py-2 rounded bg-[#E97451] text-white text-sm"
                             onClick={() => useInApp(p)}
                           >
-                            Use in App
+                            {t('infoPopover.useInApp')}
                           </button>
                           <button
                             className="px-3 py-2 rounded border text-sm inline-flex items-center gap-1"
                             onClick={() => copy(p, i)}
-                            title="Copy to clipboard"
+                            title={t('infoPopover.copyToClipboardTitle')}
                           >
                             {copiedIdx === i ? <Check size={14} /> : <Clipboard size={14} />}
-                            {copiedIdx === i ? 'Copied' : 'Copy'}
+                            {copiedIdx === i ? t('infoPopover.copied') : t('infoPopover.copy')}
                           </button>
                         </div>
                       </div>
@@ -233,19 +235,24 @@ export default function InfoPopover({
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      Open full size <ExternalLink size={14} />
+                      {t('infoPopover.openFullSize')} <ExternalLink size={14} />
                     </a>
                     <button
                       className="px-3 py-2 rounded border text-sm inline-flex items-center gap-1"
-                      onClick={() => copy(window.location.origin ? `${window.location.origin}${imageUrl}` : imageUrl, 1)}
-                      title="Copy image URL"
+                      onClick={() =>
+                        copy(
+                          (window.location.origin ? `${window.location.origin}${imageUrl}` : imageUrl),
+                          1
+                        )
+                      }
+                      title={t('infoPopover.copyImageUrlTitle')}
                     >
                       {copiedIdx === 1 ? <Check size={14} /> : <Clipboard size={14} />}
-                      {copiedIdx === 1 ? 'Copied' : 'Copy URL'}
+                      {copiedIdx === 1 ? t('infoPopover.copied') : t('infoPopover.copyUrl')}
                     </button>
                   </>
                 ) : (
-                  <div className="text-xs opacity-70">No actions available.</div>
+                  <div className="text-xs opacity-70">{t('infoPopover.noActions')}</div>
                 )}
               </aside>
             </div>

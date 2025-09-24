@@ -3,6 +3,7 @@
 
 import React from 'react';
 import { PayPalScriptProvider, type ReactPayPalScriptOptions } from '@paypal/react-paypal-js';
+import { useLocale } from '@/context/LocaleContext';
 
 type Props = {
   children: React.ReactNode;
@@ -23,6 +24,7 @@ export default function PayPalProviderClient({
   enabled = true,
   options,
 }: Props) {
+  const { t } = useLocale();
   const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
 
   // If no usable clientId or provider explicitly disabled, render without SDK.
@@ -32,13 +34,11 @@ export default function PayPalProviderClient({
   if (!enabled || unusableClientId) {
     if (typeof window !== 'undefined' && !enabled) {
       // eslint-disable-next-line no-console
-      console.warn('[PayPal] Provider disabled via prop; rendering without SDK.');
+      console.warn(t('paypal.providerDisabled'));
     }
     if (typeof window !== 'undefined' && unusableClientId) {
       // eslint-disable-next-line no-console
-      console.warn(
-        "[PayPal] Missing or invalid NEXT_PUBLIC_PAYPAL_CLIENT_ID. Skipping SDK injection to avoid page crash."
-      );
+      console.warn(t('paypal.invalidClientId'));
     }
     return <>{children}</>;
   }
@@ -63,7 +63,7 @@ export default function PayPalProviderClient({
     options: merged,
     onScriptLoadError: (err: unknown) => {
       // eslint-disable-next-line no-console
-      console.error('[PayPal] SDK failed to load:', err);
+      console.error(t('paypal.sdkFailedToLoad'), err);
       // Do not throw — keep the rest of the page usable.
     },
     // Optional: if you want to delay loading until a child (Buttons/Fields) mounts
