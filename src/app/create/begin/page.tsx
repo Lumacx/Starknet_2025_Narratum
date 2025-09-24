@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState, useCallback, useRef  } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -27,35 +27,39 @@ import { ref, uploadBytes, uploadString, getDownloadURL } from 'firebase/storage
 import { useCreateStory } from '@/hooks/useCreateStory';
 import { uploadCoverToStory } from '@/lib/uploadCover';
 
-/* 🔗 NEW: Cloud Functions (credit deduction) */
+/* 🔗 Cloud Functions (créditos) */
 import { getFunctions, httpsCallable } from 'firebase/functions';
+
+/* 🌐 i18n */
+import { useLocale } from '@/context/LocaleContext';
 
 /* ------------------------------------------------------------------ */
 /* Page constants & types                                              */
 /* ------------------------------------------------------------------ */
+/** Mantenemos los valores canónicos en inglés para persistencia/filtros */
 const GENRES = [
   'Fantasy','Sci-Fi','Mystery','Horror','Romance','Adventure',"Children's",
   'Comedy','Drama','Action','Other',
 ] as const;
 
 const CATEGORIES = [
-  { key: 'short',    label: 'Short Story (1–10 slides)', min: 1, max: 10 },
-  { key: 'novela',   label: 'Novela (5–20 slides)',      min: 5, max: 20 },
-  { key: 'campaign', label: 'Campaign (1–20 slides)',    min: 1, max: 20 },
+  { key: 'short',    min: 1, max: 10 },
+  { key: 'novela',   min: 5, max: 20 },
+  { key: 'campaign', min: 1, max: 20 },
 ] as const;
 
 const LANGUAGES = [
-  { code: 'en', label: 'English' },
-  { code: 'es', label: 'Español' },
-  { code: 'pt', label: 'Português' },
-  { code: 'fr', label: 'Français' },
-  { code: 'de', label: 'Deutsch' },
-  { code: 'it', label: 'Italiano' },
-  { code: 'ja', label: '日本語' },
-  { code: 'ko', label: '한국어' },
-  { code: 'zh', label: '中文' },
-  { code: 'hi', label: 'हिन्दी' },
-  { code: 'ar', label: 'العربية' },
+  { code: 'en', labelKey: 'langEnglish' },
+  { code: 'es', labelKey: 'langSpanish' },
+  { code: 'pt', labelKey: 'langPortuguese' },
+  { code: 'fr', labelKey: 'langFrench' },
+  { code: 'de', labelKey: 'langGerman' },
+  { code: 'it', labelKey: 'langItalian' },
+  { code: 'ja', labelKey: 'langJapanese' },
+  { code: 'ko', labelKey: 'langKorean' },
+  { code: 'zh', labelKey: 'langChinese' },
+  { code: 'hi', labelKey: 'langHindi' },
+  { code: 'ar', labelKey: 'langArabic' },
 ] as const;
 
 type LangCode = typeof LANGUAGES[number]['code'];
@@ -109,7 +113,7 @@ const DEFAULTS = {
   backgroundUrl: '/story_reader_backgrounds/dream-background.png',
 };
 
-/* ⭐ NEW: Creation credit costs */
+/* ⭐ Creación: costo en créditos */
 const CREATION_CREDIT_COSTS: Record<Draft['category'], number> = {
   short: 5,
   novela: 10,
@@ -133,7 +137,6 @@ function clampPagesForCategory(catKey: Draft['category'], pages: number) {
 function buildPremiumPayloadFromDraft(d: any) {
   const p = (d?.premium ?? {}) as any;
 
-  // accept either draft.premium.* …or loose fields on draft
   const convai = (p.convaiAgentId ?? d?.convaiAgentId ?? '').trim?.() ?? '';
   const teaser = (p.teaserVideoUrl ?? d?.teaserVideoUrl ?? '').trim?.() ?? '';
   const freeIdx =
@@ -156,12 +159,26 @@ function buildPremiumPayloadFromDraft(d: any) {
 /* ------------------------------------------------------------------ */
 export default function BeginPage() {
   const router = useRouter();
+  const { t, locale } = useLocale();
 
-  /* 🔄 NEW: also consume userCredits from Auth context */
+// Pequeño wrapper para interpolación con {placeholders}
+const tr = React.useCallback(
+  (key: string, vars?: Record<string, any>) => {
+    let s = t(key) as string;
+    if (!vars) return s;
+    return s.replace(/\{(\w+)\}/g, (_, m) =>
+      vars[m] !== undefined && vars[m] !== null ? String(vars[m]) : `{${m}}`
+    );
+  },
+  [t]
+);
+
+
+  /* 🔄 créditos desde Auth */
   const { user, credits: userCredits } = useAuth();
   const createStory = useCreateStory();
 
-  /* 🔗 NEW: Cloud Function callables */
+  /* 🔗 Cloud Function callables */
   const functions = useMemo(() => getFunctions(), []);
   const deductCreditsForCreation = useMemo(
     () => httpsCallable(functions, 'deductCreditsForCreation'),
@@ -198,7 +215,7 @@ export default function BeginPage() {
   const [storiesLast, setStoriesLast] = useState<QueryDocumentSnapshot | null>(null);
   const isFetchingStoriesRef = useRef(false);
 
-  // NEW: State for sorting
+  // Orden
   const [sortKey, setSortKey] = useState<'updatedAt' | 'title'>('updatedAt');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
 
@@ -277,12 +294,12 @@ export default function BeginPage() {
   /* ---------------- Fetch user's stories for Continue ---------------- */
   const fetchStoriesPage = useCallback(async (after?: QueryDocumentSnapshot) => {
     if (!user) return;
-    if (isFetchingStoriesRef.current) return;   // hard guard against overlap
+    if (isFetchingStoriesRef.current) return;
     isFetchingStoriesRef.current = true;
     setStoriesLoading(true);
 
     try {
-      const secondaryDir = sortOrder; // keep secondary aligned with primary
+      const secondaryDir = sortOrder;
       const base: any[] = [
         where('ownerUid', '==', user.uid),
         orderBy(sortKey, sortOrder),
@@ -317,9 +334,8 @@ export default function BeginPage() {
       setStoriesLoading(false);
       isFetchingStoriesRef.current = false;
     }
-  }, [user, sortKey, sortOrder]); // ⬅️ stable deps
+  }, [user, sortKey, sortOrder]);
 
-  // Consolidated effect: initial load + reacts to sort changes.
   useEffect(() => {
     if (!user) return;
     setStories([]);
@@ -327,9 +343,9 @@ export default function BeginPage() {
     fetchStoriesPage();
   }, [user, sortKey, sortOrder, fetchStoriesPage]);
 
-  /* ---------------- Ensure story exists (used by cover/premium saving) ---------------- */
+  /* ---------------- Ensure story exists ---------------- */
   async function ensureStoryId(): Promise<string> {
-    if (!user) throw new Error('Please sign in first.');
+    if (!user) throw new Error(t('alertsSignIn'));
     if (draft.storyId) return draft.storyId;
 
     const premiumPayload = buildPremiumPayloadFromDraft(draft);
@@ -345,7 +361,6 @@ export default function BeginPage() {
       status: 'draft',
       language: draft.language,
       metadata: draft.campaignName ? { campaignName: draft.campaignName } : {},
-      // ⭐ include premium only if provided
       ...premiumPayload,
     } as any);
 
@@ -374,14 +389,13 @@ export default function BeginPage() {
   }
 
   const handleCoverImageSaved = async (url: string) => {
-    setDraft((d) => ({ ...d, coverUrl: url })); // optimistic
+    setDraft((d) => ({ ...d, coverUrl: url }));
     try {
-      if (!user) throw new Error('Please sign in first.');
+      if (!user) throw new Error(t('alertsSignIn'));
       const id = await ensureStoryId();
 
       let httpsUrl = url;
 
-      // attempt helper -> SDK -> fallback
       try {
         const out: any = await (uploadCoverToStory as any)?.({
           uid: user.uid,
@@ -429,12 +443,12 @@ export default function BeginPage() {
     }
   }
 
-  /* ---------------- AI Describe for current cover ---------------- */
+  /* ---------------- AI Describe para la portada ---------------- */
   async function describeCurrentCover() {
     setDescError('');
     setDescText('');
     if (!draft.coverUrl) {
-      setDescError('Please select a cover image first.');
+      setDescError(t('alertsCoverFirst'));
       return;
     }
     setDescLoading(true);
@@ -443,12 +457,16 @@ export default function BeginPage() {
         ? { imageUrl: draft.coverUrl }
         : { dataUrl: draft.coverUrl };
 
-      const LANG_LABELS: Record<string, string> = {
-        en: 'English', es: 'Spanish', pt: 'Portuguese', fr: 'French', de: 'German',
-        it: 'Italian', ja: 'Japanese', ko: 'Korean', zh: 'Chinese', hi: 'Hindi', ar: 'Arabic',
-      };
       const lang = draft.language || 'en';
-      const langLabel = LANG_LABELS[lang] || 'English';
+      const langLabel = (() => {
+        const map: Record<string, string> = {
+          en: t('langEnglish'), es: t('langSpanish'), pt: t('langPortuguese'),
+          fr: t('langFrench'), de: t('langGerman'), it: t('langItalian'),
+          ja: t('langJapanese'), ko: t('langKorean'), zh: t('langChinese'),
+          hi: t('langHindi'), ar: t('langArabic')
+        };
+        return map[lang] || t('langEnglish');
+      })();
 
       const promptText =
         lang === 'es'
@@ -471,13 +489,13 @@ export default function BeginPage() {
       if (!res.ok) throw new Error(json?.error || 'Describe failed');
       setDescText(json.description || '');
     } catch (err: any) {
-      setDescError(err?.message || 'Failed to describe image.');
+      setDescError(t('aiDescribeFailed'));
     } finally {
       setDescLoading(false);
     }
   }
 
-  /* ---------------- Continue: load selected story into fields ---------------- */
+  /* ---------------- Continue: cargar historia seleccionada ---------------- */
   useEffect(() => {
     (async () => {
       if (!user) return;
@@ -515,7 +533,7 @@ export default function BeginPage() {
     })();
   }, [user, existingStoryId, storyMode]);
 
-  /* Persist basic fields (language, campaign, category/pages) — unchanged blocks omitted for brevity */
+  /* Persist language */
   useEffect(() => {
     (async () => {
       try {
@@ -530,6 +548,7 @@ export default function BeginPage() {
     })();
   }, [draft.language, draft.storyId, user]);
 
+  /* Persist campaignName */
   useEffect(() => {
     (async () => {
       try {
@@ -545,6 +564,7 @@ export default function BeginPage() {
     })();
   }, [draft.campaignName, draft.storyId, user]);
 
+  /* Persist category/pageCount */
   useEffect(() => {
     (async () => {
       try {
@@ -568,29 +588,32 @@ export default function BeginPage() {
     draft.synopsis.trim() !== '' &&
     (draft.category !== 'campaign' || (draft.campaignName || '').trim() !== '');
 
-  /* 🔥 UPDATED: Start Story with credit deduction */
+  /* 🔥 Start Story con deducción de créditos */
   async function onStartStory() {
     try {
       setStarting(true);
       if (storyMode === 'continue') {
-        if (!existingStoryId) throw new Error('Please select a story to load.');
+        if (!existingStoryId) throw new Error(t('alertsSelectStory'));
         setShowCover(true);
         return;
       }
-      if (!canStartNew) throw new Error('Fill Title, Genres, Synopsis (and Campaign Name if Campaign).');
-      if (!user) throw new Error('Please sign in to create a story.');
+      if (!canStartNew) throw new Error(t('alertsFillRequired'));
+      if (!user) throw new Error(t('alertsSignIn'));
 
       const cost = getCreationCreditCost(draft.category);
       if (userCredits == null || userCredits < cost) {
-        alert(`You need ${cost} credits to create a ${draft.category} story. You currently have ${userCredits ?? 0} credits.`);
+        alert(tr('alertsNeedCredits', {
+          cost,
+          category: t(draft.category),
+          have: userCredits ?? 0
+        }));
         router.push('/buy-credits');
         return;
       }
 
-      // Deduct credits via Cloud Function (only for NEW creation)
       const deductRes: any = await deductCreditsForCreation({ cost, storyType: draft.category });
       if (!deductRes?.data?.ok) {
-        throw new Error(deductRes?.data?.message || 'Failed to deduct credits for story creation.');
+        throw new Error(deductRes?.data?.message || t('alertsFailedStart'));
       }
 
       const premiumPayload = buildPremiumPayloadFromDraft(draft);
@@ -606,7 +629,6 @@ export default function BeginPage() {
         status: 'draft',
         language: draft.language,
         metadata: draft.campaignName ? { campaignName: draft.campaignName } : {},
-        // ⭐ include premium only if provided
         ...premiumPayload,
       } as any);
 
@@ -620,39 +642,42 @@ export default function BeginPage() {
 
       setShowCover(true);
     } catch (e: any) {
-      alert(e?.message || 'Failed to start story.');
+      alert(e?.message || t('alertsFailedStart'));
     } finally {
       setStarting(false);
     }
   }
 
-  /* 🔥 UPDATED: Skip to Scenes with credit deduction (only if truly creating new) */
+  /* 🔥 Skip to Scenes con deducción si es nuevo */
   async function handleSkipToScenes() {
     try {
       setJumpingScenes(true);
 
       if (storyMode === 'continue') {
-        if (!existingStoryId) throw new Error('Pick a story to continue.');
+        if (!existingStoryId) throw new Error(t('alertsPickToContinue'));
         router.push(`/create/scenes?storyId=${existingStoryId}`);
         return;
       }
 
-      if (!canStartNew) throw new Error('Fill Title, Genres, Synopsis (and Campaign Name if Campaign).');
-      if (!user) throw new Error('Please sign in to create a story.');
+      if (!canStartNew) throw new Error(t('alertsFillRequired'));
+      if (!user) throw new Error(t('alertsSignIn'));
 
       const cost = getCreationCreditCost(draft.category);
       if (userCredits == null || userCredits < cost) {
-        alert(`You need ${cost} credits to create a ${draft.category} story. You currently have ${userCredits ?? 0} credits.`);
+        alert(tr('alertsNeedCredits', {
+          cost,
+          category: t(draft.category),
+          have: userCredits ?? 0
+        }));
         router.push('/buy-credits');
         return;
       }
 
-      // If there's no story yet, deduct and create it now.
       let id = draft.storyId;
       if (!id) {
         const deductRes: any = await deductCreditsForCreation({ cost, storyType: draft.category });
         if (!deductRes?.data?.ok) {
-          throw new Error(deductRes?.data?.message || 'Failed to deduct credits for story creation.');
+          throw new Error(deductRes?.data?.message || t('alertsFailedStart'));
         }
 
         const premiumPayload = buildPremiumPayloadFromDraft(draft);
@@ -668,7 +693,6 @@ export default function BeginPage() {
           status: 'draft',
           language: draft.language,
           metadata: draft.campaignName ? { campaignName: draft.campaignName } : {},
-          // ⭐ include premium only if provided
           ...premiumPayload,
         } as any);
 
@@ -683,7 +707,7 @@ export default function BeginPage() {
 
       router.push(`/create/scenes?storyId=${id}`);
     } catch (e: any) {
-      alert(e?.message || 'Could not continue to Scenes.');
+      alert(e?.message || t('alertsCouldNotScenes'));
     } finally {
       setJumpingScenes(false);
     }
@@ -699,6 +723,14 @@ export default function BeginPage() {
   /* ---------------- UI ---------------- */
   const selectedCost = getCreationCreditCost(draft.category);
 
+  /* Etiquetas de categoría localizadas con rangos */
+  const categoryLabel = (key: Draft['category']) => {
+    const cfg = CATEGORIES.find(c => c.key === key)!;
+    if (key === 'short') return tr('catShortRange', { min: cfg.min, max: cfg.max });
+    if (key === 'novela') return tr('catNovelaRange', { min: cfg.min, max: cfg.max });
+    return tr('catCampaignRange', { min: cfg.min, max: cfg.max });
+  };
+
   return (
     <div
       className="
@@ -712,8 +744,10 @@ export default function BeginPage() {
 
         {/* Header */}
         <div className="flex justify-between items-center mb-4">
-          <h1 className="text-3xl font-bold">Begin a New Tale</h1>
-          <Link href="/" className="text-sm underline text-slate-700 dark:text-[#C8D6E5]">Back</Link>
+          <h1 className="text-3xl font-bold">{t('beginANewTale')}</h1>
+          <Link href="/" className="text-sm underline text-slate-700 dark:text-[#C8D6E5]">
+            {t('backToLanding')}
+          </Link>
         </div>
 
         {/* Top Form */}
@@ -722,13 +756,13 @@ export default function BeginPage() {
           border-slate-300 bg-white text-slate-800
           dark:border-[#344b63] dark:bg-[#142436] dark:text-[#E0C9A0]
         ">
-          {/* Quick credits summary (NEW) */}
+          {/* Resumen de créditos */}
           <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
             <span className="px-2 py-1 rounded-md bg-slate-100 dark:bg-black/30">
-              Your Credits: <strong>{userCredits ?? 0}</strong>
+              {t('yourCredits')} <strong>{userCredits ?? 0}</strong>
             </span>
             <span className="px-2 py-1 rounded-md bg-slate-100 dark:bg-black/30">
-              Cost to create <em className="font-semibold">{draft.category}</em>: <strong>{selectedCost}</strong>
+              {tr('costToCreateType', { type: t(draft.category) })} <strong>{selectedCost}</strong>
             </span>
           </div>
 
@@ -736,7 +770,7 @@ export default function BeginPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             {/* Title */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-bold mb-2">Title (* = mandatory)</label>
+              <label className="block text-sm font-bold mb-2">{t('titleLabel')}</label>
               <input
                 className="
                   w-full p-3 border-2 rounded-md
@@ -752,7 +786,7 @@ export default function BeginPage() {
 
             {/* Genres */}
             <div className="md:col-span-1">
-              <label className="block text-sm font-bold mb-2">Genres (*)</label>
+              <label className="block text-sm font-bold mb-2">{t('genresLabel')}</label>
               <GenreMultiSelect
                 genresList={GENRES as any}
                 selectedGenres={draft.genres}
@@ -760,9 +794,9 @@ export default function BeginPage() {
               />
             </div>
 
-            {/* Story Mode (New / Continue + select) */}
+            {/* Story Mode */}
             <div className="md:col-span-1">
-              <label className="block text-sm font-bold mb-1">Story Mode</label>
+              <label className="block text-sm font-bold mb-1">{t('storyMode')}</label>
               <div className="flex items-center gap-2 mb-2">
                 <button
                   type="button"
@@ -773,7 +807,7 @@ export default function BeginPage() {
                       : 'bg-slate-200 text-slate-800 hover:bg-slate-300 active:scale-[.98] dark:bg-[#0f2334] dark:text-[#C8D6E5] dark:hover:bg-[#152b42]'}`}
                   aria-pressed={storyMode === 'new'}
                 >
-                  New
+                  {t('new')}
                 </button>
                 <button
                   type="button"
@@ -784,7 +818,7 @@ export default function BeginPage() {
                       : 'bg-slate-200 text-slate-800 hover:bg-slate-300 active:scale-[.98] dark:bg-[#0f2334] dark:text-[#C8D6E5] dark:hover:bg-[#152b42]'}`}
                   aria-pressed={storyMode === 'continue'}
                 >
-                  Continue
+                  {t('continue')}
                 </button>
               </div>
 
@@ -800,20 +834,20 @@ export default function BeginPage() {
                   value={existingStoryId}
                   onChange={(e) => setExistingStoryId(e.target.value)}
                 >
-                  <option value="">Select a story…</option>
+                  <option value="">{t('selectAStory')}</option>
                   {stories.map((s) => (
                     <option key={s.id} value={s.id}>{s.title || '(untitled)'}</option>
                   ))}
                 </select>
               )}
               {storyMode === 'continue' && storiesLoading && (
-                <p className="text-xs mt-1 text-slate-600 dark:text-[#C8D6E5]/70">Loading your stories…</p>
+                <p className="text-xs mt-1 text-slate-600 dark:text-[#C8D6E5]/70">{t('loadingYourStories')}</p>
               )}
             </div>
 
             {/* Language */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-bold mb-2">Language</label>
+              <label className="block text-sm font-bold mb-2">{t('language')}</label>
               <select
                 className="
                   w-full p-3 border-2 rounded-md
@@ -824,21 +858,20 @@ export default function BeginPage() {
                 onChange={(e) => setDraft((d) => ({ ...d, language: e.target.value as LangCode }))}
               >
                 {LANGUAGES.map(l => (
-                  <option key={l.code} value={l.code}>{l.label}</option>
+                  <option key={l.code} value={l.code}>{t(l.labelKey)}</option>
                 ))}
               </select>
               <p className="text-xs mt-1 text-slate-600 dark:text-[#C8D6E5]/70">
-                AI prompts and descriptions will use this language.
+                {t('aiWillUseLanguage')}
               </p>
             </div>
 
-            {/* empty spacer to balance grid */}
             <div className="hidden md:block" />
           </div>
 
           {/* Synopsis */}
           <div className="mb-6">
-            <label className="block text-sm font-bold mb-2">Brief Synopsis (* = Mandatory)</label>
+            <label className="block text-sm font-bold mb-2">{t('synopsisLabel')}</label>
             <textarea
               rows={4}
               className="
@@ -855,12 +888,12 @@ export default function BeginPage() {
           {/* Current Story (Category + Pages + Campaign Name) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-bold mb-2">Current Story (*)</label>
+              <label className="block text-sm font-bold mb-2">{t('currentStoryLabel')}</label>
               <select
                 className="
                   w-full p-3 border-2 rounded-md
                   bg-white text-slate-900 border-slate-300
-                dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]
+                  dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]
                 "
                 value={draft.category}
                 onChange={(e) => {
@@ -872,21 +905,22 @@ export default function BeginPage() {
                 }}
               >
                 {CATEGORIES.map((c) => {
-                  const cost = getCreationCreditCost(c.key);
+                  const label = categoryLabel(c.key as Draft['category']);
+                  const cost = getCreationCreditCost(c.key as Draft['category']);
                   return (
                     <option key={c.key} value={c.key}>
-                      {c.label} ({cost} credits)
+                      {label} ({tr('xCredits', { x: cost })})
                     </option>
                   );
                 })}
               </select>
               <p className="text-xs mt-1 text-slate-600 dark:text-[#C8D6E5]/70">
-                Allowed pages: {cat.min}–{cat.max}
+                {tr('allowedPages', { min: cat.min, max: cat.max })}
               </p>
 
               {draft.category === 'campaign' && (
                 <div className="mt-4">
-                  <label className="block text-sm font-bold mb-2">Campaign Name</label>
+                  <label className="block text-sm font-bold mb-2">{t('campaignName')}</label>
                   <input
                     className="
                       w-full p-3 border-2 rounded-md
@@ -896,17 +930,17 @@ export default function BeginPage() {
                     "
                     value={draft.campaignName || ''}
                     onChange={(e) => setDraft((d) => ({ ...d, campaignName: e.target.value }))}
-                    placeholder="e.g., Summer Reading Challenge"
+                    placeholder="p. ej., Reto de lectura de verano"
                   />
                   <p className="text-xs mt-1 text-slate-600 dark:text-[#C8D6E5]/70">
-                    This is saved in <code>metadata.campaignName</code> for discovery filters.
+                    {t('campaignSavedNote')}
                   </p>
                 </div>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-bold mb-2">Number of Pages</label>
+              <label className="block text-sm font-bold mb-2">{t('numberOfPages')}</label>
               <input
                 type="range"
                 min={cat.min}
@@ -916,17 +950,17 @@ export default function BeginPage() {
                 className="w-full accent-[#E97451]"
               />
               <div className="text-sm mt-1">
-                Pages: <strong>{draft.pages}</strong>
+                {tr('pagesCount', { n: draft.pages })}
               </div>
             </div>
           </div>
 
-          {/* --- Premium features toggle header --- */}
+          {/* Premium features toggle */}
           <div className="mt-6 border-t border-slate-300 dark:border-[#2c3f55] pt-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold">Premium Features</h2>
+              <h2 className="text-xl font-bold">{t('premiumFeatures')}</h2>
               <label className="flex items-center gap-2 text-sm">
-                <span>Show panel</span>
+                <span>{t('showPanel')}</span>
                 <input
                   type="checkbox"
                   checked={showPremium}
@@ -937,9 +971,9 @@ export default function BeginPage() {
 
             {showPremium && (
               <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* ElevenLabs Convai Agent ID */}
+                {/* Convai Agent ID */}
                 <div className="col-span-1">
-                  <label className="block text-sm font-bold mb-2">ElevenLabs Convai Agent ID</label>
+                  <label className="block text-sm font-bold mb-2">{t('convaiAgentId')}</label>
                   <input
                     className="w-full p-3 border-2 rounded-md bg-white text-slate-900 border-slate-300 dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]"
                     placeholder="agent_01jz5wxyxyxyxyxyxyxyxyxyxy"
@@ -951,17 +985,17 @@ export default function BeginPage() {
                     }}
                   />
                   <p className="text-xs mt-1 text-slate-600 dark:text-[#C8D6E5]/70">
-                    If provided, the reader can load the embedded AI avatar widget.
+                    {t('convaiHint')}
                   </p>
                 </div>
 
-                {/* Teaser Video URL — only for Novela/Campaign */}
+                {/* Teaser (solo Novela/Campaña) */}
                 {isLongForm && (
                   <div className="col-span-1">
-                    <label className="block text-sm font-bold mb-2">Link to Teaser Video</label>
+                    <label className="block text-sm font-bold mb-2">{t('teaserVideo')}</label>
                     <input
                       className="w-full p-3 border-2 rounded-md bg-white text-slate-900 border-slate-300 dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]"
-                      placeholder="URL for your YouTube video"
+                      placeholder="URL a tu video de YouTube"
                       value={draft.premium?.teaserVideoUrl || ''}
                       onChange={async (e) => {
                         const v = e.target.value.trim();
@@ -970,15 +1004,15 @@ export default function BeginPage() {
                       }}
                     />
                     <p className="text-xs mt-1 text-slate-600 dark:text-[#C8D6E5]/70">
-                      If set, Discover will show a “Teaser” button with a pop-up YouTube player.
+                      {t('teaserHint')}
                     </p>
                   </div>
                 )}
 
-                {/* Free Navigation Index — only for Novela/Campaign */}
+                {/* Free nav index (solo Novela/Campaña) */}
                 {isLongForm && (
                   <div className="col-span-1">
-                    <label className="block text-sm font-bold mb-2">Activate Free Navigation Index</label>
+                    <label className="block text-sm font-bold mb-2">{t('freeNavIndex')}</label>
                     <div className="flex items-center gap-3">
                       <input
                         type="checkbox"
@@ -989,7 +1023,7 @@ export default function BeginPage() {
                           await savePremiumField('premium.freeNavigationIndex', v);
                         }}
                       />
-                      <span className="text-sm">Enable left-side index in the Story Reader.</span>
+                      <span className="text-sm">{t('freeNavHint')}</span>
                     </div>
                   </div>
                 )}
@@ -997,7 +1031,7 @@ export default function BeginPage() {
             )}
           </div>
 
-          {/* Start & quick actions */}
+          {/* Acciones */}
           <div className="flex justify-end flex-wrap gap-3 mt-6">
             <button
               className="
@@ -1007,7 +1041,7 @@ export default function BeginPage() {
               "
               onClick={() => { try { localStorage.removeItem(DRAFT_KEY); } catch {} location.reload(); }}
             >
-              Reset
+              {t('reset')}
             </button>
 
             <button
@@ -1022,9 +1056,9 @@ export default function BeginPage() {
                   ? (canStartNew ? 'bg-[#2e7d32] hover:bg-[#276a2b]' : 'bg-[#2e7d32]/50')
                   : (existingStoryId ? 'bg-[#2e7d32] hover:bg-[#276a2b]' : 'bg-[#2e7d32]/50')}
               `}
-              title={storyMode === 'continue' ? 'Load the selected story' : 'Create the new story draft'}
+              title={storyMode==='continue' ? t('updateStory') : t('startStory')}
             >
-              {storyMode === 'new' ? (starting ? 'Starting…' : 'Start Story') : 'Update Story'}
+              {storyMode==='new' ? (starting ? t('starting') : t('startStory')) : t('updateStory')}
             </button>
 
             <button
@@ -1037,12 +1071,12 @@ export default function BeginPage() {
                   const id = await ensureStoryId();
                   router.push(`/create/support?storyId=${id}`);
                 } catch (e: any) {
-                  alert(e?.message || 'Failed to continue.');
+                  alert(e?.message || t('alertsFailedStart'));
                 }
               }}
               disabled={!isNextButtonEnabled}
             >
-              Next: Build References & AI Support →
+              {t('nextBuildRefs')}
             </button>
 
             <button
@@ -1058,19 +1092,19 @@ export default function BeginPage() {
                 dark:border-[#3D4F60] dark:text-[#C8D6E5] dark:bg-[#0f2334] dark:hover:bg-[#152b42]
               "
             >
-              Skip to Scenes →
+              {t('skipToScenes')}
             </button>
           </div>
         </div>
 
-        {/* Book Cover (hidden until Start Story or Continue) */}
+        {/* Book Cover */}
         {showCover && (
           <div className="
             rounded-xl border-2 shadow p-6
             border-slate-300 bg-white text-slate-800
             dark:border-[#344b63] dark:bg-[#142436] dark:text-[#E0C9A0]
           ">
-            <h2 className="text-xl font-bold mb-4">Book Cover Image</h2>
+            <h2 className="text-xl font-bold mb-4">{t('bookCoverImage')}</h2>
 
             <CoverImageManager
               initialCoverUrl={draft.coverUrl ?? undefined}
@@ -1085,7 +1119,7 @@ export default function BeginPage() {
               }}
             />
 
-            {/* AI Describe panel */}
+            {/* AI Describe */}
             <div className="
               mt-4 p-3 rounded-lg border
               border-slate-300 bg-slate-50
@@ -1097,14 +1131,14 @@ export default function BeginPage() {
                   disabled={descLoading || !draft.coverUrl}
                   className="px-4 py-2 rounded-md bg-[#E97451] text-white font-semibold disabled:opacity-50 hover:bg-[#D46342]"
                 >
-                  {descLoading ? 'Describing…' : 'AI Describe - Current Selected Cover'}
+                  {descLoading ? t('describing') : t('aiDescribeBtn')}
                 </button>
                 {descError && <span className="text-red-600 dark:text-red-400 text-sm">{descError}</span>}
               </div>
 
               {!!descText && (
                 <div className="mt-3">
-                  <label className="block text-sm font-bold mb-1">AI Description</label>
+                  <label className="block text-sm font-bold mb-1">{t('aiDescription')}</label>
                   <textarea
                     className="
                       w-full p-3 border-2 rounded-md
@@ -1124,7 +1158,7 @@ export default function BeginPage() {
                         dark:bg-gray-700/40 dark:text-[#C8D6E5] dark:hover:bg-gray-700/70
                       "
                     >
-                      Use as Synopsis
+                      {t('useAsSynopsis')}
                     </button>
                     <button
                       onClick={() => navigator.clipboard.writeText(descText)}
@@ -1134,7 +1168,7 @@ export default function BeginPage() {
                         dark:bg-gray-700/40 dark:text-[#C8D6E5] dark:hover:bg-gray-700/70
                       "
                     >
-                      Copy
+                      {t('copy')}
                     </button>
                   </div>
                 </div>
@@ -1143,22 +1177,21 @@ export default function BeginPage() {
           </div>
         )}
 
-        {/* ⭐ PREMIUM FEATURES (hidden until story exists, shown under Cover) */}
+        {/* PREMIUM debajo de portada */}
         {showCover && (
           <div className="
             mt-6 rounded-xl border-2 shadow p-6
             border-slate-300 bg-white text-slate-800
             dark:border-[#344b63] dark:bg-[#142436] dark:text-[#E0C9A0]
           ">
-            <h2 className="text-xl font-bold mb-2">Premium Features</h2>
+            <h2 className="text-xl font-bold mb-2">{t('convaiExplainHeader')}</h2>
             <p className="text-sm text-slate-600 dark:text-[#C8D6E5]/70 mb-4">
-              Enable the ElevenLabs Conversational AI widget for this story.
-              Paste the <code>agent-id</code> below. If you leave it empty, the widget will be disabled.
+              {t('convaiExplainBody')}
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="md:col-span-2">
-                <label className="block text-sm font-bold mb-2">Convai Agent ID</label>
+                <label className="block text-sm font-bold mb-2">{t('convaiIdLabel')}</label>
                 <input
                   className="
                     w-full p-3 border-2 rounded-md
@@ -1176,8 +1209,7 @@ export default function BeginPage() {
                   }
                 />
                 <p className="text-xs mt-1 text-slate-600 dark:text-[#C8D6E5]/70">
-                  Saved to <code>stories/{'{storyId}'}/premium.convaiAgentId</code>.
-                  The Reader will render the widget only if this value is present.
+                  {t('convaiSavedNote')}
                 </p>
               </div>
 
@@ -1193,7 +1225,7 @@ export default function BeginPage() {
                     }))
                   }
                 >
-                  Clear
+                  {t('clear')}
                 </button>
               </div>
             </div>
