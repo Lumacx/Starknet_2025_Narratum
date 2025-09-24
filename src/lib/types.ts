@@ -26,7 +26,7 @@
    export interface Comment {
      id: string;
      content: string;
-     authorId: string;     // user who wrote the comment
+     author: User;          // 👈 Change authorId to this line     // user who wrote the comment
      storyId: string;      // story this comment belongs to
      createdAt: string;
    }

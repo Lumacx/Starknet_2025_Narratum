@@ -47,7 +47,7 @@ This list focuses on files likely to contain significant user-facing text, start
 
 ### Components with Potential UI Text (to be addressed after pages)
 
-- [ ] `src/components/AvatarUploader.tsx`
+- [x] `src/components/AvatarUploader.tsx`
 - [ ] `src/components/Community.tsx`
 - [ ] `src/components/CoverImageManager.tsx`
 - [ ] `src/components/GSIButton.tsx`

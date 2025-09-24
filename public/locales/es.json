@@ -653,7 +653,12 @@
   "avatar.uploadFailed": "Error al subir",
   "avatar.noUser": "No hay usuario de Firebase (¿llamaste a signInAnonymously para Starknet?)",
   "avatar.selectImage": "Por favor selecciona una imagen.",
-  "avatar.tooLarge": "Imagen demasiado grande (máx. 4 MB)."
+  "avatar.tooLarge": "Imagen demasiado grande (máx. 4 MB).",
 
+  "community.title": "Comunidad",
+  "community.comments.title": "Comentarios",
+  "community.comments.placeholder": "Agregar un comentario...",
+  "community.comments.submit": "Enviar"
 
+  
 }
