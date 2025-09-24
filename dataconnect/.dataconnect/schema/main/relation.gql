@@ -6,7 +6,7 @@ extend type AdminAction {
   """
   ✨ Count the number of rows in the `AdminAction` table.
   """
-  _count: Int! @fdc_generated(from: "AdminAction", purpose: QUERY_COUNT)
+  _count: Int! @fdc_generated(from: "AdminAction.", purpose: QUERY_COUNT)
   """
   ✨ Count the number of rows in the `AdminAction` table where the `actionDate` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
   """
@@ -78,7 +78,7 @@ extend type AiGeneratedGif {
   """
   ✨ Count the number of rows in the `AiGeneratedGif` table.
   """
-  _count: Int! @fdc_generated(from: "AiGeneratedGif", purpose: QUERY_COUNT)
+  _count: Int! @fdc_generated(from: "AiGeneratedGif.", purpose: QUERY_COUNT)
   """
   ✨ Count the number of rows in the `AiGeneratedGif` table where the `createdAt` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
   """
@@ -166,7 +166,7 @@ extend type AiGeneratedImage {
   """
   ✨ Count the number of rows in the `AiGeneratedImage` table.
   """
-  _count: Int! @fdc_generated(from: "AiGeneratedImage", purpose: QUERY_COUNT)
+  _count: Int! @fdc_generated(from: "AiGeneratedImage.", purpose: QUERY_COUNT)
   """
   ✨ Count the number of rows in the `AiGeneratedImage` table where the `createdAt` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
   """
@@ -247,7 +247,7 @@ extend type Analytics {
   """
   ✨ Count the number of rows in the `Analytics` table.
   """
-  _count: Int! @fdc_generated(from: "Analytics", purpose: QUERY_COUNT)
+  _count: Int! @fdc_generated(from: "Analytics.", purpose: QUERY_COUNT)
   """
   ✨ Count the number of rows in the `Analytics` table where the `actionTimestamp` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
   """
@@ -378,7 +378,7 @@ extend type AppSubscription {
   """
   ✨ Count the number of rows in the `AppSubscription` table.
   """
-  _count: Int! @fdc_generated(from: "AppSubscription", purpose: QUERY_COUNT)
+  _count: Int! @fdc_generated(from: "AppSubscription.", purpose: QUERY_COUNT)
   """
   ✨ Count the number of rows in the `AppSubscription` table where the `createdAt` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
   """
@@ -467,7 +467,7 @@ extend type LegalDisclaimer {
   """
   ✨ Count the number of rows in the `LegalDisclaimer` table.
   """
-  _count: Int! @fdc_generated(from: "LegalDisclaimer", purpose: QUERY_COUNT)
+  _count: Int! @fdc_generated(from: "LegalDisclaimer.", purpose: QUERY_COUNT)
   """
   ✨ Count the number of rows in the `LegalDisclaimer` table where the `acceptedDate` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
   """
@@ -538,7 +538,7 @@ extend type Payment {
   """
   ✨ Count the number of rows in the `Payment` table.
   """
-  _count: Int! @fdc_generated(from: "Payment", purpose: QUERY_COUNT)
+  _count: Int! @fdc_generated(from: "Payment.", purpose: QUERY_COUNT)
   """
   ✨ Count the number of rows in the `Payment` table where the `amount` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
   """
@@ -755,7 +755,7 @@ extend type Story {
   """
   ✨ Count the number of rows in the `Story` table.
   """
-  _count: Int! @fdc_generated(from: "Story", purpose: QUERY_COUNT)
+  _count: Int! @fdc_generated(from: "Story.", purpose: QUERY_COUNT)
   """
   ✨ Count the number of rows in the `Story` table where the `backgroundMusicUrl` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
   """
@@ -897,7 +897,7 @@ extend type StoryContent {
   """
   ✨ Count the number of rows in the `StoryContent` table.
   """
-  _count: Int! @fdc_generated(from: "StoryContent", purpose: QUERY_COUNT)
+  _count: Int! @fdc_generated(from: "StoryContent.", purpose: QUERY_COUNT)
   """
   ✨ Count the number of rows in the `StoryContent` table where the `audioUrl` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
   """
@@ -1022,7 +1022,7 @@ extend type Template {
   """
   ✨ Count the number of rows in the `Template` table.
   """
-  _count: Int! @fdc_generated(from: "Template", purpose: QUERY_COUNT)
+  _count: Int! @fdc_generated(from: "Template.", purpose: QUERY_COUNT)
   """
   ✨ Count the number of rows in the `Template` table where the `createdAt` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
   """
@@ -1289,7 +1289,7 @@ extend type User {
   """
   ✨ Count the number of rows in the `User` table.
   """
-  _count: Int! @fdc_generated(from: "User", purpose: QUERY_COUNT)
+  _count: Int! @fdc_generated(from: "User.", purpose: QUERY_COUNT)
   """
   ✨ Count the number of rows in the `User` table where the `appSubscriptionId` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
   """

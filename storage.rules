@@ -41,7 +41,7 @@ service firebase.storage {
     }
     function storyIsPublic(storyId) {
       return isPublicishData(
-        get(/databases/(default)/documents/stories/$(storyId)).data
+        firestore.get(/databases/(default)/documents/stories/$(storyId)).data
       );
     }
 
