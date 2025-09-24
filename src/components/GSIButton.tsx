@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useLocale } from '@/context/LocaleContext';
 
 type Props = {
   onCredentialResponse: (response: google.accounts.id.CredentialResponse) => void;
@@ -12,7 +13,7 @@ type Props = {
 };
 
 declare global {
-  interface Window { __GSI_INITIALIZED__?: boolean;  }
+  interface Window { __GSI_INITIALIZED__?: boolean; }
 }
 
 export default function GSIButton({
@@ -22,33 +23,34 @@ export default function GSIButton({
   size = 'large',
   theme = 'outline',
 }: Props) {
+  const { t } = useLocale();
   const btnRef = useRef<HTMLDivElement>(null);
   const [rendered, setRendered] = useState(false);
 
   useEffect(() => {
     let attempts = 0;
-    const MAX_ATTEMPTS = 30; // ~3s con 100ms
+    const MAX_ATTEMPTS = 30; // ~3s with 100ms interval
     const iv = setInterval(() => {
       attempts++;
 
-      // 1) Script listo
+      // 1) Script ready?
       const g = (window as any).google?.accounts?.id;
       if (!g) {
         if (attempts >= MAX_ATTEMPTS) {
-          console.error('[❌ GSI Error] google.accounts.id no disponible (script no cargó)');
+          console.error(t('gsi.error.scriptUnavailable'));
           clearInterval(iv);
         }
         return;
       }
 
-      // 2) Contenedor presente y visible
+      // 2) Container present & visible
       const el = btnRef.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
       const visible = rect.width > 0 && rect.height > 0;
       if (!visible) {
         if (attempts >= MAX_ATTEMPTS) {
-          console.error('[❌ GSI Error] Contenedor invisible o con tamaño 0x0');
+          console.error(t('gsi.error.invisibleContainer'));
           clearInterval(iv);
         }
         return;
@@ -57,13 +59,13 @@ export default function GSIButton({
       // 3) Client ID
       const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
       if (!clientId) {
-        console.error('[❌ GSI Error] Falta NEXT_PUBLIC_GOOGLE_CLIENT_ID en .env.local');
+        console.error(t('gsi.error.missingClientId'));
         clearInterval(iv);
         return;
       }
 
       try {
-        // Inicializa una sola vez por app
+        // Initialize once per app
         if (!window.__GSI_INITIALIZED__) {
           g.initialize({
             client_id: clientId,
@@ -82,7 +84,7 @@ export default function GSIButton({
             size,
             text,
             shape,
-            // ancho mínimo sugerido para evitar 0x0
+            // minimum width to avoid 0x0
             width: rect.width < 240 ? 240 : undefined,
             logo_alignment: 'left',
           });
@@ -92,20 +94,22 @@ export default function GSIButton({
 
         clearInterval(iv);
       } catch (e) {
-        console.error(`[❌ GSI Error] Falló render intento ${attempts}:`, e);
+        console.error(t('gsi.error.renderAttemptFailed').replace('{attempt}', String(attempts)), e);
         if (attempts >= MAX_ATTEMPTS) {
-          console.error('[❌ GSI Error] Failed to render Google button after multiple attempts.');
+          console.error(t('gsi.error.renderFailedAfterRetries'));
           clearInterval(iv);
         }
       }
     }, 100);
 
     return () => clearInterval(iv);
-  }, [onCredentialResponse, rendered]);
+  }, [onCredentialResponse, rendered, t]);
 
   return (
     <div
       ref={btnRef}
+      aria-label={t('gsi.aria.signIn')}
+      title={t('gsi.aria.signIn')}
       style={{
         minWidth: 240,
         minHeight: 40,

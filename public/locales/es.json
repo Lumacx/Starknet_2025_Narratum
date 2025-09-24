@@ -729,6 +729,19 @@
   "coverManager.error.invalidFile": "Archivo no válido.",
   "coverManager.error.unsupportedType": "Tipo no compatible: {type}. Usa PNG/JPG/JPEG/GIF/WebP/MP3/WAV/MP4.",
   "coverManager.error.tooSmall": "Archivo demasiado pequeño. Mínimo {min}.",
-  "coverManager.error.tooLarge": "Archivo demasiado grande. Máximo {max}."
+  "coverManager.error.tooLarge": "Archivo demasiado grande. Máximo {max}.",
 
+  "gsi.aria.signIn": "Iniciar sesión con Google",
+  "gsi.error.scriptUnavailable": "[Error GSI] google.accounts.id no disponible (el script no cargó)",
+  "gsi.error.invisibleContainer": "[Error GSI] El contenedor es invisible o tiene tamaño 0x0",
+  "gsi.error.missingClientId": "[Error GSI] Falta NEXT_PUBLIC_GOOGLE_CLIENT_ID en .env.local",
+  "gsi.error.renderAttemptFailed": "[Error GSI] Falló el intento de renderizado: {attempt}",
+  "gsi.error.renderFailedAfterRetries": "[Error GSI] No se pudo renderizar el botón de Google tras múltiples intentos.",
+
+  "genreMulti.genres": "Géneros",
+  "genreMulti.genresWithCount": "Géneros ({count})",
+  "genreMulti.selectGenres": "Seleccionar géneros"
+
+
+  
 }

@@ -1,9 +1,18 @@
+// src/components/GenreMultiSelect.tsx
 'use client';
 
-import React, { useState } from 'react';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuCheckboxItem } from '@/components/ui/dropdown-menu';
+import React from 'react';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuCheckboxItem
+} from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { ChevronDown } from 'lucide-react'; // Assuming lucide-react is used for icons
+import { ChevronDown } from 'lucide-react';
+import { useLocale } from '@/context/LocaleContext';
 
 interface GenreMultiSelectProps {
   genresList: string[];
@@ -16,6 +25,8 @@ const GenreMultiSelect: React.FC<GenreMultiSelectProps> = ({
   selectedGenres,
   onSelectedGenresChange,
 }) => {
+  const { t } = useLocale();
+
   const handleCheckboxChange = (genre: string, checked: boolean) => {
     if (checked) {
       onSelectedGenresChange([...selectedGenres, genre]);
@@ -24,24 +35,29 @@ const GenreMultiSelect: React.FC<GenreMultiSelectProps> = ({
     }
   };
 
+  const buttonLabel =
+    selectedGenres.length > 0
+      ? t('genreMulti.genresWithCount').replace('{count}', String(selectedGenres.length))
+      : t('genreMulti.genres');
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" className="w-[180px] justify-between">
-          Genres {selectedGenres.length > 0 && `(${selectedGenres.length})`}
+          {buttonLabel}
           <ChevronDown className="ml-2 h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent 
+      <DropdownMenuContent
         className="w-[180px] bg-white text-[#3A4B5C] dark:bg-[#233446] dark:text-[#E0C9A0] border border-[#D4E1EE] dark:border-[#4A5C6E]"
       >
-        <DropdownMenuLabel>Select Genres</DropdownMenuLabel>
+        <DropdownMenuLabel>{t('genreMulti.selectGenres')}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {genresList.map((genre) => (
           <DropdownMenuCheckboxItem
             key={genre}
             checked={selectedGenres.includes(genre)}
-            onCheckedChange={(checked) => handleCheckboxChange(genre, checked)}
+            onCheckedChange={(checked) => handleCheckboxChange(genre, !!checked)}
             className="capitalize 
               data-[state=checked]:bg-[#E97451] data-[state=checked]:text-white 
               dark:data-[state=checked]:bg-[#BFA071] dark:data-[state=checked]:text-[#1A2533] 

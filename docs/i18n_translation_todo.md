@@ -49,9 +49,9 @@ This list focuses on files likely to contain significant user-facing text, start
 
 - [x] `src/components/AvatarUploader.tsx`
 - [x] `src/components/Community.tsx`
-- [ ] `src/components/CoverImageManager.tsx`
-- [ ] `src/components/GSIButton.tsx`
-- [ ] `src/components/GenreMultiSelect.tsx`
+- [x] `src/components/CoverImageManager.tsx`
+- [x] `src/components/GSIButton.tsx`
+- [x] `src/components/GenreMultiSelect.tsx`
 - [ ] `src/components/ImageGenPanel.tsx`
 - [ ] `src/components/InfoPopover.tsx`
 - [ ] `src/components/PayPalProviderClient.tsx`
