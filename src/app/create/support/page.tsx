@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { useLocale } from '@/context/LocaleContext';
 import UploadImageReference from '@/components/UploadImageReference';
 import { ImageIcon, MapPin, User, Music, Wand2, Film, Loader2, ArrowUpDown, ChevronDown } from 'lucide-react';
 
@@ -104,20 +105,6 @@ function composePromptForImagen(
 
 /* -------------------------------- Types ------------------------------- */
 type TabKey = 'characters' | 'locations' | 'audioNarrations' | 'audioEffects' | 'videos';
-
-const TABS: Array<{
-  key: TabKey;
-  label: string;
-  blurb: string;
-  icon: React.ComponentType<any>;
-  variant: 'character' | 'location' | 'cover';
-}> = [
-  { key: 'characters',      label: 'Characters',        blurb: 'Reference images for your cast.', icon: User,   variant: 'character' },
-  { key: 'locations',       label: 'Locations',         blurb: 'Places, worlds, scenes.',         icon: MapPin, variant: 'location' },
-  { key: 'audioNarrations', label: 'Narrations (MP3)',  blurb: 'Voice lines or narration.',       icon: Music,  variant: 'cover'     },
-  { key: 'audioEffects',    label: 'Sound FX (MP3)',    blurb: 'Ambient or effect sounds.',       icon: Wand2,  variant: 'cover'     },
-  { key: 'videos',          label: 'Videos (MP4)',      blurb: 'Clips or motion shots.',          icon: Film,   variant: 'cover'     },
-];
 
 type LangCode =
   | 'en' | 'es' | 'pt' | 'fr' | 'de'
@@ -241,6 +228,17 @@ async function urlToDataUrl(url: string): Promise<string> {
 /* ============================== Component ============================== */
 export default function SupportPage() {
   const { user, loading } = useAuth();
+  const { t } = useLocale(); // i18n hook
+
+  const TABS = useMemo(() => ([
+    { key: 'characters' as const,      label: t('tabCharacters'),      blurb: t('tabCharactersBlurb'),  icon: User,   variant: 'character' as const },
+    { key: 'locations' as const,       label: t('tabLocations'),       blurb: t('tabLocationsBlurb'),   icon: MapPin, variant: 'location'  as const },
+    { key: 'audioNarrations' as const, label: t('tabNarrations'),      blurb: t('tabNarrationsBlurb'),  icon: Music,  variant: 'cover'     as const },
+    { key: 'audioEffects'    as const, label: t('tabSoundFx'),         blurb: t('tabSoundFxBlurb'),     icon: Wand2,  variant: 'cover'     as const },
+    { key: 'videos'          as const, label: t('tabVideos'),          blurb: t('tabVideosBlurb'),      icon: Film,   variant: 'cover'     as const },
+  ]), [t]);
+
+
   const search = useSearchParams();
   const router = useRouter();
 
@@ -660,7 +658,7 @@ export default function SupportPage() {
       <div className="min-h-screen grid place-items-center">
         <div className="flex items-center gap-3">
           <Loader2 className="animate-spin" />
-          <span>Checking your session…</span>
+          <span>{t('checkingSession')}</span>
         </div>
       </div>
     );
@@ -669,11 +667,11 @@ export default function SupportPage() {
     return (
       <div className="min-h-screen p-6">
         <div className="max-w-xl mx-auto bg-[#F3EADF] rounded-xl p-8">
-          <h1 className="text-2xl font-bold mb-2">Sign in required</h1>
-          <p className="mb-6">Please sign in to upload or view your reference gallery.</p>
+          <h1 className="text-2xl font-bold mb-2">{t('signInRequired')}</h1>
+          <p className="mb-6">{t('pleaseSignInToUploadOrView')}</p>
           <div className="flex gap-3">
-            <Link href="/login" className="px-5 py-2 rounded-md bg-[#3D4F60] text-white">Go to Login</Link>
-            <button onClick={() => router.back()} className="px-5 py-2 rounded-md border-2">← Back</button>
+            <Link href="/login" className="px-5 py-2 rounded-md bg-[#3D4F60] text-white">{t('goToLogin')}</Link>
+            <button onClick={() => router.back()} className="px-5 py-2 rounded-md border-2">{t('backArrow')}</button>
           </div>
         </div>
       </div>
@@ -704,31 +702,25 @@ export default function SupportPage() {
   return (
     <div className="min-h-screen p-6 bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26] text-[#3A4B5C] dark:text-[#E0C9A0] font-sans">
       <div className="max-w-6xl mx-auto bg-[#F3EADF] border-2 border-[#CBBBA0] text-[#3A4B5C] dark:bg-[#2A3645] dark:border-[#4B5A6B] dark:text-[#E0C9A0] rounded-xl shadow-2xl">
-        <style jsx global>{`
-          .dark .uploader-scope input[type="text"],
-          .dark .uploader-scope textarea { color: #3D4F60 !important; background: #ffffff !important; }
-        `}</style>
-
-        {/* --- HEADER --- */}
+        {/* HEADER */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-6 border-b-2 border-[#3D4F60]/10 dark:border-[#4B5A6B]/20">
           <div>
-            {/* Existing header content */}
-            <h1 className="text-2xl sm:text-3xl font-bold">Build References & AI Support</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold">{t('supportBuildTitle')}</h1>
             <p className="text-sm text-[#3A4B5C]/70 dark:text-[#E0C9A0]/70">
-              Store image, audio, and video references used across your stories.
+              {t('supportBuildSubtitle')}
             </p>
             <p className="text-xs mt-1 text-[#3A4B5C]/60 dark:text-[#E0C9A0]/60">
-              AI language: <strong>{langLabel}</strong>
+              {t('aiLanguage')} <strong>{langLabel}</strong>
               {showUncategorized
-                ? ' • Context: Uncategorized'
-                : (context.title ? ` • Context: ${context.title}` : '')
+                ? ` • ${t('contextLabel')} ${t('contextUncategorized')}`
+                : (context.title ? ` • ${t('contextLabel')} ${context.title}` : '')
               }
             </p>
 
-            {/* NEW: Story Selector Dropdown */}
+            {/* Story Selector */}
             <div className="flex items-center gap-4 mt-2">
               <label htmlFor="story-selector" className="text-sm font-semibold whitespace-nowrap">
-                Active Story:
+                {t('activeStoryLabel')}
               </label>
               <select
                 id="story-selector"
@@ -736,49 +728,40 @@ export default function SupportPage() {
                 value={storySelectValue}
                 onChange={(e) => {
                   const v = e.target.value;
-                  if (v === '__UNCAT__') {
-                    setShowUncategorized(true);
-                    setSelectedStoryId(undefined);
-                  } else {
-                    setShowUncategorized(false);
-                    setSelectedStoryId(v || undefined);
-                  }
+                  if (v === '__UNCAT__') { setShowUncategorized(true); setSelectedStoryId(undefined); }
+                  else { setShowUncategorized(false); setSelectedStoryId(v || undefined); }
                 }}
                 disabled={userStoriesLoading}
               >
                 <option value="">
-                  {userStoriesLoading ? 'Loading stories...' : 'Select a story...'}
+                  {userStoriesLoading ? t('loadingStories') : t('selectAStory')}
                 </option>
-
-                {/* NEW: special option */}
-                <option value="__UNCAT__">All Uncategorized Assets</option>
-
+                <option value="__UNCAT__">{t('allUncategorizedAssets')}</option>
                 {userStories.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.title || '(untitled)'}
+                    {s.title || t('untitled')}
                   </option>
                 ))}
               </select>
 
-              {/* Dynamic helper chip */}
               {showUncategorized ? (
                 <span className="text-sm font-medium text-blue-700 dark:text-blue-200">
-                  Viewing & saving to <em>Uncategorized</em>
+                  {t('viewingSavingUncategorized')}
                 </span>
               ) : !selectedStoryId ? (
                 <span className="text-sm text-red-600 font-medium">
-                  (No story selected)
+                  {t('noStorySelected')}
                 </span>
               ) : null}
             </div>
           </div>
           <div className="flex gap-3">
-            <Link className="underline text-sm" href="/create/begin">← Back</Link>
-            <Link className="underline text-sm" href="/create/scenes">Next: AI Story eReader →</Link>
+            <Link className="underline text-sm" href="/create/begin">{t('backLink')}</Link>
+            <Link className="underline text-sm" href="/create/scenes">{t('nextEreaderLink')}</Link>
           </div>
         </div>
 
-        {/* --- TABS --- */}
+        {/* TABS */}
         <div className="px-4 sm:px-6 pt-4">
           <div role="tablist" aria-label="Reference categories" className="flex flex-wrap gap-2 sm:gap-3">
             {TABS.map(({ key, label, icon: Icon }) => (
@@ -800,9 +783,7 @@ export default function SupportPage() {
           </div>
         </div>
 
-        {/* =================================================================== */}
-        {/* ===================== MAIN CONTENT SECTION ======================== */}
-        {/* =================================================================== */}
+        {/* MAIN CONTENT */}
         <section id={`panel-${activeTab.key}`} role="tabpanel" className="p-4 sm:p-6">
           <div className="flex items-start gap-3 mb-4">
             <div className="shrink-0 mt-1">
@@ -814,60 +795,59 @@ export default function SupportPage() {
             </div>
           </div>
 
-          {/* --- CORRECTED TWO-COLUMN LAYOUT GRID --- */}
           <div className="grid md:grid-cols-2 gap-6">
-            {/* ------------------------- LEFT COLUMN -------------------------- */}
+            {/* LEFT */}
             <div className="flex flex-col gap-6">
-              {/* --- 1. DISPLAY COMPONENT --- */}
+              {/* Display */}
               <div>
-                <h3 className="text-sm font-semibold mb-2">Display</h3>
+                <h3 className="text-sm font-semibold mb-2">{t('displayHeader')}</h3>
                 <div className="relative w-full bg-white dark:bg-[#0f1620] border rounded-lg overflow-hidden aspect-square grid place-items-center">
-                {!displayUrl ? (
-                      <div className="text-xs opacity-70">Nothing selected</div>
-                    ) : kind === 'image' ? (
-                      <img src={displayUrl} alt="Selected" className="absolute inset-0 w-full h-full object-contain" />
-                    ) : kind === 'audio' ? (
-                      <audio controls src={displayUrl} className="w-11/12" />
-                    ) : kind === 'video' ? (
-                      <video controls src={displayUrl} className="absolute inset-0 w-full h-full object-contain" />
-                    ) : kind === 'youtube' ? (
-                      <iframe
-                        className="absolute inset-0 w-full h-full"
-                        src={toYouTubeEmbedUrl(displayUrl) || displayUrl}
-                        title="YouTube video"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                        allowFullScreen
-                      />
-                    ) : (
-                      <div className="text-xs opacity-70">Unsupported media</div>
-                    )}
+                  {!displayUrl ? (
+                    <div className="text-xs opacity-70">{t('nothingSelected')}</div>
+                  ) : kind === 'image' ? (
+                    <img src={displayUrl} alt="Selected" className="absolute inset-0 w-full h-full object-contain" />
+                  ) : kind === 'audio' ? (
+                    <audio controls src={displayUrl} className="w-11/12" />
+                  ) : kind === 'video' ? (
+                    <video controls src={displayUrl} className="absolute inset-0 w-full h-full object-contain" />
+                  ) : kind === 'youtube' ? (
+                    <iframe
+                      className="absolute inset-0 w-full h-full"
+                      src={toYouTubeEmbedUrl(displayUrl) || displayUrl}
+                      title={t('youtubeVideo')}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <div className="text-xs opacity-70">{t('unsupportedMedia')}</div>
+                  )}
 
                   {displayUrl && lastModelUsed && (
                     <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs font-mono rounded-md px-2 py-1 backdrop-blur-sm shadow-lg">
-                      Model: {lastModelUsed}
+                      {t('modelLabel')} {lastModelUsed}
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* --- 2. AI DESCRIBE COMPONENT --- */}
+              {/* AI Describe */}
               {isImageTab(activeTab.key) && (
                 <div className="rounded-xl border-2 border-[#3D4F60] dark:border-[#4B5A6B] bg-[#F3EADF] dark:bg-[#2A3645] p-4">
-                  <h3 className="font-semibold mb-2">AI Describe — Selected Image</h3>
+                  <h3 className="font-semibold mb-2">{t('aiDescribeHeader')}</h3>
                   <div className="flex gap-2 items-center mb-2">
                     <button
                       onClick={handleDescribeSelected}
                       disabled={!canDescribeSelected || descLoading}
                       className="px-4 py-2 rounded bg-[#E97451] text-white disabled:opacity-50"
                     >
-                      {descLoading ? 'Describing…' : 'Describe Selected'}
+                      {descLoading ? t('describing') : t('describeSelected')}
                     </button>
                     {descError && <span className="text-red-600 text-sm">{descError}</span>}
-                    {!displayUrl && <span className="text-sm opacity-70">Pick from gallery, upload, or generate first.</span>}
+                    {!displayUrl && <span className="text-sm opacity-70">{t('pickFirst')}</span>}
                   </div>
                   {!!desc && (
                     <>
-                      <label className="block text-sm font-bold mb-1">Description</label>
+                      <label className="block text-sm font-bold mb-1">{t('descriptionLabel')}</label>
                       <textarea
                         className="w-full p-2 border rounded dark:bg:white dark:text-[#3D4F60]"
                         rows={5}
@@ -879,7 +859,7 @@ export default function SupportPage() {
                           onClick={() => navigator.clipboard.writeText(desc)}
                           className="px-3 py-1 rounded border-2 border-[#3D4F60] text-[#3D4F60] bg-white hover:bg-[#EAF1F7] active:scale-95 dark:border-[#4B5A6B] dark:text-[#E0C9A0] dark:bg-[#2A3645] dark:hover:bg-[#334154]/60"
                         >
-                          Copy
+                          {t('copy')}
                         </button>
                       </div>
                     </>
@@ -887,38 +867,31 @@ export default function SupportPage() {
                 </div>
               )}
 
-              {/* --- 3. UPLOAD / GENERATE COMPONENT --- */}
+              {/* Upload/Generate */}
               <div className="uploader-scope">
-                {/* NEW: choose a story message */}
                 {!canSaveAssets ? (
                   <div className="mb-4 p-3 rounded-md bg-yellow-100 border border-yellow-300 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-600 dark:text-yellow-200">
-                    <p className="font-semibold">Choose where to manage assets.</p>
-                    <p className="text-sm">
-                      Select a story from the dropdown, or choose <strong>All Uncategorized Assets</strong> to work outside any story.
-                    </p>
+                    <p className="font-semibold">{t('chooseWhereManageAssetsTitle')}</p>
+                    <p className="text-sm">{t('chooseWhereManageAssetsBody')}</p>
                   </div>
                 ) : showUncategorized ? (
                   <div className="mb-4 p-3 rounded-md bg-blue-100 border border-blue-300 text-blue-800 dark:bg-blue-900/30 dark:border-blue-600 dark:text-blue-200">
-                    <p className="font-semibold">Uncategorized mode</p>
-                    <p className="text-sm">
-                      Uploads & saves will go to <code>users/&lt;uid&gt;/assetIndex/uncategorized/&lt;category&gt;/</code>.
-                    </p>
+                    <p className="font-semibold">{t('uncategorizedMode')}</p>
+                    <p className="text-sm">{t('uncategorizedModeBody')}</p>
                   </div>
                 ) : (
                   <div className="mb-4 p-3 rounded-md bg-emerald-100 border-emerald-300 border text-emerald-800 dark:bg-emerald-900/30 dark:border-emerald-600 dark:text-emerald-200">
-                    <p className="font-semibold">Story mode</p>
-                    <p className="text-sm">
-                      Uploads & saves will go to <code>users/&lt;uid&gt;/assetIndex/stories/{selectedStoryId}/&lt;category&gt;/</code>.
-                    </p>
+                    <p className="font-semibold">{t('storyMode')}</p>
+                    <p className="text-sm">{t('storyModeBody').replace('{storyId}', String(selectedStoryId))}</p>
                   </div>
                 )}
 
                 <div className="flex items-center gap-3 text-xs mb-2">
-                  <span className="opacity-70">Generation Tips:</span>
+                  <span className="opacity-70">{t('generationTips')}</span>
                   <div className="inline-flex items-center gap-1">
                     <span className="opacity-60">#1</span>
                     <InfoPopover
-                      title={active === 'locations' ? 'Location Template' : 'Character Template'}
+                      title={active === 'locations' ? t('tip1LocationTitle') : t('tip1CharacterTitle')}
                       docHref={tipDocForOne}
                       onUsePrompt={handleUsePromptFromInfo}
                     />
@@ -926,7 +899,7 @@ export default function SupportPage() {
                   <div className="inline-flex items-center gap-1">
                     <span className="opacity-60">#2</span>
                     <InfoPopover
-                      title="Pro Tips for Prompting Images"
+                      title={t('tip2Title')}
                       docHref={tipDocForTwo}
                       onUsePrompt={handleUsePromptFromInfo}
                     />
@@ -938,10 +911,18 @@ export default function SupportPage() {
                     mode="uploaderOnly"
                     variant={activeTab.variant}
                     assetCategory={activeTab.key}
-                    accept={acceptByTab[activeTab.key]}       // images/audio still use uploads
+                    accept={acceptByTab[activeTab.key]}
                     showInnerDescribe={false}
                     onSaved={handleSaved}
-                    onGenerateRequest={handleGenerateRequest}
+                    onGenerateRequest={async (p) => {
+                      if (!showUncategorized && !selectedStoryId) { alert(t('alertSelectStoryOrUncatForImage')); return; }
+                      if (!p.trim()) { alert(t('alertEnterDescriptionForImage')); return; }
+                      try {
+                        await handleGenerateRequest(p);
+                      } catch (e) {
+                        alert(t('alertAiImageFailed'));
+                      }
+                    }}
                     isGenerating={isGenerating}
                     generatedImageUrl={generatedImageUrlForChild}
                     storyId={showUncategorized ? undefined : selectedStoryId}
@@ -951,38 +932,36 @@ export default function SupportPage() {
                     disableSaveButtons={!canSaveAssets}
                   />
                 ) : (
-                  /* NEW: YouTube link form for Videos tab */
                   <div className="rounded-xl border-2 border-[#3D4F60] dark:border-[#4B5A6B] bg-[#F3EADF] dark:bg-[#2A3645] p-4">
                     <h3 className="font-semibold mb-3 flex items-center gap-2">
                       <Film className="h-4 w-4" />
-                      Insert YouTube URL
+                      {t('insertYouTubeUrl')}
                     </h3>
 
                     {!canSaveAssets && (
                       <div className="mb-3 p-2 rounded bg-yellow-100 text-yellow-900 text-sm">
-                        Select a story or choose <strong>All Uncategorized Assets</strong> to enable saving.
+                        {t('selectStoryOrUncatToSave')}
                       </div>
                     )}
 
-                    <label className="block text-sm font-semibold mb-1">YouTube URL</label>
+                    <label className="block text-sm font-semibold mb-1">{t('youTubeUrlLabel')}</label>
                     <input
                       type="text"
                       value={ytUrl}
                       onChange={(e) => setYtUrl(e.target.value)}
-                      placeholder="https://www.youtube.com/watch?v=..."
+                      placeholder={t('youTubeUrlPlaceholder')}
                       className="w-full p-2 border rounded mb-3 dark:bg-white dark:text-[#3D4F60]"
                     />
 
-                    <label className="block text-sm font-semibold mb-1">Custom Name</label>
+                    <label className="block text-sm font-semibold mb-1">{t('customNameLabel')}</label>
                     <input
                       type="text"
                       value={ytName}
                       onChange={(e) => setYtName(e.target.value)}
-                      placeholder="e.g., Trailer — Chapter 1"
+                      placeholder={t('customNamePlaceholder')}
                       className="w-full p-2 border rounded mb-4 dark:bg:white dark:text-[#3D4F60]"
                     />
 
-                    {/* Live preview when valid */}
                     {ytValid && (
                       <div className="relative w-full border rounded overflow-hidden aspect-video mb-3 bg-black">
                         <iframe
@@ -997,30 +976,33 @@ export default function SupportPage() {
 
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={saveYouTubeLink}
+                        onClick={async () => {
+                          if (!ytValid) { alert(t('alertPasteValidYouTube')); return; }
+                          try { await saveYouTubeLink(); }
+                          catch { alert(t('alertSaveYouTubeFailed')); }
+                        }}
                         disabled={!canSaveAssets || !ytValid || savingYt}
                         className="px-4 py-2 rounded bg-[#E97451] text-white disabled:opacity-50"
                       >
-                        {savingYt ? 'Saving…' : 'Save to My Gallery'}
+                        {savingYt ? t('saving') : t('saveToMyGallery')}
                       </button>
                       {!ytValid && ytUrl.trim().length > 0 && (
-                        <span className="text-xs text-red-600">Enter a valid YouTube URL.</span>
+                        <span className="text-xs text-red-600">{t('enterValidYouTube')}</span>
                       )}
                     </div>
                   </div>
                 )}
               </div>
-              </div>
+            </div>
 
-            {/* ------------------------- RIGHT COLUMN -------------------------- */}
+            {/* RIGHT */}
             <div className="flex flex-col gap-6">
-              {/* --- 4. AI SCENE COMPOSER --- */}
               {isImageTab(activeTab.key) && (
                 <div className="border-2 border-dashed border-[#E97451] rounded-xl p-4 bg-[#F3EADF] dark:bg-[#2A3645]">
-                  <h3 className="font-semibold mb-3 text-lg">AI Scene Composer</h3>
+                  <h3 className="font-semibold mb-3 text-lg">{t('aiSceneComposer')}</h3>
 
                   {selectedCharacters.length === 0 && selectedLocations.length === 0 ? (
-                    <p className="text-sm text-gray-500">Select images from your gallery below to begin combining them.</p>
+                    <p className="text-sm text-gray-500">{t('selectImagesToCombine')}</p>
                   ) : (
                     <>
                       <div className="flex flex-wrap gap-2 mb-3">
@@ -1029,26 +1011,33 @@ export default function SupportPage() {
                         ))}
                       </div>
                       <textarea
-                        className="w-full p-2 border rounded dark:bg-white dark:text-[#3D4F60]"
+                        className="w-full p-2 border rounded dark:bg:white dark:text-[#3D4F60]"
                         rows={3}
-                        placeholder="e.g., Make the character stand in front of the castle at sunset..."
+                        placeholder={t('composerPlaceholder')}
                         value={composerPrompt}
                         onChange={(e) => setComposerPrompt(e.target.value)}
                       />
                       <div className="flex items-center gap-4 mt-2">
                         <button
-                          onClick={handleSceneGeneration}
+                          onClick={async () => {
+                            if (!showUncategorized && !selectedStoryId) { alert(t('alertSelectStoryOrUncatForScene')); return; }
+                            if (!composerPrompt.trim() || (selectedCharacters.length === 0 && selectedLocations.length === 0)) {
+                              alert(t('alertPickImagesAndPrompt')); return;
+                            }
+                            try { await handleSceneGeneration(); }
+                            catch { alert(t('alertAiSceneFailed')); }
+                          }}
                           disabled={isComposing || !composerPrompt.trim()}
                           className="px-4 py-2 rounded bg-[#E97451] text-white disabled:opacity-50 flex items-center gap-2"
                         >
                           {isComposing ? <Loader2 className="animate-spin" size={16} /> : <Wand2 size={16} />}
-                          {isComposing ? 'Generating...' : 'Generate Scene'}
+                          {isComposing ? t('generating') : t('generateScene')}
                         </button>
                         <button
                           onClick={() => { setSelectedCharacters([]); setSelectedLocations([]); setComposerPrompt(''); }}
                           className="text-xs underline"
                         >
-                          Clear Selection
+                          {t('clearSelection')}
                         </button>
                       </div>
                     </>
@@ -1056,17 +1045,14 @@ export default function SupportPage() {
                 </div>
               )}
 
-              {/* --- 5. MY GALLERY --- */}
               <div className="border-2 border-[#3D4F60] dark:border-[#4B5A6B] rounded-xl p-3 bg-white/60 dark:bg-transparent">
                 <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
                   <h4 className="font-semibold">
-                    My Gallery — <span className="opacity-80">{activeTab.label}</span>
+                    {t('myGallery')} — <span className="opacity-80">{activeTab.label}</span>
                   </h4>
 
-                  {/* 🔽 Sort & Pagination Controls */}
                   <div className="flex items-center gap-2 text-sm">
-                    {/* Sort field */}
-                    <label className="sr-only" htmlFor="gallery-sort-field">Sort by</label>
+                    <label className="sr-only" htmlFor="gallery-sort-field">{t('sortBy')}</label>
                     <div className="relative">
                       <select
                         id="gallery-sort-field"
@@ -1074,26 +1060,24 @@ export default function SupportPage() {
                         value={sortField}
                         onChange={(e) => setSortField(e.target.value as typeof sortField)}
                       >
-                        <option value="name">Name</option>
-                        <option value="updatedAt">Updated</option>
-                        <option value="createdAt">Created</option>
+                        <option value="name">{t('name')}</option>
+                        <option value="updatedAt">{t('updated')}</option>
+                        <option value="createdAt">{t('created')}</option>
                       </select>
                       <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 opacity-60" />
                     </div>
 
-                    {/* Sort dir */}
                     <button
                       type="button"
                       onClick={toggleSortDir}
                       className="inline-flex items-center gap-1 px-2 py-1 rounded-md border bg-white dark:bg-[#1A2533] dark:text-[#E0C9A0] dark:border-[#4B5A6B]/40"
-                      title={`Sort ${sortDir === 'asc' ? 'ascending' : 'descending'}`}
+                      title={sortDir === 'asc' ? t('sortAscending') : t('sortDescending')}
                     >
                       <ArrowUpDown className="h-4 w-4" />
                       {sortDir.toUpperCase()}
                     </button>
 
-                    {/* Page size */}
-                    <label className="ml-2">Page:</label>
+                    <label className="ml-2">{t('pageLabel')}</label>
                     <select
                       className="pl-2 pr-6 py-1.5 rounded-md border bg-white dark:bg-[#1A2533] dark:text-[#E0C9A0] dark:border-[#4B5A6B]/40"
                       value={pageSize}
@@ -1102,29 +1086,21 @@ export default function SupportPage() {
                       {[12, 24, 36, 48].map(n => <option key={n} value={n}>{n}</option>)}
                     </select>
 
-                    {/* Force reset (useful when testing pagination) */}
                     <button
                       type="button"
                       onClick={triggerGalleryReset}
                       className="ml-2 text-xs underline opacity-80"
                       title="Reset gallery pagination"
                     >
-                      reset
+                      {t('reset')}
                     </button>
                   </div>
                 </div>
 
                 {isImageTab(activeTab.key) && (
-                  <p className="text-xs text-gray-500 mb-2">Select up to 3 characters and 2 locations to combine them.</p>
+                  <p className="text-xs text-gray-500 mb-2">{t('selectUpToCombine')}</p>
                 )}
 
-                {/* NOTE:
-                   - key={galleryKey} forces a remount when sort/page settings change,
-                     which ensures any internal cursor-based pagination in the gallery re-initializes.
-                   - sortField/sortDir/pageSize are passed down; wire them inside UploadImageReference
-                     where you build your Firestore queries (orderBy + limit).
-                */}
-                {/* @ts-ignore */}
                 <UploadImageReference
                   key={galleryKey}
                   mode="galleryOnly"
@@ -1136,33 +1112,29 @@ export default function SupportPage() {
                   maxSelection={activeTab.key === 'characters' ? 3 : 2}
                   storyId={showUncategorized ? undefined : selectedStoryId}
                   disableSaveButtons={!canSaveAssets}
-                  sortField={sortField}       // NEW
-                  sortDir={sortDir}           // NEW
-                  pageSize={pageSize}         // NEW
+                  sortField={sortField}
+                  sortDir={sortDir}
+                  pageSize={pageSize}
                 />
 
-                {/* Tiny helper text for pagination state */}
                 <div className="mt-2 text-[11px] opacity-70">
-                  Sorting by <code>{sortField}</code> ({sortDir}), page size <code>{pageSize}</code>. Changes here reset the gallery’s internal cursor.
+                  {t('sortingByTemplate')
+                    .replace('{field}', String(sortField))
+                    .replace('{dir}', String(sortDir))
+                    .replace('{n}', String(pageSize))}
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* --- FOOTER --- */}
+        {/* FOOTER */}
         <div className="flex justify-end gap-3 p-6 border-t-2 border-[#3D4F60]/10 dark:border-[#4B5A6B]/20">
-          <Link
-            className="px-4 py-2 rounded-md border border-[#3D4F60] text-[#3D4F60] bg-white dark:border-[#4B5A6B] dark:text-[#E0C9A0] dark:bg-[#2A3645]"
-            href="/create/begin"
-          >
-            ← Back
+          <Link className="px-4 py-2 rounded-md border border-[#3D4F60] text-[#3D4F60] bg-white dark:border-[#4B5A6B] dark:text-[#E0C9A0] dark:bg-[#2A3645]" href="/create/begin">
+            {t('backLink')}
           </Link>
-          <Link
-            className="px-6 py-2 rounded-md bg-[#E97451] text-white"
-            href={selectedStoryId ? `/create/scenes?storyId=${selectedStoryId}` : '/create/scenes'}
-          >
-            Next: AI Story eReader →
+          <Link className="px-6 py-2 rounded-md bg-[#E97451] text-white" href={selectedStoryId ? `/create/scenes?storyId=${selectedStoryId}` : '/create/scenes'}>
+            {t('nextEreaderLink')}
           </Link>
         </div>
       </div>

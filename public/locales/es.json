@@ -463,5 +463,90 @@
   "alertPasteYouTubeFirst": "Primero pega una URL de YouTube.",
   "alertValidYouTube": "Ingresa una URL de YouTube válida.",
   "alertSelectStoryOrUncat": "Selecciona una historia o cambia a \"Sin categoría\" primero.",
-  "alertSavedToGallery": "Guardado en Mi Galería → Videos."
+  "alertSavedToGallery": "Guardado en Mi Galería → Videos.",
+
+  "pleaseSignInToUploadOrView": "Inicia sesión para subir o ver tu galería de referencias.",
+  
+  "supportBuildTitle": "Crear referencias y soporte de IA",
+  "supportBuildSubtitle": "Almacena referencias de imagen, audio y video usadas en tus historias.",
+  "contextLabel": "Contexto:",
+  "contextUncategorized": "Sin categoría",
+
+  "activeStoryLabel": "Historia activa:",
+  "viewingSavingUncategorized": "Viendo y guardando en Sin categoría",
+  "noStorySelected": "(Ninguna historia seleccionada)",
+  "backLink": "← Atrás",
+  "nextEreaderLink": "Siguiente: Lector de historias con IA →",
+  "untitled": "(sin título)",
+
+  "tabCharacters": "Personajes",
+  "tabCharactersBlurb": "Imágenes de referencia para tu elenco.",
+  "tabLocations": "Ubicaciones",
+  "tabLocationsBlurb": "Lugares, mundos, escenas.",
+  "tabNarrations": "Narraciones (MP3)",
+  "tabNarrationsBlurb": "Líneas de voz o narración.",
+  "tabSoundFx": "Efectos de sonido (MP3)",
+  "tabSoundFxBlurb": "Sonidos ambientales o de efecto.",
+  "tabVideos": "Videos (MP4)",
+  "tabVideosBlurb": "Clips o tomas en movimiento.",
+
+  "displayHeader": "Visualización",
+  "nothingSelected": "Nada seleccionado",
+  "youtubeVideo": "Video de YouTube",
+  "unsupportedMedia": "Medio no compatible",
+  "modelLabel": "Modelo:",
+
+  "aiDescribeHeader": "Describir con IA — Imagen seleccionada",
+  "describeSelected": "Describir seleccionada",
+  "pickFirst": "Elige de la galería, sube o genera primero.",
+  "descriptionLabel": "Descripción",
+  
+  "chooseWhereManageAssetsTitle": "Elige dónde gestionar recursos.",
+  "chooseWhereManageAssetsBody": "Selecciona una historia en el menú o elige Todos los recursos sin categoría para trabajar fuera de cualquier historia.",
+  "uncategorizedMode": "Modo sin categoría",
+  "uncategorizedModeBody": "Las cargas y guardados irán a users/<uid>/assetIndex/uncategorized/<category>/.",
+  "storyModeBody": "Las cargas y guardados irán a users/<uid>/assetIndex/stories/{storyId}/<category>/.",
+
+  "generationTips": "Consejos de generación:",
+  "tip1LocationTitle": "Plantilla de ubicación",
+  "tip1CharacterTitle": "Plantilla de personaje",
+  "tip2Title": "Consejos para redactar indicaciones de imágenes",
+
+  "insertYouTubeUrl": "Insertar URL de YouTube",
+  "selectStoryOrUncatToSave": "Selecciona una historia o elige Todos los recursos sin categoría para habilitar el guardado.",
+  "customNameLabel": "Nombre personalizado",
+  "customNamePlaceholder": "p. ej., Tráiler — Capítulo 1",
+  "enterValidYouTube": "Introduce una URL de YouTube válida.",
+
+  "aiSceneComposer": "Compositor de escenas con IA",
+  "selectImagesToCombine": "Selecciona imágenes de tu galería para empezar a combinarlas.",
+  "composerPlaceholder": "p. ej., Haz que el personaje esté frente al castillo al atardecer...",
+  "generateScene": "Generar escena",
+  "clearSelection": "Limpiar selección",
+
+  "name": "Nombre",
+  "updated": "Actualizado",
+  "created": "Creado",
+  "sortAscending": "Orden ascendente",
+  "sortDescending": "Orden descendente",
+  "pageLabel": "Página:",
+  "selectUpToCombine": "Selecciona hasta 3 personajes y 2 ubicaciones para combinarlos.",
+  "sortingByTemplate": "Ordenando por {field} ({dir}), tamaño de página {n}. Los cambios aquí reinician el cursor interno de la galería.",
+
+  "alertSelectStoryOrUncatForImage": "Selecciona una historia o elige \"Todos los recursos sin categoría\" para generar una imagen.",
+  "alertEnterDescriptionForImage": "Introduce una descripción para generar una imagen.",
+  "alertAiImageFailed": "Error en la generación de imagen con IA",
+  "alertImageGenerationError": "Error al generar la imagen",
+
+  "alertDescribeFailed": "Error al describir",
+
+  "alertSelectStoryOrUncatForScene": "Selecciona una historia o elige \"Todos los recursos sin categoría\" para generar una escena.",
+  "alertPickImagesAndPrompt": "Selecciona al menos una imagen y escribe una indicación.",
+  "alertAiSceneFailed": "Error en la generación de escena con IA",
+  "alertSceneGenerationError": "Error al generar la escena",
+
+  "alertPasteValidYouTube": "Pega una URL válida de YouTube.",
+  "alertSaveYouTubeFailed": "No se pudo guardar el enlace de YouTube."
+
+
 }

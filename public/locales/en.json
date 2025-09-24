@@ -476,6 +476,93 @@
   "alertPasteYouTubeFirst": "Paste a YouTube URL first.",
   "alertValidYouTube": "Please enter a valid YouTube URL.",
   "alertSelectStoryOrUncat": "Select a story or switch to \"Uncategorized\" first.",
-  "alertSavedToGallery": "Saved to My Gallery → Videos."
+  "alertSavedToGallery": "Saved to My Gallery → Videos.",
+
+  "pleaseSignInToUploadOrView": "Please sign in to upload or view your reference gallery.",
+
+  "supportBuildTitle": "Build References & AI Support",
+  "supportBuildSubtitle": "Store image, audio, and video references used across your stories.",
+  "contextLabel": "Context:",
+  "contextUncategorized": "Uncategorized",
+
+  "activeStoryLabel": "Active Story:",
+  "viewingSavingUncategorized": "Viewing & saving to Uncategorized",
+  "noStorySelected": "(No story selected)",
+  "backLink": "← Back",
+  "nextEreaderLink": "Next: AI Story eReader →",
+  "untitled": "(untitled)",
+
+  "tabCharacters": "Characters",
+  "tabCharactersBlurb": "Reference images for your cast.",
+  "tabLocations": "Locations",
+  "tabLocationsBlurb": "Places, worlds, scenes.",
+  "tabNarrations": "Narrations (MP3)",
+  "tabNarrationsBlurb": "Voice lines or narration.",
+  "tabSoundFx": "Sound FX (MP3)",
+  "tabSoundFxBlurb": "Ambient or effect sounds.",
+  "tabVideos": "Videos (MP4)",
+  "tabVideosBlurb": "Clips or motion shots.",
+
+  "displayHeader": "Display",
+  "nothingSelected": "Nothing selected",
+  "youtubeVideo": "YouTube video",
+  "unsupportedMedia": "Unsupported media",
+  "modelLabel": "Model:",
+
+  "aiDescribeHeader": "AI Describe — Selected Image",
+  "describeSelected": "Describe Selected",
+  "pickFirst": "Pick from gallery, upload, or generate first.",
+  "descriptionLabel": "Description",
+
+  "chooseWhereManageAssetsTitle": "Choose where to manage assets.",
+  "chooseWhereManageAssetsBody": "Select a story from the dropdown, or choose All Uncategorized Assets to work outside any story.",
+  "uncategorizedMode": "Uncategorized mode",
+  "uncategorizedModeBody": "Uploads & saves will go to users/<uid>/assetIndex/uncategorized/<category>/.",
+  "storyModeBody": "Uploads & saves will go to users/<uid>/assetIndex/stories/{storyId}/<category>/.",
+
+  "generationTips": "Generation Tips:",
+  "tip1LocationTitle": "Location Template",
+  "tip1CharacterTitle": "Character Template",
+  "tip2Title": "Pro Tips for Prompting Images",
+
+  "insertYouTubeUrl": "Insert YouTube URL",
+  "selectStoryOrUncatToSave": "Select a story or choose All Uncategorized Assets to enable saving.",
+  "customNameLabel": "Custom Name",
+  "customNamePlaceholder": "e.g., Trailer — Chapter 1",
+  "enterValidYouTube": "Enter a valid YouTube URL.",
+
+  "aiSceneComposer": "AI Scene Composer",
+  "selectImagesToCombine": "Select images from your gallery below to begin combining them.",
+  "composerPlaceholder": "e.g., Make the character stand in front of the castle at sunset...",
+  "generateScene": "Generate Scene",
+  "clearSelection": "Clear Selection",
+
+  "name": "Name",
+  "updated": "Updated",
+  "created": "Created",
+  "sortAscending": "Sort ascending",
+  "sortDescending": "Sort descending",
+  "pageLabel": "Page:",
+  "selectUpToCombine": "Select up to 3 characters and 2 locations to combine them.",
+  "sortingByTemplate": "Sorting by {field} ({dir}), page size {n}. Changes here reset the gallery’s internal cursor.",
+
+  "alertSelectStoryOrUncatForImage": "Select a story or choose \"All Uncategorized Assets\" to generate an image.",
+  "alertEnterDescriptionForImage": "Please enter a description to generate an image.",
+  "alertAiImageFailed": "AI image generation failed",
+  "alertImageGenerationError": "Image generation error",
+
+  "alertDescribeFailed": "Describe failed",
+
+  "alertSelectStoryOrUncatForScene": "Select a story or choose \"All Uncategorized Assets\" to generate a scene.",
+  "alertPickImagesAndPrompt": "Please select at least one image and provide a prompt.",
+  "alertAiSceneFailed": "AI scene generation failed",
+  "alertSceneGenerationError": "Scene generation error",
+
+  "alertPasteValidYouTube": "Please paste a valid YouTube URL.",
+  "alertSaveYouTubeFailed": "Could not save the YouTube link."
+
+
+
+
 }
   
