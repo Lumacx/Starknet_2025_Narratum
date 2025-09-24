@@ -31,7 +31,7 @@ This list focuses on files likely to contain significant user-facing text, start
 - [x] `src/app/signup/page.tsx`: Sign-up form and related messages.
 - [x] `src/app/discover/page.tsx`: Story discovery interface.
 - [x] `src/app/buy-credits/page.tsx`: Credit purchase page.
-- [ ] `src/app/subscription/page.tsx`: Subscription management page.
+- [x] `src/app/subscription/page.tsx`: Subscription management page.
 - [ ] `src/app/profile/page.tsx`: User profile information.
 - [ ] `src/app/create/begin/page.tsx`: Initial story creation steps.
 - [ ] `src/app/create/scenes/page.tsx`: Story scene creation interface.

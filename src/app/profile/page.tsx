@@ -1,4 +1,3 @@
-// src/app/profile/page.tsx
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -21,6 +20,17 @@ import {
 import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import AvatarUploader from '@/components/AvatarUploader';
+import { useLocale } from '@/context/LocaleContext';
+
+/* ----------------------------- i18n helpers ----------------------------- */
+const fmt = (s: string, vars?: Record<string, string | number>) => {
+  if (!vars) return s;
+  let out = s;
+  for (const [k, v] of Object.entries(vars)) {
+    out = out.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
+  }
+  return out;
+};
 
 /* ----------------------------- Types ----------------------------- */
 type FavoriteItem = { storyId: string; createdAt?: any };
@@ -75,6 +85,7 @@ type RefUser = {
 
 /* ----------------------------- Page ----------------------------- */
 const ProfilePage: React.FC = () => {
+  const { t } = useLocale();
   const { user, starknetAddress, loading, logout } = useAuth();
   const router = useRouter();
   const isLoggedIn = !!user || !!starknetAddress;
@@ -200,15 +211,15 @@ const ProfilePage: React.FC = () => {
       return `${starknetAddress.substring(0, 6)}...${starknetAddress.substring(
         starknetAddress.length - 4
       )}`;
-    return 'Narratum User';
-  }, [user, starknetAddress]);
+    return t('narratumUser');
+  }, [user, starknetAddress, t]);
 
-  const loginMethod = user ? 'Logged in with Google/Email' : 'Connected via Starknet';
+  const loginMethod = user ? t('loggedInWithGoogleEmail') : t('connectedViaStarknet');
 
   const handleUploaded = (url: string) => {
     const busted = url + (url.includes('?') ? '&' : '?') + 'cb=' + Date.now();
     setAvatarOverride(busted);
-    setMessage('Avatar updated successfully.');
+    setMessage(t('avatarUpdated'));
   };
 
   /* ----------------------------- Referral helpers ----------------------------- */
@@ -254,7 +265,7 @@ const ProfilePage: React.FC = () => {
   }
 
   /* =========================
-     USER PROFILE DOC (Plan/Tier/Credits & personal info)
+     USER PROFILE DOC
      ========================= */
   useEffect(() => {
     const fetch = async () => {
@@ -375,9 +386,9 @@ const ProfilePage: React.FC = () => {
               ? (x.ratingSum ?? 0) / ratingCount
               : undefined;
 
-        owned.push({
+          owned.push({
             id: d.id,
-            title: x.title || '(untitled)',
+            title: x.title || t('untitledStory'),
             coverImageUrl: x.coverImageUrl ?? undefined,
             genres: Array.isArray(x.genres) ? x.genres : [],
             views: x.views ?? 0,
@@ -400,10 +411,10 @@ const ProfilePage: React.FC = () => {
     );
 
     return () => unsub();
-  }, [user]);
+  }, [user, t]);
 
   /* =========================
-     TRANSACTIONS (latest 100) — only when tab is open
+     TRANSACTIONS
      ========================= */
   useEffect(() => {
     if (!user || activeTab !== 'transactions') {
@@ -446,7 +457,7 @@ const ProfilePage: React.FC = () => {
   }, [user, activeTab]);
 
   /* =========================
-     REFERRAL LIST — only when Transactions + subtab 'referrals'
+     REFERRAL LIST
      ========================= */
   useEffect(() => {
     const loadReferrals = async () => {
@@ -481,7 +492,6 @@ const ProfilePage: React.FC = () => {
      HELPERS
      ========================= */
 
-  // CHANGED: don't try to scroll to Transactions before it's rendered
   const jumpTo = useCallback((tab: typeof activeTab) => {
     setActiveTab(tab);
 
@@ -497,7 +507,6 @@ const ProfilePage: React.FC = () => {
     }
   }, []);
 
-  // NEW: when Transactions becomes active, scroll after it mounts
   useEffect(() => {
     if (activeTab === 'transactions') {
       requestAnimationFrame(() => {
@@ -515,19 +524,18 @@ const ProfilePage: React.FC = () => {
         await updateProfile(auth.currentUser, { displayName: displayNameInput });
         await reload(auth.currentUser);
       }
-  
+
       const uref = doc(db, 'users', auth.currentUser.uid);
-  
+
       const trim = (v?: string) => (v && v.trim() ? v.trim() : '');
-  
+
       // Build socials update that *removes* empty fields
       const socialsUpdate: any = {
         twitter: trim(socials.twitter) || deleteField(),
         instagram: trim(socials.instagram) || deleteField(),
         discord: trim(socials.discord) || deleteField(),
       };
-  
-      // Build top-level fields (delete if user cleared them)
+
       const payload: any = {
         displayName: trim(displayNameInput) || deleteField(),
         bio: trim(bio) || deleteField(),
@@ -535,31 +543,29 @@ const ProfilePage: React.FC = () => {
         website: trim(website) || deleteField(),
         socials: socialsUpdate,
       };
-  
-      // Only set photoURL if it exists; otherwise delete it (prevents undefined)
+
       if (auth.currentUser.photoURL) {
         payload.photoURL = auth.currentUser.photoURL;
       } else {
         payload.photoURL = deleteField();
       }
-  
+
       await setDoc(uref, payload, { merge: true });
-  
-      setMessage('Profile updated.');
+
+      setMessage(t('profileUpdated'));
       setEditOpen(false);
     } catch (e) {
       console.warn('[profile] saveProfile error', e);
-      setMessage('Failed to update profile.');
+      setMessage(t('failedToUpdateProfile'));
     } finally {
       setSavingProfile(false);
     }
-  }, [bio, location, website, socials, displayNameInput, computedDisplayName]);
+  }, [bio, location, website, socials, displayNameInput, computedDisplayName, t]);
 
   const plan: Plan = profileDoc.plan || 'free';
   const tier: Tier = profileDoc.subscriptionTier || (plan === 'free' ? 'basic' : 'fan');
   const credits = typeof profileDoc.credits === 'number' ? profileDoc.credits! : 0;
 
-  // -------- Referral code (uid + createdAt seconds) --------
   const authCreationTime = auth.currentUser?.metadata?.creationTime || null;
   const referralCode = makeReferralCode(
     profileDoc.displayName ?? user?.displayName ?? null,
@@ -570,18 +576,17 @@ const ProfilePage: React.FC = () => {
 
   const copyReferral = async () => {
     if (!referralCode) {
-      setMessage('Fill personal info to get your code first.');
+      setMessage(t('needCodeFirst'));
       return;
     }
     try {
       await navigator.clipboard.writeText(referralCode);
-      setMessage('Referral code copied to clipboard.');
+      setMessage(t('referralCopied'));
     } catch {
-      setMessage('Could not copy referral code.');
+      setMessage(t('referralCopyFailed'));
     }
   };
 
-  // ---- Small presentational helpers ----
   const Chip = ({ children }: { children: React.ReactNode }) => (
     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border border-[#4A5C6E] bg-[#0b1220]/50 text-[#E0C9A0]">
       {children}
@@ -601,7 +606,7 @@ const ProfilePage: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
         <p className="text-xl font-semibold">
-          {loading ? 'Loading profile...' : 'Redirecting to login...'}
+          {loading ? t('loadingProfile') : t('redirectingToLogin')}
         </p>
       </div>
     );
@@ -619,7 +624,7 @@ const ProfilePage: React.FC = () => {
           href="/"
           className="px-6 py-3 bg-gray-600 text-white font-semibold rounded-full shadow-md hover:bg-gray-700 transition"
         >
-          Back to Landing
+          {t('backToLanding')}
         </Link>
         <button
           onClick={async () => {
@@ -629,7 +634,7 @@ const ProfilePage: React.FC = () => {
           }}
           className="px-6 py-3 bg-red-600 text-white font-semibold rounded-full shadow-md hover:bg-red-700 transition"
         >
-          Logout
+          {t('logout')}
         </button>
       </div>
 
@@ -664,26 +669,26 @@ const ProfilePage: React.FC = () => {
                   : 'bg-gray-700/20 border-gray-500 text-gray-200'
               }`}
             >
-              Plan: {plan === 'paid' ? 'Paid' : 'Free'}
+              {t('planLabel')} {plan === 'paid' ? t('planPaid') : t('planFree')}
             </span>
             <span className="px-3 py-1 rounded-full text-xs font-bold border border-[#BFA071] bg-[#233446] text-[#E0C9A0]">
-              Subscription: {tier.charAt(0).toUpperCase() + tier.slice(1)}
+              {t('subscriptionLabel')} {tier.charAt(0).toUpperCase() + tier.slice(1)}
             </span>
             <span className="px-3 py-1 rounded-full text-xs font-bold border border-[#4A5C6E] bg-[#1F2937] text-[#FDE68A]">
-              Credits: {credits}
+              {t('creditsLabelSimple')} {credits}
             </span>
             <button
               onClick={() => setEditOpen(true)}
               className="ml-2 px-4 py-1.5 rounded-full text-sm font-bold bg-[#BFA071] text-[#1A2533] hover:bg-[#E0C9A0] shadow"
             >
-              Edit Profile
+              {t('editProfile')}
             </button>
           </div>
 
           {/* Referral Code Block */}
           <div className="mt-4 flex flex-col items-center gap-2">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold">Your Referral Code:</span>
+              <span className="text-sm font-semibold">{t('yourReferralCode')}</span>
 
               {hasReferralCode ? (
                 <>
@@ -698,15 +703,8 @@ const ProfilePage: React.FC = () => {
                   </code>
 
                   <button
-                    onClick={async () => {
-                      try {
-                        await navigator.clipboard.writeText(referralCode!);
-                        setMessage('Referral code copied to clipboard.');
-                      } catch {
-                        setMessage('Could not copy referral code.');
-                      }
-                    }}
-                    title="Copy code"
+                    onClick={copyReferral}
+                    title={t('copyCodeTitle')}
                     className="
                       text-xs px-2 py-1 rounded border transition
                       bg-slate-200/80 text-slate-800 border-slate-300 hover:bg-slate-200
@@ -715,7 +713,7 @@ const ProfilePage: React.FC = () => {
                       dark:hover:bg-[#2b3e52] dark:focus-visible:ring-slate-300/40
                     "
                   >
-                    Copy
+                    {t('copy')}
                   </button>
                 </>
               ) : (
@@ -726,7 +724,7 @@ const ProfilePage: React.FC = () => {
                     dark:bg-yellow-200/20 dark:text-yellow-200 dark:border-yellow-400/40
                   "
                 >
-                  Fill personal info to get your code
+                  {t('fillInfoToGetCode')}
                 </span>
               )}
             </div>
@@ -738,7 +736,8 @@ const ProfilePage: React.FC = () => {
                 dark:bg-[#BFA071]/15 dark:text-[#E0C9A0] dark:border-[#BFA071]/40
               "
             >
-              <strong>Share it</strong> to earn <strong>20% to 40%</strong> on referrals for purchases.
+              <strong>{t('shareItEarn').split('{percent1}')[0]}</strong>
+              {fmt(t('shareItEarn'), { percent1: 20, percent2: 40 })}
             </div>
           </div>
         </header>
@@ -753,21 +752,21 @@ const ProfilePage: React.FC = () => {
         <nav className="w-full mb-6 flex justify-center">
           <div className="inline-flex items-center gap-3 bg-[#0f172a]/40 border border-[#4A5C6E] rounded-full p-2 shadow-inner">
             {[
-              { key: 'stories', label: 'My Stories' },
-              { key: 'drafts', label: 'Drafts' },
-              { key: 'favorites', label: 'Favorites' },
-              { key: 'transactions', label: 'Transactions' },
-            ].map((t) => (
+              { key: 'stories', label: t('tabsMyStories') },
+              { key: 'drafts', label: t('tabsDrafts') },
+              { key: 'favorites', label: t('tabsFavorites') },
+              { key: 'transactions', label: t('tabsTransactions') },
+            ].map((tab) => (
               <button
-                key={t.key}
-                onClick={() => jumpTo(t.key as any)}
+                key={tab.key}
+                onClick={() => jumpTo(tab.key as any)}
                 className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
-                  activeTab === (t.key as any)
+                  activeTab === (tab.key as any)
                     ? 'bg-[#BFA071] text-[#1A2533]'
                     : 'bg-transparent text-[#E0C9A0] hover:bg-[#233446]'
                 }`}
               >
-                {t.label}
+                {tab.label}
               </button>
             ))}
           </div>
@@ -776,14 +775,13 @@ const ProfilePage: React.FC = () => {
         {/* ---------- My Stories ---------- */}
         {activeTab === 'stories' && (
           <section id="my-stories-section" className="w-full mt-2">
-            <h2 className="text-2xl md:text-3xl font-bold mb-4 text-center">My Stories</h2>
+            <h2 className="text-2xl md:text-3xl font-bold mb-4 text-center">{t('myStoriesHeading')}</h2>
 
             {mineLoading ? (
-              <p className="text-sm text-center text-[#8FA0AF]">Loading your stories…</p>
+              <p className="text-sm text-center text-[#8FA0AF]">{t('loadingYourStories')}</p>
             ) : myStories.length === 0 ? (
               <p className="text-sm text-center text-[#8FA0AF]">
-                You haven’t published any stories yet. Create one in{' '}
-                <Link className="underline" href="/create/begin">Create</Link>.
+                {t('noStoriesYet')} <Link className="underline" href="/create/begin">{t('create')}</Link>.
               </p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -798,12 +796,12 @@ const ProfilePage: React.FC = () => {
                       />
                     </div>
                     <div className="p-4 space-y-2">
-                      <h3 className="text-lg font-bold line-clamp-2">{s.title || '(untitled)'}</h3>
+                      <h3 className="text-lg font-bold line-clamp-2">{s.title || t('untitledStory')}</h3>
                       <div className="flex flex-wrap gap-2">
                         {(s.genres || []).slice(0, 3).map((g) => (
                           <Chip key={g}>{g}</Chip>
                         ))}
-                        <Chip>Views: {s.views ?? 0}</Chip>
+                        <Chip>{t('views')} {s.views ?? 0}</Chip>
                         <Chip>
                           ⭐ {s.averageRating ? s.averageRating.toFixed(1) : '—'}
                           {s.ratingCount ? ` (${s.ratingCount})` : ''}
@@ -814,13 +812,13 @@ const ProfilePage: React.FC = () => {
                           href={`/read/${s.id}`}
                           className="px-3 py-1.5 rounded-full text-sm font-semibold bg-[#BFA071] text-[#1A2533] hover:bg-[#E0C9A0]"
                         >
-                          Read
+                          {t('read')}
                         </Link>
                         <Link
                           href={`/create/begin?storyId=${s.id}`}
                           className="px-3 py-1.5 rounded-full text-sm font-semibold bg-[#233446] text-[#E0C9A0] hover:bg-[#2b3e52]"
                         >
-                          Edit
+                          {t('edit')}
                         </Link>
                       </div>
                     </div>
@@ -834,12 +832,12 @@ const ProfilePage: React.FC = () => {
         {/* ---------- Drafts ---------- */}
         {activeTab === 'drafts' && (
           <section id="drafts-section" className="w-full mt-2">
-            <h2 className="text-2xl md:text-3xl font-bold mb-4 text-center">Drafts</h2>
+            <h2 className="text-2xl md:text-3xl font-bold mb-4 text-center">{t('draftsHeading')}</h2>
 
             {mineLoading ? (
-              <p className="text-sm text-center text-[#8FA0AF]">Loading your drafts…</p>
+              <p className="text-sm text-center text-[#8FA0AF]">{t('loadingYourDrafts')}</p>
             ) : myDrafts.length === 0 ? (
-              <p className="text-sm text-center text-[#8FA0AF]">No drafts yet.</p>
+              <p className="text-sm text-center text-[#8FA0AF]">{t('noDraftsYet')}</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {myDrafts.map((s) => (
@@ -853,25 +851,25 @@ const ProfilePage: React.FC = () => {
                       />
                     </div>
                     <div className="p-4 space-y-2">
-                      <h3 className="text-lg font-bold line-clamp-2">{s.title || '(untitled)'}</h3>
+                      <h3 className="text-lg font-bold line-clamp-2">{s.title || t('untitledStory')}</h3>
                       <div className="flex flex-wrap gap-2">
                         {(s.genres || []).slice(0, 3).map((g) => (
                           <Chip key={g}>{g}</Chip>
                         ))}
-                        <Chip>Status: {s.status ?? 'draft'}</Chip>
+                        <Chip>{t('status')} {s.status ?? 'draft'}</Chip>
                       </div>
                       <div className="pt-2 flex gap-2">
                         <Link
                           href={`/create/begin?storyId=${s.id}`}
                           className="px-3 py-1.5 rounded-full text-sm font-semibold bg-[#BFA071] text-[#1A2533] hover:bg-[#E0C9A0]"
                         >
-                          Continue
+                          {t('continue')}
                         </Link>
                         <Link
                           href={`/read/${s.id}`}
                           className="px-3 py-1.5 rounded-full text-sm font-semibold bg-[#233446] text-[#E0C9A0] hover:bg-[#2b3e52]"
                         >
-                          Preview
+                          {t('preview')}
                         </Link>
                       </div>
                     </div>
@@ -885,14 +883,13 @@ const ProfilePage: React.FC = () => {
         {/* ---------- Favorites ---------- */}
         {activeTab === 'favorites' && (
           <section id="favorites-section" className="w-full mt-2">
-            <h2 className="text-2xl md:text-3xl font-bold mb-4 text-center">Favorites</h2>
+            <h2 className="text-2xl md:text-3xl font-bold mb-4 text-center">{t('favoritesHeading')}</h2>
 
             {favLoading ? (
-              <p className="text-sm text-center text-[#8FA0AF]">Loading favorites…</p>
+              <p className="text-sm text-center text-[#8FA0AF]">{t('loadingFavorites')}</p>
             ) : favStories.length === 0 ? (
               <p className="text-sm text-center text-[#8FA0AF]">
-                You haven’t favorited any stories yet. Explore in{' '}
-                <Link className="underline" href="/discover">Discover</Link>.
+                {t('noFavoritesYet')} <Link className="underline" href="/discover">{t('discover')}</Link>.
               </p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -907,7 +904,7 @@ const ProfilePage: React.FC = () => {
                       />
                     </div>
                     <div className="p-4 space-y-2">
-                      <h3 className="text-lg font-bold line-clamp-2">{s.title || '(untitled)'}</h3>
+                      <h3 className="text-lg font-bold line-clamp-2">{s.title || t('untitledStory')}</h3>
                       <div className="flex flex-wrap gap-2">
                         {(s.genres || []).slice(0, 3).map((g) => (
                           <Chip key={g}>{g}</Chip>
@@ -922,7 +919,7 @@ const ProfilePage: React.FC = () => {
                           href={`/read/${s.id}`}
                           className="px-3 py-1.5 rounded-full text-sm font-semibold bg-[#BFA071] text-[#1A2533] hover:bg-[#E0C9A0]"
                         >
-                          Read
+                          {t('read')}
                         </Link>
                       </div>
                     </div>
@@ -936,7 +933,7 @@ const ProfilePage: React.FC = () => {
         {/* ---------- Transactions ---------- */}
         {activeTab === 'transactions' && (
           <section id="transactions-section" className="w-full mt-10">
-            <h2 className="text-2xl md:text-3xl font-bold mb-4 text-center">Transactions</h2>
+            <h2 className="text-2xl md:text-3xl font-bold mb-4 text-center">{t('transactionsHeading')}</h2>
 
             {/* Sub-toggle */}
             <div className="flex justify-center mb-4">
@@ -947,7 +944,7 @@ const ProfilePage: React.FC = () => {
                   }`}
                   onClick={() => setTxSubtab('personal')}
                 >
-                  Personal Transactions
+                  {t('personalTransactions')}
                 </button>
                 <button
                   className={`px-4 py-2 text-sm font-semibold ${
@@ -955,73 +952,68 @@ const ProfilePage: React.FC = () => {
                   }`}
                   onClick={() => setTxSubtab('referrals')}
                 >
-                  Referral Transactions
+                  {t('referralTransactions')}
                 </button>
               </div>
             </div>
 
             {txSubtab === 'personal' ? (
               txLoading ? (
-                <p className="text-sm text-center text-[#8FA0AF]">Loading transactions…</p>
+                <p className="text-sm text-center text-[#8FA0AF]">{t('loadingTransactions')}</p>
               ) : txs.length === 0 ? (
-                <p className="text-sm text-center text-[#8FA0AF]">
-                  No transactions yet. Purchases, bonuses, and spends will show up here.
-                </p>
+                <p className="text-sm text-center text-[#8FA0AF]">{t('noTransactionsYet')}</p>
               ) : (
                 <div className="max-w-4xl mx-auto overflow-hidden rounded-lg border border-[#4A5C6E] bg-[#0b1220]/60">
                   <div className="grid grid-cols-12 text-xs font-semibold uppercase tracking-wide bg-[#162235] text-[#E0C9A0] border-b border-[#4A5C6E]">
-                    <div className="col-span-3 px-3 py-2">Date</div>
-                    <div className="col-span-2 px-3 py-2">Type</div>
-                    <div className="col-span-2 px-3 py-2">Credits</div>
-                    <div className="col-span-2 px-3 py-2">Amount (USD)</div>
-                    <div className="col-span-3 px-3 py-2">Note</div>
+                    <div className="col-span-3 px-3 py-2">{t('date')}</div>
+                    <div className="col-span-2 px-3 py-2">{t('type')}</div>
+                    <div className="col-span-2 px-3 py-2">{t('credits')}</div>
+                    <div className="col-span-2 px-3 py-2">{t('amountUsd')}</div>
+                    <div className="col-span-3 px-3 py-2">{t('note')}</div>
                   </div>
-                  {txs.map((t) => {
-                    const ts = t.createdAt?.toDate?.() as Date | undefined;
+                  {txs.map((tx) => {
+                    const ts = tx.createdAt?.toDate?.() as Date | undefined;
                     const dateStr = ts ? ts.toLocaleString() : '—';
-                    const sign = t.creditsDelta >= 0 ? '+' : '';
+                    const sign = tx.creditsDelta >= 0 ? '+' : '';
                     const color =
-                      t.creditsDelta > 0
+                      tx.creditsDelta > 0
                         ? 'text-green-300'
-                        : t.creditsDelta < 0
+                        : tx.creditsDelta < 0
                         ? 'text-rose-300'
                         : 'text-slate-200';
                     return (
                       <div
-                        key={t.id}
+                        key={tx.id}
                         className="grid grid-cols-12 text-sm border-b border-[#243041] last:border-none text-[#E5E7EB]"
                       >
                         <div className="col-span-3 px-3 py-2">{dateStr}</div>
                         <div className="col-span-2 px-3 py-2 capitalize">
-                          {t.type}{' '}
-                          {t.status !== 'confirmed' && <span className="text-xs opacity-70">({t.status})</span>}
+                          {tx.type}{' '}
+                          {tx.status !== 'confirmed' && <span className="text-xs opacity-70">({tx.status})</span>}
                         </div>
                         <div className={`col-span-2 px-3 py-2 font-bold ${color}`}>
                           {sign}
-                          {t.creditsDelta}
+                          {tx.creditsDelta}
                         </div>
-                        <div className="col-span-2 px-3 py-2">{t.amountUsd ? `$${t.amountUsd.toFixed(2)}` : '—'}</div>
-                        <div className="col-span-3 px-3 py-2">{t.note || (t.storyId ? `Story: ${t.storyId}` : '—')}</div>
+                        <div className="col-span-2 px-3 py-2">{tx.amountUsd ? `$${tx.amountUsd.toFixed(2)}` : '—'}</div>
+                        <div className="col-span-3 px-3 py-2">{tx.note || (tx.storyId ? `${t('storyPrefix')} ${tx.storyId}` : '—')}</div>
                       </div>
                     );
                   })}
                 </div>
               )
             ) : (
-              // Referral subtab
               <div className="max-w-4xl mx-auto">
                 {refLoading ? (
-                  <p className="text-sm text-center text-[#8FA0AF]">Loading referral report…</p>
+                  <p className="text-sm text-center text-[#8FA0AF]">{t('referralLoading')}</p>
                 ) : refUsers.length === 0 ? (
-                  <p className="text-sm text-center text-[#8FA0AF]">
-                    No users have signed up with your referral code yet.
-                  </p>
+                  <p className="text-sm text-center text-[#8FA0AF]">{t('noReferralUsers')}</p>
                 ) : (
                   <div className="overflow-hidden rounded-lg border border-[#4A5C6E] bg-[#0b1220]/60">
                     <div className="grid grid-cols-12 text-xs font-semibold uppercase tracking-wide bg-[#162235] text-[#E0C9A0] border-b border-[#4A5C6E]">
-                      <div className="col-span-6 px-3 py-2">Referred User</div>
-                      <div className="col-span-3 px-3 py-2">UID</div>
-                      <div className="col-span-3 px-3 py-2">Joined</div>
+                      <div className="col-span-6 px-3 py-2">{t('referredUser')}</div>
+                      <div className="col-span-3 px-3 py-2">{t('uid')}</div>
+                      <div className="col-span-3 px-3 py-2">{t('joined')}</div>
                     </div>
                     {refUsers.map((u) => {
                       const ts = u.createdAt?.toDate?.() as Date | undefined;
@@ -1041,9 +1033,7 @@ const ProfilePage: React.FC = () => {
                 )}
 
                 <p className="mt-3 text-xs text-center text-[#9AA6B2]">
-                  Referral commissions appear when your backend writes referral transactions (e.g., to{' '}
-                  <code>users/&lt;you&gt;/transactions</code> with fields like <code>referrerUid</code> and{' '}
-                  <code>commissionCredits</code>).
+                  {t('referralHowTo')}
                 </p>
               </div>
             )}
@@ -1056,110 +1046,110 @@ const ProfilePage: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50">
           <div className="w-full md:max-w-2xl bg-[#0b1220] text-[#E0C9A0] border border-[#4A5C6E] rounded-t-2xl md:rounded-2xl shadow-2xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-[#243041]">
-              <h3 className="text-xl font-bold">Edit Profile</h3>
+              <h3 className="text-xl font-bold">{t('editProfileTitle')}</h3>
               <button
                 className="px-3 py-1 rounded-md bg-[#233446] hover:bg-[#2b3e52]"
                 onClick={() => setEditOpen(false)}
               >
-                Close
+                {t('close')}
               </button>
             </div>
 
             <div className="p-5 grid gap-4">
               <label className="grid gap-1">
-                <span className="text-sm font-semibold">Display Name</span>
+                <span className="text-sm font-semibold">{t('displayNameLabel')}</span>
                 <input
                   type="text"
                   className="px-3 py-2 rounded-md bg-[#0f172a] border border-[#243041] outline-none"
                   value={displayNameInput}
                   onChange={(e) => setDisplayNameInput(e.target.value)}
-                  placeholder="Your public name"
+                  placeholder={t('displayNamePlaceholder')}
                 />
-                <span className="text-xs text-slate-400">Email and creation date are not editable here.</span>
+                <span className="text-xs text-slate-400">{t('emailNotEditable')}</span>
               </label>
 
               <label className="grid gap-1">
-                <span className="text-sm font-semibold">Bio</span>
+                <span className="text-sm font-semibold">{t('bioLabel')}</span>
                 <textarea
                   className="px-3 py-2 rounded-md bg-[#0f172a] border border-[#243041] outline-none"
                   rows={3}
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
-                  placeholder="Tell readers about you"
+                  placeholder={t('bioPlaceholder')}
                 />
               </label>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <label className="grid gap-1">
-                  <span className="text-sm font-semibold">Location</span>
+                  <span className="text-sm font-semibold">{t('locationLabel')}</span>
                   <input
                     type="text"
                     className="px-3 py-2 rounded-md bg-[#0f172a] border border-[#243041] outline-none"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
-                    placeholder="City, Country"
+                    placeholder={t('locationPlaceholder')}
                   />
                 </label>
                 <label className="grid gap-1">
-                  <span className="text-sm font-semibold">Website</span>
+                  <span className="text-sm font-semibold">{t('websiteLabel')}</span>
                   <input
                     type="text"
                     className="px-3 py-2 rounded-md bg-[#0f172a] border border-[#243041] outline-none"
                     value={website}
                     onChange={(e) => setWebsite(e.target.value)}
-                    placeholder="example.com"
+                    placeholder={t('websitePlaceholder')}
                   />
                 </label>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <label className="grid gap-1">
-                  <span className="text-sm font-semibold">Twitter / X</span>
+                  <span className="text-sm font-semibold">{t('twitterLabel')}</span>
                   <input
                     type="text"
                     className="px-3 py-2 rounded-md bg-[#0f172a] border border-[#243041] outline-none"
                     value={socials.twitter || ''}
                     onChange={(e) => setSocials((s) => ({ ...s, twitter: e.target.value }))}
-                    placeholder="@handle"
+                    placeholder={t('handlePlaceholder')}
                   />
                 </label>
                 <label className="grid gap-1">
-                  <span className="text-sm font-semibold">Instagram</span>
+                  <span className="text-sm font-semibold">{t('instagramLabel')}</span>
                   <input
                     type="text"
                     className="px-3 py-2 rounded-md bg-[#0f172a] border border-[#243041] outline-none"
                     value={socials.instagram || ''}
                     onChange={(e) => setSocials((s) => ({ ...s, instagram: e.target.value }))}
-                    placeholder="@handle"
+                    placeholder={t('handlePlaceholder')}
                   />
                 </label>
                 <label className="grid gap-1">
-                  <span className="text-sm font-semibold">Discord</span>
+                  <span className="text-sm font-semibold">{t('discordLabel')}</span>
                   <input
                     type="text"
                     className="px-3 py-2 rounded-md bg-[#0f172a] border border-[#243041] outline-none"
                     value={socials.discord || ''}
                     onChange={(e) => setSocials((s) => ({ ...s, discord: e.target.value }))}
-                    placeholder="username#1234"
+                    placeholder={t('discordPlaceholder')}
                   />
                 </label>
               </div>
 
               <div className="mt-2 text-xs text-slate-400">
-                Plan, subscription tier, and credits are displayed and managed by billing. Contact support to change them.
+                {t('billingNote')}
               </div>
             </div>
 
             <div className="flex justify-end gap-3 px-5 py-4 border-t border-[#243041]">
               <button className="px-4 py-2 rounded-md bg-[#233446] hover:bg-[#2b3e52]" onClick={() => setEditOpen(false)}>
-                Cancel
+                {t('cancel')}
               </button>
               <button
                 className="px-4 py-2 rounded-md bg-[#BFA071] text-[#1A2533] font-bold hover:bg-[#E0C9A0] disabled:opacity-60"
                 disabled={savingProfile}
                 onClick={saveProfile}
               >
-                {savingProfile ? 'Saving…' : 'Save Changes'}
+                {savingProfile ? t('saving') : t('saveChanges')}
               </button>
             </div>
           </div>
