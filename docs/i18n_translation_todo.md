@@ -38,8 +38,8 @@ This list focuses on files likely to contain significant user-facing text, start
 - [x] `src/app/create/support/page.tsx`: Support/help content for creation.
 - [x] `src/app/legal/page.tsx`: Legal documents (e.g., terms of service, privacy policy).
 - [x] `src/app/dashboard/page.tsx`: User dashboard.
-- [ ] `src/app/ereader/page.tsx`: E-reader interface.
-- [ ] `src/app/reader/page.tsx`: Story reader interface.
+- [x] `src/app/ereader/page.tsx`: E-reader interface.
+- [x] `src/app/reader/page.tsx`: Story reader interface.
 - [ ] `src/app/about/page.tsx`: About us page.
 - [ ] `src/app/checkout/page.tsx`: Checkout process.
 - [ ] `src/app/story/[storyId]/page.tsx`: Displaying an individual story.

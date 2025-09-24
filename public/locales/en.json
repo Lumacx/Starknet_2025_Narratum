@@ -615,6 +615,8 @@
   "alertDownloadFilesFailed": "Could not download files.",
 
   "storyNotFound": "Story not found.",
-  "failedToLoadStory": "Failed to load story."
+  "failedToLoadStory": "Failed to load story.",
+
+  "missingReaderBase": "Missing reader base path."
 
 }

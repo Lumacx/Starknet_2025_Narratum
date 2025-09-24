@@ -602,6 +602,10 @@
   "alertDownloadFilesFailed": "No se pudieron descargar los archivos.",
 
   "storyNotFound": "Historia no encontrada.",
-  "failedToLoadStory": "No se pudo cargar la historia."
+  "failedToLoadStory": "No se pudo cargar la historia.",
+
+  "missingReaderBase": "Falta la ruta base del lector."
+
+  
 
 }
