@@ -6,11 +6,12 @@ import Link from 'next/link';
 import {
   useGetStoryWithContent,
   useCreateStoryContent,
-  useUpdateStoryContent, // Import the new update mutation hook
+  useUpdateStoryContent,
 } from '@firebasegen/default-connector/react';
 import type { GetStoryWithContentData } from '@firebasegen/default-connector';
 import { generateWritingPrompts } from '@/ai/flows/generate-writing-prompts';
 import { Progress } from '@/components/ui/progress';
+import { useLocale } from '@/context/LocaleContext';
 
 // --- Icons ---
 const FaBook = () => (
@@ -42,17 +43,17 @@ type StoryPage = NonNullable<GetStoryWithContentData['storyContents']>[number];
 
 const StoryEditorPage: React.FC = () => {
   const params = useParams();
+  const { t } = useLocale();
   const storyId = params.storyId as string;
 
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const progressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { data, isLoading: isLoadingStory, error, refetch } =
-  useGetStoryWithContent({ storyId });
+    useGetStoryWithContent({ storyId });
 
-  const { mutate: createStoryContent, isPending: isSavingPage } =
-    useCreateStoryContent();
-  const { mutate: updateStoryContent, isPending: isUpdatingPage } = useUpdateStoryContent(); // Use the update mutation
+  const { mutate: createStoryContent, isPending: isSavingPage } = useCreateStoryContent();
+  const { mutate: updateStoryContent, isPending: isUpdatingPage } = useUpdateStoryContent();
 
   const story = data?.story ?? null;
   const pages = (data?.storyContents ?? []) as StoryPage[];
@@ -66,13 +67,9 @@ const StoryEditorPage: React.FC = () => {
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
 
   const [imagePrompt, setImagePrompt] = useState('');
-  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(
-    null
-  );
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const [imageGenerationError, setImageGenerationError] = useState<
-    string | null
-  >(null);
+  const [imageGenerationError, setImageGenerationError] = useState<string | null>(null);
   const [generationProgress, setGenerationProgress] = useState(0);
 
   // initialize selection
@@ -128,7 +125,7 @@ const StoryEditorPage: React.FC = () => {
     );
   };
 
-  // Save current buffer as a NEW page (note: update mutation not defined yet)
+  // Save current buffer (create or update)
   const handleSavePageContent = () => {
     if (!story || !activePage) return;
 
@@ -136,32 +133,32 @@ const StoryEditorPage: React.FC = () => {
     const commonData = {
       textContent: currentPageContent,
       pageNumber: activePage.pageNumber,
-      imageUrl: activePage.imageUrl, // Preserve existing image URL
-      audioUrl: activePage.audioUrl, // Preserve existing audio URL
+      imageUrl: activePage.imageUrl,
+      audioUrl: activePage.audioUrl,
     };
 
-    if (activePage.id) { // If page exists, update it
-      updateStoryContent({
-        id: activePage.id,
-        ...commonData,
-      }, {
-        onSuccess: () => setSaveStatus('saved'),
-        onError: (e: Error) => {
-          console.error("Failed to update content:", e);
-          setSaveStatus('unsaved');
+    if (activePage.id) {
+      updateStoryContent(
+        { id: activePage.id, ...commonData },
+        {
+          onSuccess: () => setSaveStatus('saved'),
+          onError: (e: Error) => {
+            console.error('Failed to update content:', e);
+            setSaveStatus('unsaved');
+          },
         }
-      });
-    } else { // If it's a new page (should be handled by handleAddPage now)
-      createStoryContent({
-        storyId,
-        ...commonData,
-      }, {
-        onSuccess: () => setSaveStatus('saved'),
-        onError: (e: Error) => {
-          console.error("Failed to create content:", e);
-          setSaveStatus('unsaved');
+      );
+    } else {
+      createStoryContent(
+        { storyId, ...commonData },
+        {
+          onSuccess: () => setSaveStatus('saved'),
+          onError: (e: Error) => {
+            console.error('Failed to create content:', e);
+            setSaveStatus('unsaved');
+          },
         }
-      });
+      );
     }
   };
 
@@ -177,11 +174,11 @@ const StoryEditorPage: React.FC = () => {
       if (Array.isArray(result.writingPrompts) && result.writingPrompts.length) {
         setAiPrompt(result.writingPrompts[0]);
       } else {
-        setAiPrompt('No prompts were generated. Try adding more to your story!');
+        setAiPrompt(t('noPromptsGenerated'));
       }
     } catch (e: any) {
       console.error('Error generating prompt:', e);
-      setAiPrompt('Sorry, an error occurred while generating a prompt.');
+      setAiPrompt(t('promptGenError'));
     } finally {
       setIsGeneratingPrompt(false);
     }
@@ -189,7 +186,7 @@ const StoryEditorPage: React.FC = () => {
 
   const handleGenerateImage = async () => {
     if (!imagePrompt) {
-      setImageGenerationError('Please enter a prompt for the image.');
+      setImageGenerationError(t('pleaseEnterImagePrompt'));
       return;
     }
 
@@ -221,23 +218,25 @@ const StoryEditorPage: React.FC = () => {
 
       const { imageUrl } = await response.json();
       setGeneratedImageUrl(imageUrl);
-      
-      // Save the generated image URL to the current active page
+
       if (activePage && imageUrl) {
         setSaveStatus('saving');
-        updateStoryContent({
-          id: activePage.id,
-          textContent: activePage.textContent,
-          pageNumber: activePage.pageNumber,
-          imageUrl: imageUrl, // Set the new image URL
-          audioUrl: activePage.audioUrl, // Preserve existing audio URL
-        }, {
-          onSuccess: () => {
-            setSaveStatus('saved');
-            refetch(); // Refetch story content to update UI
+        updateStoryContent(
+          {
+            id: activePage.id,
+            textContent: activePage.textContent,
+            pageNumber: activePage.pageNumber,
+            imageUrl,
+            audioUrl: activePage.audioUrl,
           },
-          onError: (e: Error) => console.error("Failed to save image to page:", e)
-        });
+          {
+            onSuccess: () => {
+              setSaveStatus('saved');
+              refetch();
+            },
+            onError: (e: Error) => console.error('Failed to save image to page:', e),
+          }
+        );
       }
     } catch (e: any) {
       setImageGenerationError(e.message);
@@ -252,27 +251,31 @@ const StoryEditorPage: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F0D1B0]">
         <p className="text-xl font-semibold text-[#3D4F60]">
-          Loading your story editor...
+          {t('loadingEditor')}
         </p>
       </div>
     );
   }
 
   if (error || !story) {
+    const msg = error?.message ?? t('storyNotFound');
+    const errText = t('errorLoadingStory').replace('{message}', msg);
+  
     return (
       <div className="min-h-screen flex flex-col gap-4 items-center justify-center bg-[#F0D1B0]">
         <p className="text-xl font-semibold text-red-600">
-          Error loading story: {error?.message || 'Story not found.'}
+          {errText}
         </p>
         <Link
           href="/dashboard"
           className="px-4 py-2 bg-[#3D4F60] text-white font-semibold rounded-lg shadow hover:bg-[#2c3a47] transition-colors"
         >
-          Go to Dashboard
+          {t('goToDashboard')}
         </Link>
       </div>
     );
   }
+  
 
   return (
     <div className="min-h-screen bg-[#F9F6F0] text-[#3D4F60] flex flex-col">
@@ -281,16 +284,16 @@ const StoryEditorPage: React.FC = () => {
         <div className="flex items-center gap-4">
           <span className="text-sm italic">
             {saveStatus === 'saved'
-              ? 'All changes saved'
+              ? t('saveStatusSaved')
               : saveStatus === 'saving'
-              ? 'Saving...'
-              : 'Unsaved changes'}
+              ? t('saveStatusSaving')
+              : t('saveStatusUnsaved')}
           </span>
           <Link
             href="/dashboard"
             className="px-4 py-2 bg-[#3D4F60] text-white font-semibold rounded-lg shadow hover:bg-[#2c3a47] transition-colors"
           >
-            Exit Editor
+            {t('exitEditor')}
           </Link>
         </div>
       </header>
@@ -298,12 +301,12 @@ const StoryEditorPage: React.FC = () => {
       <div className="flex-grow grid grid-cols-12 gap-4 p-4">
         <aside className="col-span-3 bg-white border border-[#D4E1EE] rounded-lg p-4">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-bold text-lg">Manuscript</h2>
+            <h2 className="font-bold text-lg">{t('manuscript')}</h2>
             <button
               onClick={handleAddPage}
               disabled={isSavingPage}
               className="p-2 rounded-full hover:bg-[#F0D1B0]/50 disabled:opacity-50"
-              title="Add New Page"
+              title={t('addNewPageTitle')}
             >
               <FaPlus />
             </button>
@@ -319,7 +322,8 @@ const StoryEditorPage: React.FC = () => {
                       : 'hover:bg-[#F0D1B0]/50'
                   }`}
                 >
-                  <FaBook /> {`Page ${page.pageNumber}`}
+                  <FaBook /> {t('pageLabelN').replace('{n}', String(page.pageNumber ?? 0))}
+
                 </button>
               </li>
             ))}
@@ -331,7 +335,7 @@ const StoryEditorPage: React.FC = () => {
             value={currentPageContent}
             onChange={handleContentChange}
             className="w-full h-full p-6 text-lg leading-relaxed bg-white border border-[#D4E1EE] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E97451] resize-none"
-            placeholder="Let your story unfold..."
+            placeholder={t('editorPlaceholder')}
             disabled={!activePage}
           />
 
@@ -341,22 +345,22 @@ const StoryEditorPage: React.FC = () => {
               disabled={!activePage || isSavingPage || isUpdatingPage || saveStatus !== 'unsaved'}
               className="px-4 py-2 bg-[#E97451] text-white font-semibold rounded-lg shadow hover:bg-[#d8633f] transition-colors disabled:opacity-50"
             >
-              Save (create page)
+              {t('saveCreatePage')}
             </button>
           </div>
         </main>
 
         <aside className="col-span-3 bg-white border border-[#D4E1EE] rounded-lg p-4 space-y-6">
-          <h2 className="font-bold text-lg">The Muse</h2>
+          <h2 className="font-bold text-lg">{t('theMuse')}</h2>
 
           <div>
-            <h3 className="font-semibold mb-2">AI Writing Prompts</h3>
+            <h3 className="font-semibold mb-2">{t('aiWritingPrompts')}</h3>
             <button
               onClick={handleGeneratePrompt}
               disabled={isGeneratingPrompt}
               className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[#F0D1B0] text-[#3D4F60] font-semibold rounded-lg hover:bg-[#E0C9A0] transition-colors disabled:opacity-50"
             >
-              <FaLightbulb /> {isGeneratingPrompt ? 'Generating...' : 'Get a Prompt'}
+              <FaLightbulb /> {isGeneratingPrompt ? t('generating') : t('getPrompt')}
             </button>
             {aiPrompt && (
               <p className="mt-3 p-3 bg-yellow-100/50 border-l-4 border-yellow-400 text-sm italic rounded">
@@ -366,13 +370,13 @@ const StoryEditorPage: React.FC = () => {
           </div>
 
           <div>
-            <h3 className="font-semibold mb-2">AI Image Generation</h3>
+            <h3 className="font-semibold mb-2">{t('aiImageGeneration')}</h3>
             <div className="space-y-3">
               <input
                 type="text"
                 value={imagePrompt}
                 onChange={(e) => setImagePrompt(e.target.value)}
-                placeholder="A dragon soaring over a castle..."
+                placeholder={t('imagePromptPlaceholder')}
                 className="w-full p-2 border border-[#D4E1EE] rounded-md focus:outline-none focus:ring-2 focus:ring-[#E97451]"
               />
               <button
@@ -380,7 +384,7 @@ const StoryEditorPage: React.FC = () => {
                 disabled={isGeneratingImage}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[#D4E1EE] text-[#3D4F60] font-semibold rounded-lg hover:bg-[#B0C4DE] transition-colors disabled:opacity-50"
               >
-                <FaImage /> {isGeneratingImage ? 'Generating...' : 'Generate Image'}
+                <FaImage /> {isGeneratingImage ? t('generating') : t('generateImage')}
               </button>
               {isGeneratingImage && <Progress value={generationProgress} className="w-full" />}
               {imageGenerationError && <p className="text-sm text-red-600">{imageGenerationError}</p>}

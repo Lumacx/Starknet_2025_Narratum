@@ -617,7 +617,35 @@
   "paypalTestDescription": "Pago de prueba de Narratum",
   "paymentComplete": "¡Pago completado! 🎉",
   "missingPaypalIdTitle": "Falta el ID de cliente de PayPal.",
-  "setPaypalIdEnv": "Configura NEXT_PUBLIC_PAYPAL_CLIENT_ID."
+  "setPaypalIdEnv": "Configura NEXT_PUBLIC_PAYPAL_CLIENT_ID.",
 
+  "loadingStory": "Cargando historia...",
+
+  "loadingEditor": "Cargando tu editor de historias...",
+  "errorLoadingStory": "Error al cargar la historia: {message}",
+  "goToDashboard": "Ir al Panel",
+
+  "saveStatusSaved": "Todos los cambios guardados",
+  "saveStatusSaving": "Guardando...",
+  "saveStatusUnsaved": "Cambios sin guardar",
+  "exitEditor": "Salir del Editor",
+
+  "manuscript": "Manuscrito",
+  "addNewPageTitle": "Agregar nueva página",
+  "pageLabelN": "Página {n}",
+
+  "editorPlaceholder": "Deja que tu historia se despliegue...",
+  "saveCreatePage": "Guardar (crear página)",
+
+  "theMuse": "La Musa",
+  "aiWritingPrompts": "Sugerencias de escritura con IA",
+  "getPrompt": "Obtener sugerencia",
+  "noPromptsGenerated": "No se generaron sugerencias. ¡Intenta añadir más a tu historia!",
+  "promptGenError": "Lo sentimos, ocurrió un error al generar la sugerencia.",
+
+  "aiImageGeneration": "Generación de imágenes con IA",
+  "imagePromptPlaceholder": "Un dragón volando sobre un castillo...",
+  "generateImage": "Generar imagen",
+  "pleaseEnterImagePrompt": "Por favor, escribe una sugerencia para la imagen."
 
 }

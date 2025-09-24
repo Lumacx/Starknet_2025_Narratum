@@ -630,6 +630,37 @@
   "paypalTestDescription": "Narratum test checkout",
   "paymentComplete": "Payment complete! 🎉",
   "missingPaypalIdTitle": "Missing PayPal client ID.",
-  "setPaypalIdEnv": "Set NEXT_PUBLIC_PAYPAL_CLIENT_ID."
+  "setPaypalIdEnv": "Set NEXT_PUBLIC_PAYPAL_CLIENT_ID.",
 
+  "loadingStory": "Loading Story...",
+
+  "loadingEditor": "Loading your story editor...",
+  "errorLoadingStory": "Error loading story: {message}",
+  "goToDashboard": "Go to Dashboard",
+
+  "saveStatusSaved": "All changes saved",
+  "saveStatusSaving": "Saving...",
+  "saveStatusUnsaved": "Unsaved changes",
+  "exitEditor": "Exit Editor",
+
+  "manuscript": "Manuscript",
+  "addNewPageTitle": "Add New Page",
+  "pageLabelN": "Page {n}",
+
+  "editorPlaceholder": "Let your story unfold...",
+  "saveCreatePage": "Save (create page)",
+
+  "theMuse": "The Muse",
+  "aiWritingPrompts": "AI Writing Prompts",
+  "getPrompt": "Get a Prompt",
+  "noPromptsGenerated": "No prompts were generated. Try adding more to your story!",
+  "promptGenError": "Sorry, an error occurred while generating a prompt.",
+
+  "aiImageGeneration": "AI Image Generation",
+  "imagePromptPlaceholder": "A dragon soaring over a castle...",
+  "generateImage": "Generate Image",
+  "pleaseEnterImagePrompt": "Please enter a prompt for the image."
+
+  
+  
 }
