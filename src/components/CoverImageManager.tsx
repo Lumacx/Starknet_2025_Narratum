@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { Trash2, Loader2 } from 'lucide-react';
 import { storage } from '@/lib/firebase';
@@ -15,6 +15,7 @@ import {
   getMetadata,
 } from 'firebase/storage';
 import { useRouter } from 'next/navigation';
+import { useLocale } from '@/context/LocaleContext';
 
 /* ------------------------ Helpers ------------------------ */
 const KB = 1024;
@@ -23,26 +24,38 @@ const MB = 1024 * KB;
 // Align with Storage rules (images 10KB–12MB, audio up to 16MB, mp4 up to 64MB)
 const LIMITS: Record<string, { min: number; max: number }> = {
   // IMAGES
-  'image/png':  { min: 10 * KB, max: 12 * MB },
+  'image/png': { min: 10 * KB, max: 12 * MB },
   'image/jpeg': { min: 10 * KB, max: 12 * MB },
-  'image/jpg':  { min: 10 * KB, max: 12 * MB },
-  'image/gif':  { min: 10 * KB, max: 12 * MB },
+  'image/jpg': { min: 10 * KB, max: 12 * MB },
+  'image/gif': { min: 10 * KB, max: 12 * MB },
   'image/webp': { min: 10 * KB, max: 12 * MB },
   // AUDIO
   'audio/mpeg': { min: 10 * KB, max: 16 * MB },
-  'audio/wav':  { min: 10 * KB, max: 16 * MB },
+  'audio/wav': { min: 10 * KB, max: 16 * MB },
   // VIDEO
-  'video/mp4':  { min: 0.5 * MB,  max: 64 * MB },
+  'video/mp4': { min: 0.5 * MB, max: 64 * MB },
 };
-const fmt = (bytes: number) => (bytes >= MB ? `${(bytes / MB).toFixed(1)} MB` : `${Math.round(bytes / KB)} KB`);
+const fmt = (bytes: number) =>
+  bytes >= MB ? `${(bytes / MB).toFixed(1)} MB` : `${Math.round(bytes / KB)} KB`;
 
-function validate(file: File) {
+function validate(file: File, t: (k: string) => string) {
   const l = LIMITS[file.type];
   if (!l) {
-    return { ok: false, msg: `Unsupported type: ${file.type}. Use PNG/JPG/JPEG/GIF/WebP/MP3/WAV/MP4.` };
+    return {
+      ok: false,
+      msg: t('coverManager.error.unsupportedType').replace('{type}', file.type),
+    };
   }
-  if (file.size < l.min) return { ok: false, msg: `File too small. Min ${fmt(l.min)}.` };
-  if (file.size > l.max) return { ok: false, msg: `File too large. Max ${fmt(l.max)}.` };
+  if (file.size < l.min)
+    return {
+      ok: false,
+      msg: t('coverManager.error.tooSmall').replace('{min}', fmt(l.min)),
+    };
+  if (file.size > l.max)
+    return {
+      ok: false,
+      msg: t('coverManager.error.tooLarge').replace('{max}', fmt(l.max)),
+    };
   return { ok: true as const };
 }
 
@@ -72,12 +85,20 @@ function mimeToExt(mime: string): string {
 }
 
 /** Normalize /api/generate-image outputs into {dataUrl, modelUsed}. */
-function extractImageAndModel(json: any): { dataUrl?: string; modelUsed?: string; provider?: string; location?: string; prompt?: string } {
+function extractImageAndModel(json: any): {
+  dataUrl?: string;
+  modelUsed?: string;
+  provider?: string;
+  location?: string;
+  prompt?: string;
+} {
   if (Array.isArray(json?.images) && json.images.length) {
     const first = json.images[0];
     const dataUrl =
       typeof first === 'string'
-        ? (first.startsWith('data:') ? first : `data:image/png;base64,${first}`)
+        ? first.startsWith('data:')
+          ? first
+          : `data:image/png;base64,${first}`
         : undefined;
     return {
       dataUrl,
@@ -97,7 +118,13 @@ function extractImageAndModel(json: any): { dataUrl?: string; modelUsed?: string
     };
   }
   if (typeof json?.dataUrl === 'string') {
-    return { dataUrl: json.dataUrl, modelUsed: json.modelUsed || json.model, provider: json.provider, location: json.location, prompt: json.prompt };
+    return {
+      dataUrl: json.dataUrl,
+      modelUsed: json.modelUsed || json.model,
+      provider: json.provider,
+      location: json.location,
+      prompt: json.prompt,
+    };
   }
   if (typeof json?.image === 'string') {
     return {
@@ -145,12 +172,12 @@ interface CoverImageManagerProps {
 }
 
 /* ---------------- Imagen-oriented Prompt Composer ---------------- */
-// (composer unchanged; trimmed for brevity)
 function genreDescriptors(genres: string[] = []): string[] {
-  const g = genres.map(s => s.toLowerCase().trim());
+  const g = genres.map((s) => s.toLowerCase().trim());
   const out: string[] = [];
   if (g.includes('fantasy')) out.push('mythic, magical realism, ornate details, ethereal glow');
-  if (g.includes('sci-fi') || g.includes('science fiction')) out.push('futuristic, sleek materials, volumetric light, high contrast');
+  if (g.includes('sci-fi') || g.includes('science fiction'))
+    out.push('futuristic, sleek materials, volumetric light, high contrast');
   if (g.includes('mystery')) out.push('moody, chiaroscuro, suspenseful framing');
   if (g.includes('horror')) out.push('ominous, high shadow depth, desaturated tones');
   if (g.includes('romance')) out.push('warm palette, soft bokeh, intimate framing');
@@ -170,35 +197,45 @@ function composePromptForImagen(
 ) {
   const w = {
     synopsis: Math.max(0.5, Math.min(weights?.synopsis ?? 1.0, 3)),
-    genres:   Math.max(0.5, Math.min(weights?.genres   ?? 0.85, 3)),
-    user:     Math.max(0.5, Math.min(weights?.user     ?? 0.7, 3)),
-    title:    Math.max(0.5, Math.min(weights?.title    ?? 0.55, 3)),
+    genres: Math.max(0.5, Math.min(weights?.genres ?? 0.85, 3)),
+    user: Math.max(0.5, Math.min(weights?.user ?? 0.7, 3)),
+    title: Math.max(0.5, Math.min(weights?.title ?? 0.55, 3)),
   };
 
-  const title    = (ctx?.title || '').trim();
-  const genres   = (ctx?.genres || []).filter(Boolean);
+  const title = (ctx?.title || '').trim();
+  const genres = (ctx?.genres || []).filter(Boolean);
   const synopsis = (ctx?.synopsis || '').trim();
   const language = (ctx?.language || 'English').trim();
-  const userDir  = (userPrompt || '').trim();
+  const userDir = (userPrompt || '').trim();
 
   const lowerSyn = synopsis.toLowerCase();
-  const isAnimalStory =
-    /\bdog\b|\bcanine\b|\bperro\b|\bzaguate\b|\bcat\b|\bfeline\b/.test(lowerSyn);
+  const isAnimalStory = /\bdog\b|\bcanine\b|\bperro\b|\bzaguate\b|\bcat\b|\bfeline\b/.test(lowerSyn);
 
   const lines: string[] = [];
 
   lines.push(`Use ${language} to interpret all descriptive concepts. Do not render any textual characters in the image.`);
-  lines.push('Create a professional, illustration-style book cover image (no text). Use a single striking composition with a clear focal subject, cinematic lighting, and a cohesive palette.');
+  lines.push(
+    'Create a professional, illustration-style book cover image (no text). Use a single striking composition with a clear focal subject, cinematic lighting, and a cohesive palette.'
+  );
 
   if (synopsis) {
-    lines.push(`PRIMARY GUIDANCE (Story Synopsis — highest priority): ${synopsis}${w.synopsis > 1.2 ? ' Focus on accurately reflecting this narrative context.' : ''}`);
+    lines.push(
+      `PRIMARY GUIDANCE (Story Synopsis — highest priority): ${synopsis}` +
+        (w.synopsis > 1.2 ? ' Focus on accurately reflecting this narrative context.' : '')
+    );
   }
   if (genres.length) {
     const desc = genreDescriptors(genres);
-    lines.push(`SECONDARY GUIDANCE (Genre atmosphere): ${genres.join(', ')}.` + (desc.length ? ` Visual tone cues: ${desc.join('; ')}.` : ''));
+    lines.push(
+      `SECONDARY GUIDANCE (Genre atmosphere): ${genres.join(', ')}.` +
+        (desc.length ? ` Visual tone cues: ${desc.join('; ')}.` : '')
+    );
   }
   if (userDir) {
-    lines.push(`TERTIARY GUIDANCE (Additional creative direction): ${userDir}${w.user > 0.9 ? ' Use this to add tasteful detail while staying faithful to the synopsis.' : ''}`);
+    lines.push(
+      `TERTIARY GUIDANCE (Additional creative direction): ${userDir}` +
+        (w.user > 0.9 ? ' Use this to add tasteful detail while staying faithful to the synopsis.' : '')
+    );
   }
   if (title) {
     lines.push(`LIGHT INFLUENCE (Title motif — do NOT add text): ${title}. Use it only as thematic inspiration; do not place typography.`);
@@ -227,37 +264,31 @@ export default function CoverImageManager({
   assetRole = 'cover',
   promptContext,
 }: CoverImageManagerProps) {
+  const { t } = useLocale();
   const { user: currentUser } = useAuth();
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  // --- keep latest storyId available to async callbacks to avoid stale captures
   const storyIdRef = useRef<string | null>(storyId ?? null);
-
-  // keep it in sync when prop changes
   useEffect(() => {
     storyIdRef.current = storyId ?? null;
   }, [storyId]);
 
-  // Path builder (no leading slash)
   const pathFor = useCallback((uid: string, sid: string, category: string, name?: string) => {
     const base = `users/${uid}/assetIndex/stories/${sid}/${category}`;
     return name ? `${base}/${name}` : base;
   }, []);
 
-  // Tabs / selection
   const [activeTab, setActiveTab] = useState<Tab>('my-gallery');
   const [selectedImageForCover, setSelectedImageForCover] = useState<string | null>(initialCoverUrl ?? null);
   const [selectedFileName, setSelectedFileName] = useState<string>('');
 
-  // Upload
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadedPreviewUrl, setUploadedPreviewUrl] = useState<string>('');
   const [uploadError, setUploadError] = useState<string>('');
   const [uploadNameToSave, setUploadNameToSave] = useState('');
   const [isUploading, setIsUploading] = useState(false);
 
-  // AI
   const [aiPrompt, setAiPrompt] = useState('');
   const [suggestedPrompt, setSuggestedPrompt] = useState('');
   const [isDescribing, setIsDescribing] = useState(false);
@@ -266,14 +297,15 @@ export default function CoverImageManager({
   const [aiNameToSave, setAiNameToSave] = useState('');
   const [aiModelUsed, setAiModelUsed] = useState<string | null>(null);
 
-  // Persist last gen meta across renders
-  const lastGenMetaRef = useRef<Required<Pick<GalleryMeta, 'modelUsed' | 'provider' | 'location' | 'prompt'>> | null>(null);
+  type LastGenMeta = Required<
+  Pick<GalleryMeta, 'modelUsed' | 'provider' | 'location' | 'prompt'>
+>;
 
-  // Gallery
+const lastGenMetaRef = useRef<LastGenMeta | null>(null);
+
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [isLoadingGallery, setIsLoadingGallery] = useState(false);
 
-  // Single category for this manager
   const assetCategory: 'covers' = 'covers';
 
   /* ------------------------ Gallery load ------------------------ */
@@ -316,14 +348,13 @@ export default function CoverImageManager({
       console.error('Failed to load gallery:', e);
       const msg = String(e?.message || e);
       if (msg.includes('storage/unauthorized') || msg.includes('permission')) {
-        alert('Cannot list your gallery. Check Storage rules (allow list) and confirm the storyId is correct.');
+        alert(t('coverManager.alert.cannotListGallery'));
       }
     } finally {
       setIsLoadingGallery(false);
     }
-  }, [currentUser, pathFor, assetCategory]);
+  }, [currentUser, pathFor, assetCategory, t]);
 
-  // Reload when user or story changes
   useEffect(() => {
     loadGallery();
     if (initialCoverUrl) {
@@ -346,9 +377,9 @@ export default function CoverImageManager({
   async function onChooseFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
-    const check = validate(f);
+    const check = validate(f, t);
     if (!check.ok) {
-      setUploadError(check.msg || 'Invalid file.');
+      setUploadError(check.msg || t('coverManager.error.invalidFile'));
       setUploadedFile(null);
       setUploadedPreviewUrl('');
       setSelectedImageForCover(null);
@@ -370,7 +401,13 @@ export default function CoverImageManager({
   async function handleDescribeImage(imageSource: File | string) {
     try {
       setIsDescribing(true);
-      let payload: { dataUrl?: string; imageUrl?: string; prompt?: string; responseModalities?: string[]; language?: string };
+      let payload: {
+        dataUrl?: string;
+        imageUrl?: string;
+        prompt?: string;
+        responseModalities?: string[];
+        language?: string;
+      };
       const lang = promptContext?.language || 'English';
 
       if (typeof imageSource !== 'string') {
@@ -396,11 +433,11 @@ export default function CoverImageManager({
       });
 
       const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || 'AI describe failed');
+      if (!res.ok) throw new Error(json?.error || t('coverManager.alert.aiDescribeFailed'));
       setSuggestedPrompt(json.description || '');
       if (activeTab === 'ai-generate') setAiPrompt(json.description || '');
     } catch (e: any) {
-      alert(e?.message || 'AI error');
+      alert(t('coverManager.alert.aiError'));
     } finally {
       setIsDescribing(false);
     }
@@ -408,13 +445,10 @@ export default function CoverImageManager({
 
   async function handleGenerateImage() {
     try {
-      const hasContext =
-        Boolean(promptContext?.synopsis) ||
-        Boolean(promptContext?.genres?.length) ||
-        Boolean(promptContext?.title);
+      const hasContext = Boolean(promptContext?.synopsis) || Boolean(promptContext?.genres?.length) || Boolean(promptContext?.title);
 
       if (!aiPrompt.trim() && !hasContext) {
-        alert('Please enter a prompt or fill in the story details.');
+        alert(t('coverManager.alert.enterPromptOrDetails'));
         return;
       }
 
@@ -423,9 +457,9 @@ export default function CoverImageManager({
 
       const { prompt, negativePrompt } = composePromptForImagen(aiPrompt, promptContext, {
         synopsis: 1.0,
-        genres:   0.85,
-        user:     0.7,
-        title:    0.55,
+        genres: 0.85,
+        user: 0.7,
+        title: 0.55,
       });
 
       const res = await fetch('/api/generate-image', {
@@ -443,10 +477,10 @@ export default function CoverImageManager({
       });
 
       const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || 'AI image generation failed');
+      if (!res.ok) throw new Error(json?.error || t('coverManager.alert.aiImageGenerationFailed'));
 
       const { dataUrl, modelUsed, provider, location, prompt: providerEcho } = extractImageAndModel(json);
-      if (!dataUrl) throw new Error('No image returned by generator.');
+      if (!dataUrl) throw new Error(t('coverManager.alert.noImageReturned'));
 
       setGeneratedImageUrl(dataUrl);
       setSelectedImageForCover(dataUrl);
@@ -461,7 +495,7 @@ export default function CoverImageManager({
         prompt: providerEcho || prompt,
       };
     } catch (e: any) {
-      alert(e?.message || 'Image generation error');
+      alert(t('coverManager.alert.imageGenError'));
     } finally {
       setIsGenerating(false);
     }
@@ -470,22 +504,24 @@ export default function CoverImageManager({
   async function handleUploadNewFileToGallery() {
     try {
       if (!currentUser) {
-        alert('You must be signed in to upload an image.');
+        alert(t('coverManager.alert.mustSignInUpload'));
         router.push('/login');
         return;
       }
-      if (!uploadedFile) return alert('No file selected for upload.');
-      if (!uploadNameToSave.trim()) return alert('Please enter a name for the image before saving to gallery.');
+      if (!uploadedFile) return alert(t('coverManager.alert.noFileSelected'));
+      if (!uploadNameToSave.trim()) return alert(t('coverManager.alert.enterNameBeforeSave'));
 
       setIsUploading(true);
 
       const sid = storyIdRef.current!;
-      if (!sid) { alert('Create or select a story first.'); return; }
+      if (!sid) {
+        alert(t('coverManager.createOrSelectStory'));
+        return;
+      }
       const ext = mimeToExt(uploadedFile.type);
       const path = pathFor(currentUser.uid, sid, assetCategory, `${uploadNameToSave}.${ext}`);
       const storageRef = sref(storage, path);
 
-      // Upload using the preview data URL so contentType is preserved
       await uploadString(storageRef, uploadedPreviewUrl, 'data_url', {
         customMetadata: {
           displayName: uploadNameToSave,
@@ -499,7 +535,7 @@ export default function CoverImageManager({
       });
       const downloadUrl = await getDownloadURL(storageRef);
 
-      setGallery(g => [{ name: `${uploadNameToSave}.${ext}`, url: downloadUrl, fullPath: path }, ...g]);
+      setGallery((g) => [{ name: `${uploadNameToSave}.${ext}`, url: downloadUrl, fullPath: path }, ...g]);
 
       setActiveTab('my-gallery');
       setSelectedImageForCover(downloadUrl);
@@ -509,14 +545,14 @@ export default function CoverImageManager({
       setUploadNameToSave('');
       setAiModelUsed(null);
 
-      alert('Image uploaded and saved to gallery!');
+      alert(t('coverManager.alert.uploadSaved'));
     } catch (e: any) {
       console.error('Upload to Gallery Error:', e);
       const msg = String(e?.message || e);
       if (msg.includes('storage/unauthorized')) {
-        alert('Upload blocked by Storage rules. Make sure you published the updated rules and the path matches users/{uid}/assetIndex/stories/{storyId}/covers.');
+        alert(t('coverManager.alert.uploadBlockedRules'));
       } else {
-        alert(e?.message || 'Failed to upload image to gallery.');
+        alert(t('coverManager.alert.uploadFailed'));
       }
     } finally {
       setIsUploading(false);
@@ -526,16 +562,19 @@ export default function CoverImageManager({
   async function handleSaveGeneratedToGallery() {
     try {
       if (!currentUser) {
-        alert('You must be signed in to save an image.');
+        alert(t('coverManager.alert.mustSignInSave'));
         router.push('/login');
         return;
       }
-      if (!generatedImageUrl) return alert('No AI image generated to save.');
-      if (!aiNameToSave.trim()) return alert('Please enter a name for the AI generated image before saving to gallery.');
+      if (!generatedImageUrl) return alert(t('coverManager.alert.noAIGenerated'));
+      if (!aiNameToSave.trim()) return alert(t('coverManager.alert.enterNameBeforeSaveAI'));
 
       setIsUploading(true);
       const sid = storyIdRef.current!;
-      if (!sid) { alert('Create or select a story first.'); return; }
+      if (!sid) {
+        alert(t('coverManager.createOrSelectStory'));
+        return;
+      }
       const path = pathFor(currentUser.uid, sid, assetCategory, `${aiNameToSave}.png`);
       const storageRef = sref(storage, path);
 
@@ -564,15 +603,14 @@ export default function CoverImageManager({
       setSelectedFileName(aiNameToSave);
       setGeneratedImageUrl('');
       setAiNameToSave('');
-      // keep aiModelUsed; metadata reload will refresh on next mount/refresh
-      alert('AI Generated image saved to gallery!');
+      alert(t('coverManager.alert.aiSaved'));
     } catch (e: any) {
       console.error('Save Generated to Gallery Error:', e);
       const msg = String(e?.message || e);
       if (msg.includes('storage/unauthorized')) {
-        alert('Save blocked by Storage rules. Verify allow list for users/{uid}/assetIndex/stories/{storyId}/covers and that the uid matches request.auth.uid.');
+        alert(t('coverManager.alert.saveBlockedRules'));
       } else {
-        alert(e?.message || 'Failed to save generated image to gallery.');
+        alert(t('coverManager.alert.saveFailed'));
       }
     } finally {
       setIsUploading(false);
@@ -581,15 +619,15 @@ export default function CoverImageManager({
 
   function handleSaveCoverImage() {
     if (!selectedImageForCover) {
-      alert('No image selected to set as cover.');
+      alert(t('coverManager.alert.noImageSelected'));
       return;
     }
     onCoverImageSaved(selectedImageForCover);
-    alert('Book Cover image updated successfully!');
+    alert(t('coverManager.alert.coverUpdated'));
   }
 
   async function handleDeleteFromGallery(item: GalleryItem) {
-    if (!confirm(`Delete "${item.name}"?`)) return;
+    if (!confirm(t('coverManager.confirm.delete').replace('{name}', item.name))) return;
     try {
       await deleteObject(sref(storage, item.fullPath));
       setGallery((g) => g.filter((x) => x.fullPath !== item.fullPath));
@@ -598,50 +636,50 @@ export default function CoverImageManager({
         setSelectedFileName('');
         setAiModelUsed(null);
       }
-      alert('Image deleted.');
+      alert(t('coverManager.alert.imageDeleted'));
     } catch (e: any) {
-      alert(e?.message || 'Delete failed');
+      alert(t('coverManager.alert.deleteFailed'));
     }
   }
 
   const hasSelected = !!selectedImageForCover;
   const isCurrentCover = hasSelected && initialCoverUrl === selectedImageForCover;
   const guidance = !hasSelected
-    ? 'Select or generate an image to set as your Book Cover.'
+    ? t('coverManager.guidance.none')
     : isCurrentCover
-    ? 'This is your current Book Cover. No changes needed unless you select a new one.'
-    : "Click 'Set as Book Cover' to save this image as your story's cover.";
+    ? t('coverManager.guidance.current')
+    : t('coverManager.guidance.other');
 
-    /* ✅ EARLY GUARD — place here, before the main return */
-if (!currentUser) {
-  return (
-    <div className="p-4 text-sm text-slate-600 dark:text-slate-300">
-      Please sign in to manage your cover images.
-    </div>
-  );
-}
+  /* ✅ Early guards */
+  if (!currentUser) {
+    return (
+      <div className="p-4 text-sm text-slate-600 dark:text-slate-300">
+        {t('coverManager.signInToManage')}
+      </div>
+    );
+  }
 
-if (!storyId) {
-  return (
-    <div className="p-4 text-sm text-slate-600 dark:text-slate-300">
-      Create or select a story first (no <code>storyId</code> yet).
-    </div>
-  );
-}
+  if (!storyId) {
+    return (
+      <div className="p-4 text-sm text-slate-600 dark:text-slate-300">
+        {t('coverManager.createOrSelectStory')}
+      </div>
+    );
+  }
 
   /* ------------------------ UI ------------------------ */
   return (
     <div className="flex flex-col lg:flex-row gap-6 p-4">
       {/* LEFT: Display */}
       <div className="lg:w-1/2 space-y-4 flex flex-col items-center">
-        <h3 className="text-xl font-bold text-[#3D4F60]">Current Cover Candidate</h3>
+        <h3 className="text-xl font-bold text-[#3D4F60]">{t('coverManager.currentCoverCandidate')}</h3>
 
         <div className="w-full max-w-md h-80 border-2 border-[#B0C4DE] rounded-lg flex items-center justify-center bg-gray-100 overflow-hidden relative">
           {selectedImageForCover ? (
             <>
               <Image
                 src={selectedImageForCover}
-                alt="Selected Cover"
+                alt={t('coverManager.selectedCoverAlt')}
                 width={500}
                 height={500}
                 className="object-contain w-full h-full"
@@ -649,12 +687,12 @@ if (!storyId) {
               />
               {isCurrentCover && (
                 <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
-                  CURRENT COVER
+                  {t('coverManager.currentCoverBadge')}
                 </div>
               )}
               {aiModelUsed && (
                 <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded-md">
-                  AI • {aiModelUsed}
+                  {t('coverManager.aiBadgePrefix')} {aiModelUsed}
                 </div>
               )}
               {promptContext?.language && (
@@ -664,14 +702,14 @@ if (!storyId) {
               )}
             </>
           ) : (
-            <span className="text-gray-500">No image selected</span>
+            <span className="text-gray-500">{t('coverManager.noImageSelected')}</span>
           )}
         </div>
 
         {hasSelected && (
           <input
             className="w-full max-w-md p-2 border-2 border-[#B0C4DE] rounded-md"
-            placeholder="Name for image"
+            placeholder={t('coverManager.nameForImage')}
             value={selectedFileName}
             onChange={(e) => setSelectedFileName(e.target.value)}
             disabled={true}
@@ -683,26 +721,34 @@ if (!storyId) {
           disabled={Boolean(!hasSelected || isCurrentCover)}
           className="w-full max-w-md py-3 rounded-md bg-[#E97451] text-white font-semibold disabled:opacity-50 transition-colors hover:bg-[#D46342]"
         >
-          Set as Book Cover
+          {t('coverManager.setAsBookCover')}
         </button>
         <p className="text-sm text-gray-600 italic mt-2">{guidance}</p>
       </div>
 
       {/* RIGHT: Controls */}
       <div className="lg:w-1/2 space-y-4">
-        <h3 className="text-xl font-bold text-[#3D4F60] mb-4">Select Image for Cover</h3>
+        <h3 className="text-xl font-bold text-[#3D4F60] mb-4">{t('coverManager.selectImageForCover')}</h3>
 
         {/* Choice chips */}
         <div className="flex space-x-2 p-1 bg-white rounded-lg shadow-sm border border-[#B0C4DE]">
-          {(['my-gallery', 'ai-generate', 'new-upload'] as Tab[]).map((t) => (
+          {(['my-gallery', 'ai-generate', 'new-upload'] as Tab[]).map((tKey) => (
             <button
-              key={t}
-              onClick={() => { setActiveTab(t); setUploadError(''); setSuggestedPrompt(''); }}
+              key={tKey}
+              onClick={() => {
+                setActiveTab(tKey);
+                setUploadError('');
+                setSuggestedPrompt('');
+              }}
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                activeTab === t ? 'bg-[#E97451] text-white shadow-md' : 'bg-transparent text-[#3D4F60] hover:bg-[#D4E1EE]'
+                activeTab === tKey ? 'bg-[#E97451] text-white shadow-md' : 'bg-transparent text-[#3D4F60] hover:bg-[#D4E1EE]'
               }`}
             >
-              {t === 'my-gallery' ? 'My Gallery' : t === 'ai-generate' ? 'AI Generate' : 'New Upload'}
+              {tKey === 'my-gallery'
+                ? t('coverManager.tab.myGallery')
+                : tKey === 'ai-generate'
+                ? t('coverManager.tab.aiGenerate')
+                : t('coverManager.tab.newUpload')}
             </button>
           ))}
         </div>
@@ -711,13 +757,13 @@ if (!storyId) {
           {/* MY GALLERY */}
           {activeTab === 'my-gallery' && (
             <div>
-              <h4 className="font-semibold mb-3 text-[#3D4F60]">My Gallery</h4>
+              <h4 className="font-semibold mb-3 text-[#3D4F60]">{t('coverManager.myGallery.title')}</h4>
               {isLoadingGallery ? (
                 <p className="text-gray-500 flex items-center justify-center">
-                  <Loader2 className="animate-spin mr-2" size={18} /> Loading gallery...
+                  <Loader2 className="animate-spin mr-2" size={18} /> {t('coverManager.loadingGallery')}
                 </p>
               ) : gallery.length === 0 ? (
-                <p className="text-sm text-neutral-500">No images in your gallery yet. Try "AI Generate" or "New Upload".</p>
+                <p className="text-sm text-neutral-500">{t('coverManager.emptyGallery')}</p>
               ) : (
                 <>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -731,11 +777,13 @@ if (!storyId) {
                       >
                         <Image src={it.url} alt={it.name} width={150} height={100} className="w-full h-32 object-cover" />
                         {initialCoverUrl === it.url && (
-                          <div className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full z-10">Current</div>
+                          <div className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full z-10">
+                            {t('coverManager.currentBadge')}
+                          </div>
                         )}
                         {it.meta?.modelUsed && (
                           <div className="absolute top-1 right-1 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded">
-                            AI • {it.meta.modelUsed}
+                            {t('coverManager.aiBadgePrefix')} {it.meta.modelUsed}
                           </div>
                         )}
                         {it.meta?.language && (
@@ -745,8 +793,11 @@ if (!storyId) {
                         )}
 
                         <button
-                          title="Delete"
-                          onClick={(e) => { e.stopPropagation(); handleDeleteFromGallery(it); }}
+                          title={t('coverManager.delete')}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteFromGallery(it);
+                          }}
                           className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition bg-white/90 rounded-full p-1 shadow z-10 translate-y-6"
                         >
                           <Trash2 size={16} className="text-red-600" />
@@ -755,12 +806,15 @@ if (!storyId) {
 
                         {selectedImageForCover === it.url && (
                           <button
-                            onClick={(e) => { e.stopPropagation(); handleDescribeImage(it.url); }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDescribeImage(it.url);
+                            }}
                             disabled={Boolean(isDescribing)}
                             className="absolute bottom-1 left-1 opacity-0 group-hover:opacity-100 transition bg-blue-500/90 text-white text-xs px-2 py-0.5 rounded-md shadow z-10"
                           >
                             {isDescribing ? <Loader2 className="animate-spin inline mr-1" size={12} /> : null}
-                            AI Describe
+                            {t('coverManager.aiDescribe')}
                           </button>
                         )}
                       </div>
@@ -769,13 +823,16 @@ if (!storyId) {
 
                   {activeTab === 'my-gallery' && suggestedPrompt && selectedImageForCover && (
                     <div className="w-full mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-800">
-                      <p className="font-semibold">AI Suggestion:</p>
+                      <p className="font-semibold">{t('coverManager.aiSuggestionTitle')}</p>
                       <p className="mt-1">{suggestedPrompt}</p>
                       <button
-                        onClick={() => { setActiveTab('ai-generate'); setAiPrompt(suggestedPrompt); }}
+                        onClick={() => {
+                          setActiveTab('ai-generate');
+                          setAiPrompt(suggestedPrompt);
+                        }}
                         className="mt-2 px-3 py-1 text-xs bg-blue-200 text-blue-900 rounded-md hover:bg-blue-300"
                       >
-                        Use as AI Prompt
+                        {t('coverManager.useAsAiPrompt')}
                       </button>
                     </div>
                   )}
@@ -787,16 +844,13 @@ if (!storyId) {
           {/* AI GENERATE */}
           {activeTab === 'ai-generate' && (
             <div className="space-y-4">
-              <h4 className="font-semibold text-[#3D4F60]">AI Image Generation</h4>
-              <p className="text-sm text-gray-700">
-                We’ll rewrite your prompt using the story’s <em>Synopsis</em> (primary), <em>Genres</em> (secondary),
-                your <em>Creative Direction</em> (tertiary), the <em>Title motif</em> (light), and the selected <em>Language</em>.
-              </p>
+              <h4 className="font-semibold text-[#3D4F60]">{t('coverManager.aiGenerate.title')}</h4>
+              <p className="text-sm text-gray-700">{t('coverManager.aiGenerate.helper')}</p>
 
               <div className="flex items-center gap-2">
                 <textarea
                   className="w-full min-h-[120px] border rounded-md p-2 border-[#B0C4DE] text-[#3D4F60] bg-white"
-                  placeholder="Add any extra creative direction (optional)…"
+                  placeholder={t('coverManager.aiGenerate.placeholder')}
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
                 />
@@ -804,27 +858,29 @@ if (!storyId) {
                   <button
                     onClick={() => setAiPrompt(suggestedPrompt)}
                     className="shrink-0 px-3 py-2 text-xs bg-blue-100 text-blue-800 rounded-md hover:bg-blue-200"
-                    title="Use suggested prompt"
+                    title={t('coverManager.aiGenerate.useSuggestionTitle')}
                   >
-                    Use Suggestion
+                    {t('coverManager.aiGenerate.useSuggestion')}
                   </button>
                 )}
               </div>
 
               <input
                 className="w-full p-2 border-2 border-[#B0C4DE] rounded-md"
-                placeholder="Name for generated image"
+                placeholder={t('coverManager.aiGenerate.nameForGenerated')}
                 value={aiNameToSave}
                 onChange={(e) => setAiNameToSave(e.target.value)}
               />
 
               <button
                 onClick={handleGenerateImage}
-                disabled={Boolean(isGenerating || (!aiPrompt.trim() && !(promptContext?.synopsis || promptContext?.genres?.length || promptContext?.title)))}
+                disabled={Boolean(
+                  isGenerating || (!aiPrompt.trim() && !(promptContext?.synopsis || promptContext?.genres?.length || promptContext?.title))
+                )}
                 className="w-full py-3 rounded-md bg-[#E97451] text-white font-semibold disabled:opacity-50 transition-colors hover:bg-[#D46342] flex items-center justify-center gap-2"
               >
                 {isGenerating ? <Loader2 className="animate-spin" size={20} /> : null}
-                Generate Cover Image (AI)
+                {t('coverManager.aiGenerate.button')}
               </button>
 
               {generatedImageUrl && (
@@ -834,7 +890,7 @@ if (!storyId) {
                   className="w-full py-3 rounded-md bg-green-600 text-white font-semibold disabled:opacity-50 transition-colors hover:bg-green-700 flex items-center justify-center gap-2 mt-2"
                 >
                   {isUploading ? <Loader2 className="animate-spin inline mr-2" size={20} /> : null}
-                  Save Generated to Gallery
+                  {t('coverManager.saveGeneratedToGallery')}
                 </button>
               )}
             </div>
@@ -843,8 +899,8 @@ if (!storyId) {
           {/* NEW UPLOAD */}
           {activeTab === 'new-upload' && (
             <div className="space-y-4">
-              <h4 className="font-semibold text-[#3D4F60]">Upload New Image</h4>
-              <p className="text-sm text-gray-700">Upload an image (PNG/JPG/JPEG/GIF/WebP, 10KB–12MB).</p>
+              <h4 className="font-semibold text-[#3D4F60]">{t('coverManager.newUpload.title')}</h4>
+              <p className="text-sm text-gray-700">{t('coverManager.newUpload.helper')}</p>
 
               <div className="border-2 border-dashed border-[#B0C4DE] rounded-md p-4 text-center bg-white">
                 <input
@@ -854,16 +910,14 @@ if (!storyId) {
                   className="hidden"
                   onChange={onChooseFile}
                 />
-                <button
-                  className="cursor-pointer text-[#E97451] font-semibold hover:underline"
-                  onClick={() => inputRef.current?.click()}
-                >
-                  Click to Upload Image
+                <button className="cursor-pointer text-[#E97451] font-semibold hover:underline" onClick={() => inputRef.current?.click()}>
+                  {t('coverManager.clickToUpload')}
                 </button>
-                <p className="text-sm text-[#3D4F60]/70 mt-1">or drag and drop</p>
+                <p className="text-sm text-[#3D4F60]/70 mt-1">{t('coverManager.orDragAndDrop')}</p>
                 {uploadedFile && (
                   <div className="mt-3 text-sm text-[#3D4F60]">
-                    Selected: <span className="font-medium">{uploadedFile.name}</span>
+                    {t('coverManager.selectedFileLabel')}{' '}
+                    <span className="font-medium">{uploadedFile.name}</span>
                   </div>
                 )}
               </div>
@@ -872,11 +926,17 @@ if (!storyId) {
 
               {uploadedPreviewUrl && (
                 <div className="mt-3 border rounded-xl p-3 bg-gray-50 flex flex-col items-center gap-2">
-                  <p className="text-sm mb-2 text-[#3D4F60]">Preview of Uploaded Image</p>
-                  <Image src={uploadedPreviewUrl} alt="uploaded preview" width={200} height={150} className="max-w-full rounded-md object-contain mx-auto" />
+                  <p className="text-sm mb-2 text-[#3D4F60]">{t('coverManager.previewUploaded')}</p>
+                  <Image
+                    src={uploadedPreviewUrl}
+                    alt={t('coverManager.previewUploaded')}
+                    width={200}
+                    height={150}
+                    className="max-w-full rounded-md object-contain mx-auto"
+                  />
                   <input
                     className="w-full p-2 border-2 border-[#B0C4DE] rounded-md mt-2"
-                    placeholder="Name for uploaded image"
+                    placeholder={t('coverManager.nameForUploaded')}
                     value={uploadNameToSave}
                     onChange={(e) => setUploadNameToSave(e.target.value)}
                   />
@@ -886,17 +946,20 @@ if (!storyId) {
                     className="w-full py-2 rounded-md bg-blue-500 text-white text-sm font-semibold disabled:opacity-50 transition-colors hover:bg-blue-600 flex items-center justify-center gap-2 mt-2"
                   >
                     {isDescribing ? <Loader2 className="animate-spin inline mr-2" size={16} /> : null}
-                    AI Describe Uploaded Image
+                    {t('coverManager.aiDescribeUploaded')}
                   </button>
                   {suggestedPrompt && (
                     <div className="w-full mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-800">
-                      <p className="font-semibold">AI Suggestion:</p>
+                      <p className="font-semibold">{t('coverManager.aiSuggestionTitle')}</p>
                       <p>{suggestedPrompt}</p>
                       <button
-                        onClick={() => { setActiveTab('ai-generate'); setAiPrompt(suggestedPrompt); }}
+                        onClick={() => {
+                          setActiveTab('ai-generate');
+                          setAiPrompt(suggestedPrompt);
+                        }}
                         className="mt-2 px-3 py-1 text-xs bg-blue-200 text-blue-900 rounded-md hover:bg-blue-300"
                       >
-                        Use as AI Prompt
+                        {t('coverManager.useAsAiPrompt')}
                       </button>
                     </div>
                   )}
@@ -906,7 +969,7 @@ if (!storyId) {
                     className="w-full py-3 rounded-md bg-green-600 text-white font-semibold disabled:opacity-50 transition-colors hover:bg-green-700 flex items-center justify-center gap-2 mt-2"
                   >
                     {isUploading ? <Loader2 className="animate-spin inline mr-2" size={20} /> : null}
-                    Upload and Save to Gallery
+                    {t('coverManager.uploadAndSaveToGallery')}
                   </button>
                 </div>
               )}
