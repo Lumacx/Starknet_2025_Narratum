@@ -28,8 +28,8 @@ This list focuses on files likely to contain significant user-facing text, start
 - [x] `src/app/page.tsx`: The main landing page.
 - [x] `src/components/layout/Footer.tsx`: Common footer text.
 - [x] `src/app/login/page.tsx`: Login form and related messages.
-- [ ] `src/app/signup/page.tsx`: Sign-up form and related messages.
-- [ ] `src/app/discover/page.tsx`: Story discovery interface.
+- [x] `src/app/signup/page.tsx`: Sign-up form and related messages.
+- [x] `src/app/discover/page.tsx`: Story discovery interface.
 - [ ] `src/app/buy-credits/page.tsx`: Credit purchase page.
 - [ ] `src/app/subscription/page.tsx`: Subscription management page.
 - [ ] `src/app/profile/page.tsx`: User profile information.

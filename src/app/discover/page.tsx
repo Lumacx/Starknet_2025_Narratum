@@ -30,39 +30,37 @@ import {
   Bot,
   Youtube as YoutubeIcon,
 } from 'lucide-react';
-
-// ⬇️ NEW: credit + functions imports
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { useLocale } from '@/context/LocaleContext';
 
-// Prevent SSG/prerender issues with search params etc.
 export const dynamic = 'force-dynamic';
 
-// Lazy-load the YouTube player (client-only)
 const YoutubeVideoPlayer = dynamicImport(
   () => import('@/components/YoutubeVideoPlayer'),
   { ssr: false }
 );
 
+// Simple interpolación: reemplaza {nombre} por el valor en vars
+function formatT(
+  t: (k: string) => string,
+  key: string,
+  vars?: Record<string, string | number>
+) {
+  let out = t(key);
+  if (!vars) return out;
+  for (const [k, v] of Object.entries(vars)) {
+    out = out.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
+  }
+  return out;
+}
+
+
 /* ----------------------------- Constants ----------------------------- */
+// NOTE: keep raw values in English to match stored data; UI labels are localized
 const GENRE_OPTIONS = [
   'Fantasy', 'Sci-Fi', 'Mystery', 'Horror', 'Romance', 'Adventure',
   'Children', 'Comedy', 'Drama', 'Action', 'Other'
 ] as const;
-
-const LANGUAGE_OPTIONS: { code: string; label: string }[] = [
-  { code: 'all', label: 'All Languages' },
-  { code: 'en', label: 'English' },
-  { code: 'es', label: 'Spanish' },
-  { code: 'pt', label: 'Portuguese' },
-  { code: 'fr', label: 'French' },
-  { code: 'de', label: 'German' },
-  { code: 'it', label: 'Italian' },
-  { code: 'ja', label: 'Japanese' },
-  { code: 'ko', label: 'Korean' },
-  { code: 'zh', label: 'Chinese' },
-  { code: 'hi', label: 'Hindi' },
-  { code: 'ar', label: 'Arabic' },
-];
 
 type StoryTypeKey = 'short' | 'novela' | 'campaign' | 'unknown';
 type PlanKey = 'basic' | 'premium' | 'convai' | 'unknown';
@@ -95,7 +93,6 @@ function getOwnerId(s: Partial<Story> & Record<string, any>): string | undefined
   )?.toString();
 }
 
-// more permissive
 function getCreatorName(s: Partial<Story> & Record<string, any>): string | undefined {
   const d: any = s as any;
   return (
@@ -125,14 +122,14 @@ function getCreatorPhoto(s: Partial<Story> & Record<string, any>): string | unde
   )?.toString();
 }
 
-function getSynopsis(s: Partial<Story> & Record<string, any>): string {
+function getSynopsis(s: Partial<Story> & Record<string, any>, t: (k: string, v?: any) => string): string {
   const d: any = s as any;
   return (
     d.synopsis ||
     d.description ||
     d.summary ||
     d.metadata?.synopsis ||
-    'No synopsis provided.'
+    t('noSynopsisProvided')
   );
 }
 
@@ -200,40 +197,37 @@ const TYPE_STYLES: Record<StoryTypeKey, {
   glow: string;
   badgeBg: string;
   badgeText: string;
-  label: string;
   Icon: React.FC<any>;
 }> = {
-  short:   { border: 'border-teal-500',    glow: 'shadow-[0_0_0_1px_rgba(20,184,166,0.35),0_6px_24px_rgba(20,184,166,0.25)]', badgeBg: 'bg-teal-500/90',   badgeText: 'text-white', label: 'Short Story', Icon: Feather },
-  novela:  { border: 'border-violet-500',  glow: 'shadow-[0_0_0_1px_rgba(139,92,246,0.35),0_6px_24px_rgba(139,92,246,0.25)]', badgeBg: 'bg-violet-500/90', badgeText: 'text-white', label: 'Novela',      Icon: BookOpen },
-  campaign:{ border: 'border-amber-400',   glow: 'shadow-[0_0_0_1px_rgba(251,191,36,0.35),0_6px_24px_rgba(251,191,36,0.25)]', badgeBg: 'bg-amber-400/90',  badgeText: 'text-white', label: 'Campaign',    Icon: Flag },
-  unknown: { border: 'border-[#4A5C6E]',   glow: 'shadow-none',                                                       badgeBg: 'bg-slate-500/80', badgeText: 'text-white', label: 'Story',       Icon: Feather },
+  short:   { border: 'border-teal-500',    glow: 'shadow-[0_0_0_1px_rgba(20,184,166,0.35),0_6px_24px_rgba(20,184,166,0.25)]', badgeBg: 'bg-teal-500/90',   badgeText: 'text-white', Icon: Feather },
+  novela:  { border: 'border-violet-500',  glow: 'shadow-[0_0_0_1px_rgba(139,92,246,0.35),0_6px_24px_rgba(139,92,246,0.25)]', badgeBg: 'bg-violet-500/90', badgeText: 'text-white', Icon: BookOpen },
+  campaign:{ border: 'border-amber-400',   glow: 'shadow-[0_0_0_1px_rgba(251,191,36,0.35),0_6px_24px_rgba(251,191,36,0.25)]', badgeBg: 'bg-amber-400/90',  badgeText: 'text-white', Icon: Flag },
+  unknown: { border: 'border-[#4A5C6E]',   glow: 'shadow-none',                                                       badgeBg: 'bg-slate-500/80', badgeText: 'text-white', Icon: Feather },
 };
 
 const PLAN_STYLES: Record<PlanKey, {
-  badgeBg: string; badgeText: string; label: string; Icon: React.FC<any>;
+  badgeBg: string; badgeText: string; Icon: React.FC<any>;
 }> = {
-  basic:   { badgeBg: 'bg-slate-700',  badgeText: 'text-white', label: 'Basic',   Icon: Circle },
-  premium: { badgeBg: 'bg-rose-500',   badgeText: 'text-white', label: 'Premium', Icon: Crown },
-  convai:  { badgeBg: 'bg-indigo-500', badgeText: 'text-white', label: 'ConvAI',  Icon: Bot },
-  unknown: { badgeBg: 'bg-slate-500',  badgeText: 'text-white', label: '—',       Icon: Circle },
+  basic:   { badgeBg: 'bg-slate-700',  badgeText: 'text-white', Icon: Circle },
+  premium: { badgeBg: 'bg-rose-500',   badgeText: 'text-white', Icon: Crown },
+  convai:  { badgeBg: 'bg-indigo-500', badgeText: 'text-white', Icon: Bot },
+  unknown: { badgeBg: 'bg-slate-500',  badgeText: 'text-white', Icon: Circle },
 };
 
-/* ------------------------- NEW: Credits helpers ------------------------ */
-// Add this constant near other constants (e.g., GENRE_OPTIONS, LANGUAGE_OPTIONS)
+/* ------------------------- Credits helpers ------------------------ */
 const CREDIT_COSTS: Record<PlanKey, number> = {
   basic: 1,
   premium: 5,
   convai: 15,
-  unknown: 1, // fallback
+  unknown: 1,
 };
 
-// Add this helper function near getPlan
 function getStoryCreditCost(s: Partial<Story> & Record<string, any>): number {
   const plan = getPlan(s);
   return CREDIT_COSTS[plan];
 }
 
-/* ------------------------- Reusable UI: Filter Pill ------------------------ */
+/* ------------------------- UI: Filter Pill ------------------------ */
 function FilterPill({
   active,
   onClick,
@@ -259,7 +253,7 @@ function FilterPill({
   );
 }
 
-/* ------------------------------- Favorites UI ------------------------------ */
+/* ------------------------------- Ratings ------------------------------ */
 function Star({
   filled, onClick, onMouseEnter, onMouseLeave, size=22
 }: {
@@ -308,6 +302,7 @@ function StarRating({
   hasRatedThisStory: boolean;
   onRated?: () => void;
 }) {
+  const { t } = useLocale();
   const { user } = useAuth();
   const [hoverValue, setHoverValue] = useState<number | null>(null);
   const [userRating, setUserRating] = useState<number | null>(initialUserRating ?? null);
@@ -321,8 +316,8 @@ function StarRating({
     if (typeof average === 'number' && typeof count === 'number' && count > 0) {
       return `${average.toFixed(1)} (${count})`;
     }
-    return 'No ratings yet';
-  }, [average, count]);
+    return t('noRatingsYet');
+  }, [average, count, t]);
 
   const allowedToRate = useMemo(() => {
     if (!user?.uid) return false;
@@ -333,7 +328,7 @@ function StarRating({
 
   const handleSetRating = async (value: number) => {
     if (!user?.uid) {
-      alert('Sign in to rate.');
+      alert(t('signInToRate'));
       return;
     }
     if (!storyId) return;
@@ -342,8 +337,8 @@ function StarRating({
       const remaining = Math.max(0, userReadCount - userRatedUniqueCount);
       alert(
         remaining > 0
-          ? `You have ${remaining} rating star(s) left. Read a story or use a remaining star to rate.`
-          : 'You’ve used all your rating stars. Read more stories to unlock more ratings.'
+          ? formatT(t, 'youHaveRatingStarsLeft', { remaining })
+          : t('usedAllRatingStars')
       );
       return;
     }
@@ -390,7 +385,7 @@ function StarRating({
       onRated?.();
     } catch (e) {
       console.error('Rating save failed', e);
-      alert('Could not save rating. Please try again.');
+      alert(t('couldNotSaveRating'));
     } finally {
       setSaving(false);
     }
@@ -399,12 +394,12 @@ function StarRating({
   const stars = [1,2,3,4,5];
 
   const tip = !allowedToRate
-    ? (hasReadThisStory
-        ? ''
-        : (userRatedUniqueCount < userReadCount
-           ? `You have ${userReadCount - userRatedUniqueCount} rating star(s) left`
-           : 'Read more stories to unlock more ratings'))
-    : '';
+  ? (hasReadThisStory
+      ? ''
+      : (userRatedUniqueCount < userReadCount
+          ? formatT(t, 'youHaveRatingStarsLeft', { remaining: userReadCount - userRatedUniqueCount })
+          : t('usedAllRatingStars')))
+  : '';
 
   return (
     <div className="relative group flex flex-col items-center gap-1">
@@ -442,7 +437,7 @@ function StarRating({
   );
 }
 
-/* ------------------------------- Favorites Button ------------------------------ */
+/* ------------------------------- Favorites ------------------------------ */
 function FavoriteButton({
   storyId,
   initialIsFav
@@ -450,6 +445,7 @@ function FavoriteButton({
   storyId: string;
   initialIsFav: boolean;
 }) {
+  const { t } = useLocale();
   const { user } = useAuth();
   const [isFav, setIsFav] = useState(initialIsFav);
   const [busy, setBusy] = useState(false);
@@ -458,7 +454,7 @@ function FavoriteButton({
 
   const toggleFavorite = async () => {
     if (!user?.uid) {
-      alert('Sign in to add favorites.');
+      alert(t('signInToAddFavorites'));
       return;
     }
     setBusy(true);
@@ -475,11 +471,13 @@ function FavoriteButton({
       }
     } catch (e) {
       console.error('Favorite toggle failed', e);
-      alert('Could not update favorite. Please try again.');
+      alert(t('couldNotUpdateFavorite'));
     } finally {
       setBusy(false);
     }
   };
+
+  const aria = isFav ? t('removeFromFavorites') : t('addToFavorites');
 
   return (
     <button
@@ -489,8 +487,8 @@ function FavoriteButton({
       className={`absolute top-2 right-2 z-30 rounded-full p-2 border transition
         ${isFav ? 'bg-red-600/90 border-red-300 text-white' : 'bg-black/40 border-white/40 text-white'}
         hover:scale-105`}
-      aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
-      title={isFav ? 'Remove from favorites' : 'Add to favorites'}
+      aria-label={aria}
+      title={aria}
     >
       <Heart className={`${isFav ? 'fill-white' : ''}`} size={18}/>
     </button>
@@ -499,6 +497,7 @@ function FavoriteButton({
 
 /* ------------------------------ INNER PAGE ------------------------------ */
 function CatalogPageInner() {
+  const { t } = useLocale();
   const router = useRouter();
   const params = useSearchParams();
 
@@ -511,42 +510,34 @@ function CatalogPageInner() {
   const [userRatings, setUserRatings] = useState<Record<string, number | null>>({});
   const [userFavorites, setUserFavorites] = useState<Record<string, boolean>>({});
 
-  // Author / owner filter
   const [ownerIdFilter, setOwnerIdFilter] = useState<string | null>(null);
 
-  // Other filters
   const [storyTypeFilter, setStoryTypeFilter] = useState<'all' | StoryTypeSelectable>('all');
   const [planFilter, setPlanFilter] = useState<'all' | PlanSelectable>('all');
   const [languageFilter, setLanguageFilter] = useState<string>('all');
 
-  // Anti-abuse tracking
   const [userReadsSet, setUserReadsSet] = useState<Record<string, true>>({});
   const [userRatedSet, setUserRatedSet] = useState<Record<string, true>>({});
 
-  // Teaser modal state using the reusable component props
   const [teaserOpen, setTeaserOpen] = useState(false);
   const [teaserUrl, setTeaserUrl] = useState<string | null>(null);
 
-  // ⬇️ NEW: tip dropdown (store open storyId or null), and working state
   const [tipOpenFor, setTipOpenFor] = useState<string | null>(null);
   const [sendingTip, setSendingTip] = useState(false);
 
   const userReadCount = useMemo(() => Object.keys(userReadsSet).length, [userReadsSet]);
   const userRatedUniqueCount = useMemo(() => Object.keys(userRatedSet).length, [userRatedSet]);
 
-  // 🔴 LIVE OWNER PROFILES (Option A)
   const [ownerProfiles, setOwnerProfiles] = useState<Record<string, { name?: string; photoURL?: string }>>({});
   const ownerUnsubsRef = useRef<Record<string, () => void>>({});
 
   const { user } = useAuth();
   const { data, isLoading } = useListPublishedStories();
 
-  // ⬇️ NEW: functions (callables)
   const functions = useMemo(() => getFunctions(), []);
   const deductCreditsForRead = useMemo(() => httpsCallable(functions, 'deductCreditsForRead'), [functions]);
   const sendTipToWriter = useMemo(() => httpsCallable(functions, 'sendTipToWriter'), [functions]);
 
-  /* ---------- Build a lookup of owners by name (for search) ---------- */
   const ownerNameIndex = useMemo(() => {
     const byId: Record<string, string> = {};
     const nameToIds: Record<string, Set<string>> = {};
@@ -556,23 +547,21 @@ function CatalogPageInner() {
       const name =
         ownerProfiles[id]?.name ||
         getCreatorName(s) ||
-        'Unknown Author';
+        t('unknownAuthor');
       byId[id] = name;
       const key = norm(name);
       if (!nameToIds[key]) nameToIds[key] = new Set();
       nameToIds[key].add(id);
     }
     return { byId, nameToIds };
-  }, [allStories, ownerProfiles]);
+  }, [allStories, ownerProfiles, t]);
 
-  /* ---------- Initial data ---------- */
   useEffect(() => {
     const stories = data ?? [];
     setAllStories(stories);
     setDisplayedStories(stories);
   }, [data]);
 
-  /* ---------- Attach real-time listeners to owners present in grid ---------- */
   useEffect(() => {
     const uids = new Set<string>();
     for (const s of allStories) {
@@ -580,27 +569,23 @@ function CatalogPageInner() {
       if (uid) uids.add(uid);
     }
 
-    // add listeners for new UIDs
     uids.forEach((uid) => {
-      if (ownerUnsubsRef.current[uid]) return; // already listening
+      if (ownerUnsubsRef.current[uid]) return;
       const unsub = onSnapshot(doc(db, 'users', uid), (snap) => {
         const d = (snap.data() || {}) as any;
         setOwnerProfiles((prev) => ({
           ...prev,
           [uid]: {
             name:
-              d.displayName || d.displayname || d.name || d.username || 'Unknown Author',
+              d.displayName || d.displayname || d.name || d.username || t('unknownAuthor'),
             photoURL:
               d.photoURL || d.photoUrl || d.avatarUrl || d.avatar || undefined,
           },
         }));
-      }, () => {
-        // on error, keep previous cache
-      });
+      }, () => {});
       ownerUnsubsRef.current[uid] = unsub;
     });
 
-    // remove listeners no longer needed
     Object.keys(ownerUnsubsRef.current).forEach((uid) => {
       if (!uids.has(uid)) {
         ownerUnsubsRef.current[uid]();
@@ -609,13 +594,11 @@ function CatalogPageInner() {
     });
 
     return () => {
-      // optional cleanup on unmount
       Object.values(ownerUnsubsRef.current).forEach((u) => u());
       ownerUnsubsRef.current = {};
     };
-  }, [allStories]);
+  }, [allStories, t]);
 
-  /* ---------- Read ?owner=<uid> from URL ---------- */
   useEffect(() => {
     const qOwner = params.get('owner');
     if (qOwner && qOwner !== ownerIdFilter) {
@@ -624,7 +607,6 @@ function CatalogPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params]);
 
-  /* ---------- User mirrors ---------- */
   useEffect(() => {
     if (!user?.uid) {
       setUserRatings({});
@@ -695,7 +677,6 @@ function CatalogPageInner() {
     };
   }, [user?.uid, data]);
 
-  /* ---------- Filtering ---------- */
   const applyFiltersAndSearch = (stories: Story[]) => {
     let filtered = [...stories];
 
@@ -743,33 +724,13 @@ function CatalogPageInner() {
   }, [activeFilter, selectedGenres, storyTypeFilter, planFilter, languageFilter, ownerIdFilter, allStories]);
 
   useEffect(() => {
-    const parts: string[] = [];
-
-    if (
-      activeFilter !== 'all' ||
-      selectedGenres.length > 0 ||
-      storyTypeFilter !== 'all' ||
-      planFilter !== 'all' ||
-      languageFilter !== 'all' ||
-      ownerIdFilter
-    ) {
-      if (activeFilter !== 'all') parts.push(`Filter: ${activeFilter}`);
-      if (selectedGenres.length > 0) parts.push(`Genres: ${selectedGenres.join(', ')}`);
-      if (storyTypeFilter !== 'all') parts.push(`Type: ${storyTypeFilter}`);
-      if (planFilter !== 'all') parts.push(`Plan: ${PLAN_STYLES[planFilter].label}`);
-      if (languageFilter !== 'all') {
-        const label = LANGUAGE_OPTIONS.find(l => l.code === languageFilter)?.label || languageFilter;
-        parts.push(`Language: ${label}`);
-      }
-      if (ownerIdFilter) {
-        const name = ownerNameIndex.byId[ownerIdFilter] || 'Unknown Author';
-        parts.push(`Author: ${name}`);
-      }
-      setSearchMessage(parts.join(' • '));
-    } else if (!searchQuery.trim()) {
+    // Keep message simple with your flat keys
+    if (!searchQuery.trim()) {
+      // when filters change but no search, show a terse summary or nothing
       setSearchMessage('');
+      return;
     }
-  }, [activeFilter, selectedGenres, storyTypeFilter, planFilter, languageFilter, ownerIdFilter, searchQuery, ownerNameIndex.byId]);
+  }, [activeFilter, selectedGenres, storyTypeFilter, planFilter, languageFilter, ownerIdFilter, searchQuery]);
 
   const setOwnerFilter = (uid: string | null) => {
     setOwnerIdFilter(uid);
@@ -810,14 +771,15 @@ function CatalogPageInner() {
           });
           const finalList = applyFiltersAndSearch(subset);
           setDisplayedStories(finalList);
-          setSearchMessage(`Found ${finalList.length} stories from ${idsArr.length} matching author(s).`);
+          setSearchMessage(
+            formatT(t, 'foundStoriesFromMatchingAuthors', { count: finalList.length, authorCount: idsArr.length })
+          );
         }
         return;
       }
     }
 
-    // Fallback: existing semantic title search hitting your API
-    setSearchMessage(raw ? 'Searching for stories...' : 'Please enter a search query.');
+    setSearchMessage(raw ? t('searchingForStories') : t('pleaseEnterSearchQuery'));
     if (!raw) {
       setDisplayedStories(applyFiltersAndSearch(allStories));
       return;
@@ -840,14 +802,15 @@ function CatalogPageInner() {
         let filteredBySearch = allStories.filter(story => matchedTitles.includes((story as any).title));
         filteredBySearch = applyFiltersAndSearch(filteredBySearch);
         setDisplayedStories(filteredBySearch);
-        setSearchMessage(`Found ${filteredBySearch.length} matching stories.`);
+        // No dedicated "found matches" key in the flat list; we keep message minimal
+        setSearchMessage('');
       } else {
         setDisplayedStories(applyFiltersAndSearch(allStories));
-        setSearchMessage('No semantically related stories found from your titles.');
+        setSearchMessage(t('noSemanticallyRelatedStories'));
       }
     } catch (error: any) {
       console.error('Semantic search error:', error);
-      setSearchMessage(`Error during search: ${error.message}. Please try again.`);
+      setSearchMessage(formatT(t, 'errorDuringSearch', { message: error.message }));
       setDisplayedStories(applyFiltersAndSearch(allStories));
     }
   };
@@ -864,62 +827,53 @@ function CatalogPageInner() {
     }
   };
 
-  /* --------------------------- NEW: paid READ flow --------------------------- */
+  /* --------------------------- paid READ flow --------------------------- */
   const handlePaidRead = async (story: Story) => {
     const storyId = (story as any).id as string;
     if (!storyId) return;
 
     if (!user?.uid) {
-      alert('Please sign in to read paid stories.');
+      alert(t('pleaseSignInToReadPaidStories'));
       return;
     }
 
     const creditCost = getStoryCreditCost(story);
     try {
-      // If your functions are HTTP onRequest instead of onCall, replace with fetch to your HTTPS URL.
       const res: any = await deductCreditsForRead({
         storyId,
         cost: creditCost,
         plan: getPlan(story),
       });
 
-      const ok = res?.data?.ok ?? true; // assume ok if function returns nothing special
-      const remaining = res?.data?.remainingCredits;
+      const ok = res?.data?.ok ?? true;
+      const reason = res?.data?.reason;
       if (!ok) {
-        const reason = res?.data?.reason || 'Not enough credits.';
-        alert(reason);
+        alert(reason || t('notEnoughCredits'));
         return;
-      }
-
-      // Optional: toast remaining credits
-      if (typeof remaining === 'number') {
-        // eslint-disable-next-line no-console
-        console.log(`Remaining credits: ${remaining}`);
       }
 
       await logRead(storyId);
       router.push(`/ereader?storyId=${encodeURIComponent(storyId)}&back=%2Fdiscover`);
     } catch (e: any) {
       console.error('deductCreditsForRead failed', e);
-      alert(e?.message || 'Could not process credits. Please try again.');
+      alert(e?.message || t('couldNotProcessCredits'));
     }
   };
 
-  /* ------------------------------ NEW: tipping ------------------------------- */
+  /* ------------------------------ tipping ------------------------------- */
   const TIP_AMOUNTS = [1, 3, 5, 10];
 
   const handleSendTip = async (writerUid: string | undefined, storyId: string, amount: number) => {
     if (!user?.uid) {
-      alert('Sign in to tip writers.');
+      alert(t('signInToTipWriters'));
       return;
     }
     if (!writerUid) {
-      alert('No writer for this story.');
+      alert(t('noWriterForThisStory'));
       return;
     }
     setSendingTip(true);
     try {
-      // If your function is HTTP onRequest, replace with fetch.
       const res: any = await sendTipToWriter({
         toUid: writerUid,
         storyId,
@@ -927,25 +881,40 @@ function CatalogPageInner() {
       });
       const ok = res?.data?.ok ?? true;
       if (!ok) {
-        alert(res?.data?.message || 'Could not send tip.');
+        alert(res?.data?.message || t('couldNotSendTip'));
         return;
       }
-      alert('Thanks! Tip sent successfully.');
+      alert(t('tipSentSuccessfully'));
       setTipOpenFor(null);
     } catch (e: any) {
       console.error('sendTipToWriter failed', e);
-      alert(e?.message || 'Could not send tip. Please try again.');
+      alert(e?.message || t('couldNotSendTip'));
     } finally {
       setSendingTip(false);
     }
   };
+
+  const LANGUAGE_OPTIONS: { code: string; label: string }[] = useMemo(() => ([
+    { code: 'all', label: t('allLanguages') },
+    { code: 'en', label: t('english') },
+    { code: 'es', label: t('spanish') },
+    { code: 'pt', label: t('portuguese') },
+    { code: 'fr', label: t('french') },
+    { code: 'de', label: t('german') },
+    { code: 'it', label: t('italian') },
+    { code: 'ja', label: t('japanese') },
+    { code: 'ko', label: t('korean') },
+    { code: 'zh', label: t('chinese') },
+    { code: 'hi', label: t('hindi') },
+    { code: 'ar', label: t('arabic') },
+  ]), [t]);
 
   return (
     <div className="min-h-screen relative flex flex-col items-center p-5 md:p-10
       bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26]
       text-[#3A4B5C] dark:text-[#E0C9A0] font-sans box-border">
 
-      {/* Reusable Teaser Modal */}
+      {/* Teaser Modal */}
       <YoutubeVideoPlayer
         videoUrl={teaserUrl}
         isOpen={teaserOpen}
@@ -957,24 +926,28 @@ function CatalogPageInner() {
           href="/"
           className="px-6 py-3 bg-gray-600 text-white font-semibold rounded-full shadow-md hover:bg-gray-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300"
         >
-          Back to Landing
+           {t('backToLanding')}
         </Link>
       </div>
 
       <div className="catalog-container w-full max-w-6xl text-center pt-16">
         <header className="page-header mb-8">
           <h1 className="font-['Cinzel_Decorative'] text-5xl md:text-6xl font-bold text-[#3A4B5C] dark:text-[#E0C9A0] m-0 tracking-wide">
-            NARRATUM
+            {t('narratum')}
           </h1>
           <h2 className="font-['Lato'] text-xl md:text-2xl font-bold uppercase tracking-wider text-[#3A4B5C] dark:text-[#E0C9A0] m-0">
-            CATALOG OF STORIES
+            {t('catalogOfStories')}
           </h2>
 
-          {/* Legend (unchanged visuals) */}
+          {/* Legend */}
           <div className="mt-4 flex flex-wrap items-center gap-3 justify-center text-sm">
             <div className="flex flex-wrap items-center gap-3">
               {(['short','novela','campaign'] as const).map((k) => {
                 const Ico = TYPE_STYLES[k].Icon;
+                const typeLabel =
+                  k === 'short' ? t('shortStory') :
+                  k === 'novela' ? t('novela') :
+                  t('campaign');
                 return (
                   <FilterPill
                     key={k}
@@ -985,7 +958,7 @@ function CatalogPageInner() {
                     <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full ${TYPE_STYLES[k].badgeBg}`}>
                       <Ico size={14}/>
                     </span>
-                    {TYPE_STYLES[k].label}
+                    {typeLabel}
                   </FilterPill>
                 );
               })}
@@ -1000,6 +973,10 @@ function CatalogPageInner() {
             <div className="flex flex-wrap items-center gap-3">
               {(['basic','premium','convai'] as const).map((k) => {
                 const Ico = PLAN_STYLES[k].Icon;
+                const planLabel =
+                  k === 'basic' ? t('basic') :
+                  k === 'premium' ? t('premium') :
+                  t('convai');
                 return (
                   <FilterPill
                     key={k}
@@ -1010,7 +987,7 @@ function CatalogPageInner() {
                     <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full ${PLAN_STYLES[k].badgeBg}`}>
                       <Ico size={14}/>
                     </span>
-                    {PLAN_STYLES[k].label}
+                    {planLabel}
                   </FilterPill>
                 );
               })}
@@ -1020,25 +997,31 @@ function CatalogPageInner() {
 
         {/* Row 1 */}
         <nav className="flex flex-wrap items-center justify-center gap-4 md:gap-6 mb-4">
-          {(['all', 'popular', 'recent'] as const).map(filter => (
-            <button
-              key={filter}
-              onClick={() => handleFilterClick(filter)}
-              className={`font-['Lato'] text-lg font-bold px-3 py-1.5 border-b-2 transition-colors duration-300 focus:outline-none ${
-                activeFilter === filter
-                  ? 'text-[#3A4B5C] dark:text-[#E0C9A0] border-[#3A4B5C] dark:border-[#E0C9A0]'
-                  : 'text-[#3A4B5C] dark:text-[#E0C9A0] border-transparent hover:border-[#3A4B5C] dark:hover:border-[#E0C9A0]'
-              }`}
-            >
-              {filter.charAt(0).toUpperCase() + filter.slice(1)}
-            </button>
-          ))}
+          {(['all', 'popular', 'recent'] as const).map(filter => {
+            const label =
+              filter === 'all' ? t('all') :
+              filter === 'popular' ? t('popular') :
+              t('recent');
+            return (
+              <button
+                key={filter}
+                onClick={() => handleFilterClick(filter)}
+                className={`font-['Lato'] text-lg font-bold px-3 py-1.5 border-b-2 transition-colors duration-300 focus:outline-none ${
+                  activeFilter === filter
+                    ? 'text-[#3A4B5C] dark:text-[#E0C9A0] border-[#3A4B5C] dark:border-[#E0C9A0]'
+                    : 'text-[#3A4B5C] dark:text-[#E0C9A0] border-transparent hover:border-[#3A4B5C] dark:hover:border-[#E0C9A0]'
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
 
           <select
             value={languageFilter}
             onChange={(e) => setLanguageFilter(e.target.value)}
             className="px-3 py-2 rounded-lg border-2 border-[#4A5C6E] bg-[#233446] text-[#E0C9A0] focus:outline-none"
-            title="Filter by Language"
+            title={t('filterByLanguage')}
           >
             {LANGUAGE_OPTIONS.map(l => (
               <option key={l.code} value={l.code}>{l.label}</option>
@@ -1057,7 +1040,7 @@ function CatalogPageInner() {
           <div className="flex items-center gap-3 w-full max-w-xl">
             <input
               type="text"
-              placeholder='Search stories… try: author: Ana Perez'
+              placeholder={t('searchStoriesPlaceholder')}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="flex-grow p-3 rounded-lg border-2 border-[#4A5C6E] bg-[#233446] text-[#E0C9A0] placeholder-[#8FA0AF] focus:outline-none focus:border-[#BFA071]"
@@ -1067,7 +1050,7 @@ function CatalogPageInner() {
               disabled={isLoading}
               className="bg-[#BFA071] text-[#1A2533] py-3 px-6 rounded-lg font-bold text-sm uppercase tracking-wide transition-colors duration-300 hover:bg-[#E0C9A0] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Searching...' : 'Search'}
+              {isLoading ? t('searching') : t('search')}
             </button>
           </div>
         </div>
@@ -1076,12 +1059,12 @@ function CatalogPageInner() {
         {ownerIdFilter && (
           <div className="mb-6 flex justify-center">
             <span className="inline-flex items-center gap-2 bg-[#233446] text-[#E0C9A0] border border-[#BFA071] px-3 py-1 rounded-full">
-              Author: <strong>{ownerNameIndex.byId[ownerIdFilter] || 'Unknown Author'}</strong>
+              {t('author')} <strong>{ownerNameIndex.byId[ownerIdFilter] || t('unknownAuthor')}</strong>
               <button
                 onClick={() => setOwnerFilter(null)}
                 className="p-1 hover:bg-white/10 rounded-full"
-                aria-label="Clear author filter"
-                title="Clear author filter"
+                aria-label={t('clearAuthorFilter')}
+                title={t('clearAuthorFilter')}
               >
                 <X size={16} />
               </button>
@@ -1115,7 +1098,6 @@ function CatalogPageInner() {
               const hasReadThis = !!userReadsSet[(story as any).id!];
               const hasRatedThis = !!userRatedSet[(story as any).id!];
 
-              // 🔴 Prefer LIVE profile → denormalized → defaults
               const ownerId = getOwnerId(story);
               const live = ownerId ? ownerProfiles[ownerId] : undefined;
 
@@ -1123,7 +1105,7 @@ function CatalogPageInner() {
                 live?.name ||
                 (story as any).authorName ||
                 getCreatorName(story) ||
-                'Unknown Author';
+                t('unknownAuthor');
 
               const authorPhoto =
                 live?.photoURL ||
@@ -1133,11 +1115,18 @@ function CatalogPageInner() {
 
               const teaser = (story as any).teaserYoutubeUrl as string | undefined;
 
-              // ⬇️ NEW: cost per story (Basic=1, Premium=5, ConvAI=15)
               const creditCost = getStoryCreditCost(story);
-
-              // For navigation after successful deduction
               const readHref = `/ereader?storyId=${encodeURIComponent((story as any).id!)}&back=%2Fdiscover`;
+
+              const typeLabel =
+                typeKey === 'short' ? t('shortStory') :
+                typeKey === 'novela' ? t('novela') :
+                t('campaign');
+
+              const planLabel =
+                planKey === 'basic' ? t('basic') :
+                planKey === 'premium' ? t('premium') :
+                t('convai');
 
               return (
                 <div
@@ -1149,67 +1138,61 @@ function CatalogPageInner() {
 
                   <div className="absolute inset-1 border border-[#BFA071] rounded-md pointer-events-none z-10"></div>
 
-                  {/* Type, Plan, and Credits badges */}
-                  {/* Type (row 1) + Credits (row 2) on the LEFT */}
-                    <div className="absolute left-2 top-2 z-30 flex flex-col gap-1">
-                      {/* Row 1: Story Type */}
+                  {/* Type & Credits (left) */}
+                  <div className="absolute left-2 top-2 z-30 flex flex-col gap-1">
+                    <span
+                      className={`px-2 py-0.5 text-[11px] rounded ${typeStyle.badgeBg} ${typeStyle.badgeText}
+                                  font-bold uppercase tracking-wide inline-flex items-center gap-1.5`}
+                    >
+                      {React.createElement(TYPE_STYLES[typeKey].Icon, { size: 13 })} {typeLabel}
+                    </span>
+
+                    {creditCost > 0 && (
                       <span
-                        className={`px-2 py-0.5 text-[11px] rounded ${typeStyle.badgeBg} ${typeStyle.badgeText}
-                                    font-bold uppercase tracking-wide inline-flex items-center gap-1.5`}
+                        className="px-2 py-0.5 text-[11px] rounded bg-yellow-500/90 text-black
+                                  font-bold inline-flex items-center gap-1.5"
                       >
-                        {React.createElement(TYPE_STYLES[typeKey].Icon, { size: 13 })} {TYPE_STYLES[typeKey].label}
+                        {creditCost} {creditCost === 1 ? t('creditSingular') : t('creditsPlural')}
                       </span>
+                    )}
+                  </div>
 
-                      {/* Row 2: Credits */}
-                      {creditCost > 0 && (
-                        <span
-                          className="px-2 py-0.5 text-[11px] rounded bg-yellow-500/90 text-black
-                                    font-bold inline-flex items-center gap-1.5"
-                        >
-                          {creditCost} Credits
-                        </span>
-                      )}
-                    </div>
+                  {/* Plan (right) */}
+                  <div className="absolute right-2 top-2 z-30">
+                    <span
+                      className={`px-2 py-0.5 text-[11px] rounded ${planStyle.badgeBg} ${planStyle.badgeText}
+                                  font-semibold inline-flex items-center gap-1.5`}
+                    >
+                      {React.createElement(PLAN_STYLES[planKey].Icon, { size: 13 })} {planLabel}
+                    </span>
+                  </div>
 
-                    {/* Plan stays on the RIGHT (top row) */}
-                    <div className="absolute right-2 top-2 z-30">
-                      <span
-                        className={`px-2 py-0.5 text-[11px] rounded ${planStyle.badgeBg} ${planStyle.badgeText}
-                                    font-semibold inline-flex items-center gap-1.5`}
-                      >
-                        {React.createElement(PLAN_STYLES[planKey].Icon, { size: 13 })} {PLAN_STYLES[planKey].label}
-                      </span>
-                    </div>
-
-
-                  {/* Cover (kept as link to allow open in new tab if desired) */}
+                  {/* Cover */}
                   <Link
                     href={readHref}
                     onClick={async (e) => {
                       e.preventDefault();
                       await handlePaidRead(story);
                     }}
-                    // ⬇️ make the cover its own hover group
                     className="card-art-container group/cover block w-full h-40 mb-4 rounded-sm overflow-hidden relative z-20"
                   >
                     <img
                       src={(story as any).coverImageUrl || 'https://placehold.co/300x200/BFA071/1A2533?text=Image+Not+Found'}
-                      alt={(story as any).title || 'Untitled Story'}
+                      alt={(story as any).title || t('untitledStory')}
                       className="w-full h-full object-cover block"
                     />
 
-                    {/* Hover synopsis aligned top-center; hidden by default, shows on cover hover */}
+                    {/* Hover synopsis */}
                     <div
                       className="pointer-events-none opacity-0 group-hover/cover:opacity-100 transition-opacity duration-200
                                 absolute left-2 right-2 top-8 z-40"
                     >
                       <div className="bg-black/70 text-white text-xs rounded-md p-3 border border-white/10 shadow-xl text-center">
-                        <div className="font-semibold mb-1">Synopsis</div>
-                        <div className="line-clamp-4 text-[12px]">{getSynopsis(story)}</div>
+                        <div className="font-semibold mb-1">{t('synopsis')}</div>
+                        <div className="line-clamp-4 text-[12px]">{getSynopsis(story, t)}</div>
                       </div>
                     </div>
                   </Link>
-
 
                   {/* Title */}
                   <a
@@ -1220,7 +1203,7 @@ function CatalogPageInner() {
                     }}
                   >
                     <h3 className="font-['Merriweather'] text-xl font-bold mb-2 leading-tight min-h-[2.6rem] z-20 relative">
-                      {(story as any).title || 'Untitled Story'}
+                      {(story as any).title || t('untitledStory')}
                     </h3>
                   </a>
 
@@ -1239,25 +1222,25 @@ function CatalogPageInner() {
                           setOwnerFilter(ownerId);
                         }}
                         className="inline-flex items-center gap-2 text-xs text-[#8FA0AF] hover:text-[#E0C9A0] transition underline-offset-2"
-                        title={`See all by ${creatorName}`}
+                        title={formatT(t, 'seeAllBy', { creatorName })}
                       >
                         <img
                           src={authorPhoto}
-                          alt={`${creatorName} avatar`}
+                          alt={formatT(t, 'creatorAvatar', { creatorName })}
                           className="w-5 h-5 rounded-full object-cover border border-white/30"
                         />
                         <span>
-                          Created by: <span className="underline">{creatorName}</span>
+                          {t('createdBy')} <span className="underline">{creatorName}</span>
                         </span>
                       </button>
                     ) : (
                       <div className="inline-flex items-center gap-2 text-xs text-[#8FA0AF]">
                         <img
                           src={authorPhoto}
-                          alt={`${creatorName} avatar`}
+                          alt={formatT(t, 'creatorAvatar', { creatorName })}
                           className="w-5 h-5 rounded-full object-cover border border-white/30"
                         />
-                        <span>Created by: {creatorName}</span>
+                        <span>{t('createdBy')} {creatorName}</span>
                       </div>
                     )}
                   </div>
@@ -1265,7 +1248,7 @@ function CatalogPageInner() {
                   {/* Comments */}
                   {(story as any).commentsCount !== undefined && (
                     <p className="text-sm text-[#8FA0AF] flex items-center justify-center gap-1">
-                      💬 {(story as any).commentsCount} Comments
+                      💬 {(story as any).commentsCount} {t('comments')}
                     </p>
                   )}
 
@@ -1289,93 +1272,92 @@ function CatalogPageInner() {
                     {!hasReadThis && (
                       <span
                         className="absolute -top-2 -right-2 z-30 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500 text-white shadow"
-                        title="Reading logs a star so you can rate more"
+                        title={t('readingLogsStar')}
                       >
-                        Earn Stars
+                        {t('earnStars')}
                       </span>
                     )}
 
-                    {/* READ: paid flow */}
+                    {/* READ */}
                     <button
                       type="button"
                       onClick={() => handlePaidRead(story)}
                       className="font-['Lato'] bg-[#BFA071] text-[#1A2533] py-2.5 px-6 rounded-md text-base font-bold uppercase tracking-wide inline-block transition-colors duration-300 hover:bg-[#E0C9A0] z-20 relative"
                     >
-                      READ
+                      {t('read')}
                     </button>
 
-                    {/* Single teaser button (premium only) */}
+                    {/* Teaser (premium only) */}
                     {planKey === 'premium' && !!teaser && (
                       <button
                         type="button"
                         onClick={() => { setTeaserUrl(teaser); setTeaserOpen(true); }}
                         className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-white/20 bg-black/40 text-white hover:bg-black/55"
-                        title="Watch teaser"
-                        aria-label="Watch teaser"
+                        title={t('watchTeaserTitle')}
+                        aria-label={t('watchTeaserTitle')}
                       >
                         <YoutubeIcon size={18} />
-                        <span className="text-sm font-semibold">Teaser</span>
+                        <span className="text-sm font-semibold">{t('teaser')}</span>
                       </button>
                     )}
 
-                    {/* NEW: Tip Writer */}
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setTipOpenFor(prev => prev === (story as any).id ? null : (story as any).id)
-                      }
-                      className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-white/20 bg-black/40 text-white hover:bg-black/55"
-                      title="Tip the writer"
-                      aria-haspopup="menu"
-                      aria-expanded={tipOpenFor === (story as any).id}
-                      disabled={sendingTip}
-                    >
-                      💝 <span className="text-sm font-semibold">Tip</span>
-                    </button>
-
-                    {tipOpenFor === (story as any).id && (
-                      <div
-                        // ⬇️ right-side popout, vertically centered to the button
-                        className="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-36
-                                  bg-[#101418] text-white border border-white/10 rounded-md shadow-xl z-50"
-                        role="menu"
+                    {/* Tip */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setTipOpenFor(prev => prev === (story as any).id ? null : (story as any).id)
+                        }
+                        className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-white/20 bg-black/40 text-white hover:bg-black/55"
+                        title={t('tipTheWriter')}
+                        aria-haspopup="menu"
+                        aria-expanded={tipOpenFor === (story as any).id}
+                        disabled={sendingTip}
                       >
-                        <div className="px-3 py-2 text-xs opacity-80">Send a tip</div>
-                        <div className="h-px bg-white/10" />
-                        <ul className="py-1">
-                          {TIP_AMOUNTS.map((amt) => (
-                            <li key={amt}>
-                              <button
-                                type="button"
-                                className="w-full text-left px-3 py-2 hover:bg-white/10 text-sm"
-                                onClick={() => handleSendTip(ownerId, (story as any).id!, amt)}
-                                disabled={sendingTip}
-                                role="menuitem"
-                              >
-                                {amt} credit{amt === 1 ? '' : 's'}
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
+                        💝 <span className="text-sm font-semibold">{t('tip')}</span>
+                      </button>
+
+                      {tipOpenFor === (story as any).id && (
+                        <div
+                          className="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-36
+                                    bg-[#101418] text-white border border-white/10 rounded-md shadow-xl z-50"
+                          role="menu"
+                        >
+                          <div className="px-3 py-2 text-xs opacity-80">{t('sendATip')}</div>
+                          <div className="h-px bg-white/10" />
+                          <ul className="py-1">
+                            {TIP_AMOUNTS.map((amt) => (
+                              <li key={amt}>
+                                <button
+                                  type="button"
+                                  className="w-full text-left px-3 py-2 hover:bg-white/10 text-sm"
+                                  onClick={() => handleSendTip(ownerId, (story as any).id!, amt)}
+                                  disabled={sendingTip}
+                                  role="menuitem"
+                                >
+                                  {amt} {amt === 1 ? t('creditSingular') : t('creditsPlural')}
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                      <div className="mt-2 flex items-center gap-2 text-[12px] opacity-90">
-                        <img
-                          src={authorPhoto}
-                          alt={`${creatorName} avatar`}
-                          className="w-4 h-4 rounded-full object-cover border border-white/30"
-                        />
-                        <span>Created by: <span className="font-medium">{creatorName}</span></span>
-                      </div>
-                    </div>
-               );
+                  <div className="mt-2 flex items-center gap-2 text-[12px] opacity-90">
+                    <img
+                      src={authorPhoto}
+                      alt={formatT(t, 'creatorAvatar', { creatorName })}
+                      className="w-4 h-4 rounded-full object-cover border border-white/30"
+                    />
+                    <span>{t('createdBy')} <span className="font-medium">{creatorName}</span></span>
+                  </div>
+                </div>
+              );
             })
           ) : (
-            !isLoading && <p className="text-lg text-gray-400">No stories to display.</p>
+            !isLoading && <p className="text-lg text-gray-400">{t('noStoriesToDisplay')}</p>
           )}
         </main>
       </div>
@@ -1385,8 +1367,9 @@ function CatalogPageInner() {
 
 /* ----------------------- PAGE EXPORT WITH SUSPENSE ----------------------- */
 export default function CatalogPage() {
+  const { t } = useLocale();
   return (
-    <Suspense fallback={<div className="p-8 text-center">Loading discover…</div>}>
+    <Suspense fallback={<div className="p-8 text-center">{t('loadingDiscover')}</div>}>
       <CatalogPageInner />
     </Suspense>
   );

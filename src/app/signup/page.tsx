@@ -3,6 +3,7 @@
 import React, { useState, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext'; // Import the real useAuth
+import { useLocale } from '@/context/LocaleContext'; // Import useLocale
 import { auth, db } from '@/lib/firebase';
 import {
     createUserWithEmailAndPassword,
@@ -17,6 +18,7 @@ const SignUpPage: React.FC = () => {
   const [message, setMessage] = useState('');
   const router = useRouter();
   const { user, loading } = useAuth();
+  const { t } = useLocale(); // Use the useLocale hook
 
   useEffect(() => {
     if (!loading && user) {
@@ -27,12 +29,12 @@ const SignUpPage: React.FC = () => {
   const handleSignUp = async (e: FormEvent) => {
     e.preventDefault();
     if (!auth || !db) {
-        setMessage("Firebase is not initialized. Cannot sign up.");
+        setMessage(t('firebaseNotInitialized'));
         return;
     }
     setMessage('');
     if (password !== confirmPassword) {
-      setMessage('Passwords do not match.');
+      setMessage(t('passwordsDoNotMatch'));
       return;
     }
     try {
@@ -58,11 +60,11 @@ const SignUpPage: React.FC = () => {
     } catch (error: any) {
       console.error("Sign Up Error:", error);
       if (error.code === 'auth/email-already-in-use') {
-        setMessage('This email address is already in use. Please try another or log in.');
+        setMessage(t('emailAlreadyInUse'));
       } else if (error.code === 'auth/weak-password') {
-        setMessage('The password is too weak. Please use a stronger password (at least 6 characters).');
+        setMessage(t('weakPassword'));
       } else {
-        setMessage(`Error signing up: ${error.message}`);
+        setMessage(`${t('errorSigningUp')}${error.message}`);
       }
     }
   };
@@ -71,7 +73,7 @@ const SignUpPage: React.FC = () => {
     // Show loading indicator or nothing while redirecting
     return (
         <div className="min-h-screen flex items-center justify-center">
-            <p className="text-xl font-semibold">Loading...</p>
+            <p className="text-xl font-semibold">{t('loading')}</p>
         </div>
     );
   }
@@ -83,9 +85,9 @@ const SignUpPage: React.FC = () => {
       <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12 max-w-md w-full">
         <div className="mb-8">
           <i className="fas fa-user-plus text-6xl text-[#C1905F] mb-4 inline-block animate-glow"></i>
-          <h1 className="font-['Georgia'] text-4xl text-[#3A4B5C] dark:text-[#E0C9A0] font-normal tracking-wide">NARRATUM</h1>
+          <h1 className="font-['Georgia'] text-4xl text-[#3A4B5C] dark:text-[#E0C9A0] font-normal tracking-wide">{t('narratum')}</h1>
         </div>
-        <p className="text-lg text-gray-700 mb-8">Create your account to start your story.</p>
+        <p className="text-lg text-gray-700 mb-8">{t('createYourAccountToStartYourStory')}</p>
         {message && (
           <div className={`mb-4 p-3 rounded-lg text-sm ${message.includes('Error') || message.includes('match') || message.includes('already in use') || message.includes('weak') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
             {message}
@@ -96,14 +98,14 @@ const SignUpPage: React.FC = () => {
             <div className="input-field flex items-center p-3 border-b border-[#EDE7DF]">
               <i className="fas fa-envelope icon text-gray-500 mr-3 text-lg w-5 text-center"></i>
               <input
-                type="email" name="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)}
+                type="email" name="email" placeholder={t('emailPlaceholder')} value={email} onChange={(e) => setEmail(e.target.value)}
                 className="flex-grow border-none outline-none bg-transparent text-gray-700 placeholder-gray-400 text-base" required
               />
             </div>
             <div className="input-field flex items-center p-3 border-b border-[#EDE7DF]">
               <i className="fas fa-lock icon text-gray-500 mr-3 text-lg w-5 text-center"></i>
               <input
-                type="password" name="password" placeholder="Password (min. 6 characters)" 
+                type="password" name="password" placeholder={t('passwordMinCharsPlaceholder')} 
                 value={password} onChange={(e) => setPassword(e.target.value)}
                 className="flex-grow border-none outline-none bg-transparent text-gray-700 placeholder-gray-400 text-base" required
               />
@@ -111,20 +113,20 @@ const SignUpPage: React.FC = () => {
             <div className="input-field flex items-center p-3">
               <i className="fas fa-lock icon text-gray-500 mr-3 text-lg w-5 text-center"></i>
               <input
-                type="password" name="confirmPassword" placeholder="Confirm Password"
+                type="password" name="confirmPassword" placeholder={t('confirmPasswordPlaceholder')}
                 value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
                 className="flex-grow border-none outline-none bg-transparent text-gray-700 placeholder-gray-400 text-base" required
               />
             </div>
           </div>
           <button type="submit" className="w-full py-3 px-6 bg-[#627C90] text-white font-semibold rounded-full shadow-md hover:bg-[#536A7D] transition duration-300 uppercase tracking-wide">
-            Sign Up
+            {t('signUpButton')}
           </button>
         </form>
         <div className="text-sm text-gray-600 mt-8">
-          <p className="mb-2">Already have an account? <Link href="/login" className="text-blue-600 hover:underline font-bold">Login</Link></p>
+          <p className="mb-2">{t('alreadyHaveAnAccount')}<Link href="/login" className="text-blue-600 hover:underline font-bold">{t('login')}</Link></p>
         </div>
-        <Link href="/" className="mt-8 inline-block px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-400 transition duration-300">Back to Landing</Link>
+        <Link href="/" className="mt-8 inline-block px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-400 transition duration-300">{t('backToLanding')}</Link>
       </div>
     </div>
   );
