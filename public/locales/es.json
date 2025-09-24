@@ -554,6 +554,34 @@
   "thankYouForAccepting": "Gracias por aceptar los términos y condiciones.",
   "pleaseAcceptTerms": "Por favor, acepte los términos y condiciones para continuar.",
   "iAcceptTerms": "Acepto los términos y condiciones",
-  "accept": "ACEPTAR"
+  "accept": "ACEPTAR",
 
+  "dashboardLoading": "Cargando panel…",
+  "dashboardError": "Error al cargar historias: {message}",
+
+  "dashboardTitle": "Panel de comparación de historias",
+  "dashboardSubtitle": "Total de la app vs. Mis historias — cantidad, calificaciones, géneros, tipos y planes de creador",
+
+  "kpiAllStoriesTitle": "Todas las historias (App)",
+  "kpiMyStoriesTitle": "Mis historias",
+  "kpiCount": "Cantidad",
+  "kpiAvgRating": "Calificación prom.",
+  "kpiPctSelf": "% del total (mismo grupo)",
+  "kpiPctApp": "% del total (App)",
+
+  "byGenreTitle": "Por género",
+  "byTypeTitle": "Por tipo (Corto / Novela / Campaña)",
+  "byPlanTitle": "Por plan del creador (Gratis vs Pago)",
+
+  "tableAllStories": "Todas las historias",
+  "tableMyStories": "Mis historias",
+  "tableEmptyGenresHint": "Aún no hay géneros para tus historias.",
+  "itemsCountLabel": "{count} elemento(s)",
+  "tableNoData": "No se encontraron datos.",
+
+  "createNewStoryBtn": "Crear nueva historia",
+  "discoverStoriesBtn": "Descubrir historias"
+
+
+  
 }

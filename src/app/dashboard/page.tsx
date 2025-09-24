@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import useListPublishedStories from '@/hooks/useListPublishedStories';
 import ThemeToggle from '../../components/ThemeToggle';
+import { useLocale } from '@/context/LocaleContext';
 
 type AnyStory = Record<string, any>;
 
@@ -37,7 +38,6 @@ function getTypeLabel(s: AnyStory): 'Short' | 'Novela' | 'Campaign' | 'Unknown' 
 }
 
 function getPlanLabel(s: AnyStory): 'Free' | 'Paid' | 'Unknown' {
-  // If you later store plan/tier on story.creator, we’ll pick it up here.
   const c = s?.creator || {};
   const raw = c.tier ?? c.plan ?? c.membership ?? c.accountType ?? c.role ?? '';
   const isPaid = c.isPaid ?? s?.isPaidCreator ?? null;
@@ -135,6 +135,7 @@ function Bar({ pct }: { pct: number }) {
 
 const DashboardPage: React.FC = () => {
   const { user, loading } = useAuth();
+  const { t } = useLocale();
   const router = useRouter();
 
   const { data: stories, isLoading: storiesLoading, error } = useListPublishedStories();
@@ -158,7 +159,7 @@ const DashboardPage: React.FC = () => {
   if (loading || storiesLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#1A2533] text-[#E0C9A0]">
-        <p className="text-xl font-semibold">Loading dashboard...</p>
+        <p className="text-xl font-semibold">{t('dashboardLoading')}</p>
       </div>
     );
   }
@@ -166,7 +167,9 @@ const DashboardPage: React.FC = () => {
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-red-50 text-red-700">
-        <p className="text-xl font-semibold">Error loading stories: {error.message}</p>
+        <p className="text-xl font-semibold">
+          {t('dashboardError').replace('{message}', error.message)}
+        </p>
       </div>
     );
   }
@@ -178,15 +181,18 @@ const DashboardPage: React.FC = () => {
       {/* Controls */}
       <div className="fixed top-6 right-4 z-50 flex items-center gap-2">
         <ThemeToggle />
-        <Link href="/" className="px-4 py-2 bg-gray-600 text-white font-semibold rounded-full shadow-md hover:bg-gray-700 transition transform hover:scale-105">
-          Back to Landing
+        <Link
+          href="/"
+          className="px-4 py-2 bg-gray-600 text-white font-semibold rounded-full shadow-md hover:bg-gray-700 transition transform hover:scale-105"
+        >
+          {t('backToLanding')}
         </Link>
       </div>
 
       {/* Header */}
       <div className="max-w-7xl mx-auto mb-8 text-center">
-        <h1 className="text-4xl font-bold mb-2">Stories Comparison Dashboard</h1>
-        <p className="opacity-80">Total App vs My Stories — quantity, ratings, genres, types, and creator plans</p>
+        <h1 className="text-4xl font-bold mb-2">{t('dashboardTitle')}</h1>
+        <p className="opacity-80">{t('dashboardSubtitle')}</p>
       </div>
 
       <div className="max-w-7xl mx-auto space-y-10">
@@ -195,19 +201,19 @@ const DashboardPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* All Stories */}
           <div className="rounded-xl border-2 border-[#4A5C6E] bg-[#EAF2FA] text-[#233446] dark:bg-[#233446] dark:text-[#E0C9A0] p-6 shadow-md">
-            <h2 className="text-xl font-bold mb-4">All Stories (App)</h2>
+            <h2 className="text-xl font-bold mb-4">{t('kpiAllStoriesTitle')}</h2>
             <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 rounded-lg bg-white/70 dark:bg-white/5">
-                <div className="text-sm opacity-70">Count</div>
+              <div className="p-4 rounded-lg bg-white/70 dark:bg白/5">
+                <div className="text-sm opacity-70">{t('kpiCount')}</div>
                 <div className="text-3xl font-extrabold">{allStats.count}</div>
               </div>
-              <div className="p-4 rounded-lg bg-white/70 dark:bg-white/5">
-                <div className="text-sm opacity-70">Avg Rating</div>
+              <div className="p-4 rounded-lg bg白/70 dark:bg白/5">
+                <div className="text-sm opacity-70">{t('kpiAvgRating')}</div>
                 <div className="text-3xl font-extrabold">{fmtRating(allStats.avgRating)}</div>
               </div>
-              <div className="col-span-2 p-4 rounded-lg bg-white/70 dark:bg-white/5">
+              <div className="col-span-2 p-4 rounded-lg bg白/70 dark:bg白/5">
                 <div className="flex justify-between text-sm opacity-70 mb-1">
-                  <span>% of Total (itself)</span>
+                  <span>{t('kpiPctSelf')}</span>
                   <span>{fmtPct(allStats.pctOfTotal)}</span>
                 </div>
                 <Bar pct={allStats.pctOfTotal} />
@@ -217,19 +223,19 @@ const DashboardPage: React.FC = () => {
 
           {/* My Stories */}
           <div className="rounded-xl border-2 border-[#4A5C6E] bg-[#FFF3E3] text-[#3A2B26] dark:bg-[#2B3544] dark:text-[#E0C9A0] p-6 shadow-md">
-            <h2 className="text-xl font-bold mb-4">My Stories</h2>
+            <h2 className="text-xl font-bold mb-4">{t('kpiMyStoriesTitle')}</h2>
             <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 rounded-lg bg-white/70 dark:bg-white/5">
-                <div className="text-sm opacity-70">Count</div>
+              <div className="p-4 rounded-lg bg白/70 dark:bg白/5">
+                <div className="text-sm opacity-70">{t('kpiCount')}</div>
                 <div className="text-3xl font-extrabold">{subsetStats.count}</div>
               </div>
-              <div className="p-4 rounded-lg bg-white/70 dark:bg-white/5">
-                <div className="text-sm opacity-70">Avg Rating</div>
+              <div className="p-4 rounded-lg bg白/70 dark:bg白/5">
+                <div className="text-sm opacity-70">{t('kpiAvgRating')}</div>
                 <div className="text-3xl font-extrabold">{fmtRating(subsetStats.avgRating)}</div>
               </div>
-              <div className="col-span-2 p-4 rounded-lg bg-white/70 dark:bg-white/5">
+              <div className="col-span-2 p-4 rounded-lg bg白/70 dark:bg白/5">
                 <div className="flex justify-between text-sm opacity-70 mb-1">
-                  <span>% of Total (App)</span>
+                  <span>{t('kpiPctApp')}</span>
                   <span>{fmtPct(subsetStats.pctOfTotal)}</span>
                 </div>
                 <Bar pct={subsetStats.pctOfTotal} />
@@ -242,35 +248,49 @@ const DashboardPage: React.FC = () => {
         <section className="space-y-8">
           {/* By Genre */}
           <div>
-            <h3 className="text-2xl font-bold mb-3">By Genre</h3>
+            <h3 className="text-2xl font-bold mb-3">{t('byGenreTitle')}</h3>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <BreakdownTable title="All Stories" rows={objectToRows(allStats.byGenre)} />
-              <BreakdownTable title="My Stories" rows={objectToRows(subsetStats.byGenre)} emptyHint="No genres found for your stories yet." />
+              <BreakdownTable title={t('tableAllStories')} rows={objectToRows(allStats.byGenre)} />
+              <BreakdownTable
+                title={t('tableMyStories')}
+                rows={objectToRows(subsetStats.byGenre)}
+                emptyHint={t('tableEmptyGenresHint')}
+              />
             </div>
           </div>
 
           {/* By Type */}
           <div>
-            <h3 className="text-2xl font-bold mb-3">By Type (Short / Novela / Campaign)</h3>
+            <h3 className="text-2xl font-bold mb-3">{t('byTypeTitle')}</h3>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <BreakdownTable title="All Stories" rows={objectToRows(allStats.byType)} />
-              <BreakdownTable title="My Stories" rows={objectToRows(subsetStats.byType)} />
+              <BreakdownTable title={t('tableAllStories')} rows={objectToRows(allStats.byType)} />
+              <BreakdownTable title={t('tableMyStories')} rows={objectToRows(subsetStats.byType)} />
             </div>
           </div>
 
           {/* By Creator Plan */}
           <div>
-            <h3 className="text-2xl font-bold mb-3">By Creator Plan (Free vs Paid)</h3>
+            <h3 className="text-2xl font-bold mb-3">{t('byPlanTitle')}</h3>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <BreakdownTable title="All Stories" rows={planRows(allStats.byPlan)} />
-              <BreakdownTable title="My Stories" rows={planRows(subsetStats.byPlan)} />
+              <BreakdownTable title={t('tableAllStories')} rows={planRows(allStats.byPlan)} />
+              <BreakdownTable title={t('tableMyStories')} rows={planRows(subsetStats.byPlan)} />
             </div>
           </div>
         </section>
 
         <div className="flex items-center justify-center gap-3 pt-2">
-          <Link href="/create/begin" className="px-6 py-2 rounded-md bg-blue-600 text-white font-semibold hover:bg-blue-700 transition">Create New Story</Link>
-          <Link href="/discover" className="px-6 py-2 rounded-md bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition">Discover Stories</Link>
+          <Link
+            href="/create/begin"
+            className="px-6 py-2 rounded-md bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+          >
+            {t('createNewStoryBtn')}
+          </Link>
+          <Link
+            href="/discover"
+            className="px-6 py-2 rounded-md bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition"
+          >
+            {t('discoverStoriesBtn')}
+          </Link>
         </div>
       </div>
     </div>
@@ -287,14 +307,17 @@ function BreakdownTable({
   rows: { key: string; count: number; pct: number }[];
   emptyHint?: string;
 }) {
+  const { t } = useLocale();
   return (
     <div className="rounded-xl border-2 border-[#4A5C6E] bg-white/60 dark:bg-[#233446] dark:text-[#E0C9A0] p-5 shadow">
       <div className="flex items-center justify-between mb-3">
         <h4 className="text-lg font-bold">{title}</h4>
-        <span className="text-sm opacity-70">{rows.length} item(s)</span>
+        <span className="text-sm opacity-70">
+          {t('itemsCountLabel').replace('{count}', String(rows.length))}
+        </span>
       </div>
       {rows.length === 0 ? (
-        <div className="text-sm opacity-80">{emptyHint || 'No data found.'}</div>
+        <div className="text-sm opacity-80">{emptyHint || t('tableNoData')}</div>
       ) : (
         <div className="space-y-3">
           {rows.map((r) => (

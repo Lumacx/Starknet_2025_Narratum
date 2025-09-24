@@ -560,12 +560,41 @@
 
   "alertPasteValidYouTube": "Please paste a valid YouTube URL.",
   "alertSaveYouTubeFailed": "Could not save the YouTube link.",
-  
+
   "legalDisclaimerPageTitle": "LEGAL DISCLAIMER",
   "legalDisclaimerIntro": "By accessing or using this website, you agree to our ",
   "termsAndConditions": "Terms and Conditions",
   "thankYouForAccepting": "Thank you for accepting the terms and conditions.",
   "pleaseAcceptTerms": "Please accept the terms and conditions to proceed.",
   "iAcceptTerms": "I accept the terms and conditions",
-  "accept": "ACCEPT"
+  "accept": "ACCEPT",
+
+  "dashboardLoading": "Loading dashboard…",
+  "dashboardError": "Error loading stories: {message}",
+
+  "dashboardTitle": "Stories Comparison Dashboard",
+  "dashboardSubtitle": "Total App vs My Stories — quantity, ratings, genres, types, and creator plans",
+
+  "kpiAllStoriesTitle": "All Stories (App)",
+  "kpiMyStoriesTitle": "My Stories",
+  "kpiCount": "Count",
+  "kpiAvgRating": "Avg Rating",
+  "kpiPctSelf": "% of Total (itself)",
+  "kpiPctApp": "% of Total (App)",
+
+  "byGenreTitle": "By Genre",
+  "byTypeTitle": "By Type (Short / Novela / Campaign)",
+  "byPlanTitle": "By Creator Plan (Free vs Paid)",
+
+  "tableAllStories": "All Stories",
+  "tableMyStories": "My Stories",
+  "tableEmptyGenresHint": "No genres found for your stories yet.",
+  "itemsCountLabel": "{count} item(s)",
+  "tableNoData": "No data found.",
+
+  "createNewStoryBtn": "Create New Story",
+  "discoverStoriesBtn": "Discover Stories"
+
+  
+
 }
