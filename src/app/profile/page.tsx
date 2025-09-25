@@ -1,4 +1,4 @@
-//'use client';
+'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
@@ -22,7 +22,7 @@ import { useAuth } from '@/context/AuthContext';
 import AvatarUploader from '@/components/AvatarUploader';
 import { useLocale } from '@/context/LocaleContext';
 
-export const dynamic = 'force-dynamic';
+//export const dynamic = 'force-dynamic';
 //export const revalidate = 0;
 
 /* ----------------------------- i18n helpers ----------------------------- */

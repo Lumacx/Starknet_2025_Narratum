@@ -13,12 +13,20 @@ let _auth: Auth | null = null;
 let _db: Firestore | null = null;
 let _storage: FirebaseStorage | null = null;
 
+const isBrowser = () => typeof window !== 'undefined';
+
 /** Prefer App Hosting's baked JSON; fall back to NEXT_PUBLIC_* for local dev. */
 function getWebConfig() {
-  const baked = process.env.FIREBASE_WEBAPP_CONFIG; // injected at BUILD in App Hosting
+  // NOTE: process.env values are replaced at build time, so this is safe in the client bundle.
+  const baked = process.env.FIREBASE_WEBAPP_CONFIG; // set by Firebase App Hosting build
   if (baked) {
-    try { return JSON.parse(baked); } catch { /* ignore and fall back */ }
+    try {
+      return JSON.parse(baked);
+    } catch {
+      // ignore and fall back
+    }
   }
+  // Local/dev & general fallback (NEXT_PUBLIC_* are exposed to client)
   return {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
     authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -30,52 +38,85 @@ function getWebConfig() {
   };
 }
 
-/** Get (or create) the client Firebase app — only in the browser. */
+/**
+ * Strict: Get (or create) the client Firebase app — only in the browser.
+ * Throws if called on the server (so you don’t accidentally use client SDK in server code).
+ */
 export function getFirebaseApp(): FirebaseApp {
-  if (typeof window === 'undefined') {
-    // Guard: never initialize the client SDK during SSR or build
+  if (!isBrowser()) {
     throw new Error('getFirebaseApp() called on the server. Use Admin SDK on the server.');
   }
   if (_app) return _app;
-  const existing = getApps();
-  _app = existing.length ? existing[0] : initializeApp(getWebConfig());
+  const apps = getApps();
+  _app = apps.length ? apps[0] : initializeApp(getWebConfig());
   return _app!;
 }
 
-/** Lazy getters (client only). */
+/** Strict client-only getters (throw on server). */
 export function getClientAuth(): Auth {
-  if (typeof window === 'undefined') {
-    throw new Error('getClientAuth() called on the server.');
-  }
+  if (!isBrowser()) throw new Error('getClientAuth() called on the server.');
   if (_auth) return _auth;
   _auth = _getAuth(getFirebaseApp());
   return _auth!;
 }
 
 export function getClientDb(): Firestore {
-  if (typeof window === 'undefined') {
-    throw new Error('getClientDb() called on the server.');
-  }
+  if (!isBrowser()) throw new Error('getClientDb() called on the server.');
   if (_db) return _db;
   _db = _getFirestore(getFirebaseApp());
   return _db!;
 }
 
 export function getClientStorage(): FirebaseStorage {
-  if (typeof window === 'undefined') {
-    throw new Error('getClientStorage() called on the server.');
-  }
+  if (!isBrowser()) throw new Error('getClientStorage() called on the server.');
   if (_storage) return _storage;
   _storage = _getStorage(getFirebaseApp());
   return _storage!;
 }
 
 /**
- * Optional: Call this from a client-side effect (e.g., in your AuthProvider)
- * to ensure a signed-in user is present in dev. Never auto sign-in during SSR.
+ * Soft (SSR-safe) variants — return null on the server instead of throwing.
+ * Use these in code paths that might run during prerender/SSR but are guarded at runtime.
+ */
+export function tryGetFirebaseApp(): FirebaseApp | null {
+  if (!isBrowser()) return null;
+  try {
+    return getFirebaseApp();
+  } catch {
+    return null;
+  }
+}
+export function tryGetClientAuth(): Auth | null {
+  if (!isBrowser()) return null;
+  try {
+    return getClientAuth();
+  } catch {
+    return null;
+  }
+}
+export function tryGetClientDb(): Firestore | null {
+  if (!isBrowser()) return null;
+  try {
+    return getClientDb();
+  } catch {
+    return null;
+  }
+}
+export function tryGetClientStorage(): FirebaseStorage | null {
+  if (!isBrowser()) return null;
+  try {
+    return getClientStorage();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Optional: call from a client-side effect (e.g., in your AuthProvider)
+ * to ensure a signed-in user in dev. Never auto sign-in during SSR.
  */
 export function ensureAnonAuth({ enableInProd = false } = {}) {
-  if (typeof window === 'undefined') return;
+  if (!isBrowser()) return;
   const isProd = process.env.NODE_ENV === 'production';
   if (isProd && !enableInProd) return;
 
