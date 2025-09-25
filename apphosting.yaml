@@ -25,3 +25,31 @@ env:
   - variable: PAYPAL_ENV
     secret: PAYPAL_ENV
     availability: [RUNTIME]
+
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: "AIzaSyCwED8ecLP9ig2QNmBUO_HAWiI9X2ujV0U"
+    availability: [BUILD, RUNTIME]
+
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: "narratum.firebaseapp.com"
+    availability: [BUILD, RUNTIME]
+
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: "narratum"
+    availability: [BUILD, RUNTIME]
+
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: "narratum.firebasestorage.app"
+    availability: [BUILD, RUNTIME]
+
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "286262915752"
+    availability: [BUILD, RUNTIME]
+
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: "1:286262915752:web:dd9694d4583a7de67e089d"
+    availability: [BUILD, RUNTIME]
+
+  - variable: NEXT_PUBLIC_FIREBASE_DATABASE_URL
+    value: "https://narratum-default-rtdb.firebaseio.com"
+    availability: [BUILD, RUNTIME]

@@ -1,14 +1,8 @@
 // src/app/profile/page.tsx
-import nextDynamic from 'next/dynamic';
+import ProfileClient from '@/components/profile/ProfileClient';
 
-const ProfileClient = nextDynamic(() => import('@/components/profile/ProfileClient'), {
-  ssr: false,
-});
+export const dynamic = 'force-dynamic'; // or: export const revalidate = 0;
 
 export default function ProfilePage() {
-  return <ProfileClient />;
+  return <ProfileClient />; // ProfileClient is "use client" so this is fine
 }
-
-// ✅ No conflict now
-export const dynamic = 'force-dynamic'; 
-// (or: export const revalidate = 0;)
