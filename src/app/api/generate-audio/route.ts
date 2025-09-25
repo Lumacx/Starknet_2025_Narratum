@@ -2,9 +2,15 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 
-import { storage, db } from '@/lib/firebase';
-import { ref as sref, uploadString, getDownloadURL } from 'firebase/storage';
-import { doc as fsDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+// ❌ remove client imports
+// import { storage, db } from '@/lib/firebase';
+// import { ref as sref, uploadString, getDownloadURL } from 'firebase/storage';
+// import { doc as fsDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+
+// ✅ admin-only
+import { getAdminDb, getAdminBucket, FieldValue } from '@/lib/firebaseAdmin';
+import { v4 as uuidv4 } from 'uuid';
+
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -129,13 +135,13 @@ async function generateViaREST(opts: {
 }
 
 /* ------------------------- Upload helpers ------------------------- */
-function dataUrlToParts(dataUrl: string): { mime: string; base64: string; ext: 'mp3' | 'wav' | 'bin' } {
+function dataUrlToParts(dataUrl: string) {
   const m = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
-  if (!m) return { mime: 'application/octet-stream', base64: '', ext: 'bin' };
+  if (!m) return { mime: 'application/octet-stream', base64: '', ext: 'bin' as const };
   const mime = m[1];
   const base64 = m[2];
   const ext = mime.includes('wav') ? 'wav' : mime.includes('mp3') ? 'mp3' : 'bin';
-  return { mime, base64, ext };
+  return { mime, base64, ext: ext as 'mp3'|'wav'|'bin' };
 }
 
 async function saveAudioToStorageAndIndex(params: {
@@ -145,7 +151,7 @@ async function saveAudioToStorageAndIndex(params: {
   voiceName: string;
   tone?: string | null;
   language: string;
-  audioDataUrl: string; // data:audio/xxx;base64,...
+  audioDataUrl: string;
   modelUsed: string;
 }) {
   const { userId, storyId, sceneIndex, voiceName, tone, language, audioDataUrl, modelUsed } = params;
@@ -154,40 +160,46 @@ async function saveAudioToStorageAndIndex(params: {
   if (!base64) throw new Error('Invalid audio data URL for upload.');
 
   const ts = Date.now();
-  const indexStr = typeof sceneIndex === 'number' && Number.isFinite(sceneIndex) ? `scene-${sceneIndex}` : 'scene';
+  const indexStr = Number.isFinite(sceneIndex) ? `scene-${sceneIndex}` : 'scene';
   const filename = `${indexStr}-${ts}.${ext}`;
   const category = 'audioNarrations' as const;
-
   const path = `users/${userId}/assetIndex/stories/${storyId}/${category}/${filename}`;
-  const r = sref(storage, path);
 
-  await uploadString(r, base64, 'base64', {
+  const bucket = getAdminBucket();
+  const file = bucket.file(path);
+  const token = uuidv4();
+
+  await file.save(Buffer.from(base64, 'base64'), {
+    resumable: false,
     contentType: mime,
-    customMetadata: {
-      'narratum:storyId': storyId,
-      'narratum:assetCategory': category,
-      'narratum:source': 'ai-generated-tts',
-      'narratum:voice': voiceName,
-      'narratum:tone': tone ?? '',
-      'narratum:language': language,
-      'modelUsed': modelUsed,
-      displayName: filename,
-      createdAt: String(ts),
+    metadata: {
+      contentType: mime,
+      metadata: {
+        'narratum:storyId': storyId,
+        'narratum:assetCategory': category,
+        'narratum:source': 'ai-generated-tts',
+        'narratum:voice': voiceName,
+        'narratum:tone': tone ?? '',
+        'narratum:language': language,
+        modelUsed,
+        displayName: filename,
+        createdAt: String(ts),
+        firebaseStorageDownloadTokens: token,
+      },
     },
   });
 
-  const https = await getDownloadURL(r);
+  const https = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media&token=${token}`;
 
-  // Firestore index doc
-  const docId = filename.replace(/\.[^.]+$/, '');
-  await setDoc(
-    fsDoc(db, `users/${userId}/assetIndex/stories/${storyId}/${category}/${docId}`),
+  const db = getAdminDb();
+  const docPath = `users/${userId}/assetIndex/stories/${storyId}/${category}/${filename.replace(/\.[^.]+$/, '')}`;
+  await db.doc(docPath).set(
     {
       url: https,
-      name: docId,
+      name: filename.replace(/\.[^.]+$/, ''),
       fileName: filename,
       contentType: mime,
-      createdAt: serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
       source: 'ai-generated-tts',
       storyId,
       voice: voiceName,
@@ -198,7 +210,7 @@ async function saveAudioToStorageAndIndex(params: {
     { merge: true }
   );
 
-  return { https, fullPath: r.fullPath, filename, mime };
+  return { https, fullPath: path, filename, mime };
 }
 
 /* ------------------------------- Handler ------------------------------ */

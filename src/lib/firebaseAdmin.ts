@@ -2,7 +2,8 @@
 import 'server-only';
 
 import { getApps, getApp, initializeApp, applicationDefault, cert, type App } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+//import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 
 /** Normalize PEM: trim quotes and convert escaped newlines. */
@@ -80,3 +81,5 @@ export function getAdminProjectId(): string | undefined {
 export function getAdminStorageBucketName(): string | undefined {
   return resolveStorageBucket(resolveProjectId());
 }
+
+export { FieldValue, Timestamp };

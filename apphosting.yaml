@@ -1,39 +1,27 @@
-# apphosting.yaml
+build:
+  command: corepack enable && pnpm install --frozen-lockfile && pnpm build
+
+run:
+  command: pnpm start -- -p $PORT
+
 env:
   - variable: FIREBASE_FUNCTIONS_BASE_URL
     value: https://us-central1-narratum.cloudfunctions.net
-
-  # --- Firebase Admin (server-only) ---
   - variable: FIREBASE_PROJECT_ID
     secret: FIREBASE_PROJECT_ID
     availability: [RUNTIME]
-
   - variable: FIREBASE_CLIENT_EMAIL
     secret: FIREBASE_CLIENT_EMAIL
     availability: [RUNTIME]
-
-  # Use base64 to avoid newline issues in PEM
   - variable: FIREBASE_PRIVATE_KEY_BASE64
     secret: FIREBASE_PRIVATE_KEY_BASE64
     availability: [RUNTIME]
-
-  # --- PayPal (server-only) ---
   - variable: PAYPAL_CLIENT_ID
     secret: PAYPAL_CLIENT_ID
     availability: [RUNTIME]
-
   - variable: PAYPAL_SECRET_KEY
     secret: PAYPAL_SECRET_KEY
     availability: [RUNTIME]
-
-  # "production" or "development"
   - variable: PAYPAL_ENV
     secret: PAYPAL_ENV
     availability: [RUNTIME]
-
-  # --- Optional public vars for the browser (cleartext is fine) ---
-  # Example: make PayPal client ID available to Next.js client code
-  # (Only include this if you actually want it exposed in the browser)
-  # - variable: NEXT_PUBLIC_PAYPAL_CLIENT_ID
-  #   value: YOUR_PUBLIC_CLIENT_ID
-  #   availability: [RUNTIME]
