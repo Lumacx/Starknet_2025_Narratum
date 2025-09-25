@@ -33,8 +33,8 @@ import {
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useLocale } from '@/context/LocaleContext';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+//export const dynamic = 'force-dynamic';
+//export const revalidate = 0;
 
 const YoutubeVideoPlayer = dynamicImport(
   () => import('@/components/YoutubeVideoPlayer'),

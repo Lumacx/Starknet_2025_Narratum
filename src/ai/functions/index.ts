@@ -1,41 +1,31 @@
-import * as admin from "firebase-admin";
-import * as functions from "firebase-functions"; // Using v1 functions import
-import { getFirestore } from "firebase-admin/firestore";
+// src/ai/functions/index.ts
+import 'server-only';
+import { getAdminDb } from '@/lib/firebaseAdmin';
 
-// Initialize the Admin SDK only once
-if (admin.apps.length === 0) {
-  admin.initializeApp();
-}
-
-const db = getFirestore();
+type NewAuthUser = {
+  uid: string;
+  email?: string | null;
+  displayName?: string | null;
+};
 
 /**
- * This function triggers whenever a new user is created in Firebase Authentication.
- * It automatically creates a corresponding user profile in the database.
- * This is the most reliable way to handle user profile creation, as it
- * avoids client-side race conditions.
+ * Helper you can call from your Cloud Function (in /functions/src/**)
+ * to create/merge a user profile. Safe to keep in the Next repo.
  */
-exports.createuserprofile = functions.auth.user().onCreate(async (user) => {
+export async function createUserProfile(user: NewAuthUser) {
+  const db = getAdminDb();
   const { uid, email, displayName } = user;
 
-  // Ensure a unique username, especially if the displayName is not available.
   const username = displayName || `user_${uid.slice(0, 8)}`;
-
   const userProfile = {
-    id: uid, // Explicitly set the document ID to match the user's UID
-    email: email || "no-email@example.com",
-    username: username,
-    displayname: displayName || "Anonymous User",
-    role: "reader", // Default role
+    id: uid,
+    email: email || 'no-email@example.com',
+    username,
+    displayname: displayName || 'Anonymous User',
+    role: 'reader',
     createdAt: new Date(),
     updatedAt: new Date(),
   };
 
-  try {
-    // Use the user's UID as the document ID in the 'users' collection.
-    await db.collection("users").doc(uid).set(userProfile);
-    console.log(`Successfully created profile for user: ${uid}`);
-  } catch (error) {
-    console.error(`Error creating profile for user: ${uid}`, error);
-  }
-});
+  await db.collection('users').doc(uid).set(userProfile, { merge: true });
+}

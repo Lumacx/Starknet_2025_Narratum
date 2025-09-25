@@ -1,19 +1,18 @@
 // src/app/api/paypal-verify-subscription/route.ts
 import 'server-only';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminApp, getAdminDb } from '@/lib/firebaseAdmin'; // ✅ lazy Admin
+import { getAdminApp, getAdminDb } from '@/lib/firebaseAdmin';
 import { getAuth } from 'firebase-admin/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 export const maxDuration = 60;
 
 // Decide sandbox vs prod via env; default to sandbox unless explicitly "production"
 function resolvePayPalBase(): string {
   const forced = process.env.PAYPAL_API_BASE?.trim();
-  if (forced) return forced; // allow explicit override
+  if (forced) return forced;
   const env = (process.env.PAYPAL_ENV || process.env.NODE_ENV || 'development').toLowerCase();
   return env === 'production'
     ? 'https://api-m.paypal.com'
@@ -43,10 +42,8 @@ export async function POST(req: NextRequest) {
     }
 
     // 🔐 Verify Firebase ID token (Authorization: Bearer <idToken>)
-    const authorizationHeader = req.headers.get('Authorization') || '';
-    const idToken = authorizationHeader.startsWith('Bearer ')
-      ? authorizationHeader.slice('Bearer '.length)
-      : '';
+    const authHeader = req.headers.get('authorization') || req.headers.get('Authorization') || '';
+    const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
 
     if (!idToken) {
       return NextResponse.json(
@@ -55,7 +52,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const auth = getAuth(getAdminApp());  // ✅ lazy Admin init
+    const auth = getAuth(getAdminApp());
     let decodedToken;
     try {
       decodedToken = await auth.verifyIdToken(idToken);
@@ -117,7 +114,7 @@ export async function POST(req: NextRequest) {
 
     // 3) Mark active if PayPal says ACTIVE or APPROVED
     if (status === 'ACTIVE' || status === 'APPROVED') {
-      const db = getAdminDb(); // ✅ lazy Admin init
+      const db = getAdminDb();
       await db.collection('users').doc(userId).set(
         {
           subscriptionStatus: 'active',

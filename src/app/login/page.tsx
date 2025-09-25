@@ -17,8 +17,8 @@ import { Call, shortString } from 'starknet';
 
 import GSIButton from '@/components/GSIButton';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+//export const dynamic = 'force-dynamic';
+//export const revalidate = 0;
 
 function parseGsiJwt(idToken: string): any | null {
   try {

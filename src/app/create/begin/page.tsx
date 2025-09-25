@@ -33,8 +33,8 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 /* 🌐 i18n */
 import { useLocale } from '@/context/LocaleContext';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+//export const dynamic = 'force-dynamic';
+//export const revalidate = 0;
 
 /* ------------------------------------------------------------------ */
 /* Page constants & types                                              */

@@ -13,8 +13,8 @@ import { generateWritingPrompts } from '@/ai/flows/generate-writing-prompts';
 import { Progress } from '@/components/ui/progress';
 import { useLocale } from '@/context/LocaleContext';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+//export const dynamic = 'force-dynamic';
+//export const revalidate = 0;
 
 // --- Icons ---
 const FaBook = () => (

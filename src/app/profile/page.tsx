@@ -1,4 +1,4 @@
-'use client';
+//'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
@@ -23,7 +23,7 @@ import AvatarUploader from '@/components/AvatarUploader';
 import { useLocale } from '@/context/LocaleContext';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+//export const revalidate = 0;
 
 /* ----------------------------- i18n helpers ----------------------------- */
 const fmt = (s: string, vars?: Record<string, string | number>) => {
