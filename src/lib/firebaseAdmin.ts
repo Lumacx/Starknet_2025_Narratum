@@ -1,16 +1,14 @@
 // src/lib/firebaseAdmin.ts
 import 'server-only';
 
-import { getApps, getApp, initializeApp, applicationDefault, cert, type App } from 'firebase-admin/app';
-//import { getFirestore } from 'firebase-admin/firestore';
+import { getApps, initializeApp, applicationDefault, cert, type App } from 'firebase-admin/app';
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 
-/** Normalize PEM: trim quotes and convert escaped newlines. */
+/** Normalize PEM: trim quotes and convert escaped newlines (CRLF/LF). */
 function normalizePrivateKey(key: string): string {
-  // remove surrounding quotes if present
   const trimmed = key.trim().replace(/^"(.*)"$/, '$1').replace(/^'(.*)'$/, '$1');
-  return trimmed.replace(/\\n/g, '\n');
+  return trimmed.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n');
 }
 
 /** Resolve project/bucket from env, with sensible fallbacks. */
@@ -18,6 +16,7 @@ function resolveProjectId(): string | undefined {
   return process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT;
 }
 function resolveStorageBucket(projectId?: string): string | undefined {
+  // The actual bucket name is still appspot.com (the public domain may be firebasestorage.app)
   return process.env.FIREBASE_STORAGE_BUCKET || (projectId ? `${projectId}.appspot.com` : undefined);
 }
 
@@ -47,31 +46,29 @@ export function getAdminApp(): App {
     return initializeApp({
       credential: cert({ projectId, clientEmail, privateKey }),
       projectId,
-      storageBucket, // okay if undefined
+      storageBucket,
     });
   }
 
-  // Application Default Credentials (e.g., Cloud env or local gcloud auth)
-  return initializeApp({
+  // Application Default Credentials (e.g., App Hosting/Cloud or local gcloud auth)
+  const options: Parameters<typeof initializeApp>[0] = {
     credential: applicationDefault(),
-    projectId,      // hint if available
-    storageBucket,  // hint if available
-  });
+  };
+  if (projectId) options.projectId = projectId;
+  if (storageBucket) options.storageBucket = storageBucket;
+
+  return initializeApp(options);
 }
 
 /** Lazy helpers — use inside API routes/server actions only. */
 export function getAdminDb() {
   return getFirestore(getAdminApp());
 }
-
 export function getAdminStorage() {
   return getStorage(getAdminApp());
 }
-
 export function getAdminBucket() {
-  const app = getAdminApp();
-  const storage = getStorage(app);
-  return storage.bucket(); // uses storageBucket from initializeApp, if provided
+  return getAdminStorage().bucket(); // uses storageBucket from initializeApp, if provided
 }
 
 /** Optional env introspection (non-throwing) */

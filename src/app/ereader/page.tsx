@@ -11,6 +11,9 @@ import { Download as DownloadIcon, Film as FilmIcon } from 'lucide-react';
 import { storyAssetCol } from '@/lib/firestorePaths';
 import { useLocale } from '@/context/LocaleContext';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 /* ---------- Types StoryReader uses (extended) ---------- */
 type ReaderPage = {
   id?: string | null;

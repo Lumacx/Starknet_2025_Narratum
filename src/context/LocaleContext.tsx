@@ -1,70 +1,134 @@
-"use client";
+// src/context/LocaleContext.tsx
+'use client';
 
 import React, {
   createContext,
   useContext,
-  useState,
   useEffect,
-  ReactNode,
-} from "react";
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
 
-interface LocaleContextType {
-  locale: string;
-  setLocale: (locale: string) => void;
-  t: (key: string) => string;
-}
+export type Locale = 'en' | 'es';
+type Dict = Record<string, string>;
+
+type LocaleContextType = {
+  locale: Locale;
+  setLocale: Dispatch<SetStateAction<Locale>>;
+  toggle: () => void;
+  t: (key: string, vars?: Record<string, string | number>) => string;
+  ready: boolean; // translations loaded for current locale
+};
 
 const LocaleContext = createContext<LocaleContextType | undefined>(undefined);
 
-interface LocaleProviderProps {
-  children: ReactNode;
-}
+type Props = { children: ReactNode };
 
-export const LocaleProvider: React.FC<LocaleProviderProps> = ({ children }) => {
-  const [locale, setLocale] = useState("en"); // Default language
-  const [translations, setTranslations] = useState<{
-    [key: string]: string;
-  }>({});
+// simple in-memory cache to avoid re-fetching per locale
+const dictCache: Partial<Record<Locale, Dict>> = {};
+
+export const LocaleProvider: React.FC<Props> = ({ children }) => {
+  // lazy init from localStorage if present
+  const [locale, setLocale] = useState<Locale>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = window.localStorage.getItem('locale');
+      if (saved === 'en' || saved === 'es') return saved;
+    }
+    return 'en';
+  });
+
+  const [dict, setDict] = useState<Dict>(() => dictCache[locale] ?? {});
+  const [ready, setReady] = useState<boolean>(!!dictCache[locale]);
+
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    const fetchTranslations = async () => {
+    // persist choice
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('locale', locale);
+      // reflect in <html lang="..">
       try {
-        const response = await fetch(`/locales/${locale}.json`);
-        if (!response.ok) {
-          throw new Error(
-            `Failed to load translations for locale: ${locale}`
-          );
+        document.documentElement.setAttribute('lang', locale);
+      } catch {}
+    }
+
+    // use cache if available
+    if (dictCache[locale]) {
+      setDict(dictCache[locale]!);
+      setReady(true);
+      return;
+    }
+
+    // fetch translations from /public/locales/<locale>.json
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+    setReady(false);
+
+    const load = async () => {
+      try {
+        const res = await fetch(`/locales/${locale}.json`, { signal: ac.signal });
+        if (!res.ok) throw new Error(`Failed to load ${locale}.json`);
+        const data = (await res.json()) as Dict;
+        dictCache[locale] = data;
+        if (!ac.signal.aborted) {
+          setDict(data);
+          setReady(true);
         }
-        const data = await response.json();
-        setTranslations(data);
-      } catch (error) {
-        console.error("Error fetching translations:", error);
-        // Fallback to English if translation fails
-        const response = await fetch(`/locales/en.json`);
-        const data = await response.json();
-        setTranslations(data);
-        setLocale("en");
+      } catch (err) {
+        if (ac.signal.aborted) return;
+        console.error('[i18n] load failed, falling back to en:', err);
+        // fallback to English
+        if (locale !== 'en') {
+          setLocale('en'); // triggers effect again; cached if already loaded
+        } else {
+          // as a last resort, try to fetch en.json
+          try {
+            const res = await fetch(`/locales/en.json`, { signal: ac.signal });
+            const data = (await res.json()) as Dict;
+            dictCache.en = data;
+            if (!ac.signal.aborted) {
+              setDict(data);
+              setReady(true);
+            }
+          } catch (e) {
+            console.error('[i18n] failed to load en.json:', e);
+            setDict({});
+            setReady(true);
+          }
+        }
       }
     };
 
-    fetchTranslations();
+    void load();
+    return () => ac.abort();
   }, [locale]);
 
-  const t = (key: string): string => {
-    return translations[key] || key; // Return key if translation not found
-  };
+  // very small formatter: replaces {var} with value
+  const t = useMemo(() => {
+    return (key: string, vars?: Record<string, string | number>): string => {
+      const base = dict[key] ?? key;
+      if (!vars) return base;
+      return base.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? `{${k}}`));
+    };
+  }, [dict]);
 
-  return (
-    <LocaleContext.Provider value={{ locale, setLocale, t }}>
-      {children}
-    </LocaleContext.Provider>
+  const toggle = () => setLocale(prev => (prev === 'en' ? 'es' : 'en'));
+
+  const value = useMemo<LocaleContextType>(
+    () => ({ locale, setLocale, toggle, t, ready }),
+    [locale, t, ready]
   );
+
+  return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;
 };
 
-export const useLocale = () => {
-  const context = useContext(LocaleContext);
-  if (context === undefined) {
-    throw new Error("useLocale must be used within a LocaleProvider");
-  }
-  return context;
-};
+export function useLocale(): LocaleContextType {
+  const ctx = useContext(LocaleContext);
+  if (!ctx) throw new Error('useLocale must be used within a <LocaleProvider>');
+  return ctx;
+}

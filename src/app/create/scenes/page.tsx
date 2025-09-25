@@ -46,6 +46,8 @@ import {
 
 import { storyVideosCol, uncatVideosCol } from '@/lib/firestorePaths';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 /* ------------------------------------------------------------------ */
 /* Types & constants                                                   */
 /* ------------------------------------------------------------------ */

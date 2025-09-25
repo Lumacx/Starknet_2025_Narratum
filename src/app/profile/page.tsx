@@ -22,6 +22,9 @@ import { useAuth } from '@/context/AuthContext';
 import AvatarUploader from '@/components/AvatarUploader';
 import { useLocale } from '@/context/LocaleContext';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 /* ----------------------------- i18n helpers ----------------------------- */
 const fmt = (s: string, vars?: Record<string, string | number>) => {
   if (!vars) return s;

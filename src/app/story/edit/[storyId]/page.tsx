@@ -13,6 +13,9 @@ import { generateWritingPrompts } from '@/ai/flows/generate-writing-prompts';
 import { Progress } from '@/components/ui/progress';
 import { useLocale } from '@/context/LocaleContext';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // --- Icons ---
 const FaBook = () => (
   <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 16 16" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">

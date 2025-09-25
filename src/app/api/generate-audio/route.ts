@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 
 // ❌ remove client imports
-// import { storage, db } from '@/lib/firebase';
+ import { storage, db } from '@/lib/firebase';
 // import { ref as sref, uploadString, getDownloadURL } from 'firebase/storage';
 // import { doc as fsDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 

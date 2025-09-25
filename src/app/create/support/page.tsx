@@ -38,6 +38,9 @@ import {
 import { setDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import InfoPopover from '@/components/InfoPopover';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 /* --- LOGIC MOVED HERE from UploadImageReference --- */
 function extractImageAndModel(json: any): { dataUrl?: string; modelUsed?: string } {
   if (Array.isArray(json?.images) && json.images.length) {
