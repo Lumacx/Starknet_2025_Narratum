@@ -20,7 +20,7 @@ env:
     secret: FIREBASE_PRIVATE_KEY_BASE64
     availability: [RUNTIME]
 
-  - variable: PAYPAL_CLIENT_ID
+  - variable: NEXT_PUBLIC_PAYPAL_CLIENT_ID
     secret: PAYPAL_CLIENT_ID
     availability: [RUNTIME]
 

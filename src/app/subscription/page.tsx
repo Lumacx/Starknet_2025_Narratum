@@ -86,18 +86,18 @@ const prettyUSD = (n: number) =>
    ────────────────────────────────────────────────────────────────── */
 const PAYPAL_PLAN_IDS: Record<SubscriptionFrequency, Record<Lowercase<SubscriptionTier['name']>, string>> = {
   weekly: {
-    'og free': '',
-    'tester': 'P-WEEKLY-TESTER-PLACEHOLDER',
-    'reader': 'P-WEEKLY-READER-PLACEHOLDER',
-    'writer': 'P-WEEKLY-WRITER-PLACEHOLDER',
-    'creator': 'P-WEEKLY-CREATOR-PLACEHOLDER',
+    'og free': 'P-59784833RN494424PNDLBX5Y',
+    'tester': 'P-5G020421VG335451VNDLCDAA',
+    'reader': 'P-9P840869XW552833BNDLCEWI',
+    'writer': 'P-6DV06426M8230392GNDLCFWQ',
+    'creator': 'P-5GR1157592296905UNDLCHXI',
   },
   monthly: {
-    'og free': '',
-    'tester': 'P-MONTHLY-TESTER-PLACEHOLDER',
-    'reader': 'P-MONTHLY-READER-PLACEHOLDER',
-    'writer': 'P-MONTHLY-WRITER-PLACEHOLDER',
-    'creator': 'P-MONTHLY-CREATOR-PLACEHOLDER',
+    'og free': 'P-25490973SC123773DNDLB5OY',
+    'tester': 'P-6JF174267D2475636NDLCLZI',
+    'reader': 'P-80H73039UX394851YNDLCMQQ',
+    'writer': 'P-6R486885FS7556443NDLCO6Q',
+    'creator': 'P-7GH52876NN676341GNDLCPSY',
   },
 };
 
