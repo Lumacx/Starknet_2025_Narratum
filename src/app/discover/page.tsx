@@ -535,9 +535,28 @@ function CatalogPageInner() {
   const { user } = useAuth();
   const { data, isLoading } = useListPublishedStories();
 
-  const functions = useMemo(() => getFunctions(), []);
-  const deductCreditsForRead = useMemo(() => httpsCallable(functions, 'deductCreditsForRead'), [functions]);
-  const sendTipToWriter = useMemo(() => httpsCallable(functions, 'sendTipToWriter'), [functions]);
+  // --- NEW: Type-safe callables and regioned getFunctions ---
+  type DeductInput = { storyId: string; checkOnly?: boolean };
+  type DeductResult = {
+    success: boolean;
+    storyId: string;
+    chargingModel: 'one-time' | 'pay-per-open';
+    price: number;
+    alreadyOwned: boolean;
+    needsPayment: boolean;
+    charged?: number;
+    remainingCredits: number;
+  };
+
+  const functions = useMemo(() => getFunctions(undefined, 'us-central1'), []);
+  const deductCreditsForRead = useMemo(
+    () => httpsCallable<DeductInput, DeductResult>(functions, 'deductCreditsForRead'),
+    [functions]
+  );
+  const sendTipToWriter = useMemo(
+    () => httpsCallable<{ targetUid: string; amount: number }, { success: boolean; message?: string }>(functions, 'sendTipToWriter'),
+    [functions]
+  );
 
   const ownerNameIndex = useMemo(() => {
     const byId: Record<string, string> = {};
@@ -725,9 +744,7 @@ function CatalogPageInner() {
   }, [activeFilter, selectedGenres, storyTypeFilter, planFilter, languageFilter, ownerIdFilter, allStories]);
 
   useEffect(() => {
-    // Keep message simple with your flat keys
     if (!searchQuery.trim()) {
-      // when filters change but no search, show a terse summary or nothing
       setSearchMessage('');
       return;
     }
@@ -755,7 +772,7 @@ function CatalogPageInner() {
       const wanted = norm(nameCandidate);
       const matchingOwnerIds = new Set<string>();
       for (const [nameKey, idSet] of Object.entries(ownerNameIndex.nameToIds)) {
-        if (nameKey.includes(wanted) && (idSet as Set<string>).size) {
+        if ((nameKey as string).includes(wanted) && (idSet as Set<string>).size) {
           (idSet as Set<string>).forEach((id) => matchingOwnerIds.add(id));
         }
       }
@@ -803,7 +820,6 @@ function CatalogPageInner() {
         let filteredBySearch = allStories.filter(story => matchedTitles.includes((story as any).title));
         filteredBySearch = applyFiltersAndSearch(filteredBySearch);
         setDisplayedStories(filteredBySearch);
-        // No dedicated "found matches" key in the flat list; we keep message minimal
         setSearchMessage('');
       } else {
         setDisplayedStories(applyFiltersAndSearch(allStories));
@@ -838,18 +854,51 @@ function CatalogPageInner() {
       return;
     }
 
-    const creditCost = getStoryCreditCost(story);
     try {
-      const res: any = await deductCreditsForRead({
-        storyId,
-        cost: creditCost,
-        plan: getPlan(story),
-      });
+      // 1) Preflight (no charge)
+      const pre = await deductCreditsForRead({ storyId, checkOnly: true });
+      const preData = pre.data;
 
-      const ok = res?.data?.ok ?? true;
-      const reason = res?.data?.reason;
-      if (!ok) {
-        alert(reason || t('notEnoughCredits'));
+      if (!preData?.success) {
+        alert(t('couldNotProcessCredits'));
+        return;
+      }
+
+      // If no payment needed (owned or free), open immediately
+      if (!preData.needsPayment) {
+        await logRead(storyId);
+        router.push(`/ereader?storyId=${encodeURIComponent(storyId)}&back=%2Fdiscover`);
+        return;
+      }
+
+      // Needs payment
+      const price = preData.price ?? getStoryCreditCost(story);
+      const model = preData.chargingModel; // 'pay-per-open' | 'one-time'
+
+      // Insufficient funds?
+      if ((preData.remainingCredits ?? 0) < price) {
+        alert(
+          `${t('notEnoughCredits')}\n` +
+          `${t('required')}: ${price} · ${t('youHave')}: ${preData.remainingCredits ?? 0}`
+        );
+        return;
+      }
+
+      // Confirm (replace with a proper modal later)
+      const label =
+        model === 'pay-per-open'
+          ? `${t('read')} — ${price} ${price === 1 ? t('creditSingular') : t('creditsPlural')} (${t('perOpen')})`
+          : `${t('unlockForever')} — ${price} ${price === 1 ? t('creditSingular') : t('creditsPlural')}`;
+
+      const ok = window.confirm(label);
+      if (!ok) return;
+
+      // 2) Perform the charge
+      const charged = await deductCreditsForRead({ storyId });
+      const chargedData = charged.data;
+
+      if (!chargedData?.success) {
+        alert(t('couldNotProcessCredits'));
         return;
       }
 
@@ -857,7 +906,9 @@ function CatalogPageInner() {
       router.push(`/ereader?storyId=${encodeURIComponent(storyId)}&back=%2Fdiscover`);
     } catch (e: any) {
       console.error('deductCreditsForRead failed', e);
-      alert(e?.message || t('couldNotProcessCredits'));
+      // Attempt to bubble up HttpsError detail if present
+      const msg = e?.message || t('couldNotProcessCredits');
+      alert(msg);
     }
   };
 
@@ -875,14 +926,11 @@ function CatalogPageInner() {
     }
     setSendingTip(true);
     try {
-      const res: any = await sendTipToWriter({
-        toUid: writerUid,
-        storyId,
-        amount,
-      });
-      const ok = res?.data?.ok ?? true;
+      // Function expects { targetUid, amount }
+      const res = await sendTipToWriter({ targetUid: writerUid, amount });
+      const ok = (res.data as any)?.success ?? true;
       if (!ok) {
-        alert(res?.data?.message || t('couldNotSendTip'));
+        alert((res.data as any)?.message || t('couldNotSendTip'));
         return;
       }
       alert(t('tipSentSuccessfully'));
@@ -1344,15 +1392,6 @@ function CatalogPageInner() {
                         </div>
                       )}
                     </div>
-                  </div>
-
-                  <div className="mt-2 flex items-center gap-2 text-[12px] opacity-90">
-                    <img
-                      src={authorPhoto}
-                      alt={formatT(t, 'creatorAvatar', { creatorName })}
-                      className="w-4 h-4 rounded-full object-cover border border-white/30"
-                    />
-                    <span>{t('createdBy')} <span className="font-medium">{creatorName}</span></span>
                   </div>
                 </div>
               );
