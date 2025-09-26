@@ -1,21 +1,14 @@
 'use client';
 
-import React, { FC, useMemo, useState } from 'react';
-import dynamic from 'next/dynamic';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import PayPalProviderClient from '@/components/PayPalProviderClient';
-import { usePayPalScriptReducer, type ReactPayPalScriptOptions } from '@paypal/react-paypal-js';
 import { useAuth } from '@/context/AuthContext';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '@/lib/firebase';
 import { useLocale } from '@/context/LocaleContext';
 
-const PayPalButtons = dynamic(
-  () => import('@paypal/react-paypal-js').then((m) => m.PayPalButtons),
-  { ssr: false }
-);
-
-// --- small formatter to allow {vars} since your t() takes 1 arg
+/* ------------------------- utils ------------------------- */
+// small formatter to allow {vars} since your t() takes 1 arg
 function formatT(
   t: (k: string) => string,
   key: string,
@@ -29,25 +22,26 @@ function formatT(
   return out;
 }
 
+/* ------------------------- data -------------------------- */
 interface CreditPackage {
   id: string;
   tier: 'Tester' | 'Reader' | 'Writer' | 'Creator';
   credits: number;
-  price: number;
+  value: number; // USD
+  paypalHostedButtonId: string;
   popular?: boolean;
 }
 
 const creditPackages: CreditPackage[] = [
-  { id: 'pkg_tester',  tier: 'Tester',  credits: 25,  price: 5.0 },
-  { id: 'pkg_reader',  tier: 'Reader',  credits: 75,  price: 15.0 },
-  { id: 'pkg_writer',  tier: 'Writer',  credits: 125, price: 25.0, popular: true },
-  { id: 'pkg_creator', tier: 'Creator', credits: 250, price: 50.0 },
+  { id: 'pkg_tester',  tier: 'Tester',  credits: 25,  value: 5.0,  paypalHostedButtonId: 'V2D9DHV8DQVCE' },
+  { id: 'pkg_reader',  tier: 'Reader',  credits: 75,  value: 15.0, paypalHostedButtonId: 'CQ33GPF5623DU' },
+  { id: 'pkg_writer',  tier: 'Writer',  credits: 125, value: 25.0, paypalHostedButtonId: '3YUKSD6AU4JH4', popular: true },
+  { id: 'pkg_creator', tier: 'Creator', credits: 250, value: 50.0, paypalHostedButtonId: 'FRNPD2T8EBFVW' },
 ];
 
 const prettyUSD = (n: number) =>
   n.toLocaleString(undefined, { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
 
-// map internal tier to localized label
 function getTierLabel(t: (k: string) => string, tier: CreditPackage['tier']) {
   switch (tier) {
     case 'Tester': return t('tierTester');
@@ -58,100 +52,80 @@ function getTierLabel(t: (k: string) => string, tier: CreditPackage['tier']) {
   }
 }
 
-function ButtonsArea({
-  selectedPackage,
-  onSuccess,
-  onMessage,
-}: {
-  selectedPackage: CreditPackage;
-  onSuccess: (order: any) => void;
-  onMessage: (status: 'idle' | 'success' | 'error' | 'pending', msg: string) => void;
-}) {
-  const { t } = useLocale();
-  const [{ isPending, isRejected, isResolved }] = usePayPalScriptReducer();
-
-  if (isPending) return <div className="text-center py-2">{t('loadingPaypal')}</div>;
-  if (isRejected) return <div className="p-4 rounded-lg border text-sm">{t('paypalSdkBlocked')}</div>;
-  if (!isResolved || typeof window === 'undefined' || !(window as any).paypal) {
-    return <div className="p-4 rounded-lg border text-sm">{t('paymentModuleUnavailable')}</div>;
-  }
-
-  const tierLabel = getTierLabel(t, selectedPackage.tier);
-
-  return (
-    <PayPalButtons
-      style={{ layout: 'vertical' }}
-      createOrder={(_data, actions) =>
-        actions.order.create({
-          intent: 'CAPTURE',
-          purchase_units: [
-            {
-              amount: { value: selectedPackage.price.toFixed(2), currency_code: 'USD' },
-              description: formatT(t, 'paypalDescription', { tier: tierLabel }),
-            },
-          ],
-        })
-      }
-      onApprove={async (_data, actions) => {
-        onMessage('pending', t('processingPayment'));
-        const order = await actions.order!.capture();
-        onSuccess(order);
-      }}
-      onCancel={() => onMessage('idle', t('paymentCancelled'))}
-      onError={(err) => {
-        console.error('PayPal onError:', err);
-        onMessage('error', t('paypalError'));
-      }}
-    />
-  );
+/* ------------------- PayPal SDK loader ------------------- */
+function buildPaypalSdkUrl(): string {
+  const cid = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID?.trim();
+  // Fallback to the client id in your snippet if env is absent
+  const clientIdParam = cid && cid.toLowerCase() !== 'test'
+    ? cid
+    : 'BAA9lUWk2NboIhxcfoMoktoVWHEklLxzISrOr-BWSKLhIg3OjaTl4KRGox_OLtX8gqFFb8OwVvNUVv8GmY';
+  const params = new URLSearchParams({
+    'client-id': clientIdParam,
+    components: 'hosted-buttons',
+    'disable-funding': 'venmo',
+    currency: 'USD',
+  });
+  return `https://www.paypal.com/sdk/js?${params.toString()}`;
 }
 
+/* ========================= Page ========================== */
 const BuyCreditsPage: FC = () => {
   const { t } = useLocale();
   const { user, loading: authLoading } = useAuth();
 
-  const [selectedPackage, setSelectedPackage] = useState<CreditPackage | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'success' | 'error' | 'pending'>('idle');
   const [message, setMessage] = useState<string>('');
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [promoCodeMessage, setPromoCodeMessage] = useState('');
   const [isRedeeming, setIsRedeeming] = useState(false);
+  const [isPaypalSdkLoaded, setIsPaypalSdkLoaded] = useState(false);
 
-  const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
-  const unusable = !clientId || clientId.trim().toLowerCase() === 'test';
-
-  const options: ReactPayPalScriptOptions = useMemo(
-    () => ({ clientId: clientId!, currency: 'USD', intent: 'capture', components: 'buttons' }),
-    [clientId]
-  );
-
-  async function handleApproveSuccess(order: any) {
-    try {
-      if (!user) {
-        setPaymentStatus('error');
-        setMessage(t('mustBeLoggedInToPurchase'));
-        return;
-      }
-      if (order?.status === 'COMPLETED' && selectedPackage) {
-        const processPayment = httpsCallable(functions, 'processPayPalPayment');
-        await processPayment({ orderId: order.id, userId: user.uid, amount: selectedPackage.credits });
-        setPaymentStatus('success');
-        setMessage(formatT(t, 'paymentCompletedSuccess', { credits: selectedPackage.credits }));
-      } else {
-        setPaymentStatus('error');
-        setMessage(t('paymentNotCompleted'));
-      }
-    } catch (error: any) {
-      console.error('Error during approval handling:', error);
-      setPaymentStatus('error');
-      setMessage(formatT(t, 'paymentFailed', { message: error.message || 'Unexpected error.' }));
+  // Load PayPal SDK once
+  useEffect(() => {
+    const existing = document.querySelector<HTMLScriptElement>('script[data-paypal-hosted-buttons]');
+    if (existing) {
+      setIsPaypalSdkLoaded(true);
+      return;
     }
-  }
+    const s = document.createElement('script');
+    s.src = buildPaypalSdkUrl();
+    s.async = true;
+    s.crossOrigin = 'anonymous';
+    s.setAttribute('data-paypal-hosted-buttons', '1');
+    s.onload = () => setIsPaypalSdkLoaded(true);
+    s.onerror = () => {
+      setPaymentStatus('error');
+      setMessage(t('paypalSdkBlocked'));
+    };
+    document.head.appendChild(s);
+    return () => {
+      // keep script for SPA navigations; do not remove
+    };
+  }, [t]);
 
-  const setMsg = (status: 'idle' | 'success' | 'error' | 'pending', msg: string) => {
-    setPaymentStatus(status);
-    setMessage(msg);
-  };
+  // Render all hosted buttons when SDK is ready
+  useEffect(() => {
+    if (!isPaypalSdkLoaded) return;
+    const pp: any = (window as any).paypal;
+    if (!pp?.HostedButtons) return;
+
+    creditPackages.forEach((pkg) => {
+      const sel = `#paypal-container-${pkg.paypalHostedButtonId}`;
+      const el = document.querySelector(sel);
+      if (!el) return;
+      // Avoid duplicate rendering if we navigate back to this page
+      // PayPal injects an iframe into the container; skip if present
+      if (el.querySelector('iframe')) return;
+
+      try {
+        pp.HostedButtons({ hostedButtonId: pkg.paypalHostedButtonId }).render(sel);
+      } catch (err) {
+        console.error('HostedButtons render error:', err);
+      }
+    });
+  }, [isPaypalSdkLoaded]);
+
+  const unit = (n: number) => (n === 1 ? t('creditSingular') : t('creditsPlural'));
 
   const handleRedeemPromoCode = async () => {
     if (!user) return setPromoCodeMessage(t('mustBeLoggedInToRedeem'));
@@ -174,8 +148,6 @@ const BuyCreditsPage: FC = () => {
     }
   };
 
-  const unit = (n: number) => (n === 1 ? t('creditSingular') : t('creditsPlural'));
-
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -187,11 +159,11 @@ const BuyCreditsPage: FC = () => {
   if (!user) {
     return (
       <div
-        className={`
+        className="
           min-h-screen flex items-center justify-center p-6
           bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26]
           text-[#3A4B5C] dark:text-[#E0C9A0] font-sans
-        `}
+        "
       >
         <p className="text-lg font-['Lato']">{t('pleaseLoginToPurchaseOrRedeem')}</p>
       </div>
@@ -200,11 +172,11 @@ const BuyCreditsPage: FC = () => {
 
   return (
     <div
-      className={`
+      className="
         min-h-screen relative flex flex-col items-center p-5 md:p-10
         bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26]
         text-[#3A4B5C] dark:text-[#E0C9A0] font-sans
-      `}
+      "
     >
       <div className="fixed top-7 right-4 z-50">
         <Link
@@ -221,25 +193,20 @@ const BuyCreditsPage: FC = () => {
           <h1 className="font-['Georgia'] text-4xl md:text-5xl font-bold m-0">{t('fuelYourNarrative')}</h1>
         </header>
 
-        {/* Packages */}
+        {/* Packages + PayPal Hosted Buttons */}
         <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 md:gap-8 mb-10">
           {creditPackages.map((pkg) => {
-            const selected = selectedPackage?.id === pkg.id;
             const tierLabel = getTierLabel(t, pkg.tier);
             return (
-              <button
+              <div
                 key={pkg.id}
-                onClick={() => { setSelectedPackage(pkg); setMsg('idle', ''); }}
-                className={`
-                  group relative w-full text-left rounded-2xl border-2
-                  transition-all duration-300 ease-in-out focus:outline-none focus:ring-4
-                  p-6 md:p-7
+                className="
+                  relative w-full rounded-2xl border-2
+                  p-6 md:p-7 transition-all duration-300
                   bg-[#F3EADF] border-[#CBBBA0] text-[#3A4B5C]
-                  hover:scale-[1.02] hover:shadow-xl focus:ring-[#CBBBA0]
-                  ${selected ? 'shadow-[0_0_0_4px_rgba(169,131,79,0.35)]' : 'shadow-lg'}
+                  shadow-lg hover:shadow-xl
                   dark:bg-[#2B2622] dark:border-[#6D5A40] dark:text-[#E0C9A0]
-                  dark:hover:shadow-[0_0_30px_rgba(224,201,160,0.20)]
-                `}
+                "
               >
                 {pkg.popular && (
                   <span className="absolute -top-3 right-5 rounded-full px-3 py-1 text-[10px] font-semibold bg-[#A9834F] text-white shadow-md animate-pulse-slow">
@@ -250,65 +217,43 @@ const BuyCreditsPage: FC = () => {
                 <div className="flex items-start justify-between">
                   <h2 className="font-['Georgia'] text-2xl font-bold">{tierLabel}</h2>
                   <span className="rounded-full px-3 py-1 text-xs font-semibold bg-[#EADFCC] text-[#3A4B5C] dark:bg-[#3A2B26] dark:text-[#E0C9A0]">
-                    {formatT(t, 'creditsLabel', { count: pkg.credits, unit: unit(pkg.credits) })}
+                    {formatT(t, 'creditsLabel', { count: pkg.credits, unit: (pkg.credits === 1 ? t('creditSingular') : t('creditsPlural')) })}
                   </span>
                 </div>
 
                 <div className="mt-4">
-                  <div className="text-3xl font-bold">{prettyUSD(pkg.price)}</div>
+                  <div className="text-3xl font-bold">{prettyUSD(pkg.value)}</div>
                   <p className="mt-1 text-xs opacity-80">{t('avgScenariosSplit')}</p>
                 </div>
 
-                <div className="mt-6 w-full rounded-full py-2 text-center font-semibold transition bg-[#A9834F] text-white hover:brightness-110">
-                  {selected ? t('selected') : t('choosePackage')}
+                {/* PayPal hosted button container */}
+                <div className="mt-6">
+                  <div id={`paypal-container-${pkg.paypalHostedButtonId}`} />
+                  {!isPaypalSdkLoaded && (
+                    <div className="text-center py-2 text-sm opacity-80">{t('loadingPaypal')}</div>
+                  )}
                 </div>
-              </button>
+              </div>
             );
           })}
         </section>
 
-        {/* Confirm + PayPal */}
-        {selectedPackage && (
-          <section className="mx-auto w-full max-w-2xl rounded-2xl border-2 p-6 md:p-7 bg-[#F3EADF] border-[#CBBBA0] text-[#3A4B5C] shadow-xl dark:bg-[#2B2622] dark:border-[#6D5A40] dark:text-[#E0C9A0]">
-            <h3 className="font-['Georgia'] text-2xl font-bold mb-2">{t('confirmPurchase')}</h3>
-            <p className="text-sm md:text-base">
-              {formatT(t, 'youSelectedSummary', {
-                tier: getTierLabel(t, selectedPackage.tier),
-                credits: selectedPackage.credits,
-                unit: unit(selectedPackage.credits),
-                price: prettyUSD(selectedPackage.price)
-              })}
-            </p>
-
-            {message && (
-              <p
-                className={`
-                  mt-3 text-sm
-                  ${paymentStatus === 'success'
-                    ? 'text-green-700 dark:text-green-300'
-                    : paymentStatus === 'pending'
-                    ? 'text-yellow-700 dark:text-yellow-300'
-                    : paymentStatus === 'error'
-                    ? 'text-red-700 dark:text-red-300'
-                    : 'opacity-90'}
-                `}
-              >
-                {message}
-              </p>
-            )}
-
-            <div className="mt-5">
-              {unusable ? (
-                <div className="p-4 rounded-lg border text-sm">
-                  <strong>{t('missingPaypalClientId')}</strong> {formatT(t, 'setEnvVar', { envVar: 'NEXT_PUBLIC_PAYPAL_CLIENT_ID' })}
-                </div>
-              ) : (
-                <PayPalProviderClient enabled options={options}>
-                  <ButtonsArea selectedPackage={selectedPackage} onSuccess={handleApproveSuccess} onMessage={setMsg} />
-                </PayPalProviderClient>
-              )}
-            </div>
-          </section>
+        {/* Message area (SDK status / generic notices) */}
+        {message && (
+          <p
+            className={`
+              mt-3 text-sm
+              ${paymentStatus === 'success'
+                ? 'text-green-700 dark:text-green-300'
+                : paymentStatus === 'pending'
+                ? 'text-yellow-700 dark:text-yellow-300'
+                : paymentStatus === 'error'
+                ? 'text-red-700 dark:text-red-300'
+                : 'opacity-90'}
+            `}
+          >
+            {message}
+          </p>
         )}
 
         {/* Promo Code */}
@@ -342,7 +287,6 @@ const BuyCreditsPage: FC = () => {
           <p className="font-['Georgia'] italic text-xl">{t('whereWordsComeToLife')}</p>
         </footer>
 
-        {/* Back link (optional) */}
         <div className="text-center mt-10">
           <Link href="/" className="text-sm underline opacity-80 hover:opacity-100">{t('backToLanding')}</Link>
         </div>
