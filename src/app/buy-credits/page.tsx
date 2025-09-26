@@ -159,11 +159,11 @@ const BuyCreditsPage: FC = () => {
   if (!user) {
     return (
       <div
-        className='
+        className={`
           min-h-screen flex items-center justify-center p-6
           bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26]
           text-[#3A4B5C] dark:text-[#E0C9A0] font-sans
-        '
+        `}
       >
         <p className="text-lg font-['Lato']">{t('pleaseLoginToPurchaseOrRedeem')}</p>
       </div>
@@ -172,12 +172,12 @@ const BuyCreditsPage: FC = () => {
 
   return (
     <div
-      className='
-        min-h-screen relative flex flex-col items-center p-5 md:p-10
-        bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26]
-        text-[#3A4B5C] dark:text-[#E0C9A0] font-sans
-  '
-    >
+        className={`
+          min-h-screen relative flex flex-col items-center p-5 md:p-10
+          bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26]
+          text-[#3A4B5C] dark:text-[#E0C9A0] font-sans
+        `}
+      >
       <div className="fixed top-7 right-4 z-50">
         <Link
           href="/"
@@ -199,14 +199,13 @@ const BuyCreditsPage: FC = () => {
             const tierLabel = getTierLabel(t, pkg.tier);
             return (
               <div
-                key={pkg.id}
-                className='
+                className={`
                   relative w-full rounded-2xl border-2
                   p-6 md:p-7 transition-all duration-300
                   bg-[#F3EADF] border-[#CBBBA0] text-[#3A4B5C]
                   shadow-lg hover:shadow-xl
                   dark:bg-[#2B2622] dark:border-[#6D5A40] dark:text-[#E0C9A0]
-                '
+                `}
               >
                 {pkg.popular && (
                   <span className="absolute -top-3 right-5 rounded-full px-3 py-1 text-[10px] font-semibold bg-[#A9834F] text-white shadow-md animate-pulse-slow">
@@ -257,7 +256,11 @@ const BuyCreditsPage: FC = () => {
         )}
 
         {/* Promo Code */}
-        <section className={`mt-10 mx-auto w-full max-w-2xl rounded-2xl border-2 p-6 md:p-7 bg-[#F3EADF] border-[#CBBBA0] text-[#3A4B5C] shadow-xl dark:bg-[#2B2622] dark:border-[#6D5A40] dark:text-[#E0C9A0]`}>
+        <section className={`
+          mt-10 mx-auto w-full max-w-2xl rounded-2xl border-2 p-6 md:p-7
+          bg-[#F3EADF] border-[#CBBBA0] text-[#3A4B5C] shadow-xl
+          dark:bg-[#2B2622] dark:border-[#6D5A40] dark:text-[#E0C9A0]
+        `}>
           <h3 className="font-['Georgia'] text-2xl font-bold mb-4">{t('redeemPromoCode')}</h3>
           <div className="flex flex-col sm:flex-row gap-3">
             <input
