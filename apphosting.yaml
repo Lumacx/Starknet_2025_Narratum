@@ -7,25 +7,32 @@ run:
 env:
   - variable: FIREBASE_FUNCTIONS_BASE_URL
     value: https://us-central1-narratum.cloudfunctions.net
+
   - variable: FIREBASE_PROJECT_ID
     secret: FIREBASE_PROJECT_ID
     availability: [RUNTIME]
+
   - variable: FIREBASE_CLIENT_EMAIL
     secret: FIREBASE_CLIENT_EMAIL
     availability: [RUNTIME]
+
   - variable: FIREBASE_PRIVATE_KEY_BASE64
     secret: FIREBASE_PRIVATE_KEY_BASE64
     availability: [RUNTIME]
+
   - variable: PAYPAL_CLIENT_ID
     secret: PAYPAL_CLIENT_ID
     availability: [RUNTIME]
+
   - variable: PAYPAL_SECRET_KEY
     secret: PAYPAL_SECRET_KEY
     availability: [RUNTIME]
+
   - variable: PAYPAL_ENV
     secret: PAYPAL_ENV
     availability: [RUNTIME]
 
+  # --- Firebase Public Config ---
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
     value: "AIzaSyCwED8ecLP9ig2QNmBUO_HAWiI9X2ujV0U"
     availability: [BUILD, RUNTIME]
@@ -52,4 +59,9 @@ env:
 
   - variable: NEXT_PUBLIC_FIREBASE_DATABASE_URL
     value: "https://narratum-default-rtdb.firebaseio.com"
+    availability: [BUILD, RUNTIME]
+
+  # --- Google Sign-In (GSI) ---
+  - variable: NEXT_PUBLIC_GOOGLE_CLIENT_ID
+    value: "286262915752-a2fqle4aki4tb9sj2npdumhrdqj5g9mm.apps.googleusercontent.com"
     availability: [BUILD, RUNTIME]

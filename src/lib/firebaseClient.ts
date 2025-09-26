@@ -1,7 +1,7 @@
 // src/lib/firebaseClient.ts
 // Client-only Firebase Web SDK helpers (SSR-safe, lazy-initialized)
 
-import type { FirebaseApp } from 'firebase/app';
+import type { FirebaseApp, FirebaseOptions } from 'firebase/app';
 import { getApps, initializeApp } from 'firebase/app';
 import type { Auth } from 'firebase/auth';
 import { getAuth as _getAuth, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
@@ -15,19 +15,25 @@ let _storage: FirebaseStorage | null = null;
 
 const isBrowser = () => typeof window !== 'undefined';
 
-/** Prefer App Hosting's baked JSON; fall back to NEXT_PUBLIC_* for local dev. */
-function getWebConfig() {
-  // NOTE: process.env values are replaced at build time, so this is safe in the client bundle.
-  const baked = process.env.FIREBASE_WEBAPP_CONFIG; // set by Firebase App Hosting build
-  if (baked) {
-    try {
-      return JSON.parse(baked);
-    } catch {
-      // ignore and fall back
-    }
+function parseJSON(value?: string): any {
+  if (!value) return {};
+  try {
+    return JSON.parse(value);
+  } catch {
+    return {};
   }
-  // Local/dev & general fallback (NEXT_PUBLIC_* are exposed to client)
-  return {
+}
+
+/** Prefer runtime-safe NEXT_PUBLIC_* JSON, then App Hosting baked JSON, then individual NEXT_PUBLIC_* vars. */
+function getWebConfig(): FirebaseOptions {
+  // 1) Runtime-exposed JSON (works on any platform)
+  const fromNextPublicJson = parseJSON(process.env.NEXT_PUBLIC_FIREBASE_WEBAPP_CONFIG);
+
+  // 2) App Hosting baked JSON (BUILD-time replacement)
+  const fromBakedJson = parseJSON(process.env.FIREBASE_WEBAPP_CONFIG);
+
+  // 3) Individual NEXT_PUBLIC_* vars
+  const fromIndividual: FirebaseOptions = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
     authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
     projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
@@ -36,15 +42,32 @@ function getWebConfig() {
     messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
     databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
   };
+
+  const cfg: FirebaseOptions = {
+    apiKey: fromNextPublicJson.apiKey ?? fromBakedJson.apiKey ?? fromIndividual.apiKey,
+    authDomain: fromNextPublicJson.authDomain ?? fromBakedJson.authDomain ?? fromIndividual.authDomain,
+    projectId: fromNextPublicJson.projectId ?? fromBakedJson.projectId ?? fromIndividual.projectId,
+    storageBucket: fromNextPublicJson.storageBucket ?? fromBakedJson.storageBucket ?? fromIndividual.storageBucket,
+    appId: fromNextPublicJson.appId ?? fromBakedJson.appId ?? fromIndividual.appId,
+    messagingSenderId:
+      fromNextPublicJson.messagingSenderId ?? fromBakedJson.messagingSenderId ?? fromIndividual.messagingSenderId,
+    databaseURL: fromNextPublicJson.databaseURL ?? fromBakedJson.databaseURL ?? fromIndividual.databaseURL,
+  };
+
+  // Minimal validation to avoid cryptic "auth/invalid-api-key"
+  if (!cfg.apiKey || !cfg.projectId || !cfg.appId) {
+    throw new Error(
+      'Firebase web config is missing required fields (apiKey, projectId, appId). ' +
+        'Provide NEXT_PUBLIC_FIREBASE_WEBAPP_CONFIG (JSON) or the individual NEXT_PUBLIC_* vars.',
+    );
+  }
+  return cfg;
 }
 
-/**
- * Strict: Get (or create) the client Firebase app — only in the browser.
- * Throws if called on the server (so you don’t accidentally use client SDK in server code).
- */
+/** Strict: client-only app getter */
 export function getFirebaseApp(): FirebaseApp {
   if (!isBrowser()) {
-    throw new Error('getFirebaseApp() called on the server. Use Admin SDK on the server.');
+    throw new Error('getFirebaseApp() called on the server. Use the Admin SDK on the server.');
   }
   if (_app) return _app;
   const apps = getApps();
@@ -52,7 +75,7 @@ export function getFirebaseApp(): FirebaseApp {
   return _app!;
 }
 
-/** Strict client-only getters (throw on server). */
+/** Strict client-only getters */
 export function getClientAuth(): Auth {
   if (!isBrowser()) throw new Error('getClientAuth() called on the server.');
   if (_auth) return _auth;
@@ -74,10 +97,7 @@ export function getClientStorage(): FirebaseStorage {
   return _storage!;
 }
 
-/**
- * Soft (SSR-safe) variants — return null on the server instead of throwing.
- * Use these in code paths that might run during prerender/SSR but are guarded at runtime.
- */
+/** Soft SSR-safe variants */
 export function tryGetFirebaseApp(): FirebaseApp | null {
   if (!isBrowser()) return null;
   try {
@@ -111,10 +131,7 @@ export function tryGetClientStorage(): FirebaseStorage | null {
   }
 }
 
-/**
- * Optional: call from a client-side effect (e.g., in your AuthProvider)
- * to ensure a signed-in user in dev. Never auto sign-in during SSR.
- */
+/** Optional: ensure an anonymous user during dev */
 export function ensureAnonAuth({ enableInProd = false } = {}) {
   if (!isBrowser()) return;
   const isProd = process.env.NODE_ENV === 'production';
