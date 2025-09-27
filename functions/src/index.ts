@@ -36,3 +36,7 @@ export {
 };
 
 export { propagateUserProfileToStories } from './propagateUserProfile';
+
+// functions/src/index.ts
+export * from './credits';
+

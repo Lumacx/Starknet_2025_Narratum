@@ -92,5 +92,6 @@ if (isBrowser) {
 }
 
 export const firestoreAppId = firebaseConfig.appId || 'default-app-id';
+export const firebaseProjectId = firebaseConfig.projectId || 'unknown-project';
 export { app, auth, db, functions, storage, rtdb };
 export default app;

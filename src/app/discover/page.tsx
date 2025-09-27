@@ -9,7 +9,6 @@ import { Story } from '@/lib/types';
 import { useListPublishedStories } from '@/hooks/useListPublishedStories';
 import GenreMultiSelect from '@/components/GenreMultiSelect';
 import { useAuth } from '@/context/AuthContext';
-import { db } from '@/lib/firebase';
 import {
   collection,
   deleteDoc,
@@ -30,7 +29,10 @@ import {
   Bot,
   Youtube as YoutubeIcon,
 } from 'lucide-react';
-import { getFunctions, httpsCallable } from 'firebase/functions';
+// imports (add `connectFunctionsEmulator` and your `app`)
+import { getFunctions, httpsCallable, connectFunctionsEmulator } from 'firebase/functions';
+import { app, db, firebaseProjectId } from '@/lib/firebase';
+import { getAuth } from 'firebase/auth';
 import { useLocale } from '@/context/LocaleContext';
 
 //export const dynamic = 'force-dynamic';
@@ -534,28 +536,39 @@ function CatalogPageInner() {
   const { user } = useAuth();
   const { data, isLoading } = useListPublishedStories();
 
-  // --- NEW: Type-safe callables and regioned getFunctions ---
-  type DeductInput = { storyId: string; checkOnly?: boolean };
-  type DeductResult = {
-    success: boolean;
-    storyId: string;
-    chargingModel: 'one-time' | 'pay-per-open';
-    price: number;
-    alreadyOwned: boolean;
-    needsPayment: boolean;
-    charged?: number;
-    remainingCredits: number;
-  };
+  // --- Type-safe callables & regioned Functions instance ---
+type DeductInput = { storyId: string; checkOnly?: boolean };
+type DeductResult = {
+  success: boolean;
+  storyId: string;
+  chargingModel: 'one-time' | 'pay-per-open';
+  price: number;
+  alreadyOwned: boolean;
+  needsPayment: boolean;
+  charged?: number;
+  remainingCredits: number;
+};
 
-  const functions = useMemo(() => getFunctions(undefined, 'us-central1'), []);
-  const deductCreditsForRead = useMemo(
-    () => httpsCallable<DeductInput, DeductResult>(functions, 'deductCreditsForRead'),
-    [functions]
-  );
-  const sendTipToWriter = useMemo(
-    () => httpsCallable<{ targetUid: string; amount: number }, { success: boolean; message?: string }>(functions, 'sendTipToWriter'),
-    [functions]
-  );
+const functions = useMemo(() => {
+  const f = getFunctions(app, 'us-central1');
+  if (typeof window !== 'undefined' && location.hostname === 'localhost') {
+    try { connectFunctionsEmulator(f, '127.0.0.1', 5001); } catch {}
+  }
+  return f;
+}, []);
+
+const callDeductCreditsForRead = useMemo(
+  () => httpsCallable<DeductInput, DeductResult>(functions, 'deductCreditsForRead'),
+  [functions]
+);
+
+const callSendTipToWriter = useMemo(
+  () => httpsCallable<{ targetUid: string; amount: number }, { success: boolean; message?: string }>(
+    functions,
+    'sendTipToWriter'
+  ),
+  [functions]
+);
 
   const ownerNameIndex = useMemo(() => {
     const byId: Record<string, string> = {};
@@ -843,6 +856,48 @@ function CatalogPageInner() {
     }
   };
 
+// ---- Fallback: call HTTP endpoint if callable fails (CORS, etc.) ----
+
+// Prefer callable; on failure, retry via HTTP (has explicit CORS)
+const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'narratum';
+
+const callDeductCreditsForReadHttp = React.useCallback(
+  async (input: DeductInput): Promise<DeductResult> => {
+    const token = await getAuth().currentUser?.getIdToken();
+    const url = `https://us-central1-${firebaseProjectId}.cloudfunctions.net/deductCreditsForReadHttp`;
+    
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(input),
+      credentials: 'include',
+    });
+
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      const msg = (body && (body.error || body.message)) || `HTTP ${resp.status}`;
+      throw new Error(msg);
+    }
+    // HTTP version returns the DeductResult directly
+    return body as DeductResult;
+  },
+  []
+);
+
+// Unified call that prefers callable, falls back to HTTP on network/CORS
+async function deductCreditsForReadAny(input: DeductInput): Promise<DeductResult> {
+  try {
+    const res = await callDeductCreditsForRead(input); // your httpsCallable instance
+    return res.data;
+  } catch (e) {
+    console.warn('Callable failed; using HTTP fallback:', e);
+    return await callDeductCreditsForReadHttp(input);
+  }
+}
+
   /* --------------------------- paid READ flow --------------------------- */
   const handlePaidRead = async (story: Story) => {
     const storyId = (story as any).id as string;
@@ -855,8 +910,9 @@ function CatalogPageInner() {
 
     try {
       // 1) Preflight (no charge)
-      const pre = await deductCreditsForRead({ storyId, checkOnly: true });
-      const preData = pre.data;
+      //const pre = await callDeductCreditsForRead({ storyId, checkOnly: true });
+      //const preData = pre.data;
+      const preData = await deductCreditsForReadAny({ storyId, checkOnly: true });
 
       if (!preData?.success) {
         alert(t('couldNotProcessCredits'));
@@ -893,8 +949,9 @@ function CatalogPageInner() {
       if (!ok) return;
 
       // 2) Perform the charge
-      const charged = await deductCreditsForRead({ storyId });
-      const chargedData = charged.data;
+      //const charged = await callDeductCreditsForRead({ storyId });
+      //const chargedData = charged.data;
+      const chargedData = await deductCreditsForReadAny({ storyId });
 
       if (!chargedData?.success) {
         alert(t('couldNotProcessCredits'));
@@ -925,7 +982,7 @@ function CatalogPageInner() {
     setSendingTip(true);
     try {
       // Function expects { targetUid, amount }
-      const res = await sendTipToWriter({ targetUid: writerUid, amount });
+      const res = await callSendTipToWriter({ targetUid: writerUid, amount });
       const ok = (res.data as any)?.success ?? true;
       if (!ok) {
         alert((res.data as any)?.message || t('couldNotSendTip'));

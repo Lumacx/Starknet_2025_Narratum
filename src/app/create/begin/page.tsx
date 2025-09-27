@@ -9,7 +9,7 @@ import GenreMultiSelect from '@/components/GenreMultiSelect';
 import CoverImageManager from '@/components/CoverImageManager';
 
 import { useAuth } from '@/context/AuthContext';
-import { db, storage } from '@/lib/firebase';
+import { app, db, storage } from '@/lib/firebase'; // ensure `app` is exported
 import {
   serverTimestamp,
   updateDoc,
@@ -29,7 +29,7 @@ import { useCreateStory } from '@/hooks/useCreateStory';
 import { uploadCoverToStory } from '@/lib/uploadCover';
 
 /* 🔗 Cloud Functions (credits) */
-import { getFunctions, httpsCallable } from 'firebase/functions';
+import { getFunctions, httpsCallable, connectFunctionsEmulator } from 'firebase/functions';
 
 /* 🌐 i18n */
 import { useLocale } from '@/context/LocaleContext';
@@ -191,11 +191,19 @@ export default function BeginPage() {
   type CreateReq = { storyType: ServerStoryType };
   type CreateRes = { success: boolean; message: string; remainingCredits: number };
 
-  const functions = useMemo(() => getFunctions(undefined, 'us-central1'), []);
+  const functions = useMemo(() => {
+    const f = getFunctions(app, 'us-central1');
+    if (typeof window !== 'undefined' && location.hostname === 'localhost') {
+      try { connectFunctionsEmulator(f, '127.0.0.1', 5001); } catch {}
+    }
+    return f;
+  }, []);
+  
   const deductCreditsForCreation = useMemo(
     () => httpsCallable<CreateReq, CreateRes>(functions, 'deductCreditsForCreation'),
     [functions]
   );
+  
 
   /* ---------------- Draft state ---------------- */
   const [draft, setDraft] = useState<Draft>({

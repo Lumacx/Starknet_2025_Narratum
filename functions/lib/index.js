@@ -1,4 +1,18 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.propagateUserProfileToStories = exports.redeemPromoCode = exports.processPayPalSubscription = exports.grantMonthlyFreeCredits = exports.sendTipToWriter = exports.deductCreditsForCreation = exports.deductCreditsForRead = exports.processPayPalPayment = exports.downloadStoryPdf = exports.generateWithImagen = exports.generateWithGemini = exports.removeIndexOnDelete = exports.indexAssetOnFinalize = exports.incrementCommentCount = exports.createuserprofile = exports.generateNarratumImage = void 0;
 // functions/src/index.ts
@@ -31,4 +45,6 @@ const promoCodes_1 = require("./promoCodes");
 Object.defineProperty(exports, "redeemPromoCode", { enumerable: true, get: function () { return promoCodes_1.redeemPromoCode; } });
 var propagateUserProfile_1 = require("./propagateUserProfile");
 Object.defineProperty(exports, "propagateUserProfileToStories", { enumerable: true, get: function () { return propagateUserProfile_1.propagateUserProfileToStories; } });
+// functions/src/index.ts
+__exportStar(require("./credits"), exports);
 //# sourceMappingURL=index.js.map
