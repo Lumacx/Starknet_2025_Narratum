@@ -7,11 +7,16 @@ import type { Auth } from 'firebase/auth';
 import { getAuth as _getAuth, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { getFirestore as _getFirestore, type Firestore } from 'firebase/firestore';
 import { getStorage as _getStorage, type FirebaseStorage } from 'firebase/storage';
+import { getFunctions as _getFunctions, type Functions } from 'firebase/functions';
+
+// ✅ App Check (prevents callable → HTTP fallback that causes CORS)
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 
 let _app: FirebaseApp | null = null;
 let _auth: Auth | null = null;
 let _db: Firestore | null = null;
 let _storage: FirebaseStorage | null = null;
+let _functions: Functions | null = null;
 
 const isBrowser = () => typeof window !== 'undefined';
 
@@ -54,7 +59,6 @@ function getWebConfig(): FirebaseOptions {
     databaseURL: fromNextPublicJson.databaseURL ?? fromBakedJson.databaseURL ?? fromIndividual.databaseURL,
   };
 
-  // Minimal validation to avoid cryptic "auth/invalid-api-key"
   if (!cfg.apiKey || !cfg.projectId || !cfg.appId) {
     throw new Error(
       'Firebase web config is missing required fields (apiKey, projectId, appId). ' +
@@ -72,6 +76,24 @@ export function getFirebaseApp(): FirebaseApp {
   if (_app) return _app;
   const apps = getApps();
   _app = apps.length ? apps[0] : initializeApp(getWebConfig());
+
+  // ✅ Initialize App Check once per app (client only)
+  const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY;
+  if (siteKey && typeof window !== 'undefined') {
+    try {
+      // Enable debug token in local/dev by setting NEXT_PUBLIC_APPCHECK_DEBUG_TOKEN="true"
+      self.FIREBASE_APPCHECK_DEBUG_TOKEN = process.env.NEXT_PUBLIC_APPCHECK_DEBUG_TOKEN || undefined;
+
+      initializeAppCheck(_app, {
+        provider: new ReCaptchaV3Provider(siteKey),
+        isTokenAutoRefreshEnabled: true,
+      });
+    } catch (e) {
+      // Avoid crashing if App Check is already initialized or siteKey misconfigured
+      console.warn('App Check init warning:', e);
+    }
+  }
+
   return _app!;
 }
 
@@ -95,6 +117,14 @@ export function getClientStorage(): FirebaseStorage {
   if (_storage) return _storage;
   _storage = _getStorage(getFirebaseApp());
   return _storage!;
+}
+
+/** ✅ Regioned Functions getter (prevents HTTP fallback/CORS) */
+export function getClientFunctions(region: string = 'us-central1'): Functions {
+  if (!isBrowser()) throw new Error('getClientFunctions() called on the server.');
+  if (_functions) return _functions;
+  _functions = _getFunctions(getFirebaseApp(), region);
+  return _functions!;
 }
 
 /** Soft SSR-safe variants */

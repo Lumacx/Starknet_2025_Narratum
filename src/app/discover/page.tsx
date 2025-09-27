@@ -536,6 +536,9 @@ function CatalogPageInner() {
   const { user } = useAuth();
   const { data, isLoading } = useListPublishedStories();
 
+  const [purchasedSet, setPurchasedSet] = useState<Record<string, true>>({});
+
+
   // --- Type-safe callables & regioned Functions instance ---
 type DeductInput = { storyId: string; checkOnly?: boolean };
 type DeductResult = {
@@ -684,6 +687,17 @@ const callSendTipToWriter = useMemo(
       (err) => console.error('[user ratings mirror onSnapshot] error:', err?.code || err, err)
     );
 
+    const unsubPurchases = onSnapshot(
+      collection(db, 'users', user.uid, 'purchases'),
+      (snap) => {
+        const map: Record<string, true> = {};
+        snap.forEach((d) => { map[d.id] = true; });
+        setPurchasedSet(map);
+      },
+      (err) => console.error('[purchases onSnapshot] error:', err?.code || err, err)
+    );
+    
+
     (async () => {
       const list = data ?? [];
       const map: Record<string, number | null> = {};
@@ -702,11 +716,13 @@ const callSendTipToWriter = useMemo(
       if (Object.keys(map).length) setUserRatings((prev) => ({ ...map, ...prev }));
     })();
 
-    return () => {
-      unsubFav();
-      unsubReads();
-      unsubUserRatingsMirror();
-    };
+        // in the cleanup at the end of that same effect:
+        return () => {
+          unsubFav();
+          unsubReads();
+          unsubUserRatingsMirror();
+          unsubPurchases();
+        };    
   }, [user?.uid, data]);
 
   const applyFiltersAndSearch = (stories: Story[]) => {
@@ -956,6 +972,11 @@ async function deductCreditsForReadAny(input: DeductInput): Promise<DeductResult
       if (!chargedData?.success) {
         alert(t('couldNotProcessCredits'));
         return;
+      }
+
+      // NEW: if it's a one-time model, mark it owned locally immediately
+      if (chargedData.chargingModel === 'one-time') {
+        setPurchasedSet(prev => ({ ...prev, [storyId]: true }));
       }
 
       await logRead(storyId);
@@ -1232,6 +1253,10 @@ async function deductCreditsForReadAny(input: DeductInput): Promise<DeductResult
                 planKey === 'premium' ? t('premium') :
                 t('convai');
 
+                const isAvailable = !!purchasedSet[(story as any).id!];
+                const readButtonLabel = isAvailable ? t('available') : t('read');
+                
+
               return (
                 <div
                   key={(story as any).id}
@@ -1388,7 +1413,7 @@ async function deductCreditsForReadAny(input: DeductInput): Promise<DeductResult
                       onClick={() => handlePaidRead(story)}
                       className="font-['Lato'] bg-[#BFA071] text-[#1A2533] py-2.5 px-6 rounded-md text-base font-bold uppercase tracking-wide inline-block transition-colors duration-300 hover:bg-[#E0C9A0] z-20 relative"
                     >
-                      {t('read')}
+                       {readButtonLabel}
                     </button>
 
                     {/* Teaser (premium only) */}

@@ -4,11 +4,10 @@ import React, { FC, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { httpsCallable } from 'firebase/functions';
-import { functions } from '@/lib/firebase';
+import { getClientFunctions } from '@/lib/firebaseClient'; // ✅ use client helper
 import { useLocale } from '@/context/LocaleContext';
 
 /* ------------------------- utils ------------------------- */
-// small formatter to allow {vars} since your t() takes 1 arg
 function formatT(
   t: (k: string) => string,
   key: string,
@@ -55,7 +54,6 @@ function getTierLabel(t: (k: string) => string, tier: CreditPackage['tier']) {
 /* ------------------- PayPal SDK loader ------------------- */
 function buildPaypalSdkUrl(): string {
   const cid = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID?.trim();
-  // Fallback to the client id in your snippet if env is absent
   const clientIdParam = cid && cid.toLowerCase() !== 'test'
     ? cid
     : 'BAA9lUWk2NboIhxcfoMoktoVWHEklLxzISrOr-BWSKLhIg3OjaTl4KRGox_OLtX8gqFFb8OwVvNUVv8GmY';
@@ -80,6 +78,9 @@ const BuyCreditsPage: FC = () => {
   const [isRedeeming, setIsRedeeming] = useState(false);
   const [isPaypalSdkLoaded, setIsPaypalSdkLoaded] = useState(false);
 
+  // ✅ regioned client Functions
+  const functions = useMemo(() => getClientFunctions('us-central1'), []);
+
   // Load PayPal SDK once
   useEffect(() => {
     const existing = document.querySelector<HTMLScriptElement>('script[data-paypal-hosted-buttons]');
@@ -98,12 +99,9 @@ const BuyCreditsPage: FC = () => {
       setMessage(t('paypalSdkBlocked'));
     };
     document.head.appendChild(s);
-    return () => {
-      // keep script for SPA navigations; do not remove
-    };
   }, [t]);
 
-  // Render all hosted buttons when SDK is ready
+  // Render hosted buttons
   useEffect(() => {
     if (!isPaypalSdkLoaded) return;
     const pp: any = (window as any).paypal;
@@ -113,10 +111,7 @@ const BuyCreditsPage: FC = () => {
       const sel = `#paypal-container-${pkg.paypalHostedButtonId}`;
       const el = document.querySelector(sel);
       if (!el) return;
-      // Avoid duplicate rendering if we navigate back to this page
-      // PayPal injects an iframe into the container; skip if present
-      if (el.querySelector('iframe')) return;
-
+      if (el.querySelector('iframe')) return; // avoid duplicates
       try {
         pp.HostedButtons({ hostedButtonId: pkg.paypalHostedButtonId }).render(sel);
       } catch (err) {
@@ -133,6 +128,7 @@ const BuyCreditsPage: FC = () => {
     setIsRedeeming(true);
     setPromoCodeMessage(t('redeemingPromoCode'));
     try {
+      // ✅ call callable via regioned client Functions (no CORS)
       const redeemCode = httpsCallable(functions, 'redeemPromoCode');
       const result = await redeemCode({ promoCode: promoCodeInput });
       const ok = (result.data as any)?.success;
@@ -172,12 +168,12 @@ const BuyCreditsPage: FC = () => {
 
   return (
     <div
-        className={`
-          min-h-screen relative flex flex-col items-center p-5 md:p-10
-          bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26]
-          text-[#3A4B5C] dark:text-[#E0C9A0] font-sans
-        `}
-      >
+      className={`
+        min-h-screen relative flex flex-col items-center p-5 md:p-10
+        bg-gradient-to-b from-[#D4E1EE] to-[#F0D1B0] dark:from-[#1A2533] dark:to-[#3A2B26]
+        text-[#3A4B5C] dark:text-[#E0C9A0] font-sans
+      `}
+    >
       <div className="fixed top-7 right-4 z-50">
         <Link
           href="/"
@@ -199,6 +195,7 @@ const BuyCreditsPage: FC = () => {
             const tierLabel = getTierLabel(t, pkg.tier);
             return (
               <div
+                key={pkg.id}
                 className={`
                   relative w-full rounded-2xl border-2
                   p-6 md:p-7 transition-all duration-300
@@ -237,7 +234,6 @@ const BuyCreditsPage: FC = () => {
           })}
         </section>
 
-        {/* Message area (SDK status / generic notices) */}
         {message && (
           <p
             className={`
@@ -256,11 +252,13 @@ const BuyCreditsPage: FC = () => {
         )}
 
         {/* Promo Code */}
-        <section className={`
-          mt-10 mx-auto w-full max-w-2xl rounded-2xl border-2 p-6 md:p-7
-          bg-[#F3EADF] border-[#CBBBA0] text-[#3A4B5C] shadow-xl
-          dark:bg-[#2B2622] dark:border-[#6D5A40] dark:text-[#E0C9A0]
-        `}>
+        <section
+          className={`
+            mt-10 mx-auto w-full max-w-2xl rounded-2xl border-2 p-6 md:p-7
+            bg-[#F3EADF] border-[#CBBBA0] text-[#3A4B5C] shadow-xl
+            dark:bg-[#2B2622] dark:border-[#6D5A40] dark:text-[#E0C9A0]
+          `}
+        >
           <h3 className="font-['Georgia'] text-2xl font-bold mb-4">{t('redeemPromoCode')}</h3>
           <div className="flex flex-col sm:flex-row gap-3">
             <input
