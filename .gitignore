@@ -43,6 +43,8 @@ next-env.d.ts
 private.pem
 
 secrets/referral-backfill.json
+secrets/service-account-sdk.json
+
 functions/.runtimeconfig.json
 
 # firebase

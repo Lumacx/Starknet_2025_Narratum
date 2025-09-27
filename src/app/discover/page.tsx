@@ -1,7 +1,7 @@
-// app/discover/page.tsx
+// src/app/discover/page.tsx
 'use client';
 
-import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import dynamicImport from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -54,7 +54,6 @@ function formatT(
   }
   return out;
 }
-
 
 /* ----------------------------- Constants ----------------------------- */
 // NOTE: keep raw values in English to match stored data; UI labels are localized
@@ -906,7 +905,6 @@ function CatalogPageInner() {
       router.push(`/ereader?storyId=${encodeURIComponent(storyId)}&back=%2Fdiscover`);
     } catch (e: any) {
       console.error('deductCreditsForRead failed', e);
-      // Attempt to bubble up HttpsError detail if present
       const msg = e?.message || t('couldNotProcessCredits');
       alert(msg);
     }
@@ -1405,12 +1403,17 @@ function CatalogPageInner() {
   );
 }
 
-/* ----------------------- PAGE EXPORT WITH SUSPENSE ----------------------- */
+// ----------------------- PAGE EXPORT WITH SUSPENSE -----------------------
 export default function CatalogPage() {
   const { t } = useLocale();
+
+  // put JSX in a variable so TS can't confuse it with generics
+  const fallback = <div className="p-8 text-center">{t('loadingDiscover')}</div>;
+
   return (
-    <Suspense fallback={<div className="p-8 text-center">{t('loadingDiscover')}</div>}>
+    <React.Suspense fallback={fallback}>
       <CatalogPageInner />
-    </Suspense>
+    </React.Suspense>
   );
 }
+

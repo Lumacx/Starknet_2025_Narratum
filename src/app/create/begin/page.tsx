@@ -1,3 +1,4 @@
+//src/app/create/begin/page.tsx
 'use client';
 
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
@@ -27,7 +28,7 @@ import { ref, uploadBytes, uploadString, getDownloadURL } from 'firebase/storage
 import { useCreateStory } from '@/hooks/useCreateStory';
 import { uploadCoverToStory } from '@/lib/uploadCover';
 
-/* 🔗 Cloud Functions (créditos) */
+/* 🔗 Cloud Functions (credits) */
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
 /* 🌐 i18n */
@@ -39,7 +40,6 @@ import { useLocale } from '@/context/LocaleContext';
 /* ------------------------------------------------------------------ */
 /* Page constants & types                                              */
 /* ------------------------------------------------------------------ */
-/** Mantenemos los valores canónicos en inglés para persistencia/filtros */
 const GENRES = [
   'Fantasy','Sci-Fi','Mystery','Horror','Romance','Adventure',"Children's",
   'Comedy','Drama','Action','Other',
@@ -91,7 +91,6 @@ type Draft = {
     backgroundUrl?: string;
   };
 
-  /** Premium editor fields */
   premium?: {
     convaiAgentId?: string;
     teaserVideoUrl?: string;
@@ -116,7 +115,7 @@ const DEFAULTS = {
   backgroundUrl: '/story_reader_backgrounds/dream-background.png',
 };
 
-/* ⭐ Creación: costo en créditos */
+/* ⭐ UI hint for costs (server is source of truth) */
 const CREATION_CREDIT_COSTS: Record<Draft['category'], number> = {
   short: 5,
   novela: 10,
@@ -124,6 +123,14 @@ const CREATION_CREDIT_COSTS: Record<Draft['category'], number> = {
 };
 function getCreationCreditCost(category: Draft['category']): number {
   return CREATION_CREDIT_COSTS[category];
+}
+
+/* Server storyType used by the callable */
+type ServerStoryType = 'basic' | 'premium' | 'convai';
+function categoryToStoryType(cat: Draft['category']): ServerStoryType {
+  if (cat === 'short') return 'basic';
+  if (cat === 'novela') return 'premium';
+  return 'convai'; // campaign
 }
 
 /* Helpers */
@@ -162,29 +169,31 @@ function buildPremiumPayloadFromDraft(d: any) {
 /* ------------------------------------------------------------------ */
 export default function BeginPage() {
   const router = useRouter();
-  const { t, locale } = useLocale();
+  const { t } = useLocale();
 
-// Pequeño wrapper para interpolación con {placeholders}
-const tr = React.useCallback(
-  (key: string, vars?: Record<string, any>) => {
-    let s = t(key) as string;
-    if (!vars) return s;
-    return s.replace(/\{(\w+)\}/g, (_, m) =>
-      vars[m] !== undefined && vars[m] !== null ? String(vars[m]) : `{${m}}`
-    );
-  },
-  [t]
-);
+  // simple {placeholder} interpolation
+  const tr = React.useCallback(
+    (key: string, vars?: Record<string, any>) => {
+      let s = t(key) as string;
+      if (!vars) return s;
+      return s.replace(/\{(\w+)\}/g, (_, m) =>
+        vars[m] !== undefined && vars[m] !== null ? String(vars[m]) : `{${m}}`
+      );
+    },
+    [t]
+  );
 
-
-  /* 🔄 créditos desde Auth */
+  /* 🔄 credits from Auth */
   const { user, credits: userCredits } = useAuth();
   const createStory = useCreateStory();
 
-  /* 🔗 Cloud Function callables */
-  const functions = useMemo(() => getFunctions(), []);
+  /* 🔗 Callable types & instances (scoped to region) */
+  type CreateReq = { storyType: ServerStoryType };
+  type CreateRes = { success: boolean; message: string; remainingCredits: number };
+
+  const functions = useMemo(() => getFunctions(undefined, 'us-central1'), []);
   const deductCreditsForCreation = useMemo(
-    () => httpsCallable(functions, 'deductCreditsForCreation'),
+    () => httpsCallable<CreateReq, CreateRes>(functions, 'deductCreditsForCreation'),
     [functions]
   );
 
@@ -218,7 +227,7 @@ const tr = React.useCallback(
   const [storiesLast, setStoriesLast] = useState<QueryDocumentSnapshot | null>(null);
   const isFetchingStoriesRef = useRef(false);
 
-  // Orden
+  // Order
   const [sortKey, setSortKey] = useState<'updatedAt' | 'title'>('updatedAt');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
 
@@ -446,7 +455,7 @@ const tr = React.useCallback(
     }
   }
 
-  /* ---------------- AI Describe para la portada ---------------- */
+  /* ---------------- AI Describe for cover ---------------- */
   async function describeCurrentCover() {
     setDescError('');
     setDescText('');
@@ -491,14 +500,14 @@ const tr = React.useCallback(
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Describe failed');
       setDescText(json.description || '');
-    } catch (err: any) {
+    } catch {
       setDescError(t('aiDescribeFailed'));
     } finally {
       setDescLoading(false);
     }
   }
 
-  /* ---------------- Continue: cargar historia seleccionada ---------------- */
+  /* ---------------- Continue: load selected story ---------------- */
   useEffect(() => {
     (async () => {
       if (!user) return;
@@ -591,57 +600,59 @@ const tr = React.useCallback(
     draft.synopsis.trim() !== '' &&
     (draft.category !== 'campaign' || (draft.campaignName || '').trim() !== '');
 
-  /* 🔥 Start Story con deducción de créditos */
+  /* 🔥 Start Story with credit deduction (only if new) */
   async function onStartStory() {
     try {
       setStarting(true);
       if (storyMode === 'continue') {
         if (!existingStoryId) throw new Error(t('alertsSelectStory'));
+        setDraft((d) => ({ ...d, storyId: existingStoryId }));
         setShowCover(true);
         return;
       }
       if (!canStartNew) throw new Error(t('alertsFillRequired'));
       if (!user) throw new Error(t('alertsSignIn'));
 
-      const cost = getCreationCreditCost(draft.category);
-      if (userCredits == null || userCredits < cost) {
-        alert(tr('alertsNeedCredits', {
-          cost,
-          category: t(draft.category),
-          have: userCredits ?? 0
-        }));
-        router.push('/buy-credits');
-        return;
+      let id = draft.storyId;
+
+      if (!id) {
+        const cost = getCreationCreditCost(draft.category);
+        if (userCredits == null || userCredits < cost) {
+          alert(tr('alertsNeedCredits', { cost, category: t(draft.category), have: userCredits ?? 0 }));
+          router.push('/buy-credits');
+          return;
+        }
+
+        const storyType = categoryToStoryType(draft.category);
+        const { data } = await deductCreditsForCreation({ storyType });
+        if (!data?.success) {
+          throw new Error(data?.message || t('alertsFailedStart'));
+        }
+
+        const premiumPayload = buildPremiumPayloadFromDraft(draft);
+
+        id = await createStory({
+          title: draft.title.trim(),
+          synopsis: draft.synopsis.trim(),
+          genres: draft.genres,
+          category: draft.category,
+          pageCount: clampPagesForCategory(draft.category, draft.pages),
+          coverImageUrl: null,
+          visibility: 'private',
+          status: 'draft',
+          language: draft.language,
+          metadata: draft.campaignName ? { campaignName: draft.campaignName } : {},
+          ...premiumPayload,
+        } as any);
+
+        setDraft((d) => ({ ...d, storyId: id }));
+        try {
+          const raw = localStorage.getItem(DRAFT_KEY);
+          const obj = raw ? JSON.parse(raw) : {};
+          obj.storyId = id;
+          localStorage.setItem(DRAFT_KEY, JSON.stringify(obj));
+        } catch {}
       }
-
-      const deductRes: any = await deductCreditsForCreation({ cost, storyType: draft.category });
-      if (!deductRes?.data?.ok) {
-        throw new Error(deductRes?.data?.message || t('alertsFailedStart'));
-      }
-
-      const premiumPayload = buildPremiumPayloadFromDraft(draft);
-
-      const id = await createStory({
-        title: draft.title.trim(),
-        synopsis: draft.synopsis.trim(),
-        genres: draft.genres,
-        category: draft.category,
-        pageCount: clampPagesForCategory(draft.category, draft.pages),
-        coverImageUrl: null,
-        visibility: 'private',
-        status: 'draft',
-        language: draft.language,
-        metadata: draft.campaignName ? { campaignName: draft.campaignName } : {},
-        ...premiumPayload,
-      } as any);
-
-      setDraft((d) => ({ ...d, storyId: id }));
-      try {
-        const raw = localStorage.getItem(DRAFT_KEY);
-        const obj = raw ? JSON.parse(raw) : {};
-        obj.storyId = id;
-        localStorage.setItem(DRAFT_KEY, JSON.stringify(obj));
-      } catch {}
 
       setShowCover(true);
     } catch (e: any) {
@@ -651,7 +662,7 @@ const tr = React.useCallback(
     }
   }
 
-  /* 🔥 Skip to Scenes con deducción si es nuevo */
+  /* 🔥 Skip to Scenes (deduct only if new) */
   async function handleSkipToScenes() {
     try {
       setJumpingScenes(true);
@@ -665,22 +676,20 @@ const tr = React.useCallback(
       if (!canStartNew) throw new Error(t('alertsFillRequired'));
       if (!user) throw new Error(t('alertsSignIn'));
 
-      const cost = getCreationCreditCost(draft.category);
-      if (userCredits == null || userCredits < cost) {
-        alert(tr('alertsNeedCredits', {
-          cost,
-          category: t(draft.category),
-          have: userCredits ?? 0
-        }));
-        router.push('/buy-credits');
-        return;
-      }
-
       let id = draft.storyId;
+
       if (!id) {
-        const deductRes: any = await deductCreditsForCreation({ cost, storyType: draft.category });
-        if (!deductRes?.data?.ok) {
-          throw new Error(deductRes?.data?.message || t('alertsFailedStart'));
+        const cost = getCreationCreditCost(draft.category);
+        if (userCredits == null || userCredits < cost) {
+          alert(tr('alertsNeedCredits', { cost, category: t(draft.category), have: userCredits ?? 0 }));
+          router.push('/buy-credits');
+          return;
+        }
+
+        const storyType = categoryToStoryType(draft.category);
+        const { data } = await deductCreditsForCreation({ storyType });
+        if (!data?.success) {
+          throw new Error(data?.message || t('alertsFailedStart'));
         }
 
         const premiumPayload = buildPremiumPayloadFromDraft(draft);
@@ -726,7 +735,6 @@ const tr = React.useCallback(
   /* ---------------- UI ---------------- */
   const selectedCost = getCreationCreditCost(draft.category);
 
-  /* Etiquetas de categoría localizadas con rangos */
   const categoryLabel = (key: Draft['category']) => {
     const cfg = CATEGORIES.find(c => c.key === key)!;
     if (key === 'short') return tr('catShortRange', { min: cfg.min, max: cfg.max });
@@ -735,14 +743,7 @@ const tr = React.useCallback(
   };
 
   return (
-    <div
-      className="
-        min-h-screen p-6 pb-28
-        text-slate-800 bg-gradient-to-b from-slate-50 to-slate-200
-        dark:text-[#E0C9A0] dark:bg-gradient-to-b dark:from-[#0d1b2a] dark:to-[#1b263b]
-        font-sans
-      "
-    >
+    <div className="min-h-screen p-6 pb-28 text-slate-800 bg-gradient-to-b from-slate-50 to-slate-200 dark:text-[#E0C9A0] dark:bg-gradient-to-b dark:from-[#0d1b2a] dark:to-[#1b263b] font-sans">
       <div className="max-w-5xl mx-auto">
 
         {/* Header */}

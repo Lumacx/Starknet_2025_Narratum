@@ -28,7 +28,7 @@ const CREDIT_SPLIT_CONFIG = {
 } as const;
 
 // ────────────────────────────────────────────────────────────
-// Helpers
+/* Helpers */
 // ────────────────────────────────────────────────────────────
 type JsonObject = Record<string, unknown>;
 function hasStringMessage(x: unknown): x is { message: string } {
@@ -68,22 +68,30 @@ function resolveStoryPricing(story: any): { cost: number; charging: ChargingMode
   return { cost, charging };
 }
 
+// Shared CORS helper
+const corsHandler = cors({ origin: true, credentials: true });
+function setCors(res: functions.Response, origin?: string | null) {
+  const o = origin ?? '';
+  if (ALLOWED_ORIGINS.has(o)) {
+    res.setHeader('Access-Control-Allow-Origin', o);
+    res.setHeader('Vary', 'Origin');
+  } else {
+    // Still be explicit to avoid opaque errors during local testing
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+    res.setHeader('Vary', 'Origin');
+  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+}
+
 // ────────────────────────────────────────────────────────────
 // 1) HTTP (Gen-1) — PayPal one-time payment with CORS
 // ────────────────────────────────────────────────────────────
-const corsHandler = cors({ origin: true, credentials: true });
-
 export const processPayPalPayment = functions
   .region(REGION)
   .https.onRequest(async (req, res) => {
-    const origin = req.headers.origin ?? '';
-    if (ALLOWED_ORIGINS.has(origin)) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Vary', 'Origin');
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
-      res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    }
+    setCors(res, req.headers.origin as string | undefined);
 
     corsHandler(req as any, res as any, async () => {
       if (req.method === 'OPTIONS') return res.status(204).send('');
@@ -136,7 +144,8 @@ export const processPayPalPayment = functions
   });
 
 // ────────────────────────────────────────────────────────────
-// 2) Callable (Gen-1) — Deduct credits for reading (with preflight)
+// 2) Deduct credits for reading — shared core (used by both
+//    callable and HTTP versions to keep behavior identical)
 // ────────────────────────────────────────────────────────────
 type DeductInput = { storyId: string; checkOnly?: boolean };
 type DeductResult = {
@@ -150,220 +159,267 @@ type DeductResult = {
   remainingCredits: number;
 };
 
+async function performDeductCreditsForRead(
+  uid: string,
+  { storyId, checkOnly }: DeductInput
+): Promise<DeductResult> {
+  const storyRef    = db.collection('stories').doc(storyId);
+  const readerRef   = db.collection('users').doc(uid);
+  const adminRef    = db.collection('users').doc(NARRATUM_ADMIN_UID);
+  const purchaseRef = readerRef.collection('purchases').doc(storyId);
+
+  const result = await db.runTransaction(async (tx) => {
+    const [storyDoc, readerDoc, adminDoc, priorPurchaseDoc] = await Promise.all([
+      tx.get(storyRef),
+      tx.get(readerRef),
+      tx.get(adminRef),
+      tx.get(purchaseRef),
+    ]);
+
+    if (!storyDoc.exists)  throw new functions.https.HttpsError('not-found', 'Story not found.');
+    if (!readerDoc.exists) throw new functions.https.HttpsError('not-found', 'Reader user not found.');
+    if (!adminDoc.exists)  throw new functions.https.HttpsError('not-found', `Admin user ${NARRATUM_ADMIN_UID} not found.`);
+
+    const story = storyDoc.data() || {};
+    const { cost, charging } = resolveStoryPricing(story);
+
+    const alreadyOwned = charging === 'one-time' && priorPurchaseDoc.exists;
+    const needsPayment = charging === 'pay-per-open' ? true : !alreadyOwned;
+    const currentCredits = (readerDoc.data()?.credits || 0) as number;
+
+    // Preflight / checkOnly
+    if (checkOnly) {
+      const out: DeductResult = {
+        success: true,
+        storyId,
+        chargingModel: charging,
+        price: needsPayment ? cost : 0,
+        alreadyOwned,
+        needsPayment,
+        remainingCredits: currentCredits,
+      };
+      return out;
+    }
+
+    // No charge if already owned (one-time)
+    if (!needsPayment) {
+      tx.set(readerRef.collection('reads').doc(), {
+        type: 'access',
+        storyId,
+        timestamp: FieldValue.serverTimestamp(),
+        description: `Accessed already-owned story "${story.title || storyId}".`,
+      });
+      const out: DeductResult = {
+        success: true,
+        storyId,
+        chargingModel: 'one-time',
+        price: 0,
+        alreadyOwned: true,
+        needsPayment: false,
+        charged: 0,
+        remainingCredits: currentCredits,
+      };
+      return out;
+    }
+
+    // Funds check
+    if (currentCredits < cost) {
+      throw new functions.https.HttpsError('failed-precondition', 'Insufficient credits.', {
+        remainingCredits: currentCredits,
+      });
+    }
+
+    // Optional referrer
+    const referrerUid = readerDoc.data()?.referredBy as string | undefined;
+    const referrerRef = referrerUid ? db.collection('users').doc(referrerUid) : null;
+    const referrerDoc = referrerRef ? await tx.get(referrerRef) : null;
+
+    // Deduct
+    tx.update(readerRef, { credits: currentCredits - cost });
+    tx.set(readerRef.collection('transactions').doc(), {
+      type: 'read',
+      creditsDelta: -cost,
+      storyId,
+      timestamp: FieldValue.serverTimestamp(),
+      description: `Deducted ${cost} credits for reading "${story.title || storyId}".`,
+      status: 'confirmed',
+      chargingModel: charging,
+    });
+
+    // Mark purchase for one-time model
+    if (charging === 'one-time') {
+      tx.set(purchaseRef, {
+        storyId,
+        purchasedAt: FieldValue.serverTimestamp(),
+        pricePaid: cost,
+        lifetimeAccess: true,
+        storyTitle: story.title || null,
+        storyType: story?.type ?? null,
+      });
+    }
+
+    // Split distribution
+    const split = CREDIT_SPLIT_CONFIG.read;
+    let distributed = 0;
+
+    const aiStorageAmount = Math.floor(cost * split.AI_STORAGE);
+    const appCutAmount    = Math.floor(cost * split.APP_CUT);
+    const adminTotal      = aiStorageAmount + appCutAmount;
+
+    if (adminTotal > 0) {
+      tx.update(adminRef, { credits: (adminDoc.data()?.credits || 0) + adminTotal });
+      tx.set(adminRef.collection('transactions').doc(), {
+        type: 'profit',
+        creditsDelta: adminTotal,
+        timestamp: FieldValue.serverTimestamp(),
+        description: `AI+Storage (${aiStorageAmount}) + App Cut (${appCutAmount}) from read by ${uid} (story ${storyId}).`,
+        sourceUid: uid,
+        storyId,
+        status: 'confirmed',
+      });
+      distributed += adminTotal;
+    }
+
+    const ownerUid = (story.ownerUid || story.ownerId || story.creatorUid || story.userId) as string | undefined;
+    if (ownerUid && ownerUid !== uid) {
+      const royaltyAmount = Math.floor(cost * split.ROYALTY);
+      if (royaltyAmount > 0) {
+        const ownerRef = db.collection('users').doc(ownerUid);
+        const ownerDoc = await tx.get(ownerRef);
+        if (ownerDoc.exists) {
+          tx.update(ownerRef, { credits: (ownerDoc.data()?.credits || 0) + royaltyAmount });
+          tx.set(ownerRef.collection('transactions').doc(), {
+            type: 'profit',
+            creditsDelta: royaltyAmount,
+            timestamp: FieldValue.serverTimestamp(),
+            description: `Royalty from ${uid} for story "${story.title || storyId}".`,
+            sourceUid: uid,
+            storyId,
+            status: 'confirmed',
+          });
+          distributed += royaltyAmount;
+        }
+      }
+    }
+
+    const referralAmount = Math.floor(cost * split.REFERRAL);
+    if (referralAmount > 0) {
+      if (referrerUid && referrerDoc?.exists && referrerUid !== uid) {
+        tx.update(referrerRef!, { credits: (referrerDoc.data()?.credits || 0) + referralAmount });
+        tx.set(referrerRef!.collection('transactions').doc(), {
+          type: 'profit',
+          creditsDelta: referralAmount,
+          timestamp: FieldValue.serverTimestamp(),
+          description: `Referral earnings from ${uid} reading story ${storyId}.`,
+          sourceUid: uid,
+          storyId,
+          status: 'confirmed',
+        });
+        distributed += referralAmount;
+      } else {
+        const adminCurrent = (adminDoc.data()?.credits || 0) as number;
+        tx.update(adminRef, { credits: adminCurrent + referralAmount });
+        tx.set(adminRef.collection('transactions').doc(), {
+          type: 'profit',
+          creditsDelta: referralAmount,
+          timestamp: FieldValue.serverTimestamp(),
+          description: `Referral fallback from ${uid} reading ${storyId}.`,
+          sourceUid: uid,
+          storyId,
+          status: 'confirmed',
+        });
+        distributed += referralAmount;
+      }
+    }
+
+    // Remainder due to floors
+    const remainder = cost - distributed;
+    if (remainder > 0) {
+      const adminCurrent = (adminDoc.data()?.credits || 0) as number;
+      tx.update(adminRef, { credits: adminCurrent + remainder });
+      tx.set(adminRef.collection('transactions').doc(), {
+        type: 'profit',
+        creditsDelta: remainder,
+        timestamp: FieldValue.serverTimestamp(),
+        description: `Rounding adjustment from ${uid} reading ${storyId}.`,
+        sourceUid: uid,
+        storyId,
+        status: 'confirmed',
+      });
+    }
+
+    const out: DeductResult = {
+      success: true,
+      storyId,
+      chargingModel: charging,
+      price: cost,
+      alreadyOwned: false,
+      needsPayment: true,
+      charged: cost,
+      remainingCredits: currentCredits - cost,
+    };
+    return out;
+  });
+
+  return result;
+}
+
+// ────────────────────────────────────────────────────────────
+// 2A) Callable (Gen-1) — Deduct credits for reading
+// ────────────────────────────────────────────────────────────
 export const deductCreditsForRead = functions
   .region(REGION)
   .https.onCall(async (data: DeductInput, context): Promise<DeductResult> => {
     const uid = context.auth?.uid;
     if (!uid) throw new functions.https.HttpsError('unauthenticated', 'Sign in first.');
 
-    const { storyId, checkOnly } = (data || {}) as DeductInput;
-    if (!storyId) throw new functions.https.HttpsError('invalid-argument', 'Story ID is required.');
-
     try {
-      const storyRef    = db.collection('stories').doc(storyId);
-      const readerRef   = db.collection('users').doc(uid);
-      const adminRef    = db.collection('users').doc(NARRATUM_ADMIN_UID);
-      const purchaseRef = readerRef.collection('purchases').doc(storyId);
-
-      const result = await db.runTransaction(async (tx) => {
-        const [storyDoc, readerDoc, adminDoc, priorPurchaseDoc] = await Promise.all([
-          tx.get(storyRef),
-          tx.get(readerRef),
-          tx.get(adminRef),
-          tx.get(purchaseRef),
-        ]);
-
-        if (!storyDoc.exists)  throw new functions.https.HttpsError('not-found', 'Story not found.');
-        if (!readerDoc.exists) throw new functions.https.HttpsError('not-found', 'Reader user not found.');
-        if (!adminDoc.exists)  throw new functions.https.HttpsError('not-found', `Admin user ${NARRATUM_ADMIN_UID} not found.`);
-
-        const story = storyDoc.data() || {};
-        const { cost, charging } = resolveStoryPricing(story); // <- ChargingModel (union), not string
-
-        const alreadyOwned = charging === 'one-time' && priorPurchaseDoc.exists;
-        const needsPayment = charging === 'pay-per-open' ? true : !alreadyOwned;
-        const currentCredits = (readerDoc.data()?.credits || 0) as number;
-
-        // Preflight only
-        if (checkOnly) {
-          const out: DeductResult = {
-            success: true,
-            storyId,
-            chargingModel: charging,
-            price: needsPayment ? cost : 0,
-            alreadyOwned,
-            needsPayment,
-            remainingCredits: currentCredits,
-          };
-          return out;
-        }
-
-        // No charge if already owned (one-time)
-        if (!needsPayment) {
-          tx.set(readerRef.collection('reads').doc(), {
-            type: 'access',
-            storyId,
-            timestamp: FieldValue.serverTimestamp(),
-            description: `Accessed already-owned story "${story.title || storyId}".`,
-          });
-          const out: DeductResult = {
-            success: true,
-            storyId,
-            chargingModel: 'one-time',
-            price: 0,
-            alreadyOwned: true,
-            needsPayment: false,
-            charged: 0,
-            remainingCredits: currentCredits,
-          };
-          return out;
-        }
-
-        // Funds check
-        if (currentCredits < cost) {
-          throw new functions.https.HttpsError('failed-precondition', 'Insufficient credits.', {
-            remainingCredits: currentCredits,
-          });
-        }
-
-        // Optional referrer
-        const referrerUid = readerDoc.data()?.referredBy as string | undefined;
-        const referrerRef = referrerUid ? db.collection('users').doc(referrerUid) : null;
-        const referrerDoc = referrerRef ? await tx.get(referrerRef) : null;
-
-        // Deduct
-        tx.update(readerRef, { credits: currentCredits - cost });
-        tx.set(readerRef.collection('transactions').doc(), {
-          type: 'read',
-          creditsDelta: -cost,
-          storyId,
-          timestamp: FieldValue.serverTimestamp(),
-          description: `Deducted ${cost} credits for reading "${story.title || storyId}".`,
-          status: 'confirmed',
-          chargingModel: charging,
-        });
-
-        // Mark purchase for one-time model
-        if (charging === 'one-time') {
-          tx.set(purchaseRef, {
-            storyId,
-            purchasedAt: FieldValue.serverTimestamp(),
-            pricePaid: cost,
-            lifetimeAccess: true,
-            storyTitle: story.title || null,
-            storyType: story?.type ?? null,
-          });
-        }
-
-        // Split distribution
-        const split = CREDIT_SPLIT_CONFIG.read;
-        let distributed = 0;
-
-        const aiStorageAmount = Math.floor(cost * split.AI_STORAGE);
-        const appCutAmount    = Math.floor(cost * split.APP_CUT);
-        const adminTotal      = aiStorageAmount + appCutAmount;
-
-        if (adminTotal > 0) {
-          tx.update(adminRef, { credits: (adminDoc.data()?.credits || 0) + adminTotal });
-          tx.set(adminRef.collection('transactions').doc(), {
-            type: 'profit',
-            creditsDelta: adminTotal,
-            timestamp: FieldValue.serverTimestamp(),
-            description: `AI+Storage (${aiStorageAmount}) + App Cut (${appCutAmount}) from read by ${uid} (story ${storyId}).`,
-            sourceUid: uid,
-            storyId,
-            status: 'confirmed',
-          });
-          distributed += adminTotal;
-        }
-
-        const ownerUid = (story.ownerUid || story.ownerId || story.creatorUid || story.userId) as string | undefined;
-        if (ownerUid && ownerUid !== uid) {
-          const royaltyAmount = Math.floor(cost * split.ROYALTY);
-          if (royaltyAmount > 0) {
-            const ownerRef = db.collection('users').doc(ownerUid);
-            const ownerDoc = await tx.get(ownerRef);
-            if (ownerDoc.exists) {
-              tx.update(ownerRef, { credits: (ownerDoc.data()?.credits || 0) + royaltyAmount });
-              tx.set(ownerRef.collection('transactions').doc(), {
-                type: 'profit',
-                creditsDelta: royaltyAmount,
-                timestamp: FieldValue.serverTimestamp(),
-                description: `Royalty from ${uid} for story "${story.title || storyId}".`,
-                sourceUid: uid,
-                storyId,
-                status: 'confirmed',
-              });
-              distributed += royaltyAmount;
-            }
-          }
-        }
-
-        const referralAmount = Math.floor(cost * split.REFERRAL);
-        if (referralAmount > 0) {
-          if (referrerUid && referrerDoc?.exists && referrerUid !== uid) {
-            tx.update(referrerRef!, { credits: (referrerDoc.data()?.credits || 0) + referralAmount });
-            tx.set(referrerRef!.collection('transactions').doc(), {
-              type: 'profit',
-              creditsDelta: referralAmount,
-              timestamp: FieldValue.serverTimestamp(),
-              description: `Referral earnings from ${uid} reading story ${storyId}.`,
-              sourceUid: uid,
-              storyId,
-              status: 'confirmed',
-            });
-            distributed += referralAmount;
-          } else {
-            const adminCurrent = (adminDoc.data()?.credits || 0) as number;
-            tx.update(adminRef, { credits: adminCurrent + referralAmount });
-            tx.set(adminRef.collection('transactions').doc(), {
-              type: 'profit',
-              creditsDelta: referralAmount,
-              timestamp: FieldValue.serverTimestamp(),
-              description: `Referral fallback from ${uid} reading story ${storyId}.`,
-              sourceUid: uid,
-              storyId,
-              status: 'confirmed',
-            });
-            distributed += referralAmount;
-          }
-        }
-
-        // Remainder due to floors
-        const remainder = cost - distributed;
-        if (remainder > 0) {
-          const adminCurrent = (adminDoc.data()?.credits || 0) as number;
-          tx.update(adminRef, { credits: adminCurrent + remainder });
-          tx.set(adminRef.collection('transactions').doc(), {
-            type: 'profit',
-            creditsDelta: remainder,
-            timestamp: FieldValue.serverTimestamp(),
-            description: `Rounding adjustment from ${uid} reading ${storyId}.`,
-            sourceUid: uid,
-            storyId,
-            status: 'confirmed',
-          });
-        }
-
-        const out: DeductResult = {
-          success: true,
-          storyId,
-          chargingModel: charging,
-          price: cost,
-          alreadyOwned: false,
-          needsPayment: true,
-          charged: cost,
-          remainingCredits: currentCredits - cost,
-        };
-        return out;
-      });
-
-      return result;
+      if (!data?.storyId) throw new functions.https.HttpsError('invalid-argument', 'Story ID is required.');
+      return await performDeductCreditsForRead(uid, data);
     } catch (error: any) {
-      console.error('Error deducting credits for read:', error);
+      console.error('Error deducting credits for read (callable):', error);
       if (error instanceof functions.https.HttpsError) throw error;
       throw new functions.https.HttpsError('internal', 'Failed to deduct credits for read.', error?.message);
     }
+  });
+
+// ────────────────────────────────────────────────────────────
+// 2B) HTTP (Gen-1) — Deduct credits for reading with CORS
+//     Secure: requires Authorization: Bearer <Firebase ID token>
+//     Body: { storyId: string, checkOnly?: boolean }
+// ────────────────────────────────────────────────────────────
+export const deductCreditsForReadHttp = functions
+  .region(REGION)
+  .https.onRequest(async (req, res) => {
+    setCors(res, req.headers.origin as string | undefined);
+
+    corsHandler(req as any, res as any, async () => {
+      if (req.method === 'OPTIONS') return res.status(204).send('');
+      if (req.method !== 'POST')   return res.status(405).send('Method Not Allowed');
+
+      try {
+        const authHeader = (req.headers.authorization || '').toString();
+        const m = authHeader.match(/^Bearer\s+(.+)$/i);
+        if (!m) return res.status(401).json({ error: 'Missing Authorization bearer token.' });
+
+        const decoded = await adminAuth.verifyIdToken(m[1]);
+        const uid = decoded.uid;
+        const body = req.body as DeductInput;
+        if (!body?.storyId) return res.status(400).json({ error: 'Story ID is required.' });
+
+        const out = await performDeductCreditsForRead(uid, body);
+        return res.status(200).json(out);
+      } catch (error: any) {
+        console.error('Error deducting credits for read (HTTP):', error);
+        if (error instanceof functions.https.HttpsError) {
+          const code = (error as any).code === 'not-found' ? 404 :
+                       (error as any).code === 'failed-precondition' ? 412 :
+                       (error as any).code === 'unauthenticated' ? 401 : 400;
+          return res.status(code).json({ error: error.message, details: (error as any).details ?? undefined });
+        }
+        return res.status(500).json({ error: 'Internal Server Error' });
+      }
+    });
   });
 
 // ────────────────────────────────────────────────────────────
