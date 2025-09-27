@@ -14,6 +14,8 @@ import { downloadStoryPdf } from './downloadStoryPdf';
 import { processPayPalPayment, deductCreditsForRead, deductCreditsForCreation, sendTipToWriter, grantMonthlyFreeCredits, processPayPalSubscription } from './credits';
 // 👇 NEW: Promo Code Functions
 import { redeemPromoCode } from './promoCodes';
+// 👇 NEW: Hosted Payments Functions
+import { initiateHostedCreditPurchase } from './hostedPayments';
 
 export {
   generateNarratumImage,
@@ -33,6 +35,8 @@ export {
   processPayPalSubscription,
   // Promo Code Exports
   redeemPromoCode,
+  // Hosted Payments Exports
+  initiateHostedCreditPurchase,
 };
 
 export { propagateUserProfileToStories } from './propagateUserProfile';
@@ -40,3 +44,7 @@ export { propagateUserProfileToStories } from './propagateUserProfile';
 // functions/src/index.ts
 export * from './credits';
 
+// functions/src/index.ts
+//export * from './processPayPalPayment';
+export * from './paypalWebhook';
+export * from './hostedPayments';

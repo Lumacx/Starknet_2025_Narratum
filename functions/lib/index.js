@@ -14,7 +14,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.propagateUserProfileToStories = exports.redeemPromoCode = exports.processPayPalSubscription = exports.grantMonthlyFreeCredits = exports.sendTipToWriter = exports.deductCreditsForCreation = exports.deductCreditsForRead = exports.processPayPalPayment = exports.downloadStoryPdf = exports.generateWithImagen = exports.generateWithGemini = exports.removeIndexOnDelete = exports.indexAssetOnFinalize = exports.incrementCommentCount = exports.createuserprofile = exports.generateNarratumImage = void 0;
+exports.propagateUserProfileToStories = exports.initiateHostedCreditPurchase = exports.redeemPromoCode = exports.processPayPalSubscription = exports.grantMonthlyFreeCredits = exports.sendTipToWriter = exports.deductCreditsForCreation = exports.deductCreditsForRead = exports.processPayPalPayment = exports.downloadStoryPdf = exports.generateWithImagen = exports.generateWithGemini = exports.removeIndexOnDelete = exports.indexAssetOnFinalize = exports.incrementCommentCount = exports.createuserprofile = exports.generateNarratumImage = void 0;
 // functions/src/index.ts
 const imageGeneration_1 = require("./imageGeneration");
 Object.defineProperty(exports, "generateNarratumImage", { enumerable: true, get: function () { return imageGeneration_1.generateNarratumImage; } });
@@ -43,8 +43,15 @@ Object.defineProperty(exports, "processPayPalSubscription", { enumerable: true, 
 // 👇 NEW: Promo Code Functions
 const promoCodes_1 = require("./promoCodes");
 Object.defineProperty(exports, "redeemPromoCode", { enumerable: true, get: function () { return promoCodes_1.redeemPromoCode; } });
+// 👇 NEW: Hosted Payments Functions
+const hostedPayments_1 = require("./hostedPayments");
+Object.defineProperty(exports, "initiateHostedCreditPurchase", { enumerable: true, get: function () { return hostedPayments_1.initiateHostedCreditPurchase; } });
 var propagateUserProfile_1 = require("./propagateUserProfile");
 Object.defineProperty(exports, "propagateUserProfileToStories", { enumerable: true, get: function () { return propagateUserProfile_1.propagateUserProfileToStories; } });
 // functions/src/index.ts
 __exportStar(require("./credits"), exports);
+// functions/src/index.ts
+//export * from './processPayPalPayment';
+__exportStar(require("./paypalWebhook"), exports);
+__exportStar(require("./hostedPayments"), exports);
 //# sourceMappingURL=index.js.map
