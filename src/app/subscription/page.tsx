@@ -171,7 +171,7 @@ function PayButtonsOneTime({
 }
 
 /* ──────────────────────────────────────────────────────────────────
-   PayPal Buttons – Subscription
+   PayPal Buttons – Subscription (wallet only)
    ────────────────────────────────────────────────────────────────── */
 function PayButtonsSubscription({
   planId,
@@ -205,6 +205,7 @@ function PayButtonsSubscription({
 
   return (
     <PayPalButtons
+      fundingSource="paypal" // wallet only for subscriptions
       style={{ layout: 'vertical' }}
       createSubscription={(_data, actions) => {
         return actions.subscription.create({
@@ -316,10 +317,23 @@ const SubscriptionPage: FC = () => {
 
   const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
   const unusable = !clientId || clientId.trim().toLowerCase() === 'test';
-  const options: ReactPayPalScriptOptions = useMemo(
-    () => ({ clientId: clientId!, currency: 'USD', intent: 'capture', components: 'buttons' }),
-    [clientId]
-  );
+
+  // ✨ Load the SDK with the right intent/vault depending on the flow
+  const options: ReactPayPalScriptOptions = useMemo(() => {
+    if (!clientId) return {} as any;
+    const base: ReactPayPalScriptOptions = {
+      clientId: clientId!,
+      currency: 'USD',
+      components: 'buttons',
+    } as any;
+
+    // Paid subscription => require vault + subscription intent
+    if (purchaseType === 'subscription' && selectedOffering && selectedOffering.price > 0) {
+      return { ...base, intent: 'subscription', vault: true };
+    }
+    // One-time purchase OR free plan => normal capture, no vault
+    return { ...base, intent: 'capture', vault: false };
+  }, [clientId, purchaseType, selectedOffering]);
 
   function setMsg(status: 'idle' | 'success' | 'error' | 'pending', msg: string) {
     setPaymentStatus(status);
@@ -480,7 +494,7 @@ const SubscriptionPage: FC = () => {
         ) : (
           <div className="flex flex-col items-center w-full max-w-5xl px-4">
             {/* Row 1 — Tester | OG Free | Reader */}
-            <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-8 w/full">
+            <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-8 w-full">
               {firstRow.map((off) => (
                 <PackageCard
                   key={off.id}
@@ -593,7 +607,8 @@ const SubscriptionPage: FC = () => {
                   <strong>{t('missingPaypalClientId')}</strong> {formatT(t, 'setEnvVar', { envVar: 'NEXT_PUBLIC_PAYPAL_CLIENT_ID' })}
                 </div>
               ) : (
-                <PayPalProviderClient enabled options={options}>
+                // Force remount when mode/selection changes so SDK reloads with correct intent/vault
+                <PayPalProviderClient key={`${purchaseType}-${selectedOffering?.id ?? 'none'}`} enabled options={options}>
                   {purchaseType === 'one-time' ? (
                     <PayButtonsOneTime
                       price={(selectedOffering as any).price}
@@ -615,7 +630,9 @@ const SubscriptionPage: FC = () => {
                   ) : (
                     <PayButtonsSubscription
                       planId={
-                        PAYPAL_PLAN_IDS[subscriptionFrequency][selectedOffering.name.toLowerCase() as Lowercase<SubscriptionTier['name']>]
+                        PAYPAL_PLAN_IDS[subscriptionFrequency][
+                          selectedOffering.name.toLowerCase() as Lowercase<SubscriptionTier['name']>
+                        ]
                       }
                       description={formatT(t, 'paypalSubscriptionDescription', {
                         name: nameLabel(t, selectedOffering.name),

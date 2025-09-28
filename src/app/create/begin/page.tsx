@@ -1,4 +1,4 @@
-//src/app/create/begin/page.tsx
+// src/app/create/begin/page.tsx
 'use client';
 
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
@@ -9,7 +9,7 @@ import GenreMultiSelect from '@/components/GenreMultiSelect';
 import CoverImageManager from '@/components/CoverImageManager';
 
 import { useAuth } from '@/context/AuthContext';
-import { app, db, storage } from '@/lib/firebase'; // ensure `app` is exported
+import { app, db, storage } from '@/lib/firebase';
 import {
   serverTimestamp,
   updateDoc,
@@ -28,14 +28,14 @@ import { ref, uploadBytes, uploadString, getDownloadURL } from 'firebase/storage
 import { useCreateStory } from '@/hooks/useCreateStory';
 import { uploadCoverToStory } from '@/lib/uploadCover';
 
-/* 🔗 Cloud Functions (credits) */
+/* 🔗 Cloud Functions (credits) — CALLABLE to avoid CORS */
 import { getFunctions, httpsCallable, connectFunctionsEmulator } from 'firebase/functions';
 
 /* 🌐 i18n */
 import { useLocale } from '@/context/LocaleContext';
 
-//export const dynamic = 'force-dynamic';
-//export const revalidate = 0;
+// export const dynamic = 'force-dynamic';
+// export const revalidate = 0;
 
 /* ------------------------------------------------------------------ */
 /* Page constants & types                                              */
@@ -187,23 +187,23 @@ export default function BeginPage() {
   const { user, credits: userCredits } = useAuth();
   const createStory = useCreateStory();
 
-  /* 🔗 Callable types & instances (scoped to region) */
+  /* 🔗 Callable (scoped to region) */
   type CreateReq = { storyType: ServerStoryType };
   type CreateRes = { success: boolean; message: string; remainingCredits: number };
 
   const functions = useMemo(() => {
     const f = getFunctions(app, 'us-central1');
+    // Only connect emulator locally; never in prod
     if (typeof window !== 'undefined' && location.hostname === 'localhost') {
       try { connectFunctionsEmulator(f, '127.0.0.1', 5001); } catch {}
     }
     return f;
   }, []);
-  
+
   const deductCreditsForCreation = useMemo(
     () => httpsCallable<CreateReq, CreateRes>(functions, 'deductCreditsForCreation'),
     [functions]
   );
-  
 
   /* ---------------- Draft state ---------------- */
   const [draft, setDraft] = useState<Draft>({
@@ -773,7 +773,7 @@ export default function BeginPage() {
             <span className="px-2 py-1 rounded-md bg-slate-100 dark:bg-black/30">
               {t('yourCredits')} <strong>{userCredits ?? 0}</strong>
             </span>
-            <span className="px-2 py-1 rounded-md bg-slate-100 dark:bg-black/30">
+            <span className="px-2 py-1 rounded-md bg-slate-100 dark:bg:black/30">
               {tr('costToCreateType', { type: t(draft.category) })} <strong>{selectedCost}</strong>
             </span>
           </div>
@@ -841,7 +841,7 @@ export default function BeginPage() {
                   className="
                     w-full p-3 border-2 rounded-md
                     bg-white text-slate-900 border-slate-300
-                    dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]
+                    dark:bg-[#0f2334] dark:text:white dark:border-[#2c3f55]
                   "
                   value={existingStoryId}
                   onChange={(e) => setExistingStoryId(e.target.value)}
@@ -863,8 +863,8 @@ export default function BeginPage() {
               <select
                 className="
                   w-full p-3 border-2 rounded-md
-                  bg-white text-slate-900 border-slate-300
-                  dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]
+                  bg:white text-slate-900 border-slate-300
+                  dark:bg-[#0f2334] dark:text:white dark:border-[#2c3f55]
                 "
                 value={draft.language}
                 onChange={(e) => setDraft((d) => ({ ...d, language: e.target.value as LangCode }))}
@@ -888,8 +888,8 @@ export default function BeginPage() {
               rows={4}
               className="
                 w-full p-3 border-2 rounded-md
-                bg-white text-slate-900 border-slate-300
-                dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]
+                bg:white text-slate-900 border-slate-300
+                dark:bg-[#0f2334] dark:text:white dark:border-[#2c3f55]
               "
               value={draft.synopsis}
               onChange={(e) => setDraft((d) => ({ ...d, synopsis: e.target.value }))}
@@ -904,8 +904,8 @@ export default function BeginPage() {
               <select
                 className="
                   w-full p-3 border-2 rounded-md
-                  bg-white text-slate-900 border-slate-300
-                  dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]
+                  bg:white text-slate-900 border-slate-300
+                  dark:bg-[#0f2334] dark:text:white dark:border-[#2c3f55]
                 "
                 value={draft.category}
                 onChange={(e) => {
@@ -936,9 +936,9 @@ export default function BeginPage() {
                   <input
                     className="
                       w-full p-3 border-2 rounded-md
-                      bg-white text-slate-900 border-slate-300
+                      bg:white text-slate-900 border-slate-300
                       focus:outline-none focus:ring-2 focus:ring-slate-300
-                      dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55] dark:focus:ring-[#2c3f55]
+                      dark:bg-[#0f2334] dark:text:white dark:border-[#2c3f55] dark:focus:ring-[#2c3f55]
                     "
                     value={draft.campaignName || ''}
                     onChange={(e) => setDraft((d) => ({ ...d, campaignName: e.target.value }))}
@@ -987,7 +987,7 @@ export default function BeginPage() {
                 <div className="col-span-1">
                   <label className="block text-sm font-bold mb-2">{t('convaiAgentId')}</label>
                   <input
-                    className="w-full p-3 border-2 rounded-md bg-white text-slate-900 border-slate-300 dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]"
+                    className="w-full p-3 border-2 rounded-md bg:white text-slate-900 border-slate-300 dark:bg-[#0f2334] dark:text:white dark:border-[#2c3f55]"
                     placeholder="agent_01jz5wxyxyxyxyxyxyxyxyxyxy"
                     value={draft.premium?.convaiAgentId || ''}
                     onChange={async (e) => {
@@ -1001,12 +1001,12 @@ export default function BeginPage() {
                   </p>
                 </div>
 
-                {/* Teaser (solo Novela/Campaña) */}
+                {/* Teaser (Novela/Campaña) */}
                 {isLongForm && (
                   <div className="col-span-1">
                     <label className="block text-sm font-bold mb-2">{t('teaserVideo')}</label>
                     <input
-                      className="w-full p-3 border-2 rounded-md bg-white text-slate-900 border-slate-300 dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]"
+                      className="w-full p-3 border-2 rounded-md bg:white text-slate-900 border-slate-300 dark:bg-[#0f2334] dark:text:white dark:border-[#2c3f55]"
                       placeholder="URL a tu video de YouTube"
                       value={draft.premium?.teaserVideoUrl || ''}
                       onChange={async (e) => {
@@ -1021,7 +1021,7 @@ export default function BeginPage() {
                   </div>
                 )}
 
-                {/* Free nav index (solo Novela/Campaña) */}
+                {/* Free nav index (Novela/Campaña) */}
                 {isLongForm && (
                   <div className="col-span-1">
                     <label className="block text-sm font-bold mb-2">{t('freeNavIndex')}</label>
@@ -1154,8 +1154,8 @@ export default function BeginPage() {
                   <textarea
                     className="
                       w-full p-3 border-2 rounded-md
-                      bg-white text-slate-900 border-slate-300
-                      dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]
+                      bg:white text-slate-900 border-slate-300
+                      dark:bg-[#0f2334] dark:text:white dark:border-[#2c3f55]
                     "
                     rows={3}
                     value={descText}
@@ -1207,9 +1207,9 @@ export default function BeginPage() {
                 <input
                   className="
                     w-full p-3 border-2 rounded-md
-                    bg-white text-slate-900 border-slate-300
+                    bg:white text-slate-900 border-slate-300
                     focus:outline-none focus:ring-2 focus:ring-slate-300
-                    dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55] dark:focus:ring-[#2c3f55]
+                    dark:bg-[#0f2334] dark:text:white dark:border-[#2c3f55] dark:focus:ring-[#2c3f55]
                   "
                   value={draft.premium?.convaiAgentId ?? ''}
                   placeholder="e.g., agent_01jz5xyxyxyxyxyxyxyxyxyxy"
@@ -1225,7 +1225,7 @@ export default function BeginPage() {
                 </p>
               </div>
 
-              <div className="flex items-end">
+              <div className="flex items:end">
                 <button
                   type="button"
                   className="px-4 py-2 rounded-md bg-slate-200 text-slate-800 hover:bg-slate-300 active:scale-[.98]
