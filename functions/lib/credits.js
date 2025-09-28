@@ -1,5 +1,4 @@
 "use strict";
-// functions/src/credits.ts
 /* eslint-disable no-console */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -35,7 +34,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.grantMonthlyFreeCredits = exports.processPayPalSubscription = exports.sendTipToWriter = exports.deductCreditsForCreation = exports.deductCreditsForReadHttp = exports.deductCreditsForRead = exports.processPayPalPayment = void 0;
+exports.grantMonthlyFreeCredits = exports.processPayPalSubscription = exports.sendTipToWriter = exports.deductCreditsForReadHttp = exports.deductCreditsForRead = exports.processPayPalPayment = void 0;
 // ────────────────────────────────────────────────────────────
 // Gen-1 Firebase Functions imports
 // ────────────────────────────────────────────────────────────
@@ -107,7 +106,7 @@ function applyCors(res, origin) {
     res.setHeader('Access-Control-Max-Age', '86400'); // cache preflight 24h
 }
 // ────────────────────────────────────────────────────────────
-// 1) HTTP (Gen-1) — PayPal one-time payment with CORS
+/** 1) HTTP (Gen-1) — PayPal one-time payment with CORS */
 // ────────────────────────────────────────────────────────────
 exports.processPayPalPayment = functions
     .region(REGION)
@@ -350,7 +349,7 @@ async function performDeductCreditsForRead(uid, { storyId, checkOnly }) {
     });
 }
 // ────────────────────────────────────────────────────────────
-// 2A) Callable — Deduct credits for reading (preferred)
+/** 2A) Callable — Deduct credits for reading (preferred) */
 // ────────────────────────────────────────────────────────────
 exports.deductCreditsForRead = functions
     .region(REGION)
@@ -371,8 +370,9 @@ exports.deductCreditsForRead = functions
     }
 });
 // ────────────────────────────────────────────────────────────
-// 2B) HTTP mirror — Deduct credits for reading with CORS
-//     Requires: Authorization: Bearer <Firebase ID token>
+/** 2B) HTTP mirror — Deduct credits for reading with CORS
+ *     Requires: Authorization: Bearer <Firebase ID token>
+ */
 // ────────────────────────────────────────────────────────────
 exports.deductCreditsForReadHttp = functions
     .region(REGION)
@@ -415,117 +415,6 @@ exports.deductCreditsForReadHttp = functions
         }
         res.status(500).json({ error: 'Internal Server Error' });
         return;
-    }
-});
-exports.deductCreditsForCreation = functions
-    .region(REGION)
-    .https.onCall(async (data, context) => {
-    const creatorUid = context.auth?.uid;
-    if (!creatorUid)
-        throw new functions.https.HttpsError('unauthenticated', 'Sign in first.');
-    const { storyType } = (data || {});
-    if (!storyType || !['basic', 'premium', 'convai'].includes(storyType)) {
-        throw new functions.https.HttpsError('invalid-argument', 'Invalid story type.');
-    }
-    try {
-        const creatorRef = firebaseAdmin_1.db.collection('users').doc(creatorUid);
-        const adminRef = firebaseAdmin_1.db.collection('users').doc(NARRATUM_ADMIN_UID);
-        const result = await firebaseAdmin_1.db.runTransaction(async (tx) => {
-            const [creatorDoc, adminDoc] = await Promise.all([tx.get(creatorRef), tx.get(adminRef)]);
-            if (!creatorDoc.exists)
-                throw new functions.https.HttpsError('not-found', 'Creator user not found.');
-            if (!adminDoc.exists)
-                throw new functions.https.HttpsError('not-found', `Admin user ${NARRATUM_ADMIN_UID} not found.`);
-            const cost = storyType === 'convai' ? 15 : storyType === 'premium' ? 10 : 5;
-            const creatorCredits = Number(creatorDoc.data()?.credits || 0) || 0;
-            if (creatorCredits < cost) {
-                throw new functions.https.HttpsError('failed-precondition', 'Insufficient credits.', {
-                    remainingCredits: creatorCredits,
-                });
-            }
-            const referrerUid = creatorDoc.data()?.referredBy;
-            const referrerRef = referrerUid ? firebaseAdmin_1.db.collection('users').doc(referrerUid) : null;
-            const referrerDoc = referrerRef ? await tx.get(referrerRef) : null;
-            tx.update(creatorRef, { credits: creatorCredits - cost });
-            tx.set(creatorRef.collection('transactions').doc(), {
-                type: 'create',
-                creditsDelta: -cost,
-                timestamp: firebaseAdmin_1.FieldValue.serverTimestamp(),
-                description: `Deducted ${cost} credits for creating a ${storyType} story.`,
-                storyType,
-                status: 'confirmed',
-            });
-            const split = CREDIT_SPLIT_CONFIG.create;
-            let distributed = 0;
-            const aiStorageAmount = Math.floor(cost * split.AI_STORAGE);
-            const appCutAmount = Math.floor(cost * split.APP_CUT);
-            const adminTotal = aiStorageAmount + appCutAmount;
-            if (adminTotal > 0) {
-                tx.update(adminRef, { credits: (Number(adminDoc.data()?.credits || 0) || 0) + adminTotal });
-                tx.set(adminRef.collection('transactions').doc(), {
-                    type: 'profit',
-                    creditsDelta: adminTotal,
-                    timestamp: firebaseAdmin_1.FieldValue.serverTimestamp(),
-                    description: `AI+Storage (${aiStorageAmount}) + App Cut (${appCutAmount}) from ${creatorUid} creating ${storyType}.`,
-                    sourceUid: creatorUid,
-                    storyType,
-                    status: 'confirmed',
-                });
-                distributed += adminTotal;
-            }
-            const referralAmount = Math.floor(cost * split.REFERRAL);
-            if (referralAmount > 0) {
-                if (referrerUid && referrerDoc?.exists && referrerUid !== creatorUid) {
-                    tx.update(referrerRef, { credits: (Number(referrerDoc.data()?.credits || 0) || 0) + referralAmount });
-                    tx.set(referrerRef.collection('transactions').doc(), {
-                        type: 'profit',
-                        creditsDelta: referralAmount,
-                        timestamp: firebaseAdmin_1.FieldValue.serverTimestamp(),
-                        description: `Referral earnings from ${creatorUid} creating ${storyType}.`,
-                        sourceUid: creatorUid,
-                        storyType,
-                        status: 'confirmed',
-                    });
-                    distributed += referralAmount;
-                }
-                else {
-                    const adminCurrent = (Number(adminDoc.data()?.credits || 0) || 0);
-                    tx.update(adminRef, { credits: adminCurrent + referralAmount });
-                    tx.set(adminRef.collection('transactions').doc(), {
-                        type: 'profit',
-                        creditsDelta: referralAmount,
-                        timestamp: firebaseAdmin_1.FieldValue.serverTimestamp(),
-                        description: `Referral fallback from ${creatorUid} creating ${storyType}.`,
-                        sourceUid: creatorUid,
-                        storyType,
-                        status: 'confirmed',
-                    });
-                    distributed += referralAmount;
-                }
-            }
-            const remainder = cost - distributed;
-            if (remainder > 0) {
-                const adminCurrent = (Number(adminDoc.data()?.credits || 0) || 0);
-                tx.update(adminRef, { credits: adminCurrent + remainder });
-                tx.set(adminRef.collection('transactions').doc(), {
-                    type: 'profit',
-                    creditsDelta: remainder,
-                    timestamp: firebaseAdmin_1.FieldValue.serverTimestamp(),
-                    description: `Rounding adjustment from ${creatorUid} creating ${storyType}.`,
-                    sourceUid: creatorUid,
-                    storyType,
-                    status: 'confirmed',
-                });
-            }
-            return { success: true, message: 'Credits deducted & distributed.', remainingCredits: creatorCredits - cost };
-        });
-        return result;
-    }
-    catch (error) {
-        if (error instanceof functions.https.HttpsError)
-            throw error;
-        console.error('deductCreditsForCreation unexpected error:', error);
-        throw new functions.https.HttpsError('internal', 'Failed to deduct credits for creation.', extractMessage(error, 'Unknown error'));
     }
 });
 exports.sendTipToWriter = functions
@@ -617,7 +506,7 @@ exports.processPayPalSubscription = functions
     }
 });
 // ────────────────────────────────────────────────────────────
-// 6) Scheduled — Monthly free credits (2:00 AM CR, 1st)
+/** 6) Scheduled — Monthly free credits (2:00 AM CR, 1st) */
 // ────────────────────────────────────────────────────────────
 exports.grantMonthlyFreeCredits = functions
     .region(REGION)

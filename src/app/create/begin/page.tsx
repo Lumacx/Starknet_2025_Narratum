@@ -1,4 +1,4 @@
-// src/app/create/begin/page.tsx
+//src/app/create/begin/page.tsx
 'use client';
 
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
@@ -9,7 +9,7 @@ import GenreMultiSelect from '@/components/GenreMultiSelect';
 import CoverImageManager from '@/components/CoverImageManager';
 
 import { useAuth } from '@/context/AuthContext';
-import { app, db, storage } from '@/lib/firebase';
+import { app, db, storage } from '@/lib/firebase'; // ensure `app` is exported
 import {
   serverTimestamp,
   updateDoc,
@@ -28,14 +28,14 @@ import { ref, uploadBytes, uploadString, getDownloadURL } from 'firebase/storage
 import { useCreateStory } from '@/hooks/useCreateStory';
 import { uploadCoverToStory } from '@/lib/uploadCover';
 
-/* 🔗 Cloud Functions (credits) — CALLABLE to avoid CORS */
+/* 🔗 Cloud Functions (credits) */
 import { getFunctions, httpsCallable, connectFunctionsEmulator } from 'firebase/functions';
 
 /* 🌐 i18n */
 import { useLocale } from '@/context/LocaleContext';
 
-// export const dynamic = 'force-dynamic';
-// export const revalidate = 0;
+//export const dynamic = 'force-dynamic';
+//export const revalidate = 0;
 
 /* ------------------------------------------------------------------ */
 /* Page constants & types                                              */
@@ -187,23 +187,23 @@ export default function BeginPage() {
   const { user, credits: userCredits } = useAuth();
   const createStory = useCreateStory();
 
-  /* 🔗 Callable (scoped to region) */
+  /* 🔗 Callable types & instances (scoped to region) */
   type CreateReq = { storyType: ServerStoryType };
   type CreateRes = { success: boolean; message: string; remainingCredits: number };
 
   const functions = useMemo(() => {
     const f = getFunctions(app, 'us-central1');
-    // Only connect emulator locally; never in prod
     if (typeof window !== 'undefined' && location.hostname === 'localhost') {
       try { connectFunctionsEmulator(f, '127.0.0.1', 5001); } catch {}
     }
     return f;
   }, []);
-
+  
   const deductCreditsForCreation = useMemo(
     () => httpsCallable<CreateReq, CreateRes>(functions, 'deductCreditsForCreation'),
     [functions]
   );
+  
 
   /* ---------------- Draft state ---------------- */
   const [draft, setDraft] = useState<Draft>({
@@ -751,7 +751,10 @@ export default function BeginPage() {
   };
 
   return (
-    <div className="min-h-screen p-6 pb-28 text-slate-800 bg-gradient-to-b from-slate-50 to-slate-200 dark:text-[#E0C9A0] dark:bg-gradient-to-b dark:from-[#0d1b2a] dark:to-[#1b263b] font-sans">
+    <div
+      id="begin-page"
+      className="min-h-screen p-6 pb-28 text-slate-800 bg-gradient-to-b from-slate-50 to-slate-200 dark:text-[#E0C9A0] dark:bg-gradient-to-b dark:from-[#0d1b2a] dark:to-[#1b263b] font-sans"
+    >
       <div className="max-w-5xl mx-auto">
 
         {/* Header */}
@@ -763,17 +766,19 @@ export default function BeginPage() {
         </div>
 
         {/* Top Form */}
-        <div className="
-          mb-5 rounded-xl border-2 shadow p-6
-          border-slate-300 bg-white text-slate-800
-          dark:border-[#344b63] dark:bg-[#142436] dark:text-[#E0C9A0]
-        ">
+        <div
+          className={[
+            'mb-5 rounded-xl border-2 shadow p-6',
+            'border-slate-300 bg-white text-slate-800',
+            'dark:border-[#344b63] dark:bg-[#142436] dark:text-[#E0C9A0]',
+          ].join(' ')}
+        >
           {/* Resumen de créditos */}
           <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
             <span className="px-2 py-1 rounded-md bg-slate-100 dark:bg-black/30">
               {t('yourCredits')} <strong>{userCredits ?? 0}</strong>
             </span>
-            <span className="px-2 py-1 rounded-md bg-slate-100 dark:bg:black/30">
+            <span className="px-2 py-1 rounded-md bg-slate-100 dark:bg-black/30">
               {tr('costToCreateType', { type: t(draft.category) })} <strong>{selectedCost}</strong>
             </span>
           </div>
@@ -784,12 +789,12 @@ export default function BeginPage() {
             <div className="md:col-span-2">
               <label className="block text-sm font-bold mb-2">{t('titleLabel')}</label>
               <input
-                className="
+                className={`
                   w-full p-3 border-2 rounded-md
                   bg-white text-slate-900 border-slate-300
                   focus:outline-none focus:ring-2 focus:ring-slate-300
                   dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55] dark:focus:ring-[#2c3f55]
-                "
+                `}
                 value={draft.title}
                 onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
                 placeholder="The Rise of the Shadow Dragon"
@@ -838,11 +843,11 @@ export default function BeginPage() {
                 <select
                   id="continue-select"
                   disabled={storyMode !== 'continue'}
-                  className="
+                  className={`
                     w-full p-3 border-2 rounded-md
                     bg-white text-slate-900 border-slate-300
-                    dark:bg-[#0f2334] dark:text:white dark:border-[#2c3f55]
-                  "
+                    dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]
+                  `}
                   value={existingStoryId}
                   onChange={(e) => setExistingStoryId(e.target.value)}
                 >
@@ -861,11 +866,11 @@ export default function BeginPage() {
             <div className="md:col-span-2">
               <label className="block text-sm font-bold mb-2">{t('language')}</label>
               <select
-                className="
+                className={`
                   w-full p-3 border-2 rounded-md
-                  bg:white text-slate-900 border-slate-300
-                  dark:bg-[#0f2334] dark:text:white dark:border-[#2c3f55]
-                "
+                  bg-white text-slate-900 border-slate-300
+                  dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]
+                `}
                 value={draft.language}
                 onChange={(e) => setDraft((d) => ({ ...d, language: e.target.value as LangCode }))}
               >
@@ -886,11 +891,11 @@ export default function BeginPage() {
             <label className="block text-sm font-bold mb-2">{t('synopsisLabel')}</label>
             <textarea
               rows={4}
-              className="
+              className={`
                 w-full p-3 border-2 rounded-md
-                bg:white text-slate-900 border-slate-300
-                dark:bg-[#0f2334] dark:text:white dark:border-[#2c3f55]
-              "
+                bg-white text-slate-900 border-slate-300
+                dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]
+              `}
               value={draft.synopsis}
               onChange={(e) => setDraft((d) => ({ ...d, synopsis: e.target.value }))}
               placeholder="A young mage discovers a hidden power that could save or shatter the kingdom..."
@@ -902,11 +907,11 @@ export default function BeginPage() {
             <div>
               <label className="block text-sm font-bold mb-2">{t('currentStoryLabel')}</label>
               <select
-                className="
+                className={`
                   w-full p-3 border-2 rounded-md
-                  bg:white text-slate-900 border-slate-300
-                  dark:bg-[#0f2334] dark:text:white dark:border-[#2c3f55]
-                "
+                  bg-white text-slate-900 border-slate-300
+                  dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]
+                `}
                 value={draft.category}
                 onChange={(e) => {
                   const nextKey = e.target.value as Draft['category'];
@@ -934,12 +939,12 @@ export default function BeginPage() {
                 <div className="mt-4">
                   <label className="block text-sm font-bold mb-2">{t('campaignName')}</label>
                   <input
-                    className="
+                    className={`
                       w-full p-3 border-2 rounded-md
-                      bg:white text-slate-900 border-slate-300
+                      bg-white text-slate-900 border-slate-300
                       focus:outline-none focus:ring-2 focus:ring-slate-300
-                      dark:bg-[#0f2334] dark:text:white dark:border-[#2c3f55] dark:focus:ring-[#2c3f55]
-                    "
+                      dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55] dark:focus:ring-[#2c3f55]
+                    `}
                     value={draft.campaignName || ''}
                     onChange={(e) => setDraft((d) => ({ ...d, campaignName: e.target.value }))}
                     placeholder="p. ej., Reto de lectura de verano"
@@ -987,7 +992,7 @@ export default function BeginPage() {
                 <div className="col-span-1">
                   <label className="block text-sm font-bold mb-2">{t('convaiAgentId')}</label>
                   <input
-                    className="w-full p-3 border-2 rounded-md bg:white text-slate-900 border-slate-300 dark:bg-[#0f2334] dark:text:white dark:border-[#2c3f55]"
+                    className="w-full p-3 border-2 rounded-md bg-white text-slate-900 border-slate-300 dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]"
                     placeholder="agent_01jz5wxyxyxyxyxyxyxyxyxyxy"
                     value={draft.premium?.convaiAgentId || ''}
                     onChange={async (e) => {
@@ -1001,12 +1006,12 @@ export default function BeginPage() {
                   </p>
                 </div>
 
-                {/* Teaser (Novela/Campaña) */}
+                {/* Teaser (solo Novela/Campaña) */}
                 {isLongForm && (
                   <div className="col-span-1">
                     <label className="block text-sm font-bold mb-2">{t('teaserVideo')}</label>
                     <input
-                      className="w-full p-3 border-2 rounded-md bg:white text-slate-900 border-slate-300 dark:bg-[#0f2334] dark:text:white dark:border-[#2c3f55]"
+                      className="w-full p-3 border-2 rounded-md bg-white text-slate-900 border-slate-300 dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]"
                       placeholder="URL a tu video de YouTube"
                       value={draft.premium?.teaserVideoUrl || ''}
                       onChange={async (e) => {
@@ -1021,7 +1026,7 @@ export default function BeginPage() {
                   </div>
                 )}
 
-                {/* Free nav index (Novela/Campaña) */}
+                {/* Free nav index (solo Novela/Campaña) */}
                 {isLongForm && (
                   <div className="col-span-1">
                     <label className="block text-sm font-bold mb-2">{t('freeNavIndex')}</label>
@@ -1046,11 +1051,7 @@ export default function BeginPage() {
           {/* Acciones */}
           <div className="flex justify-end flex-wrap gap-3 mt-6">
             <button
-              className="
-                px-5 py-2 rounded-md border
-                bg-slate-200 text-slate-800 hover:bg-slate-300 active:scale-[.98]
-                dark:bg-gray-700/40 dark:text-[#C8D6E5] dark:hover:bg-gray-700/70
-              "
+              className="px-5 py-2 rounded-md border bg-slate-200 text-slate-800 hover:bg-slate-300 active:scale-[.98] dark:bg-gray-700/40 dark:text-[#C8D6E5] dark:hover:bg-gray-700/70"
               onClick={() => { try { localStorage.removeItem(DRAFT_KEY); } catch {} location.reload(); }}
             >
               {t('reset')}
@@ -1074,10 +1075,7 @@ export default function BeginPage() {
             </button>
 
             <button
-              className="
-                px-6 py-2 rounded-md font-semibold disabled:opacity-50
-                bg-[#E97451] text-white hover:bg-[#D46342]
-              "
+              className="px-6 py-2 rounded-md font-semibold disabled:opacity-50 bg-[#E97451] text-white hover:bg-[#D46342]"
               onClick={async () => {
                 try {
                   const id = await ensureStoryId();
@@ -1097,12 +1095,7 @@ export default function BeginPage() {
                 jumpingScenes ||
                 (storyMode === 'new' ? !canStartNew : !existingStoryId)
               }
-              className="
-                px-6 py-2 rounded-md border-2
-                border-slate-300 text-slate-800 bg-white
-                hover:bg-slate-100 active:scale-[.98] disabled:opacity-50
-                dark:border-[#3D4F60] dark:text-[#C8D6E5] dark:bg-[#0f2334] dark:hover:bg-[#152b42]
-              "
+              className="px-6 py-2 rounded-md border-2 border-slate-300 text-slate-800 bg-white hover:bg-slate-100 active:scale-[.98] disabled:opacity-50 dark:border-[#3D4F60] dark:text-[#C8D6E5] dark:bg-[#0f2334] dark:hover:bg-[#152b42]"
             >
               {t('skipToScenes')}
             </button>
@@ -1111,11 +1104,13 @@ export default function BeginPage() {
 
         {/* Book Cover */}
         {showCover && (
-          <div className="
-            rounded-xl border-2 shadow p-6
-            border-slate-300 bg-white text-slate-800
-            dark:border-[#344b63] dark:bg-[#142436] dark:text-[#E0C9A0]
-          ">
+          <div
+            className={[
+              'rounded-xl border-2 shadow p-6',
+              'border-slate-300 bg-white text-slate-800',
+              'dark:border-[#344b63] dark:bg-[#142436] dark:text-[#E0C9A0]',
+            ].join(' ')}
+          >
             <h2 className="text-xl font-bold mb-4">{t('bookCoverImage')}</h2>
 
             <CoverImageManager
@@ -1132,11 +1127,7 @@ export default function BeginPage() {
             />
 
             {/* AI Describe */}
-            <div className="
-              mt-4 p-3 rounded-lg border
-              border-slate-300 bg-slate-50
-              dark:border-[#344b63] dark:bg-black/20
-            ">
+            <div className="mt-4 p-3 rounded-lg border border-slate-300 bg-slate-50 dark:border-[#344b63] dark:bg-black/20">
               <div className="flex flex-col md:flex-row md:items-center gap-3">
                 <button
                   onClick={describeCurrentCover}
@@ -1152,11 +1143,11 @@ export default function BeginPage() {
                 <div className="mt-3">
                   <label className="block text-sm font-bold mb-1">{t('aiDescription')}</label>
                   <textarea
-                    className="
+                    className={`
                       w-full p-3 border-2 rounded-md
-                      bg:white text-slate-900 border-slate-300
-                      dark:bg-[#0f2334] dark:text:white dark:border-[#2c3f55]
-                    "
+                      bg-white text-slate-900 border-slate-300
+                      dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55]
+                    `}
                     rows={3}
                     value={descText}
                     onChange={(e) => setDescText(e.target.value)}
@@ -1164,21 +1155,13 @@ export default function BeginPage() {
                   <div className="flex gap-2 mt-2">
                     <button
                       onClick={() => setDraft((d) => ({ ...d, synopsis: descText }))}
-                      className="
-                        px-3 py-1 rounded-md border
-                        bg-slate-200 text-slate-800 hover:bg-slate-300
-                        dark:bg-gray-700/40 dark:text-[#C8D6E5] dark:hover:bg-gray-700/70
-                      "
+                      className="px-3 py-1 rounded-md border bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-gray-700/40 dark:text-[#C8D6E5] dark:hover:bg-gray-700/70"
                     >
                       {t('useAsSynopsis')}
                     </button>
                     <button
                       onClick={() => navigator.clipboard.writeText(descText)}
-                      className="
-                        px-3 py-1 rounded-md border
-                        bg-slate-200 text-slate-800 hover:bg-slate-300 active:scale-[.98]
-                        dark:bg-gray-700/40 dark:text-[#C8D6E5] dark:hover:bg-gray-700/70
-                      "
+                      className="px-3 py-1 rounded-md border bg-slate-200 text-slate-800 hover:bg-slate-300 active:scale-[.98] dark:bg-gray-700/40 dark:text-[#C8D6E5] dark:hover:bg-gray-700/70"
                     >
                       {t('copy')}
                     </button>
@@ -1191,11 +1174,13 @@ export default function BeginPage() {
 
         {/* PREMIUM debajo de portada */}
         {showCover && (
-          <div className="
-            mt-6 rounded-xl border-2 shadow p-6
-            border-slate-300 bg-white text-slate-800
-            dark:border-[#344b63] dark:bg-[#142436] dark:text-[#E0C9A0]
-          ">
+          <div
+            className={[
+              'mt-6 rounded-xl border-2 shadow p-6',
+              'border-slate-300 bg-white text-slate-800',
+              'dark:border-[#344b63] dark:bg-[#142436] dark:text-[#E0C9A0]',
+            ].join(' ')}
+          >
             <h2 className="text-xl font-bold mb-2">{t('convaiExplainHeader')}</h2>
             <p className="text-sm text-slate-600 dark:text-[#C8D6E5]/70 mb-4">
               {t('convaiExplainBody')}
@@ -1205,12 +1190,12 @@ export default function BeginPage() {
               <div className="md:col-span-2">
                 <label className="block text-sm font-bold mb-2">{t('convaiIdLabel')}</label>
                 <input
-                  className="
+                  className={`
                     w-full p-3 border-2 rounded-md
-                    bg:white text-slate-900 border-slate-300
+                    bg-white text-slate-900 border-slate-300
                     focus:outline-none focus:ring-2 focus:ring-slate-300
-                    dark:bg-[#0f2334] dark:text:white dark:border-[#2c3f55] dark:focus:ring-[#2c3f55]
-                  "
+                    dark:bg-[#0f2334] dark:text-white dark:border-[#2c3f55] dark:focus:ring-[#2c3f55]
+                  `}
                   value={draft.premium?.convaiAgentId ?? ''}
                   placeholder="e.g., agent_01jz5xyxyxyxyxyxyxyxyxyxy"
                   onChange={(e) =>
@@ -1225,11 +1210,10 @@ export default function BeginPage() {
                 </p>
               </div>
 
-              <div className="flex items:end">
+              <div className="flex items-end">
                 <button
                   type="button"
-                  className="px-4 py-2 rounded-md bg-slate-200 text-slate-800 hover:bg-slate-300 active:scale-[.98]
-                             dark:bg-gray-700/40 dark:text-[#C8D6E5] dark:hover:bg-gray-700/70"
+                  className="px-4 py-2 rounded-md bg-slate-200 text-slate-800 hover:bg-slate-300 active:scale-[.98] dark:bg-gray-700/40 dark:text-[#C8D6E5] dark:hover:bg-gray-700/70"
                   onClick={() =>
                     setDraft((d) => ({
                       ...d,
@@ -1244,12 +1228,25 @@ export default function BeginPage() {
 
             <div className="mt-4 text-xs text-slate-600 dark:text-[#C8D6E5]/70">
               Reader side will inject:
-              <pre className="mt-2 p-2 rounded bg-slate-100 dark:bg:black/30 overflow-x-auto">{`<elevenlabs-convai agent-id="<this value>"></elevenlabs-convai>
+              <pre className="mt-2 p-2 rounded bg-slate-100 dark:bg-black/30 overflow-x-auto">{`<elevenlabs-convai agent-id="<this value>"></elevenlabs-convai>
 <script src="https://unpkg.com/@elevenlabs/convai-widget-embed" async type="text/javascript"></script>`}</pre>
             </div>
           </div>
         )}
       </div>
+
+      {/* 🔧 Dark-mode input text & placeholder fix (page scoped) */}
+      <style jsx global>{`
+        .dark #begin-page input,
+        .dark #begin-page textarea,
+        .dark #begin-page select {
+          color: #ffffff !important;
+        }
+        .dark #begin-page input::placeholder,
+        .dark #begin-page textarea::placeholder {
+          color: rgba(255, 255, 255, 0.75) !important;
+        }
+      `}</style>
     </div>
   );
 }

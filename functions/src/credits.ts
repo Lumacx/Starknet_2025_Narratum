@@ -1,4 +1,3 @@
-// functions/src/credits.ts
 /* eslint-disable no-console */
 
 // ────────────────────────────────────────────────────────────
@@ -88,7 +87,7 @@ function applyCors(res: functions.Response, origin?: string | null) {
 }
 
 // ────────────────────────────────────────────────────────────
-// 1) HTTP (Gen-1) — PayPal one-time payment with CORS
+/** 1) HTTP (Gen-1) — PayPal one-time payment with CORS */
 // ────────────────────────────────────────────────────────────
 export const processPayPalPayment = functions
   .region(REGION)
@@ -157,7 +156,7 @@ export const processPayPalPayment = functions
   });
 
 // ────────────────────────────────────────────────────────────
-// 2) Shared core for “deduct credits for read”
+/** 2) Shared core for “deduct credits for read” */
 // ────────────────────────────────────────────────────────────
 type DeductInput = { storyId: string; checkOnly?: boolean };
 type DeductResult = {
@@ -372,7 +371,7 @@ async function performDeductCreditsForRead(
 }
 
 // ────────────────────────────────────────────────────────────
-// 2A) Callable — Deduct credits for reading (preferred)
+/** 2A) Callable — Deduct credits for reading (preferred) */
 // ────────────────────────────────────────────────────────────
 export const deductCreditsForRead = functions
   .region(REGION)
@@ -390,8 +389,9 @@ export const deductCreditsForRead = functions
   });
 
 // ────────────────────────────────────────────────────────────
-// 2B) HTTP mirror — Deduct credits for reading with CORS
-//     Requires: Authorization: Bearer <Firebase ID token>
+/** 2B) HTTP mirror — Deduct credits for reading with CORS
+ *     Requires: Authorization: Bearer <Firebase ID token>
+ */
 // ────────────────────────────────────────────────────────────
 export const deductCreditsForReadHttp = functions
   .region(REGION)
@@ -442,133 +442,14 @@ export const deductCreditsForReadHttp = functions
   });
 
 // ────────────────────────────────────────────────────────────
-// 3) Callable — Deduct credits for creation
+/** 3) (REMOVED FROM THIS FILE)
+ *  The callable `deductCreditsForCreation` now lives in src/index.ts.
+ *  Do not re-export it here to avoid duplicate symbol conflicts and CORS confusion.
+ */
 // ────────────────────────────────────────────────────────────
-type CreateReq = { storyType?: 'basic' | 'premium' | 'convai' };
-type CreateRes = { success: boolean; message: string; remainingCredits: number };
-
-export const deductCreditsForCreation = functions
-  .region(REGION)
-  .https.onCall(async (data: CreateReq, context): Promise<CreateRes> => {
-    const creatorUid = context.auth?.uid;
-    if (!creatorUid) throw new functions.https.HttpsError('unauthenticated', 'Sign in first.');
-
-    const { storyType } = (data || {}) as CreateReq;
-    if (!storyType || !['basic', 'premium', 'convai'].includes(storyType)) {
-      throw new functions.https.HttpsError('invalid-argument', 'Invalid story type.');
-    }
-
-    try {
-      const creatorRef = db.collection('users').doc(creatorUid);
-      const adminRef   = db.collection('users').doc(NARRATUM_ADMIN_UID);
-
-      const result = await db.runTransaction(async (tx) => {
-        const [creatorDoc, adminDoc] = await Promise.all([tx.get(creatorRef), tx.get(adminRef)]);
-        if (!creatorDoc.exists) throw new functions.https.HttpsError('not-found', 'Creator user not found.');
-        if (!adminDoc.exists)   throw new functions.https.HttpsError('not-found', `Admin user ${NARRATUM_ADMIN_UID} not found.`);
-
-        const cost = storyType === 'convai' ? 15 : storyType === 'premium' ? 10 : 5;
-
-        const creatorCredits = Number(creatorDoc.data()?.credits || 0) || 0;
-        if (creatorCredits < cost) {
-          throw new functions.https.HttpsError('failed-precondition', 'Insufficient credits.', {
-            remainingCredits: creatorCredits,
-          });
-        }
-
-        const referrerUid = creatorDoc.data()?.referredBy as string | undefined;
-        const referrerRef = referrerUid ? db.collection('users').doc(referrerUid) : null;
-        const referrerDoc = referrerRef ? await tx.get(referrerRef) : null;
-
-        tx.update(creatorRef, { credits: creatorCredits - cost });
-        tx.set(creatorRef.collection('transactions').doc(), {
-          type: 'create',
-          creditsDelta: -cost,
-          timestamp: FieldValue.serverTimestamp(),
-          description: `Deducted ${cost} credits for creating a ${storyType} story.`,
-          storyType,
-          status: 'confirmed',
-        });
-
-        const split = CREDIT_SPLIT_CONFIG.create;
-        let distributed = 0;
-
-        const aiStorageAmount = Math.floor(cost * split.AI_STORAGE);
-        const appCutAmount    = Math.floor(cost * split.APP_CUT);
-        const adminTotal      = aiStorageAmount + appCutAmount;
-
-        if (adminTotal > 0) {
-          tx.update(adminRef, { credits: (Number(adminDoc.data()?.credits || 0) || 0) + adminTotal });
-          tx.set(adminRef.collection('transactions').doc(), {
-            type: 'profit',
-            creditsDelta: adminTotal,
-            timestamp: FieldValue.serverTimestamp(),
-            description: `AI+Storage (${aiStorageAmount}) + App Cut (${appCutAmount}) from ${creatorUid} creating ${storyType}.`,
-            sourceUid: creatorUid,
-            storyType,
-            status: 'confirmed',
-          });
-          distributed += adminTotal;
-        }
-
-        const referralAmount = Math.floor(cost * split.REFERRAL);
-        if (referralAmount > 0) {
-          if (referrerUid && referrerDoc?.exists && referrerUid !== creatorUid) {
-            tx.update(referrerRef!, { credits: (Number(referrerDoc.data()?.credits || 0) || 0) + referralAmount });
-            tx.set(referrerRef!.collection('transactions').doc(), {
-              type: 'profit',
-              creditsDelta: referralAmount,
-              timestamp: FieldValue.serverTimestamp(),
-              description: `Referral earnings from ${creatorUid} creating ${storyType}.`,
-              sourceUid: creatorUid,
-              storyType,
-              status: 'confirmed',
-            });
-            distributed += referralAmount;
-          } else {
-            const adminCurrent = (Number(adminDoc.data()?.credits || 0) || 0);
-            tx.update(adminRef, { credits: adminCurrent + referralAmount });
-            tx.set(adminRef.collection('transactions').doc(), {
-              type: 'profit',
-              creditsDelta: referralAmount,
-              timestamp: FieldValue.serverTimestamp(),
-              description: `Referral fallback from ${creatorUid} creating ${storyType}.`,
-              sourceUid: creatorUid,
-              storyType,
-              status: 'confirmed',
-            });
-            distributed += referralAmount;
-          }
-        }
-
-        const remainder = cost - distributed;
-        if (remainder > 0) {
-          const adminCurrent = (Number(adminDoc.data()?.credits || 0) || 0);
-          tx.update(adminRef, { credits: adminCurrent + remainder });
-          tx.set(adminRef.collection('transactions').doc(), {
-            type: 'profit',
-            creditsDelta: remainder,
-            timestamp: FieldValue.serverTimestamp(),
-            description: `Rounding adjustment from ${creatorUid} creating ${storyType}.`,
-            sourceUid: creatorUid,
-            storyType,
-            status: 'confirmed',
-          });
-        }
-
-        return { success: true, message: 'Credits deducted & distributed.', remainingCredits: creatorCredits - cost };
-      });
-
-      return result;
-    } catch (error: any) {
-      if (error instanceof functions.https.HttpsError) throw error;
-      console.error('deductCreditsForCreation unexpected error:', error);
-      throw new functions.https.HttpsError('internal', 'Failed to deduct credits for creation.', extractMessage(error, 'Unknown error'));
-    }
-  });
 
 // ────────────────────────────────────────────────────────────
-// 4) Callable — Send a tip
+/** 4) Callable — Send a tip */
 // ────────────────────────────────────────────────────────────
 type TipReq = { targetUid?: string; amount?: number };
 type TipRes = { success: boolean; message?: string };
@@ -630,7 +511,7 @@ export const sendTipToWriter = functions
   });
 
 // ────────────────────────────────────────────────────────────
-// 5) Callable — Process PayPal subscription (via Next API)
+/** 5) Callable — Process PayPal subscription (via Next API) */
 // ────────────────────────────────────────────────────────────
 type SubReq = {
   subscriptionID?: string;
@@ -681,7 +562,7 @@ export const processPayPalSubscription = functions
   });
 
 // ────────────────────────────────────────────────────────────
-// 6) Scheduled — Monthly free credits (2:00 AM CR, 1st)
+/** 6) Scheduled — Monthly free credits (2:00 AM CR, 1st) */
 // ────────────────────────────────────────────────────────────
 export const grantMonthlyFreeCredits = functions
   .region(REGION)

@@ -13,6 +13,8 @@ export type LangCode =
   | 'en' | 'es' | 'pt' | 'fr' | 'de'
   | 'it' | 'ja' | 'ko' | 'zh' | 'hi' | 'ar';
 
+type ServerStoryType = 'basic' | 'premium' | 'convai';
+
 export type CreateStoryInput = {
   title: string;
   synopsis: string;
@@ -23,9 +25,15 @@ export type CreateStoryInput = {
   visibility?: StoryVisibility;   // default -> 'private'
   status?: StoryStatus;           // default -> 'draft'
   language?: LangCode;            // default -> 'en'
-  /** 🔹 NUEVO: para soportar campaignName y futuros metadatos */
-  metadata?: Record<string, any>;
+  metadata?: Record<string, any>; // e.g. { campaignName }
+  premium?: Record<string, any>;  // optional payload for premium/convai features
 };
+
+function categoryToServerType(cat: StoryCategory): ServerStoryType {
+  if (cat === 'novela') return 'premium';
+  if (cat === 'campaign') return 'convai';
+  return 'basic'; // short
+}
 
 export function useCreateStory() {
   const { user } = useAuth();
@@ -35,27 +43,33 @@ export function useCreateStory() {
 
     const now = serverTimestamp();
 
+    const serverType = categoryToServerType(data.category);
+
     const docRef = await addDoc(collection(db, 'stories'), {
-      // 🔐 Reglas: requerido
+      // 🔐 required by rules
       ownerUid: user.uid,
 
-      // Datos
+      // 🔑 rules expect this field:
+      type: serverType, // 'basic' | 'premium' | 'convai'  ← matches rules
+
+      // main fields
       title: data.title ?? '(untitled)',
       synopsis: data.synopsis ?? '',
       genres: Array.isArray(data.genres) ? data.genres : [],
-      category: data.category,
-      pageCount: Number.isFinite(data.pageCount) ? data.pageCount : 1,
+      category: data.category, // keep for app logic ('short' | 'novela' | 'campaign')
+      pageCount: Number.isFinite(data.pageCount) ? Math.floor(data.pageCount) : 1,
       coverImageUrl: data.coverImageUrl ?? null,
 
-      // Idioma/estado/visibilidad
+      // state
       language: data.language ?? 'en',
       visibility: data.visibility ?? 'private',
       status: data.status ?? 'draft',
 
-      // 🔹 Metadata opcional (ej. { campaignName })
+      // optional payloads
       metadata: data.metadata ?? {},
+      ...(data.premium ? { premium: data.premium } : {}),
 
-      // Timestamps
+      // timestamps
       createdAt: now,
       updatedAt: now,
     });
