@@ -1,6 +1,6 @@
 'use client';
 
-import React, { FC, useMemo, useRef, useState } from 'react';
+import React, { FC, useMemo, useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import PayPalProviderClient from '@/components/PayPalProviderClient';
@@ -9,13 +9,13 @@ import { functions } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import { usePayPalScriptReducer, type ReactPayPalScriptOptions } from '@paypal/react-paypal-js';
 import { useLocale } from '@/context/LocaleContext';
+import '@paypal/paypal-js'; // Import to ensure module augmentation is picked up
 
 const PayPalButtons = dynamic(
   () => import('@paypal/react-paypal-js').then((m) => m.PayPalButtons),
   { ssr: false }
 );
 
-type PurchaseType = 'one-time' | 'subscription';
 type SubscriptionFrequency = 'weekly' | 'monthly';
 
 interface BaseOffering {
@@ -25,7 +25,6 @@ interface BaseOffering {
   price: number;
   tag?: string;
 }
-interface OneTimeCreditPackage extends BaseOffering {}
 interface SubscriptionTier extends BaseOffering {}
 
 /* ---------- interpolation helper (since t(key) only takes 1 arg) ---------- */
@@ -45,13 +44,6 @@ function formatT(
 /* ──────────────────────────────────────────────────────────────────
    Data
    ────────────────────────────────────────────────────────────────── */
-const oneTimePackages: OneTimeCreditPackage[] = [
-  { id: 'ot_tester',  name: 'Tester',  credits: 25,  price: 5.0,  tag: 'Starter' },
-  { id: 'ot_reader',  name: 'Reader',  credits: 75,  price: 15.0, tag: 'Popular' },
-  { id: 'ot_writer',  name: 'Writer',  credits: 125, price: 25.0, tag: 'Most Popular' },
-  { id: 'ot_creator', name: 'Creator', credits: 250, price: 50.0, tag: 'Power user' },
-];
-
 const weeklyTiers: SubscriptionTier[] = [
   { id: 'sub_wk_og_free', name: 'OG Free', credits: 5,  price: 0.0,  tag: 'Free' },
   { id: 'sub_wk_tester',  name: 'Tester',  credits: 10, price: 1.99 },
@@ -85,25 +77,7 @@ const prettyUSD = (n: number) =>
    PayPal PLAN IDs (PLACEHOLDERS) – make sure they match your ENV!
    ────────────────────────────────────────────────────────────────── */
 const PAYPAL_PLAN_IDS: Record<SubscriptionFrequency, Record<Lowercase<SubscriptionTier['name']>, string>> = {
-  weekly: {
-    'og free': 'P-59784833RN494424PNDLBX5Y',
-    'tester': 'P-5G020421VG335451VNDLCDAA',
-    'reader': 'P-9P840869XW552833BNDLCEWI',
-    'writer': 'P-6DV06426M8230392GNDLCFWQ',
-    'creator': 'P-5GR1157592296905UNDLCHXI',
-  },
-  monthly: {
-    'og free': 'P-25490973SC123773DNDLB5OY',
-    'tester': 'P-6JF174267D2475636NDLCLZI',
-    'reader': 'P-80H73039UX394851YNDLCMQQ',
-    'writer': 'P-6R486885FS7556443NDLCO6Q',
-    'creator': 'P-7GH52876NN676341GNDLCPSY',
-  },
-};
-
-/* ──────────────────────────────────────────────────────────────────
-   Localized helpers
-   ────────────────────────────────────────────────────────────────── */
+    weekly: { 'og free': 'P-59784833RN494424PNDLBX5Y', 'tester': 'P-5G020421VG335451VNDLCDAA',   'reader': 'P-9P840869XW552833BNDLCEWI',  'writer': 'P-6DV06426M8230392GNDLCFWQ',  'creator': 'P-5GR1157592296905UNDLCHXI', },  monthly: {  'og free': 'P-25490973SC123773DNDLB5OY', 'tester': 'P-6JF174267D2475636NDLCLZI',   'reader': 'P-80H73039UX394851YNDLCMQQ',  'writer': 'P-6R486885FS7556443NDLCO6Q',   'creator': 'P-7GH52876NN676341GNDLCPSY'}};/* ──────────────────────────────────────────────────────────────────  Localized helpers   ────────────────────────────────────────────────────────────────── */
 function nameLabel(t: (k: string)=>string, name: BaseOffering['name']) {
   switch (name) {
     case 'OG Free': return t('tierOGFree');
@@ -127,81 +101,20 @@ function tagLabel(t: (k: string)=>string, tag?: string) {
 }
 
 /* ──────────────────────────────────────────────────────────────────
-   PayPal Buttons – One-time
-   ────────────────────────────────────────────────────────────────── */
-function PayButtonsOneTime({
-  price,
-  description,
-  onSuccess,
-  onMessage,
-}: {
-  price: number;
-  description: string;
-  onSuccess: (order: any) => void;
-  onMessage: (status: 'idle' | 'success' | 'error' | 'pending', msg: string) => void;
-}) {
-  const { t } = useLocale();
-  const [{ isPending, isRejected, isResolved }] = usePayPalScriptReducer();
-  if (isPending) return <div className="text-center py-2">{t('loadingPaypal')}</div>;
-  if (isRejected) return <div className="p-4 rounded-lg border text-sm">{t('paypalSdkBlocked')}</div>;
-  if (!isResolved || typeof window === 'undefined' || !(window as any).paypal) {
-    return <div className="p-4 rounded-lg border text-sm">{t('paymentModuleUnavailable')}</div>;
-  }
-  return (
-    <PayPalButtons
-  style={{ layout: 'vertical' }}
-  createOrder={(_d, actions) =>
-    actions.order.create({
-      intent: 'CAPTURE', // satisfy TS types
-      purchase_units: [
-        {
-          amount: { value: price.toFixed(2), currency_code: 'USD' },
-          description,
-        },
-      ],
-    })
-  }
-  onApprove={async (_d, actions) => {
-    onMessage('pending', t('processingPayment'));
-    const order = await actions.order!.capture();
-    onSuccess(order);
-  }}
-  onCancel={() => onMessage('idle', t('paymentCancelled'))}
-  onError={(err) => {
-    console.error(err);
-    onMessage('error', t('paypalErrorTryAgain'));
-  }}
-/>
-  );
-}
-
-/* ──────────────────────────────────────────────────────────────────
    PayPal Buttons – Subscription (wallet only)
    ────────────────────────────────────────────────────────────────── */
-function PayButtonsSubscription({
-  planId,
-  description,
-  onSuccess,
-  onMessage,
-}: {
-  planId: string;
-  description: string;
-  onSuccess: (sub: any) => void;
-  onMessage: (status: 'idle' | 'success' | 'error' | 'pending', msg: string) => void;
-}) {
+function PayButtonsSubscription({ planId, description, onSuccess, onMessage}: { planId: string; description: string; onSuccess: (sub: any) => void; onMessage: (status: 'idle' | 'success' | 'error' | 'pending', msg: string) => void}) {
   const { t } = useLocale();
   const [{ isPending, isRejected, isResolved }] = usePayPalScriptReducer();
 
   if (isPending) return <div className="text-center py-2">{t('loadingPaypal')}</div>;
   if (isRejected) return <div className="p-4 rounded-lg border text-sm">{t('paypalSdkBlocked')}</div>;
-  if (!isResolved || typeof window === 'undefined' || !(window as any).paypal) {
+  if (!isResolved || typeof window === 'undefined' || !window.paypal) {
     return <div className="p-4 rounded-lg border text-sm">{t('paymentModuleUnavailable')}</div>;
   }
   if (!planId) {
     return (
-      <div className="p-4 rounded-lg border text-sm">
-        <strong>{t('planIdNotSet')}</strong> {t('replacePlanIds')}
-      </div>
+      <div className="p-4 rounded-lg border text-sm">       <strong>{t('planIdNotSet')}</strong> {t('replacePlanIds')}     </div>
     );
   }
 
@@ -214,10 +127,7 @@ function PayButtonsSubscription({
         onMessage('pending', t('activatingSubscription'));
         onSuccess({ id: data.subscriptionID, status: 'APPROVED' });
       }}
-      onCancel={() => onMessage('idle', t('subscriptionCancelled'))}
-      onError={(err) => {
-        console.error(err);
-        onMessage('error', t('paypalSubscriptionError'));
+      onCancel={() => onMessage('idle', t('subscriptionCancelled'))}    onError={(err) => {      console.error(err);     onMessage('error', t('paypalSubscriptionError'));
       }}
     />
   );
@@ -226,15 +136,7 @@ function PayButtonsSubscription({
 /* ──────────────────────────────────────────────────────────────────
    Package Card
    ────────────────────────────────────────────────────────────────── */
-function PackageCard({
-  offering,
-  selected,
-  onSelect,
-}: {
-  offering: BaseOffering;
-  selected: boolean;
-  onSelect: () => void;
-}) {
+function PackageCard({ offering, selected, onSelect}: { offering: BaseOffering; selected: boolean; onSelect: () => void}) {
   const { t } = useLocale();
   const unit = (n: number) => (n === 1 ? t('creditSingular') : t('creditsPlural'));
   return (
@@ -279,7 +181,7 @@ function PackageCard({
       </button>
     </div>
   );
-}
+};
 
 /* ──────────────────────────────────────────────────────────────────
    Page
@@ -288,18 +190,19 @@ const SubscriptionPage: FC = () => {
   const { t } = useLocale();
   const { user, loading: authLoading } = useAuth();
 
-  const [purchaseType, setPurchaseType] = useState<PurchaseType>('subscription');
   const [subscriptionFrequency, setSubscriptionFrequency] = useState<SubscriptionFrequency>('monthly');
-  const [selectedOffering, setSelectedOffering] = useState<OneTimeCreditPackage | SubscriptionTier | null>(null);
+  const [selectedOffering, setSelectedOffering] = useState<SubscriptionTier | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'success' | 'error' | 'pending'>('idle');
   const [message, setMessage] = useState('');
   const [referredBy, setReferredBy] = useState('');
+  const [promoCodeInput, setPromoCodeInput] = useState('');
+  const [promoCodeMessage, setPromoCodeMessage] = useState('');
+  const [isRedeeming, setIsRedeeming] = useState(false);
   const confirmRef = useRef<HTMLDivElement | null>(null);
 
   const currentOfferings: BaseOffering[] = useMemo(() => {
-    if (purchaseType === 'one-time') return oneTimePackages;
     return reorderSubs(subscriptionFrequency === 'weekly' ? weeklyTiers : monthlyTiers);
-  }, [purchaseType, subscriptionFrequency]);
+  }, [subscriptionFrequency]);
 
   const firstRow = useMemo(() => currentOfferings.slice(0, 3), [currentOfferings]);
   const secondRow = useMemo(() => currentOfferings.slice(3), [currentOfferings]);
@@ -312,50 +215,22 @@ const SubscriptionPage: FC = () => {
     if (!clientId) return {} as any;
     const base: ReactPayPalScriptOptions = {
       clientId: clientId!,
-      'client-id': clientId!, // be explicit
+      'client-id': clientId!,
       currency: 'USD',
-      components: 'buttons',
+      components: 'buttons', // Only buttons for subscriptions
     } as any;
 
     // Paid subscription => require vault + subscription intent
-    if (purchaseType === 'subscription' && selectedOffering && selectedOffering.price > 0) {
+    if (selectedOffering && selectedOffering.price > 0) {
       return { ...base, intent: 'subscription', vault: true };
     }
-    // One-time purchase OR free plan => normal capture, no vault
+    // Free plan => normal capture, no vault
     return { ...base, intent: 'capture', vault: false };
-  }, [clientId, purchaseType, selectedOffering]);
+  }, [clientId, selectedOffering]);
 
   function setMsg(status: 'idle' | 'success' | 'error' | 'pending', msg: string) {
     setPaymentStatus(status);
     setMessage(msg);
-  }
-
-  /** One-time approval */
-  async function onApproveOneTime(order: any) {
-    if (!user?.uid || !selectedOffering) {
-      setMsg('error', t('mustBeLoggedInAndHaveSelection'));
-      return;
-    }
-    try {
-      if (order?.status === 'COMPLETED') {
-        const processPayment = httpsCallable(functions, 'processPayPalOneTimePayment');
-        await processPayment({
-          orderId: order.id,
-          userId: user.uid,
-          amount: selectedOffering.credits,
-          pricePaid: (selectedOffering as any).price,
-          packageId: selectedOffering.id,
-          type: 'one-time-purchase',
-          referredBy: referredBy || undefined,
-        });
-        setMsg('success', formatT(t, 'purchasedCreditsSuccess', { credits: selectedOffering.credits }));
-      } else {
-        setMsg('error', t('paypalPaymentNotCompleted'));
-      }
-    } catch (e: any) {
-      console.error(e);
-      setMsg('error', e.message || t('unexpectedError'));
-    }
   }
 
   /** Subscription approval (send real PayPal plan id too) */
@@ -375,6 +250,7 @@ const SubscriptionPage: FC = () => {
         price: (selectedOffering as any).price,
         credits: selectedOffering.credits,
         referredBy: referredBy || undefined,
+        promoCode: promoCodeInput || undefined,
       });
       setMsg(
         'success',
@@ -390,9 +266,30 @@ const SubscriptionPage: FC = () => {
   }
 
   const onSelectPackage = (offering: BaseOffering) => {
-    setSelectedOffering(offering);
+    setSelectedOffering(offering as SubscriptionTier);
     setMsg('idle', '');
     requestAnimationFrame(() => confirmRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+  };
+
+  const handleRedeemPromoCode = async () => {
+    if (!user) return setPromoCodeMessage(t('mustBeLoggedInToRedeem'));
+    if (!promoCodeInput.trim()) return setPromoCodeMessage(t('pleaseEnterPromoCode'));
+    setIsRedeeming(true);
+    setPromoCodeMessage(t('redeemingPromoCode'));
+    try {
+      const redeemCode = httpsCallable(functions, 'redeemPromoCode');
+      const result = await redeemCode({ promoCode: promoCodeInput, userId: user.uid });
+      const ok = (result.data as any)?.success;
+      setPromoCodeMessage(
+        (result.data as any)?.message || (ok ? t('promoCodeRedeemed') : t('failedToRedeemPromo'))
+      );
+      if (ok) setPromoCodeInput('');
+    } catch (e:any) {
+      console.error(e);
+      setPromoCodeMessage(formatT(t, 'errorWithMessage', { message: e.message || 'Unexpected error' }));
+    } finally {
+      setIsRedeeming(false);
+    }
   };
 
   const unit = (n: number) => (n === 1 ? t('creditSingular') : t('creditsPlural'));
@@ -444,36 +341,11 @@ const SubscriptionPage: FC = () => {
           <h1 className="font-['Georgia'] text-4xl md:text-5xl font-bold m-0">{t('creditsAndPlans')}</h1>
         </header>
 
-        {/* Top toggle */}
-        <div className="flex flex-wrap justify-center gap-4 mb-6">
-          <button
-            onClick={() => { setPurchaseType('one-time'); setSelectedOffering(null); setMsg('idle', ''); }}
-            className={[
-              'px-6 py-3 rounded-full font-semibold',
-              purchaseType === 'one-time'
-                ? 'bg-purple-600 text-white animate-pulse-slow'
-                : 'bg-[#F3EADF] border-2 border-[#CBBBA0] text-[#3A4B5C] dark:bg-[#2B2622] dark:border-[#6D5A40] dark:text-[#E0C9A0]',
-            ].join(' ')}
-          >
-            {t('oneTime')}
-          </button>
-          <button
-            onClick={() => { setPurchaseType('subscription'); setSelectedOffering(null); setMsg('idle', ''); }}
-            className={[
-              'px-6 py-3 rounded-full font-semibold',
-              purchaseType === 'subscription'
-                ? 'bg-purple-600 text-white animate-pulse-slow'
-                : 'bg-[#F3EADF] border-2 border-[#CBBBA0] text-[#3A4B5C] dark:bg-[#2B2622] dark:border-[#6D5A40] dark:text-[#E0C9A0]',
-            ].join(' ')}
-          >
-            {t('subscriptionsToggle')}
-          </button>
-        </div>
-
-        {/* ONE-TIME */}
-        {purchaseType === 'one-time' ? (
-          <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 md:gap-8 mb-10">
-            {currentOfferings.map((off) => (
+        {/* Subscription Tiers */}
+        <div className="flex flex-col items-center w-full max-w-5xl px-4">
+          {/* Row 1 — Tester | OG Free | Reader */}
+          <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-8 w-full">
+            {firstRow.map((off) => (
               <PackageCard
                 key={off.id}
                 offering={off}
@@ -482,61 +354,48 @@ const SubscriptionPage: FC = () => {
               />
             ))}
           </section>
-        ) : (
-          <div className="flex flex-col items-center w-full max-w-5xl px-4">
-            {/* Row 1 — Tester | OG Free | Reader */}
-            <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-8 w-full">
-              {firstRow.map((off) => (
-                <PackageCard
-                  key={off.id}
-                  offering={off}
-                  selected={selectedOffering?.id === off.id}
-                  onSelect={() => onSelectPackage(off)}
-                />
-              ))}
-            </section>
 
-            {/* Frequency pills */}
-            <div className="flex flex-wrap justify-center gap-3 my-8">
-              <button
-                onClick={() => { setSubscriptionFrequency('weekly'); setSelectedOffering(null); setMsg('idle', ''); }}
-                className={[
-                  'px-5 py-2 rounded-full text-sm font-semibold transition-colors',
-                  subscriptionFrequency === 'weekly'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-[#F3EADF] border-2 border-[#CBBBA0] text-[#3A4B5C] hover:bg-gray-200 dark:bg-[#2B2622] dark:border-[#6D5A40] dark:text-[#E0C9A0] dark:hover:bg-gray-800',
-                ].join(' ')}
-              >
-                {t('weekly')}
-              </button>
-              <button
-                onClick={() => { setSubscriptionFrequency('monthly'); setSelectedOffering(null); setMsg('idle', ''); }}
-                className={[
-                  'px-5 py-2 rounded-full text-sm font-semibold transition-colors',
-                  subscriptionFrequency === 'monthly'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-[#F3EADF] border-2 border-[#CBBBA0] text-[#3A4B5C] hover:bg-gray-200 dark:bg-[#2B2622] dark:border-[#6D5A40] dark:text-[#E0C9A0] dark:hover:bg-gray-800',
-                ].join(' ')}
-              >
-                {t('monthly')}
-              </button>
-            </div>
-
-            {/* Row 2 — Writer | Creator */}
-            <section className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8 w-full max-w-3xl">
-              {secondRow.map((off) => (
-                <PackageCard
-                  key={off.id}
-                  offering={off}
-                  selected={selectedOffering?.id === off.id}
-                  onSelect={() => onSelectPackage(off)}
-                />
-              ))}
-            </section>
+          {/* Frequency pills */}
+          <div className="flex flex-wrap justify-center gap-3 my-8">
+            <button
+              onClick={() => { setSubscriptionFrequency('weekly'); setSelectedOffering(null); setMsg('idle', ''); }}
+              className={[
+                'px-5 py-2 rounded-full text-sm font-semibold transition-colors',
+                subscriptionFrequency === 'weekly'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-[#F3EADF] border-2 border-[#CBBBA0] text-[#3A4B5C] hover:bg-gray-200 dark:bg-[#2B2622] dark:border-[#6D5A40] dark:text-[#E0C9A0] dark:hover:bg-gray-800',
+              ].join(' ')}
+            >
+              {t('weekly')}
+            </button>
+            <button
+              onClick={() => { setSubscriptionFrequency('monthly'); setSelectedOffering(null); setMsg('idle', ''); }}
+              className={[
+                'px-5 py-2 rounded-full text-sm font-semibold transition-colors',
+                subscriptionFrequency === 'monthly'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-[#F3EADF] border-2 border-[#CBBBA0] text-[#3A4B5C] hover:bg-gray-200 dark:bg-[#2B2622] dark:border-[#6D5A40] dark:text-[#E0C9A0] dark:hover:bg-gray-800',
+              ].join(' ')}
+            >
+              {t('monthly')}
+            </button>
           </div>
-        )}
 
-        {/* Confirm + Referred By + PayPal */}
+          {/* Row 2 — Writer | Creator */}
+          <section className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8 w-full max-w-3xl">
+            {secondRow.map((off) => (
+              <PackageCard
+                key={off.id}
+                offering={off}
+                selected={selectedOffering?.id === off.id}
+                onSelect={() => onSelectPackage(off)}
+              />
+            ))}
+          </section>
+        </div>
+
+
+        {/* Confirm + Referred By + Promo Code + PayPal */}
         {selectedOffering && (
           <section
             ref={confirmRef}
@@ -544,22 +403,13 @@ const SubscriptionPage: FC = () => {
           >
             <h3 className="font-['Georgia'] text-2xl font-bold mb-2">{t('confirmSelection')}</h3>
             <p className="text-sm md:text-base">
-              {purchaseType === 'one-time' ? (
-                formatT(t, 'youSelectedOneTime', {
-                  name: nameLabel(t, selectedOffering.name),
-                  credits: selectedOffering.credits,
-                  unit: unit(selectedOffering.credits),
-                  price: prettyUSD((selectedOffering as any).price),
-                })
-              ) : (
-                formatT(t, 'youSelectedSubscription', {
-                  name: nameLabel(t, selectedOffering.name),
-                  credits: selectedOffering.credits,
-                  unit: unit(selectedOffering.credits),
-                  price: selectedOffering.price === 0 ? t('freeUpper') : prettyUSD((selectedOffering as any).price),
-                  frequency: t(subscriptionFrequency),
-                })
-              )}
+              {formatT(t, 'youSelectedSubscription', {
+                name: nameLabel(t, selectedOffering.name),
+                credits: selectedOffering.credits,
+                unit: unit(selectedOffering.credits),
+                price: selectedOffering.price === 0 ? t('freeUpper') : prettyUSD((selectedOffering as any).price),
+                frequency: t(subscriptionFrequency),
+              })}
             </p>
 
             {/* Referred By */}
@@ -572,6 +422,33 @@ const SubscriptionPage: FC = () => {
                 value={referredBy}
                 onChange={(e) => setReferredBy(e.target.value)}
               />
+            </div>
+
+            {/* Promo Code */}
+            <div className="mt-5">
+              <h4 className="font-['Georgia'] text-lg font-bold mb-2">{t('promoCode')}</h4>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="text"
+                  placeholder={t('enterPromoCode')}
+                  className="flex-1 rounded-full px-4 py-3 text-sm outline-none bg-white/80 border border-[#CBBBA0] focus:ring-4 focus:ring-[#CBBBA0] dark:bg-[#3A2B26] dark:border-[#6D5A40]"
+                  value={promoCodeInput}
+                  onChange={(e) => setPromoCodeInput(e.target.value)}
+                  disabled={isRedeeming}
+                />
+                <button
+                  onClick={handleRedeemPromoCode}
+                  disabled={isRedeeming}
+                  className="rounded-full px-6 py-3 text-sm font-semibold text-white transition bg-purple-600 hover:bg-purple-700 active:bg-purple-800 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isRedeeming ? t('redeeming') : t('redeem')}
+                </button>
+              </div>
+              {promoCodeMessage && (
+                <p className={`mt-3 text-sm ${promoCodeMessage.toLowerCase().includes('error') ? 'text-red-700 dark:text-red-300' : 'text-green-700 dark:text-green-300'}`}>
+                  {promoCodeMessage}
+                </p>
+              )}
             </div>
 
             {message && (
@@ -602,13 +479,13 @@ const SubscriptionPage: FC = () => {
                 (() => {
                   // compute the real PayPal plan id for subs
                   const paypalPlanId =
-                    purchaseType === 'subscription' && selectedOffering && selectedOffering.price > 0
+                    selectedOffering && selectedOffering.price > 0
                       ? PAYPAL_PLAN_IDS[subscriptionFrequency][
                           selectedOffering.name.toLowerCase() as Lowercase<SubscriptionTier['name']>
                         ]
                       : undefined;
 
-                  if (purchaseType === 'subscription' && selectedOffering?.price > 0 && !paypalPlanId) {
+                  if (selectedOffering?.price > 0 && !paypalPlanId) {
                     return (
                       <div className="p-4 rounded-lg border text-sm">
                         <strong>{t('planIdNotSet')}</strong> {t('replacePlanIds')}
@@ -617,19 +494,9 @@ const SubscriptionPage: FC = () => {
                   }
 
                   return (
-                    // Force remount when mode/selection changes so SDK reloads with correct intent/vault
-                    <PayPalProviderClient key={`${purchaseType}-${selectedOffering?.id ?? 'none'}`} enabled options={options}>
-                      {purchaseType === 'one-time' ? (
-                        <PayButtonsOneTime
-                          price={(selectedOffering as any).price}
-                          description={formatT(t, 'paypalOneTimeDescription', {
-                            name: nameLabel(t, selectedOffering.name),
-                            ref: refSuffix,
-                          })}
-                          onSuccess={onApproveOneTime}
-                          onMessage={setMsg}
-                        />
-                      ) : selectedOffering.price === 0 ? (
+                    // Force remount when selection changes so SDK reloads with correct intent/vault
+                    <PayPalProviderClient key={selectedOffering?.id ?? 'none'} enabled options={options}>
+                      {selectedOffering.price === 0 ? (
                         <button
                           onClick={() => onApproveSubscription({ id: 'FREE_PLAN', status: 'APPROVED' }, 'FREE')}
                           className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition"

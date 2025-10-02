@@ -40,7 +40,7 @@ exports.grantMonthlyFreeCredits = exports.processPayPalSubscription = exports.se
 // ────────────────────────────────────────────────────────────
 const functions = __importStar(require("firebase-functions"));
 const firebaseAdmin_1 = require("./firebaseAdmin");
-const paypal_1 = require("./utils/paypal");
+const paypal_1 = require("./utils/paypal"); // Updated import
 // ────────────────────────────────────────────────────────────
 // Constants
 // ────────────────────────────────────────────────────────────
@@ -119,7 +119,7 @@ exports.processPayPalOneTimePayment = functions
         throw new functions.https.HttpsError('invalid-argument', 'Invalid request: orderId and positive amount are required.');
     }
     try {
-        const orderDetails = await (0, paypal_1.verifyPayPalOrder)(orderId);
+        const orderDetails = await (0, paypal_1.getPayPalOrderDetails)(orderId); // Updated function call
         if (!orderDetails || orderDetails.status !== 'COMPLETED') {
             console.error('PayPal order not completed:', orderDetails);
             throw new functions.https.HttpsError('failed-precondition', 'PayPal order not completed or invalid.');

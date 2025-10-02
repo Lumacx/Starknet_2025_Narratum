@@ -5,7 +5,7 @@
 // ────────────────────────────────────────────────────────────
 import * as functions from 'firebase-functions';
 import { db, adminAuth, FieldValue, Timestamp } from './firebaseAdmin';
-import { verifyPayPalOrder } from './utils/paypal';
+import { getPayPalOrderDetails } from './utils/paypal'; // Updated import
 
 // ────────────────────────────────────────────────────────────
 // Constants
@@ -103,7 +103,7 @@ export const processPayPalOneTimePayment = functions
     }
 
     try {
-      const orderDetails = await verifyPayPalOrder(orderId);
+      const orderDetails = await getPayPalOrderDetails(orderId); // Updated function call
       if (!orderDetails || orderDetails.status !== 'COMPLETED') {
         console.error('PayPal order not completed:', orderDetails);
         throw new functions.https.HttpsError('failed-precondition', 'PayPal order not completed or invalid.');
