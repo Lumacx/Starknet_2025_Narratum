@@ -22,60 +22,20 @@
     "rules": "storage.rules"
   },
   "emulators": {
-    "hub": {
-      "host": "127.0.0.1",
-      "port": 4400
-    },
-    "logging": {
-      "host": "127.0.0.1",
-      "port": 4500
-    },
-    "apphosting": {
-      "host": "127.0.0.1",
-      "port": 5002
-    },
-    "auth": {
-      "host": "127.0.0.1",
-      "port": 9099
-    },
-    "firestore": {
-      "host": "127.0.0.1",
-      "port": 8080
-    },
-    "functions": {
-      "host": "127.0.0.1",
-      "port": 5001
-    },
-    "storage": {
-      "host": "127.0.0.1",
-      "port": 9199
-    },
-    "eventarc": {
-      "host": "127.0.0.1",
-      "port": 9299
-    },
-    "tasks": {
-      "host": "127.0.0.1",
-      "port": 9499
-    },
-    "hosting": {
-      "host": "127.0.0.1",
-      "port": 5000
-    },
-    "ui": {
-      "enabled": true,
-      "host": "127.0.0.1",
-      "port": 4005
-    },
-    "dataconnect": {
-      "host": "127.0.0.1",
-      "port": 9399,
-      "dataDir": "dataconnect/.dataconnect/pgliteData"
-    }
+    "hub": { "host": "127.0.0.1", "port": 4400 },
+    "logging": { "host": "127.0.0.1", "port": 4500 },
+    "apphosting": { "host": "127.0.0.1", "port": 5002 },
+    "auth": { "host": "127.0.0.1", "port": 9099 },
+    "firestore": { "host": "127.0.0.1", "port": 8080 },
+    "functions": { "host": "127.0.0.1", "port": 5001 },
+    "storage": { "host": "127.0.0.1", "port": 9199 },
+    "eventarc": { "host": "127.0.0.1", "port": 9299 },
+    "tasks": { "host": "127.0.0.1", "port": 9499 },
+    "hosting": { "host": "127.0.0.1", "port": 5000 },
+    "ui": { "enabled": true, "host": "127.0.0.1", "port": 4005 },
+    "dataconnect": { "host": "127.0.0.1", "port": 9399, "dataDir": "dataconnect/.dataconnect/pgliteData" }
   },
-  "dataconnect": {
-    "source": "dataconnect"
-  },
+  "dataconnect": { "source": "dataconnect" },
   "apphosting": [
     {
       "backendId": "studio",
@@ -84,7 +44,7 @@
         "node_modules",
         ".git",
         "firebase-debug.log",
-        "dataconnect/.dataconnect/**"  
+        "dataconnect/.dataconnect/**"
       ]
     }
   ]

@@ -37,7 +37,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.propagateUserProfileToStories = exports.initiateHostedCreditPurchase = exports.redeemPromoCode = exports.processPayPalSubscription = exports.grantMonthlyFreeCredits = exports.sendTipToWriter = exports.deductCreditsForRead = exports.processPayPalPayment = exports.downloadStoryPdf = exports.generateWithImagen = exports.generateWithGemini = exports.removeIndexOnDelete = exports.indexAssetOnFinalize = exports.incrementCommentCount = exports.createuserprofile = exports.generateNarratumImage = exports.deductCreditsForCreation = void 0;
+exports.propagateUserProfileToStories = exports.initiateHostedCreditPurchase = exports.redeemPromoCode = exports.processPayPalSubscription = exports.grantMonthlyFreeCredits = exports.sendTipToWriter = exports.deductCreditsForRead = exports.processPayPalOneTimePayment = exports.downloadStoryPdf = exports.generateWithImagen = exports.generateWithGemini = exports.removeIndexOnDelete = exports.indexAssetOnFinalize = exports.incrementCommentCount = exports.createuserprofile = exports.generateNarratumImage = exports.deductCreditsForCreation = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 // Ensure Admin is initialized exactly once
@@ -65,7 +65,7 @@ const downloadStoryPdf_1 = require("./downloadStoryPdf");
 Object.defineProperty(exports, "downloadStoryPdf", { enumerable: true, get: function () { return downloadStoryPdf_1.downloadStoryPdf; } });
 // Credit System (NOTE: do NOT import `deductCreditsForCreation` here)
 const credits_1 = require("./credits");
-Object.defineProperty(exports, "processPayPalPayment", { enumerable: true, get: function () { return credits_1.processPayPalPayment; } });
+Object.defineProperty(exports, "processPayPalOneTimePayment", { enumerable: true, get: function () { return credits_1.processPayPalOneTimePayment; } });
 Object.defineProperty(exports, "deductCreditsForRead", { enumerable: true, get: function () { return credits_1.deductCreditsForRead; } });
 Object.defineProperty(exports, "sendTipToWriter", { enumerable: true, get: function () { return credits_1.sendTipToWriter; } });
 Object.defineProperty(exports, "grantMonthlyFreeCredits", { enumerable: true, get: function () { return credits_1.grantMonthlyFreeCredits; } });

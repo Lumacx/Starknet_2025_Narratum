@@ -74,7 +74,7 @@ function reorderSubs(list: SubscriptionTier[]): SubscriptionTier[] {
   const order = ['Tester', 'OG Free', 'Reader', 'Writer', 'Creator']
     .map(k => byName[k.toLowerCase()])
     .filter(Boolean);
-  return order.length ? order : list;
+  return order.length ? (order as SubscriptionTier[]) : list;
 }
 
 /** Pretty price */
@@ -82,7 +82,7 @@ const prettyUSD = (n: number) =>
   n.toLocaleString(undefined, { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
 
 /* ──────────────────────────────────────────────────────────────────
-   PayPal PLAN IDs (PLACEHOLDERS)
+   PayPal PLAN IDs (PLACEHOLDERS) – make sure they match your ENV!
    ────────────────────────────────────────────────────────────────── */
 const PAYPAL_PLAN_IDS: Record<SubscriptionFrequency, Record<Lowercase<SubscriptionTier['name']>, string>> = {
   weekly: {
@@ -149,24 +149,29 @@ function PayButtonsOneTime({
   }
   return (
     <PayPalButtons
-      style={{ layout: 'vertical' }}
-      createOrder={(_d, actions) =>
-        actions.order.create({
-          intent: 'CAPTURE',
-          purchase_units: [{ amount: { value: price.toFixed(2), currency_code: 'USD' }, description }],
-        })
-      }
-      onApprove={async (_d, actions) => {
-        onMessage('pending', t('processingPayment'));
-        const order = await actions.order!.capture();
-        onSuccess(order);
-      }}
-      onCancel={() => onMessage('idle', t('paymentCancelled'))}
-      onError={(err) => {
-        console.error(err);
-        onMessage('error', t('paypalErrorTryAgain'));
-      }}
-    />
+  style={{ layout: 'vertical' }}
+  createOrder={(_d, actions) =>
+    actions.order.create({
+      intent: 'CAPTURE', // satisfy TS types
+      purchase_units: [
+        {
+          amount: { value: price.toFixed(2), currency_code: 'USD' },
+          description,
+        },
+      ],
+    })
+  }
+  onApprove={async (_d, actions) => {
+    onMessage('pending', t('processingPayment'));
+    const order = await actions.order!.capture();
+    onSuccess(order);
+  }}
+  onCancel={() => onMessage('idle', t('paymentCancelled'))}
+  onError={(err) => {
+    console.error(err);
+    onMessage('error', t('paypalErrorTryAgain'));
+  }}
+/>
   );
 }
 
@@ -200,27 +205,11 @@ function PayButtonsSubscription({
     );
   }
 
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const current = typeof window !== 'undefined' ? window.location.href : origin;
-
   return (
     <PayPalButtons
-      fundingSource="paypal" // wallet only for subscriptions
+      fundingSource="paypal" // wallet-only for subs
       style={{ layout: 'vertical' }}
-      createSubscription={(_data, actions) => {
-        return actions.subscription.create({
-          plan_id: planId,
-          application_context: {
-            brand_name: 'Narratum',
-            user_action: 'SUBSCRIBE_NOW',
-            shipping_preference: 'NO_SHIPPING',
-            locale: 'en-US',
-            return_url: origin + '/subscriptions/success',
-            cancel_url: current,
-            payment_method: { payee_preferred: 'IMMEDIATE_PAYMENT_REQUIRED' },
-          } as any,
-        });
-      }}
+      createSubscription={(_data, actions) => actions.subscription.create({ plan_id: planId })}
       onApprove={async (data) => {
         onMessage('pending', t('activatingSubscription'));
         onSuccess({ id: data.subscriptionID, status: 'APPROVED' });
@@ -323,6 +312,7 @@ const SubscriptionPage: FC = () => {
     if (!clientId) return {} as any;
     const base: ReactPayPalScriptOptions = {
       clientId: clientId!,
+      'client-id': clientId!, // be explicit
       currency: 'USD',
       components: 'buttons',
     } as any;
@@ -348,7 +338,7 @@ const SubscriptionPage: FC = () => {
     }
     try {
       if (order?.status === 'COMPLETED') {
-        const processPayment = httpsCallable(functions, 'processPayPalPayment');
+        const processPayment = httpsCallable(functions, 'processPayPalOneTimePayment');
         await processPayment({
           orderId: order.id,
           userId: user.uid,
@@ -368,8 +358,8 @@ const SubscriptionPage: FC = () => {
     }
   }
 
-  /** Subscription approval */
-  async function onApproveSubscription(sub: any) {
+  /** Subscription approval (send real PayPal plan id too) */
+  async function onApproveSubscription(sub: any, paypalPlanId?: string) {
     if (!user?.uid || !selectedOffering) {
       setMsg('error', t('mustBeLoggedInAndHaveSelection'));
       return;
@@ -378,7 +368,8 @@ const SubscriptionPage: FC = () => {
       const processSubscription = httpsCallable(functions, 'processPayPalSubscription');
       await processSubscription({
         userId: user.uid,
-        planId: selectedOffering.id,
+        planKey: selectedOffering.id,         // your internal key
+        paypalPlanId,                         // real PayPal plan id (for verification)
         paypalSubscriptionId: sub?.id || null,
         frequency: subscriptionFrequency,
         price: (selectedOffering as any).price,
@@ -604,46 +595,63 @@ const SubscriptionPage: FC = () => {
             <div className="mt-5">
               {unusable ? (
                 <div className="p-4 rounded-lg border text-sm">
-                  <strong>{t('missingPaypalClientId')}</strong> {formatT(t, 'setEnvVar', { envVar: 'NEXT_PUBLIC_PAYPAL_CLIENT_ID' })}
+                  <strong>{t('missingPaypalClientId')}</strong>{' '}
+                  {formatT(t, 'setEnvVar', { envVar: 'NEXT_PUBLIC_PAYPAL_CLIENT_ID' })}
                 </div>
               ) : (
-                // Force remount when mode/selection changes so SDK reloads with correct intent/vault
-                <PayPalProviderClient key={`${purchaseType}-${selectedOffering?.id ?? 'none'}`} enabled options={options}>
-                  {purchaseType === 'one-time' ? (
-                    <PayButtonsOneTime
-                      price={(selectedOffering as any).price}
-                      description={formatT(t, 'paypalOneTimeDescription', {
-                        name: nameLabel(t, selectedOffering.name),
-                        ref: refSuffix,
-                      })}
-                      onSuccess={onApproveOneTime}
-                      onMessage={setMsg}
-                    />
-                  ) : selectedOffering.price === 0 ? (
-                    <button
-                      onClick={() => onApproveSubscription({ id: 'FREE_PLAN', status: 'APPROVED' })}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition"
-                      disabled={paymentStatus === 'pending'}
-                    >
-                      {t('activateFreePlan')}
-                    </button>
-                  ) : (
-                    <PayButtonsSubscription
-                      planId={
-                        PAYPAL_PLAN_IDS[subscriptionFrequency][
+                (() => {
+                  // compute the real PayPal plan id for subs
+                  const paypalPlanId =
+                    purchaseType === 'subscription' && selectedOffering && selectedOffering.price > 0
+                      ? PAYPAL_PLAN_IDS[subscriptionFrequency][
                           selectedOffering.name.toLowerCase() as Lowercase<SubscriptionTier['name']>
                         ]
-                      }
-                      description={formatT(t, 'paypalSubscriptionDescription', {
-                        name: nameLabel(t, selectedOffering.name),
-                        frequency: t(subscriptionFrequency),
-                        ref: refSuffix,
-                      })}
-                      onSuccess={onApproveSubscription}
-                      onMessage={setMsg}
-                    />
-                  )}
-                </PayPalProviderClient>
+                      : undefined;
+
+                  if (purchaseType === 'subscription' && selectedOffering?.price > 0 && !paypalPlanId) {
+                    return (
+                      <div className="p-4 rounded-lg border text-sm">
+                        <strong>{t('planIdNotSet')}</strong> {t('replacePlanIds')}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    // Force remount when mode/selection changes so SDK reloads with correct intent/vault
+                    <PayPalProviderClient key={`${purchaseType}-${selectedOffering?.id ?? 'none'}`} enabled options={options}>
+                      {purchaseType === 'one-time' ? (
+                        <PayButtonsOneTime
+                          price={(selectedOffering as any).price}
+                          description={formatT(t, 'paypalOneTimeDescription', {
+                            name: nameLabel(t, selectedOffering.name),
+                            ref: refSuffix,
+                          })}
+                          onSuccess={onApproveOneTime}
+                          onMessage={setMsg}
+                        />
+                      ) : selectedOffering.price === 0 ? (
+                        <button
+                          onClick={() => onApproveSubscription({ id: 'FREE_PLAN', status: 'APPROVED' }, 'FREE')}
+                          className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition"
+                          disabled={paymentStatus === 'pending'}
+                        >
+                          {t('activateFreePlan')}
+                        </button>
+                      ) : (
+                        <PayButtonsSubscription
+                          planId={paypalPlanId!}
+                          description={formatT(t, 'paypalSubscriptionDescription', {
+                            name: nameLabel(t, selectedOffering.name),
+                            frequency: t(subscriptionFrequency),
+                            ref: refSuffix,
+                          })}
+                          onSuccess={(sub) => onApproveSubscription(sub, paypalPlanId)}
+                          onMessage={setMsg}
+                        />
+                      )}
+                    </PayPalProviderClient>
+                  );
+                })()
               )}
             </div>
           </section>

@@ -75,7 +75,6 @@ function applyCors(res: functions.Response, origin?: string | null) {
   if (ALLOWLIST.has(o)) {
     res.setHeader('Access-Control-Allow-Origin', o);
   }
-  // If not allow-listed, omit ACAO (browser will block).
   res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -83,41 +82,31 @@ function applyCors(res: functions.Response, origin?: string | null) {
     'Access-Control-Allow-Headers',
     'Content-Type, Authorization, X-Requested-With'
   );
-  res.setHeader('Access-Control-Max-Age', '86400'); // cache preflight 24h
+  res.setHeader('Access-Control-Max-Age', '86400');
 }
 
 // ────────────────────────────────────────────────────────────
-/** 1) HTTP (Gen-1) — PayPal one-time payment with CORS */
+/** 1) Callable — PayPal one-time payment */
 // ────────────────────────────────────────────────────────────
-export const processPayPalPayment = functions
+export const processPayPalOneTimePayment = functions
   .region(REGION)
-  .https.onRequest(async (req, res) => {
-    applyCors(res, req.headers.origin as string | undefined);
-
-    // Preflight
-    if (req.method === 'OPTIONS') {
-      res.status(204).send('');
-      return;
+  .https.onCall(async (data, context) => {
+    const userId = context.auth?.uid;
+    if (!userId) {
+      throw new functions.https.HttpsError('unauthenticated', 'Sign in required.');
     }
-    if (req.method !== 'POST') {
-      res.status(405).send('Method Not Allowed');
-      return;
+
+    const { orderId, amount } = data as { orderId?: string; amount?: number };
+
+    if (!orderId || typeof amount !== 'number' || amount <= 0) {
+      throw new functions.https.HttpsError('invalid-argument', 'Invalid request: orderId and positive amount are required.');
     }
 
     try {
-      const { orderId, userId, amount } = req.body as {
-        orderId?: string; userId?: string; amount?: number
-      };
-      if (!orderId || !userId || typeof amount !== 'number' || amount <= 0) {
-        res.status(400).send('Invalid request: orderId, userId, and positive amount are required.');
-        return;
-      }
-
       const orderDetails = await verifyPayPalOrder(orderId);
       if (!orderDetails || orderDetails.status !== 'COMPLETED') {
         console.error('PayPal order not completed:', orderDetails);
-        res.status(400).send('PayPal order not completed or invalid.');
-        return;
+        throw new functions.https.HttpsError('failed-precondition', 'PayPal order not completed or invalid.');
       }
 
       const purchaseUnit = orderDetails.purchase_units?.[0];
@@ -143,15 +132,11 @@ export const processPayPalPayment = functions
         });
       });
 
-      res.status(200).send('Credits added successfully.');
-      return;
-    } catch (err) {
+      return { success: true, message: 'Credits added successfully.' };
+    } catch (err: any) {
       console.error('Error processing PayPal payment:', err);
-      const msg = err instanceof functions.https.HttpsError ? err.message : 'Internal Server Error';
-      res
-        .status(err instanceof functions.https.HttpsError && (err as any).code === 'not-found' ? 404 : 500)
-        .send(msg);
-      return;
+      if (err instanceof functions.https.HttpsError) throw err;
+      throw new functions.https.HttpsError('internal', 'Internal Server Error', extractMessage(err, 'Unknown error'));
     }
   });
 

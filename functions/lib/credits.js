@@ -34,7 +34,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.grantMonthlyFreeCredits = exports.processPayPalSubscription = exports.sendTipToWriter = exports.deductCreditsForReadHttp = exports.deductCreditsForRead = exports.processPayPalPayment = void 0;
+exports.grantMonthlyFreeCredits = exports.processPayPalSubscription = exports.sendTipToWriter = exports.deductCreditsForReadHttp = exports.deductCreditsForRead = exports.processPayPalOneTimePayment = void 0;
 // ────────────────────────────────────────────────────────────
 // Gen-1 Firebase Functions imports
 // ────────────────────────────────────────────────────────────
@@ -98,40 +98,31 @@ function applyCors(res, origin) {
     if (ALLOWLIST.has(o)) {
         res.setHeader('Access-Control-Allow-Origin', o);
     }
-    // If not allow-listed, omit ACAO (browser will block).
     res.setHeader('Vary', 'Origin');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-    res.setHeader('Access-Control-Max-Age', '86400'); // cache preflight 24h
+    res.setHeader('Access-Control-Max-Age', '86400');
 }
 // ────────────────────────────────────────────────────────────
-/** 1) HTTP (Gen-1) — PayPal one-time payment with CORS */
+/** 1) Callable — PayPal one-time payment */
 // ────────────────────────────────────────────────────────────
-exports.processPayPalPayment = functions
+exports.processPayPalOneTimePayment = functions
     .region(REGION)
-    .https.onRequest(async (req, res) => {
-    applyCors(res, req.headers.origin);
-    // Preflight
-    if (req.method === 'OPTIONS') {
-        res.status(204).send('');
-        return;
+    .https.onCall(async (data, context) => {
+    const userId = context.auth?.uid;
+    if (!userId) {
+        throw new functions.https.HttpsError('unauthenticated', 'Sign in required.');
     }
-    if (req.method !== 'POST') {
-        res.status(405).send('Method Not Allowed');
-        return;
+    const { orderId, amount } = data;
+    if (!orderId || typeof amount !== 'number' || amount <= 0) {
+        throw new functions.https.HttpsError('invalid-argument', 'Invalid request: orderId and positive amount are required.');
     }
     try {
-        const { orderId, userId, amount } = req.body;
-        if (!orderId || !userId || typeof amount !== 'number' || amount <= 0) {
-            res.status(400).send('Invalid request: orderId, userId, and positive amount are required.');
-            return;
-        }
         const orderDetails = await (0, paypal_1.verifyPayPalOrder)(orderId);
         if (!orderDetails || orderDetails.status !== 'COMPLETED') {
             console.error('PayPal order not completed:', orderDetails);
-            res.status(400).send('PayPal order not completed or invalid.');
-            return;
+            throw new functions.https.HttpsError('failed-precondition', 'PayPal order not completed or invalid.');
         }
         const purchaseUnit = orderDetails.purchase_units?.[0];
         const paypalAmount = purchaseUnit?.amount?.value ? parseFloat(purchaseUnit.amount.value) : 0;
@@ -153,16 +144,13 @@ exports.processPayPalPayment = functions
                 status: 'confirmed',
             });
         });
-        res.status(200).send('Credits added successfully.');
-        return;
+        return { success: true, message: 'Credits added successfully.' };
     }
     catch (err) {
         console.error('Error processing PayPal payment:', err);
-        const msg = err instanceof functions.https.HttpsError ? err.message : 'Internal Server Error';
-        res
-            .status(err instanceof functions.https.HttpsError && err.code === 'not-found' ? 404 : 500)
-            .send(msg);
-        return;
+        if (err instanceof functions.https.HttpsError)
+            throw err;
+        throw new functions.https.HttpsError('internal', 'Internal Server Error', extractMessage(err, 'Unknown error'));
     }
 });
 async function performDeductCreditsForRead(uid, { storyId, checkOnly }) {

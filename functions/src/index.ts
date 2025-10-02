@@ -24,7 +24,7 @@ import { downloadStoryPdf } from './downloadStoryPdf';
 
 // Credit System (NOTE: do NOT import `deductCreditsForCreation` here)
 import {
-  processPayPalPayment,
+  processPayPalOneTimePayment, // Renamed from processPayPalPayment
   deductCreditsForRead,
   sendTipToWriter,
   grantMonthlyFreeCredits,
@@ -107,7 +107,7 @@ export {
   generateWithImagen,
   downloadStoryPdf,
   // Credits (creation deduction is the callable above)
-  processPayPalPayment,
+  processPayPalOneTimePayment, // Renamed from processPayPalPayment
   deductCreditsForRead,
   sendTipToWriter,
   grantMonthlyFreeCredits,
