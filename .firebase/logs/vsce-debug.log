@@ -1509,3 +1509,5 @@ I1002 19:37:37.149178     618 dev.go:102] Listening on address (HTTP + gRPC): 12
  {"metadata":{"emulator":{"name":"dataconnect"},"message":"I1002 19:37:38.189321     618 engine.go:169] [/emulator/studio-v0 c75b] ExecuteGraphqlRead IntrospectionQuery: succeeded. \n"}}
 [debug] [2025-10-02T19:37:38.267Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
 [debug] [2025-10-02T19:37:38.268Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
+[debug] [2025-10-02T22:04:01.319Z] [Firebase Plugin] Received CLI notification.
+[debug] [2025-10-02T22:04:02.791Z] [Firebase Plugin] Received emulators shutdown notification.
