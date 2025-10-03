@@ -34,12 +34,12 @@ type PaidStatus = 'ACTIVE' | 'CANCELLED' | 'SUSPENDED' | 'PENDING' | 'UNKNOWN';
 
 interface SubscriptionStatus {
   kind: 'none' | 'free' | 'paid';
-  planKey?: string;                 // your internal key, e.g. "sub_mo_writer"
+  planKey?: string;
   planName?: SubscriptionTier['name'];
   frequency?: SubscriptionFrequency;
-  paypalSubscriptionId?: string;    // for paid plans
-  status?: PaidStatus;              // PayPal status for paid plans
-  renewsAt?: string;                // ISO date if you store it
+  paypalSubscriptionId?: string;
+  status?: PaidStatus;
+  renewsAt?: string;
 }
 
 /* ---------- interpolation helper ---------- */
@@ -91,19 +91,18 @@ const prettyUSD = (n: number) =>
 /* ──────────────────────────────────────────────────────────────────
    PayPal PLAN IDs — LIVE ONLY
    ──────────────────────────────────────────────────────────────────
-   Replace EACH string below with your real Live Plan IDs.
-   (Leave the structure the same.)
+   Replace each string below with your *Live* Plan IDs (P-...).
 */
 const PAYPAL_PLAN_IDS: PlanMap = {
   weekly: {
-    'og free': 'P-59784833RN494424PNDLBX5Y',
+    'og free': 'P-59784833RN494424PNDLBX5Y', // Free (not used with PayPal)
     'tester':  'P-5G020421VG335451VNDLCDAA',
     'reader':  'P-9P840869XW552833BNDLCEWI',
     'writer':  'P-6DV06426M8230392GNDLCFWQ',
     'creator': 'P-5GR1157592296905UNDLCHXI',
   },
   monthly: {
-    'og free': 'P-25490973SC123773DNDLB5OY',
+    'og free': 'P-25490973SC123773DNDLB5OY', // Free (not used with PayPal)
     'tester':  'P-6JF174267D2475636NDLCLZI',
     'reader':  'P-80H73039UX394851YNDLCMQQ',
     'writer':  'P-6R486885FS7556443NDLCO6Q',
@@ -168,17 +167,17 @@ function PayButtonsSubscription({
   if (!isResolved || typeof window === 'undefined' || !window.paypal) {
     return <div className="p-4 rounded-lg border text-sm">{t('paymentModuleUnavailable')}</div>;
   }
-  if (!planId || planId.startsWith('REPLACE_WITH_') || planId === 'FREE_NO_PAYPAL') {
+  if (!planId) {
     return (
       <div className="p-4 rounded-lg border text-sm">
-        <strong>{t('planIdNotSet')}</strong> {/* Make sure you replace the placeholder PLAN IDs in code. */}
+        <strong>{t('planIdNotSet')}</strong>
       </div>
     );
   }
 
   return (
     <PayPalButtons
-      fundingSource="paypal" // wallet-only for subs
+      fundingSource="paypal"
       style={{ layout: 'vertical' }}
       createSubscription={(_data, actions) => actions.subscription.create({ plan_id: planId })}
       onApprove={async (data) => {
@@ -295,7 +294,7 @@ const SubscriptionPage: FC = () => {
       clientId: clientId!,
       'client-id': clientId!,
       currency: 'USD',
-      components: 'buttons', // Only buttons for subscriptions
+      components: 'buttons',
     } as any;
 
     if (selectedOffering && selectedOffering.price > 0) {
@@ -309,7 +308,7 @@ const SubscriptionPage: FC = () => {
     setMessage(msg);
   }
 
-  // Fetch current subscription status
+  // Fetch current subscription status (CALLABLE)
   useEffect(() => {
     if (!user?.uid) return;
     (async () => {
@@ -317,9 +316,6 @@ const SubscriptionPage: FC = () => {
         const getStatus = httpsCallable(functions, 'getSubscriptionStatus');
         const res = await getStatus({ userId: user.uid });
         const data = (res.data || {}) as any;
-
-        // Expect your function to return something like:
-        // { kind: 'none' | 'free' | 'paid', planKey, planName, frequency, paypalSubscriptionId, status, renewsAt }
         setSubStatus({
           kind: data.kind ?? 'none',
           planKey: data.planKey,
@@ -335,14 +331,14 @@ const SubscriptionPage: FC = () => {
     })();
   }, [user?.uid]);
 
-  /** Activate OG Free (in-app only) */
+  /** Activate OG Free (in-app only, CALLABLE) */
   const activateFree = async () => {
     if (!user?.uid) {
       setMsg('error', t('mustBeLoggedInAndHaveSelection'));
       return;
     }
     try {
-      setMsg('pending', t('activatingSubscription')); // reuse string
+      setMsg('pending', t('activatingSubscription'));
       const activate = httpsCallable(functions, 'activateFreePlan');
       await activate({
         userId: user.uid,
@@ -365,7 +361,7 @@ const SubscriptionPage: FC = () => {
     }
   };
 
-  /** Subscription approval (paid) */
+  /** Approve paid subscription (CALLABLE to your verifier) */
   async function onApproveSubscription(sub: any, paypalPlanId?: string) {
     if (!user?.uid || !selectedOffering) {
       setMsg('error', t('mustBeLoggedInAndHaveSelection'));
@@ -373,17 +369,16 @@ const SubscriptionPage: FC = () => {
     }
     try {
       const processSubscription = httpsCallable(functions, 'processPayPalSubscription');
+      // NOTE: match your function signature { subscriptionID, planId, frequency, price, credits, referredBy }
       await processSubscription({
-        userId: user.uid,
-        planKey: selectedOffering.id,         // your internal key
-        paypalPlanId,                         // real PayPal plan id (for verification)
-        paypalSubscriptionId: sub?.id || null,
+        subscriptionID: sub?.id || undefined,
+        planId: paypalPlanId,
         frequency: subscriptionFrequency,
         price: (selectedOffering as any).price,
         credits: selectedOffering.credits,
         referredBy: referredBy || undefined,
-        promoCode: promoCodeInput || undefined,
       });
+
       setMsg(
         'success',
         formatT(t, 'subscriptionActivated', {
@@ -405,12 +400,12 @@ const SubscriptionPage: FC = () => {
     }
   }
 
-  /** Cancel active paid subscription */
+  /** Cancel active paid subscription (CALLABLE) */
   const cancelActiveSubscription = async () => {
     if (!user?.uid || !subStatus.paypalSubscriptionId) return;
     try {
       setIsCancelling(true);
-      setMsg('pending', t('subscriptionCancelled')); // temp text while cancelling
+      setMsg('pending', t('subscriptionCancelled'));
       const cancelFn = httpsCallable(functions, 'cancelPayPalSubscription');
       await cancelFn({
         userId: user.uid,
@@ -614,7 +609,6 @@ const SubscriptionPage: FC = () => {
               })}
             </p>
 
-            {/* When there is an active paid sub, block checkout */}
             {hasActivePaid && (
               <p className="mt-3 text-sm text-yellow-700 dark:text-yellow-300">
                 {`You already have an active paid subscription. Cancel it above to change plans.`}
@@ -687,13 +681,11 @@ const SubscriptionPage: FC = () => {
                 </div>
               ) : hasActivePaid ? null : (
                 (() => {
-                  // Live PayPal plan id for paid plans
                   const isFree = selectedOffering.price === 0 || selectedOffering.name === 'OG Free';
                   const paypalPlanId = !isFree
                     ? PAYPAL_PLAN_IDS[subscriptionFrequency][tierKey(selectedOffering.name)]
                     : undefined;
 
-                  // OG Free → in-app activation button (no PayPal provider)
                   if (isFree) {
                     return (
                       <button
@@ -706,7 +698,6 @@ const SubscriptionPage: FC = () => {
                     );
                   }
 
-                  // Paid → PayPal Buttons wrapped in provider
                   return (
                     <PayPalProviderClient key={selectedOffering?.id ?? 'none'} enabled options={options}>
                       <PayButtonsSubscription
@@ -714,7 +705,7 @@ const SubscriptionPage: FC = () => {
                         description={formatT(t, 'paypalSubscriptionDescription', {
                           name: nameLabel(t, selectedOffering.name),
                           frequency: t(subscriptionFrequency),
-                          ref: referredBy ? ` — ${t('referredBy')} ${referredBy}` : '',
+                          ref: refSuffix,
                         })}
                         onSuccess={(sub) => onApproveSubscription(sub, paypalPlanId)}
                         onMessage={setMsg}

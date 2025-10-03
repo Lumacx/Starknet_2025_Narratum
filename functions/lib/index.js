@@ -121,6 +121,7 @@ Object.defineProperty(exports, "propagateUserProfileToStories", { enumerable: tr
 // Keep these, but DO NOT re-export everything from './credits'
 __exportStar(require("./paypalWebhook"), exports);
 __exportStar(require("./hostedPayments"), exports);
+__exportStar(require("./subscriptions"), exports);
 // NOTE:
 // - Ensure `./credits.ts` does NOT export a symbol named `deductCreditsForCreation`.
 //   If you keep a legacy HTTP version for testing, rename it (e.g. `deductCreditsForCreationHttp`).

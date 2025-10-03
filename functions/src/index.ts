@@ -123,7 +123,7 @@ export { propagateUserProfileToStories } from './propagateUserProfile';
 // Keep these, but DO NOT re-export everything from './credits'
 export * from './paypalWebhook';
 export * from './hostedPayments';
-
+export * from './subscriptions';
 // NOTE:
 // - Ensure `./credits.ts` does NOT export a symbol named `deductCreditsForCreation`.
 //   If you keep a legacy HTTP version for testing, rename it (e.g. `deductCreditsForCreationHttp`).

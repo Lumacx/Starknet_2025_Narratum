@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import { db, adminAuth, FieldValue } from './firebaseAdmin';
+import { db, FieldValue } from './firebaseAdmin';
 import {
   getPayPalSubscriptionDetails,
   cancelPayPalSubscriptionApi,
@@ -9,25 +9,31 @@ import {
 
 if (admin.apps.length === 0) admin.initializeApp();
 
+const REGION = 'us-central1';
+
 type Frequency = 'weekly' | 'monthly';
 
+/* ────────────────────────────────────────────────────────────
+   1) Activate Free Plan (CALLABLE)
+   ──────────────────────────────────────────────────────────── */
 type ActivateFreeReq = {
-  userId: string;
-  planKey: string;             // e.g. "sub_mo_og_free"
+  userId: string;                // must match caller
+  planKey: string;               // e.g. "sub_mo_og_free"
   frequency: Frequency;
-  credits: number;             // how many free credits to grant immediately
+  credits: number;               // credits to grant immediately
   referredBy?: string;
-  promoCode?: string;
+  promoCode?: string;            // reserved; not used here
 };
 type ActivateFreeRes = { success: boolean; message?: string };
 
 export const activateFreePlan = functions
-  .region('us-central1')
+  .region(REGION)
   .https.onCall(async (data: ActivateFreeReq, context): Promise<ActivateFreeRes> => {
     const callerUid = context.auth?.uid;
     if (!callerUid) throw new functions.https.HttpsError('unauthenticated', 'Sign in first.');
 
     const { userId, planKey, frequency, credits, referredBy } = (data || {}) as ActivateFreeReq;
+
     if (!userId || callerUid !== userId) {
       throw new functions.https.HttpsError('permission-denied', 'Caller must match userId.');
     }
@@ -47,6 +53,7 @@ export const activateFreePlan = functions
         userRef,
         {
           credits: currentCredits + credits,
+
           // mark “free plan”
           subscriptionStatus: 'free',
           planKey,
@@ -55,7 +62,8 @@ export const activateFreePlan = functions
           subscriptionActivatedAt: FieldValue.serverTimestamp(),
           lastSubscriptionUpdate: FieldValue.serverTimestamp(),
           referredBy: referredBy || snap.data()?.referredBy || null,
-          // kill any lingering PayPal reference
+
+          // clear any lingering PayPal reference
           paypalSubscriptionId: admin.firestore.FieldValue.delete(),
           paypalSubscriptionDetails: admin.firestore.FieldValue.delete(),
         },
@@ -75,6 +83,9 @@ export const activateFreePlan = functions
     return { success: true, message: 'Free plan activated.' };
   });
 
+/* ────────────────────────────────────────────────────────────
+   2) Get Subscription Status (CALLABLE)
+   ──────────────────────────────────────────────────────────── */
 type GetStatusReq = { userId: string };
 type GetStatusRes = {
   kind: 'none' | 'free' | 'paid';
@@ -82,15 +93,16 @@ type GetStatusRes = {
   planName?: string;
   frequency?: Frequency;
   paypalSubscriptionId?: string;
-  status?: 'ACTIVE' | 'CANCELLED' | 'SUSPENDED' | 'PENDING' | 'UNKNOWN';
+  status?: 'ACTIVE' | 'CANCELLED' | 'SUSPENDED' | 'APPROVAL_PENDING' | 'APPROVED' | 'EXPIRED' | 'UNKNOWN';
   renewsAt?: string;
 };
 
 export const getSubscriptionStatus = functions
-  .region('us-central1')
+  .region(REGION)
   .https.onCall(async (data: GetStatusReq, context): Promise<GetStatusRes> => {
     const callerUid = context.auth?.uid;
     if (!callerUid) throw new functions.https.HttpsError('unauthenticated', 'Sign in first.');
+
     const { userId } = (data || {}) as GetStatusReq;
     if (!userId || userId !== callerUid) {
       throw new functions.https.HttpsError('permission-denied', 'Caller must match userId.');
@@ -103,13 +115,10 @@ export const getSubscriptionStatus = functions
     const u = snap.data() || {};
     const planKey = u.planKey as string | undefined;
     const planName = u.planName as string | undefined;
-    const frequency =
-      (u.billingCycle as Frequency | undefined) ||
-      (u.billing_cycle as Frequency | undefined);
-
-    // If PayPal sub id exists, verify current status with PayPal
+    const frequency = (u.billingCycle as Frequency | undefined) || (u.billing_cycle as Frequency | undefined);
     const paypalSubscriptionId = u.paypalSubscriptionId as string | undefined;
 
+    // If there is a PayPal sub id, verify with PayPal
     if (paypalSubscriptionId) {
       try {
         const details = await getPayPalSubscriptionDetails(paypalSubscriptionId);
@@ -120,7 +129,7 @@ export const getSubscriptionStatus = functions
           undefined;
 
         return {
-          kind: status === 'ACTIVE' ? 'paid' : 'paid',
+          kind: 'paid',
           planKey,
           planName,
           frequency,
@@ -129,7 +138,7 @@ export const getSubscriptionStatus = functions
           renewsAt,
         };
       } catch (e) {
-        functions.logger.warn('getSubscriptionStatus: PayPal lookup failed; falling back to Firestore only.', e);
+        functions.logger.warn('getSubscriptionStatus: PayPal lookup failed; falling back to Firestore.', e);
         // fall through to Firestore-only logic
       }
     }
@@ -146,16 +155,20 @@ export const getSubscriptionStatus = functions
     return { kind: 'none' };
   });
 
+/* ────────────────────────────────────────────────────────────
+   3) Cancel PayPal Subscription (CALLABLE)
+   ──────────────────────────────────────────────────────────── */
 type CancelReq = { userId: string; paypalSubscriptionId: string; reason?: string };
 type CancelRes = { success: boolean };
 
 export const cancelPayPalSubscription = functions
-  .region('us-central1')
+  .region(REGION)
   .https.onCall(async (data: CancelReq, context): Promise<CancelRes> => {
     const callerUid = context.auth?.uid;
     if (!callerUid) throw new functions.https.HttpsError('unauthenticated', 'Sign in first.');
 
     const { userId, paypalSubscriptionId, reason } = (data || {}) as CancelReq;
+
     if (!userId || callerUid !== userId) {
       throw new functions.https.HttpsError('permission-denied', 'Caller must match userId.');
     }
@@ -163,7 +176,7 @@ export const cancelPayPalSubscription = functions
       throw new functions.https.HttpsError('invalid-argument', 'paypalSubscriptionId is required.');
     }
 
-    // Verify user owns this subscription
+    // Verify the user owns this subscription
     const userRef = db.collection('users').doc(userId);
     const snap = await userRef.get();
     if (!snap.exists) throw new functions.https.HttpsError('not-found', 'User not found.');
@@ -175,7 +188,7 @@ export const cancelPayPalSubscription = functions
     // Call PayPal
     await cancelPayPalSubscriptionApi(paypalSubscriptionId, reason || 'User requested cancellation');
 
-    // Update Firestore
+    // Update Firestore (keep paypalSubscriptionId for history; just mark status)
     await userRef.set(
       {
         subscriptionStatus: 'cancelled',

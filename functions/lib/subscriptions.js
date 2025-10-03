@@ -41,8 +41,9 @@ const firebaseAdmin_1 = require("./firebaseAdmin");
 const paypal_1 = require("./utils/paypal");
 if (admin.apps.length === 0)
     admin.initializeApp();
+const REGION = 'us-central1';
 exports.activateFreePlan = functions
-    .region('us-central1')
+    .region(REGION)
     .https.onCall(async (data, context) => {
     const callerUid = context.auth?.uid;
     if (!callerUid)
@@ -70,7 +71,7 @@ exports.activateFreePlan = functions
             subscriptionActivatedAt: firebaseAdmin_1.FieldValue.serverTimestamp(),
             lastSubscriptionUpdate: firebaseAdmin_1.FieldValue.serverTimestamp(),
             referredBy: referredBy || snap.data()?.referredBy || null,
-            // kill any lingering PayPal reference
+            // clear any lingering PayPal reference
             paypalSubscriptionId: admin.firestore.FieldValue.delete(),
             paypalSubscriptionDetails: admin.firestore.FieldValue.delete(),
         }, { merge: true });
@@ -86,7 +87,7 @@ exports.activateFreePlan = functions
     return { success: true, message: 'Free plan activated.' };
 });
 exports.getSubscriptionStatus = functions
-    .region('us-central1')
+    .region(REGION)
     .https.onCall(async (data, context) => {
     const callerUid = context.auth?.uid;
     if (!callerUid)
@@ -102,10 +103,9 @@ exports.getSubscriptionStatus = functions
     const u = snap.data() || {};
     const planKey = u.planKey;
     const planName = u.planName;
-    const frequency = u.billingCycle ||
-        u.billing_cycle;
-    // If PayPal sub id exists, verify current status with PayPal
+    const frequency = u.billingCycle || u.billing_cycle;
     const paypalSubscriptionId = u.paypalSubscriptionId;
+    // If there is a PayPal sub id, verify with PayPal
     if (paypalSubscriptionId) {
         try {
             const details = await (0, paypal_1.getPayPalSubscriptionDetails)(paypalSubscriptionId);
@@ -114,7 +114,7 @@ exports.getSubscriptionStatus = functions
                 details?.billing_info?.next_billing_date ||
                 undefined;
             return {
-                kind: status === 'ACTIVE' ? 'paid' : 'paid',
+                kind: 'paid',
                 planKey,
                 planName,
                 frequency,
@@ -124,7 +124,7 @@ exports.getSubscriptionStatus = functions
             };
         }
         catch (e) {
-            functions.logger.warn('getSubscriptionStatus: PayPal lookup failed; falling back to Firestore only.', e);
+            functions.logger.warn('getSubscriptionStatus: PayPal lookup failed; falling back to Firestore.', e);
             // fall through to Firestore-only logic
         }
     }
@@ -140,7 +140,7 @@ exports.getSubscriptionStatus = functions
     return { kind: 'none' };
 });
 exports.cancelPayPalSubscription = functions
-    .region('us-central1')
+    .region(REGION)
     .https.onCall(async (data, context) => {
     const callerUid = context.auth?.uid;
     if (!callerUid)
@@ -152,7 +152,7 @@ exports.cancelPayPalSubscription = functions
     if (!paypalSubscriptionId) {
         throw new functions.https.HttpsError('invalid-argument', 'paypalSubscriptionId is required.');
     }
-    // Verify user owns this subscription
+    // Verify the user owns this subscription
     const userRef = firebaseAdmin_1.db.collection('users').doc(userId);
     const snap = await userRef.get();
     if (!snap.exists)
@@ -163,7 +163,7 @@ exports.cancelPayPalSubscription = functions
     }
     // Call PayPal
     await (0, paypal_1.cancelPayPalSubscriptionApi)(paypalSubscriptionId, reason || 'User requested cancellation');
-    // Update Firestore
+    // Update Firestore (keep paypalSubscriptionId for history; just mark status)
     await userRef.set({
         subscriptionStatus: 'cancelled',
         subscriptionCancelledAt: admin.firestore.FieldValue.serverTimestamp(),

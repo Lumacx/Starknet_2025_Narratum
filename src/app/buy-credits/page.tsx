@@ -260,7 +260,7 @@ const BuyCreditsPage: FC = () => {
       clientId: clientId!,
       'client-id': clientId!,
       currency: 'USD',
-      components: 'buttons,hosted-buttons',
+      components: 'buttons',
       intent: 'capture',
       vault: false,
     } as any;
@@ -431,24 +431,17 @@ const BuyCreditsPage: FC = () => {
                 </div>
               ) : (
                 <PayPalProviderClient key={selectedOffering?.id ?? 'none'} enabled options={options}>
-                  {selectedOffering.paypalHostedButtonId ? (
-                    <HostedPayPalButtonRenderer
-                      hostedButtonId={selectedOffering.paypalHostedButtonId}
-                      onSuccess={onApproveOneTime}
-                      onMessage={setMsg}
-                    />
-                  ) : (
-                    <PayButtonsOneTime
-                      price={selectedOffering.price}
-                      description={formatT(t, 'paypalOneTimeDescription', {
-                        name: nameLabel(t, selectedOffering.name),
-                        ref: refSuffix,
-                      })}
-                      onSuccess={onApproveOneTime}
-                      onMessage={setMsg}
-                    />
-                  )}
+                  <PayButtonsOneTime
+                    price={selectedOffering.price}
+                    description={formatT(t, 'paypalOneTimeDescription', {
+                      name: nameLabel(t, selectedOffering.name),
+                      ref: refSuffix,
+                    })}
+                    onSuccess={onApproveOneTime}
+                    onMessage={setMsg}
+                  />
                 </PayPalProviderClient>
+
               )}
             </div>
           </section>
