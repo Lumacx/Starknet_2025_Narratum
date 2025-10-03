@@ -461,12 +461,19 @@ exports.sendTipToWriter = functions
 });
 exports.processPayPalSubscription = functions
     .region(REGION)
-    .https.onCall(async (data, context) => {
+    .https.onCall(async (raw, context) => {
     const userId = context.auth?.uid;
     if (!userId)
         throw new functions.https.HttpsError('unauthenticated', 'Sign in first.');
-    const { subscriptionID, planId, frequency, price, credits, referredBy } = (data || {});
-    if (!planId || !frequency || typeof price !== 'number' || price <= 0 || typeof credits !== 'number' || credits <= 0) {
+    const data = (raw || {});
+    // Support both payload shapes
+    const subscriptionID = data.subscriptionID || data.paypalSubscriptionId;
+    const planId = data.planId || data.paypalPlanId || data.planName;
+    const frequency = data.frequency;
+    const price = data.price;
+    const credits = data.credits;
+    const referredBy = data.referredBy;
+    if (!subscriptionID || !planId || !frequency || typeof price !== 'number' || price <= 0 || typeof credits !== 'number' || credits <= 0) {
         throw new functions.https.HttpsError('invalid-argument', 'Missing or invalid subscription details.');
     }
     try {
@@ -477,11 +484,20 @@ exports.processPayPalSubscription = functions
         const resp = await fetch(verifySubscriptionUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${firebaseAuthToken}` },
-            body: JSON.stringify({ subscriptionID, planName: planId, billingCycle: frequency, price, credits, referredBy }),
+            body: JSON.stringify({
+                subscriptionID,
+                planName: planId,
+                billingCycle: frequency,
+                price,
+                credits,
+                referredBy,
+            }),
         });
         const body = await resp.json();
         if (!resp.ok) {
-            const msg = extractMessage(body, `Upstream error ${resp.status}`);
+            const msg = typeof body === 'object' && body && 'message' in body
+                ? body.message
+                : `Upstream error ${resp.status}`;
             throw new functions.https.HttpsError('unknown', msg);
         }
         return body;
@@ -490,7 +506,7 @@ exports.processPayPalSubscription = functions
         if (error instanceof functions.https.HttpsError)
             throw error;
         console.error('processPayPalSubscription unexpected error:', error);
-        throw new functions.https.HttpsError('internal', 'Failed to process PayPal subscription.', extractMessage(error, 'Unknown error'));
+        throw new functions.https.HttpsError('internal', 'Failed to process PayPal subscription.', error?.message || 'Unknown error');
     }
 });
 // ────────────────────────────────────────────────────────────

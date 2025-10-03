@@ -1,5 +1,4 @@
 import * as functions from 'firebase-functions';
-import * as admin from 'firebase-admin';
 import { Buffer } from 'buffer';
 
 // Interface for PayPal Access Token Response
@@ -92,16 +91,14 @@ export interface PayPalSubscriptionDetailsResponse {
   status_update_time: string;
 }
 
-// Utility to resolve PayPal API base URL (sandbox vs prod)
+// ---- Base URL (LIVE ONLY) ----
 export function resolvePayPalBase(): string {
-  const forced = process.env.PAYPAL_API_BASE?.trim();
-  if (forced) return forced;
-  const env = (process.env.PAYPAL_ENV || process.env.NODE_ENV || 'development').toLowerCase();
-  return env === 'production'
-    ? 'https://api-m.paypal.com'
-    : 'https://api-m.sandbox.paypal.com';
+  // Keep an escape hatch for explicit override; delete this line if you want to hard-lock live.
+  //if (process.env.PAYPAL_API_BASE?.trim()) return process.env.PAYPAL_API_BASE.trim()!;
+  return 'https://api-m.paypal.com';
 }
 
+// ---- Access token (cached) ----
 let cachedAccessToken: { token: string; expiry: number } | null = null;
 
 export async function getPayPalAccessToken(): Promise<string> {
@@ -151,6 +148,7 @@ export async function getPayPalAccessToken(): Promise<string> {
   return access_token;
 }
 
+// ---- Webhook verification ----
 export async function verifyPayPalWebhookSignature(
   headers: { [key: string]: string | undefined },
   webhookEvent: any
@@ -237,4 +235,64 @@ export async function getPayPalOrderDetails(orderId: string): Promise<PayPalOrde
   }
 
   return (await orderRes.json()) as PayPalOrderCaptureResponse;
+}
+
+/** Fetch PayPal subscription details */
+export async function getPayPalSubscriptionDetails(
+  subscriptionId: string
+): Promise<PayPalSubscriptionDetailsResponse | null> {
+  if (!subscriptionId) return null;
+  const accessToken = await getPayPalAccessToken();
+  const base = resolvePayPalBase();
+
+  const res = await fetch(`${base}/v1/billing/subscriptions/${subscriptionId}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (res.status === 404) {
+    functions.logger.warn(`PayPal subscription ${subscriptionId} not found.`);
+    return null;
+  }
+  if (!res.ok) {
+    const err = await res.text().catch(() => '');
+    throw new functions.https.HttpsError(
+      'internal',
+      `Failed to fetch PayPal subscription: ${res.status} - ${err}`
+    );
+  }
+  return (await res.json()) as PayPalSubscriptionDetailsResponse;
+}
+
+/** Cancel a PayPal subscription (POST /v1/billing/subscriptions/{id}/cancel) */
+export async function cancelPayPalSubscriptionApi(
+  subscriptionId: string,
+  reason = 'User requested cancellation'
+): Promise<void> {
+  if (!subscriptionId) {
+    throw new functions.https.HttpsError('invalid-argument', 'subscriptionId is required.');
+  }
+  const accessToken = await getPayPalAccessToken();
+  const base = resolvePayPalBase();
+
+  const res = await fetch(`${base}/v1/billing/subscriptions/${subscriptionId}/cancel`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ reason }),
+  });
+
+  if (res.status === 204) return; // success, no body
+  if (!res.ok) {
+    const err = await res.text().catch(() => '');
+    throw new functions.https.HttpsError(
+      'internal',
+      `PayPal cancel API failed: ${res.status} - ${err}`
+    );
+  }
 }
