@@ -65,6 +65,3 @@ env:
   - variable: NEXT_PUBLIC_GOOGLE_CLIENT_ID
     value: "286262915752-a2fqle4aki4tb9sj2npdumhrdqj5g9mm.apps.googleusercontent.com"
     availability: [ BUILD, RUNTIME ]
-
-  - variable: PAYPAL_CLIENT__ID
-    secret: PAYPAL_CLIENT__ID

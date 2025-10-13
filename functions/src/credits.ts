@@ -5,7 +5,10 @@
 // ────────────────────────────────────────────────────────────
 import * as functions from 'firebase-functions';
 import { db, adminAuth, FieldValue, Timestamp } from './firebaseAdmin';
-import { getPayPalOrderDetails } from './utils/paypal'; // Updated import
+import { getPayPalOrderDetails } from './utils/paypal'; // still used by other flows if you keep it
+
+// ✅ Re-export the single source of truth for the callable:
+export { processPayPalOneTimePayment } from './processPayPalOneTimePayment';
 
 // ────────────────────────────────────────────────────────────
 // Constants
@@ -69,7 +72,7 @@ function resolveStoryPricing(story: any): { cost: number; charging: ChargingMode
   return { cost, charging };
 }
 
-// CORS for HTTP endpoints (manual; no middleware to avoid TS typing issues)
+// CORS
 function applyCors(res: functions.Response, origin?: string | null) {
   const o = origin ?? '';
   if (ALLOWLIST.has(o)) {
@@ -78,67 +81,14 @@ function applyCors(res: functions.Response, origin?: string | null) {
   res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'Content-Type, Authorization, X-Requested-With'
-  );
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
   res.setHeader('Access-Control-Max-Age', '86400');
 }
 
 // ────────────────────────────────────────────────────────────
-/** 1) Callable — PayPal one-time payment */
+// (1) REMOVED HERE — processPayPalOneTimePayment lives in its own file
+//     and is re-exported above to avoid duplicate symbols.
 // ────────────────────────────────────────────────────────────
-export const processPayPalOneTimePayment = functions
-  .region(REGION)
-  .https.onCall(async (data, context) => {
-    const userId = context.auth?.uid;
-    if (!userId) {
-      throw new functions.https.HttpsError('unauthenticated', 'Sign in required.');
-    }
-
-    const { orderId, amount } = data as { orderId?: string; amount?: number };
-
-    if (!orderId || typeof amount !== 'number' || amount <= 0) {
-      throw new functions.https.HttpsError('invalid-argument', 'Invalid request: orderId and positive amount are required.');
-    }
-
-    try {
-      const orderDetails = await getPayPalOrderDetails(orderId); // Updated function call
-      if (!orderDetails || orderDetails.status !== 'COMPLETED') {
-        console.error('PayPal order not completed:', orderDetails);
-        throw new functions.https.HttpsError('failed-precondition', 'PayPal order not completed or invalid.');
-      }
-
-      const purchaseUnit = orderDetails.purchase_units?.[0];
-      const paypalAmount = purchaseUnit?.amount?.value ? parseFloat(purchaseUnit.amount.value) : 0;
-      const userRef = db.collection('users').doc(userId);
-
-      await db.runTransaction(async (tx) => {
-        const userDoc = await tx.get(userRef);
-        if (!userDoc.exists) throw new functions.https.HttpsError('not-found', 'User not found.');
-
-        const currentCredits = Number(userDoc.data()?.credits || 0) || 0;
-        tx.update(userRef, { credits: currentCredits + amount });
-
-        const txRef = userRef.collection('transactions').doc();
-        tx.set(txRef, {
-          type: 'purchase',
-          creditsDelta: amount,
-          amountUsd: paypalAmount,
-          timestamp: FieldValue.serverTimestamp(),
-          description: `Purchased ${amount} credits via PayPal (Order ID: ${orderId})`,
-          paypalOrderId: orderId,
-          status: 'confirmed',
-        });
-      });
-
-      return { success: true, message: 'Credits added successfully.' };
-    } catch (err: any) {
-      console.error('Error processing PayPal payment:', err);
-      if (err instanceof functions.https.HttpsError) throw err;
-      throw new functions.https.HttpsError('internal', 'Internal Server Error', extractMessage(err, 'Unknown error'));
-    }
-  });
 
 // ────────────────────────────────────────────────────────────
 /** 2) Shared core for “deduct credits for read” */
@@ -183,7 +133,6 @@ async function performDeductCreditsForRead(
     const needsPayment = charging === 'pay-per-open' ? true : !alreadyOwned;
     const currentCredits = Number(readerDoc.data()?.credits || 0) || 0;
 
-    // Preflight / checkOnly
     if (checkOnly) {
       return {
         success: true,
@@ -196,7 +145,6 @@ async function performDeductCreditsForRead(
       };
     }
 
-    // No charge if already owned (one-time)
     if (!needsPayment) {
       tx.set(readerRef.collection('reads').doc(), {
         type: 'access',
@@ -216,7 +164,6 @@ async function performDeductCreditsForRead(
       };
     }
 
-    // Funds check
     if (currentCredits < cost) {
       throw new functions.https.HttpsError('failed-precondition', 'Insufficient credits.', {
         remainingCredits: currentCredits,
@@ -240,7 +187,7 @@ async function performDeductCreditsForRead(
       chargingModel: charging,
     });
 
-    // Mark purchase for one-time model
+    // Mark purchase for one-time
     if (charging === 'one-time') {
       tx.set(purchaseRef, {
         storyId,
@@ -326,7 +273,7 @@ async function performDeductCreditsForRead(
       }
     }
 
-    // Remainder due to floors
+    // Remainder (floor rounding)
     const remainder = cost - distributed;
     if (remainder > 0) {
       const adminCurrent = (Number(adminDoc.data()?.credits || 0) || 0);
@@ -374,9 +321,7 @@ export const deductCreditsForRead = functions
   });
 
 // ────────────────────────────────────────────────────────────
-/** 2B) HTTP mirror — Deduct credits for reading with CORS
- *     Requires: Authorization: Bearer <Firebase ID token>
- */
+/** 2B) HTTP mirror — Deduct credits for reading with CORS */
 // ────────────────────────────────────────────────────────────
 export const deductCreditsForReadHttp = functions
   .region(REGION)
@@ -425,13 +370,6 @@ export const deductCreditsForReadHttp = functions
       return;
     }
   });
-
-// ────────────────────────────────────────────────────────────
-/** 3) (REMOVED FROM THIS FILE)
- *  The callable `deductCreditsForCreation` now lives in src/index.ts.
- *  Do not re-export it here to avoid duplicate symbol conflicts and CORS confusion.
- */
-// ────────────────────────────────────────────────────────────
 
 // ────────────────────────────────────────────────────────────
 /** 4) Callable — Send a tip */
@@ -567,7 +505,7 @@ export const processPayPalSubscription = functions
 /** 6) Scheduled — Monthly free credits (2:00 AM CR, 1st) */
 // ────────────────────────────────────────────────────────────
 export const grantMonthlyFreeCredits = functions
-  .region(REGION)
+  .region(REGION) 
   .pubsub.schedule('0 2 1 * *') // 2:00 AM on the 1st of each month
   .timeZone('America/Costa_Rica')
   .onRun(async () => {

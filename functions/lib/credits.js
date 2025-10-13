@@ -40,7 +40,9 @@ exports.grantMonthlyFreeCredits = exports.processPayPalSubscription = exports.se
 // ────────────────────────────────────────────────────────────
 const functions = __importStar(require("firebase-functions"));
 const firebaseAdmin_1 = require("./firebaseAdmin");
-const paypal_1 = require("./utils/paypal"); // Updated import
+// ✅ Re-export the single source of truth for the callable:
+var processPayPalOneTimePayment_1 = require("./processPayPalOneTimePayment");
+Object.defineProperty(exports, "processPayPalOneTimePayment", { enumerable: true, get: function () { return processPayPalOneTimePayment_1.processPayPalOneTimePayment; } });
 // ────────────────────────────────────────────────────────────
 // Constants
 // ────────────────────────────────────────────────────────────
@@ -92,7 +94,7 @@ function resolveStoryPricing(story) {
     const charging = (bucket === 'convai' || isPremiumFlag) ? 'pay-per-open' : 'one-time';
     return { cost, charging };
 }
-// CORS for HTTP endpoints (manual; no middleware to avoid TS typing issues)
+// CORS
 function applyCors(res, origin) {
     const o = origin ?? '';
     if (ALLOWLIST.has(o)) {
@@ -104,55 +106,6 @@ function applyCors(res, origin) {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
     res.setHeader('Access-Control-Max-Age', '86400');
 }
-// ────────────────────────────────────────────────────────────
-/** 1) Callable — PayPal one-time payment */
-// ────────────────────────────────────────────────────────────
-exports.processPayPalOneTimePayment = functions
-    .region(REGION)
-    .https.onCall(async (data, context) => {
-    const userId = context.auth?.uid;
-    if (!userId) {
-        throw new functions.https.HttpsError('unauthenticated', 'Sign in required.');
-    }
-    const { orderId, amount } = data;
-    if (!orderId || typeof amount !== 'number' || amount <= 0) {
-        throw new functions.https.HttpsError('invalid-argument', 'Invalid request: orderId and positive amount are required.');
-    }
-    try {
-        const orderDetails = await (0, paypal_1.getPayPalOrderDetails)(orderId); // Updated function call
-        if (!orderDetails || orderDetails.status !== 'COMPLETED') {
-            console.error('PayPal order not completed:', orderDetails);
-            throw new functions.https.HttpsError('failed-precondition', 'PayPal order not completed or invalid.');
-        }
-        const purchaseUnit = orderDetails.purchase_units?.[0];
-        const paypalAmount = purchaseUnit?.amount?.value ? parseFloat(purchaseUnit.amount.value) : 0;
-        const userRef = firebaseAdmin_1.db.collection('users').doc(userId);
-        await firebaseAdmin_1.db.runTransaction(async (tx) => {
-            const userDoc = await tx.get(userRef);
-            if (!userDoc.exists)
-                throw new functions.https.HttpsError('not-found', 'User not found.');
-            const currentCredits = Number(userDoc.data()?.credits || 0) || 0;
-            tx.update(userRef, { credits: currentCredits + amount });
-            const txRef = userRef.collection('transactions').doc();
-            tx.set(txRef, {
-                type: 'purchase',
-                creditsDelta: amount,
-                amountUsd: paypalAmount,
-                timestamp: firebaseAdmin_1.FieldValue.serverTimestamp(),
-                description: `Purchased ${amount} credits via PayPal (Order ID: ${orderId})`,
-                paypalOrderId: orderId,
-                status: 'confirmed',
-            });
-        });
-        return { success: true, message: 'Credits added successfully.' };
-    }
-    catch (err) {
-        console.error('Error processing PayPal payment:', err);
-        if (err instanceof functions.https.HttpsError)
-            throw err;
-        throw new functions.https.HttpsError('internal', 'Internal Server Error', extractMessage(err, 'Unknown error'));
-    }
-});
 async function performDeductCreditsForRead(uid, { storyId, checkOnly }) {
     const storyRef = firebaseAdmin_1.db.collection('stories').doc(storyId);
     const readerRef = firebaseAdmin_1.db.collection('users').doc(uid);
@@ -176,7 +129,6 @@ async function performDeductCreditsForRead(uid, { storyId, checkOnly }) {
         const alreadyOwned = charging === 'one-time' && priorPurchaseDoc.exists;
         const needsPayment = charging === 'pay-per-open' ? true : !alreadyOwned;
         const currentCredits = Number(readerDoc.data()?.credits || 0) || 0;
-        // Preflight / checkOnly
         if (checkOnly) {
             return {
                 success: true,
@@ -188,7 +140,6 @@ async function performDeductCreditsForRead(uid, { storyId, checkOnly }) {
                 remainingCredits: currentCredits,
             };
         }
-        // No charge if already owned (one-time)
         if (!needsPayment) {
             tx.set(readerRef.collection('reads').doc(), {
                 type: 'access',
@@ -207,7 +158,6 @@ async function performDeductCreditsForRead(uid, { storyId, checkOnly }) {
                 remainingCredits: currentCredits,
             };
         }
-        // Funds check
         if (currentCredits < cost) {
             throw new functions.https.HttpsError('failed-precondition', 'Insufficient credits.', {
                 remainingCredits: currentCredits,
@@ -228,7 +178,7 @@ async function performDeductCreditsForRead(uid, { storyId, checkOnly }) {
             status: 'confirmed',
             chargingModel: charging,
         });
-        // Mark purchase for one-time model
+        // Mark purchase for one-time
         if (charging === 'one-time') {
             tx.set(purchaseRef, {
                 storyId,
@@ -309,7 +259,7 @@ async function performDeductCreditsForRead(uid, { storyId, checkOnly }) {
                 distributed += referralAmount;
             }
         }
-        // Remainder due to floors
+        // Remainder (floor rounding)
         const remainder = cost - distributed;
         if (remainder > 0) {
             const adminCurrent = (Number(adminDoc.data()?.credits || 0) || 0);
@@ -358,9 +308,7 @@ exports.deductCreditsForRead = functions
     }
 });
 // ────────────────────────────────────────────────────────────
-/** 2B) HTTP mirror — Deduct credits for reading with CORS
- *     Requires: Authorization: Bearer <Firebase ID token>
- */
+/** 2B) HTTP mirror — Deduct credits for reading with CORS */
 // ────────────────────────────────────────────────────────────
 exports.deductCreditsForReadHttp = functions
     .region(REGION)

@@ -80,52 +80,57 @@ function tagLabel(t: (k: string)=>string, tag?: string) {
 /* ──────────────────────────────────────────────────────────────────
    PayPal Buttons – One-time (Dynamic Orders)
    ────────────────────────────────────────────────────────────────── */
-function PayButtonsOneTime({
-  price,
-  description,
-  onSuccess,
-  onMessage,
-}: {
-  price: number;
-  description: string;
-  onSuccess: (order: any) => void;
-  onMessage: (status: 'idle' | 'success' | 'error' | 'pending', msg: string) => void;
-}) {
-  const { t } = useLocale();
-  const [{ isPending, isRejected, isResolved }] = usePayPalScriptReducer();
-
-  if (isPending) return <div className="text-center py-2">{t('loadingPaypal')}</div>;
-  if (isRejected) return <div className="p-4 rounded-lg border text-sm">{t('paypalSdkBlocked')}</div>;
-  if (!isResolved || typeof window === 'undefined' || !window.paypal?.HostedButtons) {
-    return <div className="p-4 rounded-lg border text-sm">{t('paymentModuleUnavailable')}</div>;
+   function PayButtonsOneTime({
+    price,
+    description,
+    onSuccess,
+    onMessage,
+  }: {
+    price: number;
+    description: string;
+    onSuccess: (order: any) => void;
+    onMessage: (status: 'idle' | 'success' | 'error' | 'pending', msg: string) => void;
+  }) {
+    const { t } = useLocale();
+    const [{ isPending, isRejected, isResolved }] = usePayPalScriptReducer();
+  
+    if (isPending) return <div className="text-center py-2">{t('loadingPaypal')}</div>;
+    if (isRejected) return <div className="p-4 rounded-lg border text-sm">{t('paypalSdkBlocked')}</div>;
+    if (!isResolved || typeof window === 'undefined' || !window.paypal) {
+      return <div className="p-4 rounded-lg border text-sm">{t('paymentModuleUnavailable')}</div>;
+    }
+  
+    return (
+      <PayPalButtons
+  style={{ layout: 'vertical' }}
+  createOrder={(_d, actions) =>
+    actions.order.create({
+      intent: 'CAPTURE', // <- requerido por los .d.ts de tu versión
+      purchase_units: [
+        {
+          amount: {
+            value: price.toFixed(2),
+            currency_code: 'USD',
+          },
+          description,
+        },
+      ],
+    })
   }
+  onApprove={async (_d, actions) => {
+    onMessage('pending', t('processingPayment'));
+    const order = await actions.order!.capture();
+    onSuccess(order);
+  }}
+  onCancel={() => onMessage('idle', t('paymentCancelled'))}
+  onError={(err) => {
+    console.error(err);
+    onMessage('error', t('paypalErrorTryAgain'));
+  }}
+/>
 
-  return (
-    <PayPalButtons
-      style={{ layout: 'vertical' }}
-      createOrder={(_d, actions) =>
-        actions.order.create({
-          intent: 'CAPTURE', // satisfy TS types
-          purchase_units: [
-            {
-              amount: { value: price.toFixed(2), currency_code: 'USD' },
-              description,
-            },
-          ],
-        })
-      }
-      onApprove={async (_d, actions) => {
-        onMessage('pending', t('processingPayment'));
-        const order = await actions.order!.capture();
-        onSuccess(order);
-      }}
-      onCancel={() => onMessage('idle', t('paymentCancelled'))}   onError={(err) => {
-        console.error(err);
-        onMessage('error', t('paypalErrorTryAgain'));
-      }}
-    />
-  );
-}
+    );
+  }  
 
 /* ──────────────────────────────────────────────────────────────────
    PayPal Hosted Button Renderer
@@ -260,7 +265,7 @@ const BuyCreditsPage: FC = () => {
       clientId: clientId!,
       'client-id': clientId!,
       currency: 'USD',
-      components: 'buttons',
+      components: 'buttons,hosted-buttons',
       intent: 'capture',
       vault: false,
     } as any;
@@ -430,17 +435,22 @@ const BuyCreditsPage: FC = () => {
                   {formatT(t, 'setEnvVar', { envVar: 'NEXT_PUBLIC_PAYPAL_CLIENT_ID' })}
                 </div>
               ) : (
-                <PayPalProviderClient key={selectedOffering?.id ?? 'none'} enabled options={options}>
-                  <PayButtonsOneTime
-                    price={selectedOffering.price}
-                    description={formatT(t, 'paypalOneTimeDescription', {
-                      name: nameLabel(t, selectedOffering.name),
-                      ref: refSuffix,
-                    })}
-                    onSuccess={onApproveOneTime}
-                    onMessage={setMsg}
-                  />
-                </PayPalProviderClient>
+                //<PayPalProviderClient key={selectedOffering?.id ?? 'none'} enabled options={options}>
+                <PayPalProviderClient
+                key={`pp-${clientId}-${selectedOffering?.id || 'none'}-capture`}
+                enabled
+                options={options}
+              >
+                <PayButtonsOneTime
+                  price={selectedOffering.price}
+                  description={formatT(t, 'paypalOneTimeDescription', {
+                    name: nameLabel(t, selectedOffering.name),
+                    ref: refSuffix,
+                  })}
+                  onSuccess={onApproveOneTime}
+                  onMessage={setMsg}
+                />
+              </PayPalProviderClient>
 
               )}
             </div>

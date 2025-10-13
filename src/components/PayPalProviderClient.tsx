@@ -19,56 +19,43 @@ type Props = {
  * - If clientId is missing/invalid or enabled=false, renders children without injecting the SDK.
  * - Avoid putting this in your global layout; wrap only pages/components that actually show PayPal.
  */
-export default function PayPalProviderClient({
-  children,
-  enabled = true,
-  options,
-}: Props) {
+export default function PayPalProviderClient({ children, enabled = true, options }: Props) {
   const { t } = useLocale();
   const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
 
-  // If no usable clientId or provider explicitly disabled, render without SDK.
   const unusableClientId =
     !clientId || clientId.trim().length === 0 || clientId.trim().toLowerCase() === 'test';
 
   if (!enabled || unusableClientId) {
-    if (typeof window !== 'undefined' && !enabled) {
-      // eslint-disable-next-line no-console
-      console.warn(t('paypal.providerDisabled'));
-    }
-    if (typeof window !== 'undefined' && unusableClientId) {
-      // eslint-disable-next-line no-console
-      console.warn(t('paypal.invalidClientId'));
+    if (typeof window !== 'undefined') {
+      if (!enabled) console.warn(t('paypal.providerDisabled'));
+      if (unusableClientId) console.warn(t('paypal.invalidClientId'));
     }
     return <>{children}</>;
   }
 
+  // ✅ Doble clave para satisfacer tipos (clientId) y runtime ('client-id')
   const defaultOptions: ReactPayPalScriptOptions = {
-    // Required
-    clientId,
-    // Common defaults
+    clientId,                // <- satisface tipos antiguos
+    'client-id': clientId!,  // <- lo que usa realmente el SDK en el script
     currency: 'USD',
-    intent: 'capture',
-    // Tip: limit what the SDK loads to speed things up (uncomment if you only need buttons)
-    // components: 'buttons',
-    // Enable funding sources if you use them:
-    // 'enable-funding': 'venmo,card',
+    components: 'buttons',
+    // Aquí NO seteamos intent; cada página lo define (subscription vs one-time)
   };
 
   const merged: ReactPayPalScriptOptions = { ...defaultOptions, ...(options ?? {}) };
 
-  // NOTE: react-paypal-js v8 supports onScriptLoadError, but types may lag.
-  // We pass it anyway and ignore TS so runtime users get a soft-fail instead of a crash.
   const providerProps: any = {
     options: merged,
     onScriptLoadError: (err: unknown) => {
-      // eslint-disable-next-line no-console
       console.error(t('paypal.sdkFailedToLoad'), err);
-      // Do not throw — keep the rest of the page usable.
     },
-    // Optional: if you want to delay loading until a child (Buttons/Fields) mounts
-    // deferLoading: true,
   };
+
+  if (typeof window !== 'undefined') {
+    console.log('[paypal] client-id (kebab):', (merged['client-id'] as string)?.slice(0, 10) + '…');
+    console.log('[paypal] intent:', (merged as any).intent, 'components:', merged.components);
+  }
 
   return <PayPalScriptProvider {...providerProps}>{children}</PayPalScriptProvider>;
 }

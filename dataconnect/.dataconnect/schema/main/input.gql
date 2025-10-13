@@ -1141,9 +1141,17 @@ input AnalyticsAction_Filter {
   """
   eq: AnalyticsAction
   """
+  ✨ `_expr` server value variant of `eq` (Match if field is exactly equal to provided value.)
+  """
+  eq_expr: AnalyticsAction_Expr
+  """
   Match if field is not equal to provided value.
   """
   ne: AnalyticsAction
+  """
+  ✨ `_expr` server value variant of `ne` (Match if field is not equal to provided value.)
+  """
+  ne_expr: AnalyticsAction_Expr
   """
   When true, match if field `IS NULL`. When false, match if field is `NOT NULL`.
   """
@@ -1161,17 +1169,33 @@ input AnalyticsAction_Filter {
   """
   gt: AnalyticsAction
   """
+  ✨ `_expr` server value variant of `gt` (Match if field value is greater than the provided value, based on index ordering of supported enum values.)
+  """
+  gt_expr: AnalyticsAction_Expr
+  """
   Match if field is greater than or equal to the provided value.
   """
   ge: AnalyticsAction
+  """
+  ✨ `_expr` server value variant of `ge` (Match if field is greater than or equal to the provided value.)
+  """
+  ge_expr: AnalyticsAction_Expr
   """
   Match if field value is less than the provided value, based on index ordering of supported enum values.
   """
   lt: AnalyticsAction
   """
+  ✨ `_expr` server value variant of `lt` (Match if field value is less than the provided value, based on index ordering of supported enum values.)
+  """
+  lt_expr: AnalyticsAction_Expr
+  """
   Match if field is less than or equal to the provided value, based on index ordering of supported enum values.
   """
   le: AnalyticsAction
+  """
+  ✨ `_expr` server value variant of `le` (Match if field is less than or equal to the provided value, based on index ordering of supported enum values.)
+  """
+  le_expr: AnalyticsAction_Expr
 }
 """
 ✨ Generated list filter input type for table 'AnalyticsAction'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
@@ -1182,6 +1206,10 @@ input AnalyticsAction_ListFilter {
   """
   includes: AnalyticsAction
   """
+  ✨ `_expr` server value variant of `includes` (Match if list field contains the provided value as a member.)
+  """
+  includes_expr: AnalyticsAction_Expr
+  """
   Match if list field contains all of the provided values as members.
   """
   includesAll: [AnalyticsAction!]
@@ -1189,6 +1217,10 @@ input AnalyticsAction_ListFilter {
   Match if list field does not contain the provided value as a member.
   """
   excludes: AnalyticsAction
+  """
+  ✨ `_expr` server value variant of `excludes` (Match if list field does not contain the provided value as a member.)
+  """
+  excludes_expr: AnalyticsAction_Expr
   """
   Match if list field does not contain any of the provided values as members.
   """
@@ -1494,9 +1526,17 @@ input ImageGenerationStatus_Filter {
   """
   eq: ImageGenerationStatus
   """
+  ✨ `_expr` server value variant of `eq` (Match if field is exactly equal to provided value.)
+  """
+  eq_expr: ImageGenerationStatus_Expr
+  """
   Match if field is not equal to provided value.
   """
   ne: ImageGenerationStatus
+  """
+  ✨ `_expr` server value variant of `ne` (Match if field is not equal to provided value.)
+  """
+  ne_expr: ImageGenerationStatus_Expr
   """
   When true, match if field `IS NULL`. When false, match if field is `NOT NULL`.
   """
@@ -1514,17 +1554,33 @@ input ImageGenerationStatus_Filter {
   """
   gt: ImageGenerationStatus
   """
+  ✨ `_expr` server value variant of `gt` (Match if field value is greater than the provided value, based on index ordering of supported enum values.)
+  """
+  gt_expr: ImageGenerationStatus_Expr
+  """
   Match if field is greater than or equal to the provided value.
   """
   ge: ImageGenerationStatus
+  """
+  ✨ `_expr` server value variant of `ge` (Match if field is greater than or equal to the provided value.)
+  """
+  ge_expr: ImageGenerationStatus_Expr
   """
   Match if field value is less than the provided value, based on index ordering of supported enum values.
   """
   lt: ImageGenerationStatus
   """
+  ✨ `_expr` server value variant of `lt` (Match if field value is less than the provided value, based on index ordering of supported enum values.)
+  """
+  lt_expr: ImageGenerationStatus_Expr
+  """
   Match if field is less than or equal to the provided value, based on index ordering of supported enum values.
   """
   le: ImageGenerationStatus
+  """
+  ✨ `_expr` server value variant of `le` (Match if field is less than or equal to the provided value, based on index ordering of supported enum values.)
+  """
+  le_expr: ImageGenerationStatus_Expr
 }
 """
 ✨ Generated list filter input type for table 'ImageGenerationStatus'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
@@ -1535,6 +1591,10 @@ input ImageGenerationStatus_ListFilter {
   """
   includes: ImageGenerationStatus
   """
+  ✨ `_expr` server value variant of `includes` (Match if list field contains the provided value as a member.)
+  """
+  includes_expr: ImageGenerationStatus_Expr
+  """
   Match if list field contains all of the provided values as members.
   """
   includesAll: [ImageGenerationStatus!]
@@ -1542,6 +1602,10 @@ input ImageGenerationStatus_ListFilter {
   Match if list field does not contain the provided value as a member.
   """
   excludes: ImageGenerationStatus
+  """
+  ✨ `_expr` server value variant of `excludes` (Match if list field does not contain the provided value as a member.)
+  """
+  excludes_expr: ImageGenerationStatus_Expr
   """
   Match if list field does not contain any of the provided values as members.
   """
@@ -2210,9 +2274,17 @@ input PaymentStatus_Filter {
   """
   eq: PaymentStatus
   """
+  ✨ `_expr` server value variant of `eq` (Match if field is exactly equal to provided value.)
+  """
+  eq_expr: PaymentStatus_Expr
+  """
   Match if field is not equal to provided value.
   """
   ne: PaymentStatus
+  """
+  ✨ `_expr` server value variant of `ne` (Match if field is not equal to provided value.)
+  """
+  ne_expr: PaymentStatus_Expr
   """
   When true, match if field `IS NULL`. When false, match if field is `NOT NULL`.
   """
@@ -2230,17 +2302,33 @@ input PaymentStatus_Filter {
   """
   gt: PaymentStatus
   """
+  ✨ `_expr` server value variant of `gt` (Match if field value is greater than the provided value, based on index ordering of supported enum values.)
+  """
+  gt_expr: PaymentStatus_Expr
+  """
   Match if field is greater than or equal to the provided value.
   """
   ge: PaymentStatus
+  """
+  ✨ `_expr` server value variant of `ge` (Match if field is greater than or equal to the provided value.)
+  """
+  ge_expr: PaymentStatus_Expr
   """
   Match if field value is less than the provided value, based on index ordering of supported enum values.
   """
   lt: PaymentStatus
   """
+  ✨ `_expr` server value variant of `lt` (Match if field value is less than the provided value, based on index ordering of supported enum values.)
+  """
+  lt_expr: PaymentStatus_Expr
+  """
   Match if field is less than or equal to the provided value, based on index ordering of supported enum values.
   """
   le: PaymentStatus
+  """
+  ✨ `_expr` server value variant of `le` (Match if field is less than or equal to the provided value, based on index ordering of supported enum values.)
+  """
+  le_expr: PaymentStatus_Expr
 }
 """
 ✨ Generated list filter input type for table 'PaymentStatus'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
@@ -2251,6 +2339,10 @@ input PaymentStatus_ListFilter {
   """
   includes: PaymentStatus
   """
+  ✨ `_expr` server value variant of `includes` (Match if list field contains the provided value as a member.)
+  """
+  includes_expr: PaymentStatus_Expr
+  """
   Match if list field contains all of the provided values as members.
   """
   includesAll: [PaymentStatus!]
@@ -2258,6 +2350,10 @@ input PaymentStatus_ListFilter {
   Match if list field does not contain the provided value as a member.
   """
   excludes: PaymentStatus
+  """
+  ✨ `_expr` server value variant of `excludes` (Match if list field does not contain the provided value as a member.)
+  """
+  excludes_expr: PaymentStatus_Expr
   """
   Match if list field does not contain any of the provided values as members.
   """
@@ -3118,9 +3214,17 @@ input StoryStatus_Filter {
   """
   eq: StoryStatus
   """
+  ✨ `_expr` server value variant of `eq` (Match if field is exactly equal to provided value.)
+  """
+  eq_expr: StoryStatus_Expr
+  """
   Match if field is not equal to provided value.
   """
   ne: StoryStatus
+  """
+  ✨ `_expr` server value variant of `ne` (Match if field is not equal to provided value.)
+  """
+  ne_expr: StoryStatus_Expr
   """
   When true, match if field `IS NULL`. When false, match if field is `NOT NULL`.
   """
@@ -3138,17 +3242,33 @@ input StoryStatus_Filter {
   """
   gt: StoryStatus
   """
+  ✨ `_expr` server value variant of `gt` (Match if field value is greater than the provided value, based on index ordering of supported enum values.)
+  """
+  gt_expr: StoryStatus_Expr
+  """
   Match if field is greater than or equal to the provided value.
   """
   ge: StoryStatus
+  """
+  ✨ `_expr` server value variant of `ge` (Match if field is greater than or equal to the provided value.)
+  """
+  ge_expr: StoryStatus_Expr
   """
   Match if field value is less than the provided value, based on index ordering of supported enum values.
   """
   lt: StoryStatus
   """
+  ✨ `_expr` server value variant of `lt` (Match if field value is less than the provided value, based on index ordering of supported enum values.)
+  """
+  lt_expr: StoryStatus_Expr
+  """
   Match if field is less than or equal to the provided value, based on index ordering of supported enum values.
   """
   le: StoryStatus
+  """
+  ✨ `_expr` server value variant of `le` (Match if field is less than or equal to the provided value, based on index ordering of supported enum values.)
+  """
+  le_expr: StoryStatus_Expr
 }
 """
 ✨ Generated list filter input type for table 'StoryStatus'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
@@ -3159,6 +3279,10 @@ input StoryStatus_ListFilter {
   """
   includes: StoryStatus
   """
+  ✨ `_expr` server value variant of `includes` (Match if list field contains the provided value as a member.)
+  """
+  includes_expr: StoryStatus_Expr
+  """
   Match if list field contains all of the provided values as members.
   """
   includesAll: [StoryStatus!]
@@ -3166,6 +3290,10 @@ input StoryStatus_ListFilter {
   Match if list field does not contain the provided value as a member.
   """
   excludes: StoryStatus
+  """
+  ✨ `_expr` server value variant of `excludes` (Match if list field does not contain the provided value as a member.)
+  """
+  excludes_expr: StoryStatus_Expr
   """
   Match if list field does not contain any of the provided values as members.
   """
