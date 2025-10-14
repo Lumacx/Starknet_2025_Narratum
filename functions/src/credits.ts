@@ -6,6 +6,7 @@
 import * as functions from 'firebase-functions';
 import { db, adminAuth, FieldValue, Timestamp } from './firebaseAdmin';
 import { getPayPalOrderDetails } from './utils/paypal'; // still used by other flows if you keep it
+import { getPayPalSubscriptionDetails } from './utils/paypal';
 
 // ✅ Re-export the single source of truth for the callable:
 export { processPayPalOneTimePayment } from './processPayPalOneTimePayment';
@@ -438,66 +439,98 @@ export const sendTipToWriter = functions
 // ────────────────────────────────────────────────────────────
 type SubReq = {
   subscriptionID?: string;
-  planId?: string;
+  planId?: string;                             // your plan label/name (optional but helpful)
   frequency?: 'weekly' | 'monthly';
-  price?: number;
-  credits?: number;
+  price?: number;                              // USD
+  credits?: number;                            // credits per cycle
   referredBy?: string;
 };
-type SubRes = { success: boolean; message?: string; subscriptionId?: string; payerId?: string };
+type SubRes = { success: boolean; message?: string; status?: string; subscriptionId?: string };
 
 export const processPayPalSubscription = functions
   .region(REGION)
-  .https.onCall(async (raw, context): Promise<SubRes> => {
+  .runWith({ secrets: ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET'] }) // ensure tokens are available
+  .https.onCall(async (raw: SubReq, context): Promise<SubRes> => {
     const userId = context.auth?.uid;
     if (!userId) throw new functions.https.HttpsError('unauthenticated', 'Sign in first.');
 
-    const data = (raw || {}) as any;
-
-    // Support both payload shapes
-    const subscriptionID = data.subscriptionID || data.paypalSubscriptionId;
-    const planId = data.planId || data.paypalPlanId || data.planName;
-    const frequency = data.frequency;
-    const price = data.price;
-    const credits = data.credits;
-    const referredBy = data.referredBy;
-
-    if (!subscriptionID || !planId || !frequency || typeof price !== 'number' || price <= 0 || typeof credits !== 'number' || credits <= 0) {
-      throw new functions.https.HttpsError('invalid-argument', 'Missing or invalid subscription details.');
+    const { subscriptionID, planId, frequency, price, credits, referredBy } = raw || {};
+    if (!subscriptionID || !frequency || !price || !credits) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'Missing required fields: subscriptionID, frequency, price, credits.'
+      );
     }
 
     try {
-      const verifySubscriptionUrl = process.env.NEXT_PUBLIC_VERCEL_URL
-        ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}/api/paypal-verify-subscription`
-        : 'http://localhost:3000/api/paypal-verify-subscription';
+      // 1) Pull the latest state from PayPal
+      const sub = await getPayPalSubscriptionDetails(subscriptionID);
+      if (!sub) throw new functions.https.HttpsError('not-found', 'Subscription not found at PayPal.');
 
-      const firebaseAuthToken = await adminAuth.createCustomToken(userId);
+      const status = sub.status; // APPROVAL_PENDING | APPROVED | ACTIVE | SUSPENDED | CANCELLED | EXPIRED
+      const isActiveish = status === 'ACTIVE' || status === 'APPROVED'; // some merchants see APPROVED briefly before ACTIVE
 
-      const resp = await fetch(verifySubscriptionUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${firebaseAuthToken}` },
-        body: JSON.stringify({
-          subscriptionID,
-          planName: planId,
-          billingCycle: frequency,
+      // 2) Store/Update subscription doc (used by webhook later)
+      const subRef = db.collection('paypalSubscriptions').doc(subscriptionID);
+      await subRef.set(
+        {
+          userId,
+          planId: planId || sub.plan_id || null,
+          frequency,
           price,
-          credits,
-          referredBy,
-        }),
-      });
+          creditsPerCycle: credits,
+          status,
+          referredBy: referredBy || null,
+          lastSyncedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
 
-      const body: unknown = await resp.json();
-      if (!resp.ok) {
-        const msg = typeof body === 'object' && body && 'message' in (body as any)
-          ? (body as any).message
-          : `Upstream error ${resp.status}`;
-        throw new functions.https.HttpsError('unknown', msg);
+      // 3) If active right now, credit immediately and mark user’s subscription
+      if (isActiveish) {
+        await db.runTransaction(async (tx) => {
+          const userRef = db.collection('users').doc(userId);
+          const snap = await tx.get(userRef);
+          if (!snap.exists) throw new functions.https.HttpsError('not-found', 'User not found.');
+
+          const currentCredits = Number(snap.data()?.credits || 0) || 0;
+          tx.update(userRef, {
+            credits: currentCredits + credits,
+            subscription: {
+              subscriptionId: subscriptionID,
+              planId: planId || sub.plan_id || null,
+              frequency,
+              price,
+              creditsPerCycle: credits,
+              status,
+              lastPaymentAt: FieldValue.serverTimestamp(),
+            },
+          });
+
+          tx.set(userRef.collection('transactions').doc(), {
+            type: 'subscription_initial',
+            creditsDelta: credits,
+            amountUsd: price,
+            paypalSubscriptionId: subscriptionID,
+            status: 'confirmed',
+            timestamp: FieldValue.serverTimestamp(),
+            description: `Initial subscription credit (${frequency}).`,
+          });
+        });
       }
-      return body as SubRes;
-    } catch (error: any) {
-      if (error instanceof functions.https.HttpsError) throw error;
-      console.error('processPayPalSubscription unexpected error:', error);
-      throw new functions.https.HttpsError('internal', 'Failed to process PayPal subscription.', error?.message || 'Unknown error');
+
+      return {
+        success: true,
+        status,
+        subscriptionId: subscriptionID,
+        message: isActiveish
+          ? 'Subscription verified and credited.'
+          : `Subscription recorded (status: ${status}). Will credit on activation webhook.`,
+      };
+    } catch (err: any) {
+      functions.logger.error('processPayPalSubscription error:', err);
+      if (err instanceof functions.https.HttpsError) throw err;
+      throw new functions.https.HttpsError('internal', err?.message || 'Unknown error');
     }
   });
 

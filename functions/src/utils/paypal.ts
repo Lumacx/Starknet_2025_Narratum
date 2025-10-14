@@ -98,12 +98,19 @@ export function resolvePayPalBase(): string {
   return 'https://api-m.paypal.com';
 }
 
-// ---- Access token (cached) ----
+// ────────────────────────────────────────────────────────────
+// Access Token (cached)
+// ────────────────────────────────────────────────────────────
 let cachedAccessToken: { token: string; expiry: number } | null = null;
 
 export async function getPayPalAccessToken(): Promise<string> {
-  const PAYPAL_CLIENT_ID = functions.config().paypal.client_id;
-  const PAYPAL_SECRET_KEY = functions.config().paypal.secret_key;
+  const PAYPAL_CLIENT_ID =
+    process.env.PAYPAL_CLIENT_ID || functions.config().paypal?.client_id;
+  const PAYPAL_SECRET_KEY =
+    process.env.PAYPAL_CLIENT_SECRET ||
+    process.env.PAYPAL_SECRET_KEY || // fallback naming support
+    functions.config().paypal?.secret ||
+    functions.config().paypal?.secret_key;
 
   if (!PAYPAL_CLIENT_ID || !PAYPAL_SECRET_KEY) {
     throw new functions.https.HttpsError(
@@ -112,13 +119,15 @@ export async function getPayPalAccessToken(): Promise<string> {
     );
   }
 
-  // Check if we have a valid, unexpired token in cache
+  // Use cached token if still valid
   if (cachedAccessToken && Date.now() < cachedAccessToken.expiry) {
     return cachedAccessToken.token;
   }
 
   const base = resolvePayPalBase();
-  const authString = Buffer.from(`${PAYPAL_CLIENT_ID}:${PAYPAL_SECRET_KEY}`).toString('base64');
+  const authString = Buffer.from(
+    `${PAYPAL_CLIENT_ID}:${PAYPAL_SECRET_KEY}`
+  ).toString('base64');
 
   const tokenRes = await fetch(`${base}/v1/oauth2/token`, {
     method: 'POST',
@@ -131,29 +140,36 @@ export async function getPayPalAccessToken(): Promise<string> {
 
   if (!tokenRes.ok) {
     const errBody = await tokenRes.text().catch(() => '');
+    functions.logger.error(
+      `Failed to get PayPal access token: ${tokenRes.status} - ${errBody}`
+    );
     throw new functions.https.HttpsError(
       'internal',
       `Failed to get PayPal access token: ${tokenRes.status} - ${errBody}`
     );
   }
 
-  const { access_token, expires_in } = (await tokenRes.json()) as PayPalAccessTokenResponse; // Cast here
+  const { access_token, expires_in } =
+    (await tokenRes.json()) as PayPalAccessTokenResponse;
 
-  // Cache the token with a 10-second buffer
+  // Cache token
   cachedAccessToken = {
     token: access_token,
-    expiry: Date.now() + (expires_in * 1000) - 10000, // expires_in is in seconds
+    expiry: Date.now() + expires_in * 1000 - 10_000,
   };
 
   return access_token;
 }
 
-// ---- Webhook verification ----
+// ────────────────────────────────────────────────────────────
+// Webhook Verification (unchanged except accessToken source)
+// ────────────────────────────────────────────────────────────
 export async function verifyPayPalWebhookSignature(
   headers: { [key: string]: string | undefined },
   webhookEvent: any
 ): Promise<boolean> {
-  const PAYPAL_WEBHOOK_ID = functions.config().paypal.webhook_id;
+  const PAYPAL_WEBHOOK_ID =
+    process.env.PAYPAL_WEBHOOK_ID || functions.config().paypal?.webhook_id;
 
   if (!PAYPAL_WEBHOOK_ID) {
     throw new functions.https.HttpsError(
@@ -197,14 +213,18 @@ export async function verifyPayPalWebhookSignature(
 
   if (!verifyRes.ok) {
     const errBody = await verifyRes.text().catch(() => '');
-    functions.logger.error('PayPal webhook signature verification failed with PayPal API:', verifyRes.status, errBody);
+    functions.logger.error(
+      'PayPal webhook signature verification failed with PayPal API:',
+      verifyRes.status,
+      errBody
+    );
     throw new functions.https.HttpsError(
       'unauthenticated',
       'PayPal webhook signature verification failed with PayPal API.'
     );
   }
 
-  const verifyResult = (await verifyRes.json()) as PayPalWebhookVerificationResponse; // Cast here
+  const verifyResult = (await verifyRes.json()) as PayPalWebhookVerificationResponse;
   return verifyResult.verification_status === 'SUCCESS';
 }
 

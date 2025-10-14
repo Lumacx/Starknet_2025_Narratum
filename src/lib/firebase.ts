@@ -53,7 +53,7 @@ let rtdb: Database;
 if (isBrowser) {
   app = getApps().length ? getApp() : initializeApp(firebaseConfig);
   auth = getAuth(app);
-  functions = getFunctions(app);
+  functions = getFunctions(app, 'us-central1'); // ✅ pin region for callable endpoints
   db = getFirestore(app);
   storage = getStorage(app);
   rtdb = getDatabase(app);

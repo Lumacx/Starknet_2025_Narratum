@@ -47,15 +47,20 @@ function resolvePayPalBase() {
     //if (process.env.PAYPAL_API_BASE?.trim()) return process.env.PAYPAL_API_BASE.trim()!;
     return 'https://api-m.paypal.com';
 }
-// ---- Access token (cached) ----
+// ────────────────────────────────────────────────────────────
+// Access Token (cached)
+// ────────────────────────────────────────────────────────────
 let cachedAccessToken = null;
 async function getPayPalAccessToken() {
-    const PAYPAL_CLIENT_ID = functions.config().paypal.client_id;
-    const PAYPAL_SECRET_KEY = functions.config().paypal.secret_key;
+    const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID || functions.config().paypal?.client_id;
+    const PAYPAL_SECRET_KEY = process.env.PAYPAL_CLIENT_SECRET ||
+        process.env.PAYPAL_SECRET_KEY || // fallback naming support
+        functions.config().paypal?.secret ||
+        functions.config().paypal?.secret_key;
     if (!PAYPAL_CLIENT_ID || !PAYPAL_SECRET_KEY) {
         throw new functions.https.HttpsError('internal', 'PayPal API credentials not configured.');
     }
-    // Check if we have a valid, unexpired token in cache
+    // Use cached token if still valid
     if (cachedAccessToken && Date.now() < cachedAccessToken.expiry) {
         return cachedAccessToken.token;
     }
@@ -71,19 +76,22 @@ async function getPayPalAccessToken() {
     });
     if (!tokenRes.ok) {
         const errBody = await tokenRes.text().catch(() => '');
+        functions.logger.error(`Failed to get PayPal access token: ${tokenRes.status} - ${errBody}`);
         throw new functions.https.HttpsError('internal', `Failed to get PayPal access token: ${tokenRes.status} - ${errBody}`);
     }
-    const { access_token, expires_in } = (await tokenRes.json()); // Cast here
-    // Cache the token with a 10-second buffer
+    const { access_token, expires_in } = (await tokenRes.json());
+    // Cache token
     cachedAccessToken = {
         token: access_token,
-        expiry: Date.now() + (expires_in * 1000) - 10000, // expires_in is in seconds
+        expiry: Date.now() + expires_in * 1000 - 10000,
     };
     return access_token;
 }
-// ---- Webhook verification ----
+// ────────────────────────────────────────────────────────────
+// Webhook Verification (unchanged except accessToken source)
+// ────────────────────────────────────────────────────────────
 async function verifyPayPalWebhookSignature(headers, webhookEvent) {
-    const PAYPAL_WEBHOOK_ID = functions.config().paypal.webhook_id;
+    const PAYPAL_WEBHOOK_ID = process.env.PAYPAL_WEBHOOK_ID || functions.config().paypal?.webhook_id;
     if (!PAYPAL_WEBHOOK_ID) {
         throw new functions.https.HttpsError('internal', 'PayPal Webhook ID not configured.');
     }
@@ -118,7 +126,7 @@ async function verifyPayPalWebhookSignature(headers, webhookEvent) {
         functions.logger.error('PayPal webhook signature verification failed with PayPal API:', verifyRes.status, errBody);
         throw new functions.https.HttpsError('unauthenticated', 'PayPal webhook signature verification failed with PayPal API.');
     }
-    const verifyResult = (await verifyRes.json()); // Cast here
+    const verifyResult = (await verifyRes.json());
     return verifyResult.verification_status === 'SUCCESS';
 }
 async function getPayPalOrderDetails(orderId) {

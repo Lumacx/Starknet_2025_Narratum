@@ -1,8 +1,12 @@
 'use client';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 import React, { FC, useMemo, useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
+
+// ❗ Rename the import to avoid clashing with the route option above
+import nextDynamic from 'next/dynamic';
 import PayPalProviderClient from '@/components/PayPalProviderClient';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '@/lib/firebase';
@@ -11,7 +15,7 @@ import { usePayPalScriptReducer, type ReactPayPalScriptOptions } from '@paypal/r
 import { useLocale } from '@/context/LocaleContext';
 import '@paypal/paypal-js'; // ensure module augmentation is picked up
 
-const PayPalButtons = dynamic(
+const PayPalButtons = nextDynamic(
   () => import('@paypal/react-paypal-js').then((m) => m.PayPalButtons),
   { ssr: false }
 );
@@ -379,43 +383,62 @@ const SubscriptionPage: FC = () => {
   };
 
   /** Approve paid subscription (CALLABLE to your verifier) */
-  async function onApproveSubscription(sub: any, paypalPlanId?: string) {
-    if (!user?.uid || !selectedOffering) {
-      setMsg('error', t('mustBeLoggedInAndHaveSelection'));
-      return;
-    }
-    try {
-      const processSubscription = httpsCallable(functions, 'processPayPalSubscription');
-      // NOTE: match your function signature { subscriptionID, planId, frequency, price, credits, referredBy }
-      await processSubscription({
-        subscriptionID: sub?.id || undefined,
-        planId: paypalPlanId,
-        frequency: t(subscriptionFrequency),
-        price: (selectedOffering as any).price,
-        credits: selectedOffering.credits,
-        referredBy: referredBy || undefined,
-      });
-
-      setMsg(
-        'success',
-        formatT(t, 'subscriptionActivated', {
-          name: nameLabel(t, selectedOffering.name),
-          frequency: t(subscriptionFrequency === 'weekly' ? 'weekly' : 'monthly'),
-        })
-      );
-      setSubStatus({
-        kind: 'paid',
-        planKey: selectedOffering.id,
-        planName: selectedOffering.name,
-        frequency: subscriptionFrequency,
-        paypalSubscriptionId: sub?.id,
-        status: 'ACTIVE',
-      });
-    } catch (e: any) {
-      console.error(e);
-      setMsg('error', e.message || t('unexpectedError'));
-    }
+async function onApproveSubscription(sub: any, paypalPlanId?: string) {
+  if (!user?.uid || !selectedOffering) {
+    setMsg('error', t('mustBeLoggedInAndHaveSelection'));
+    return;
   }
+
+  // Make sure we have a PayPal subscription id
+  const subscriptionID = sub?.id;
+  if (!subscriptionID) {
+    setMsg('error', t('paypalSubscriptionIdMissing') || 'Missing PayPal subscription ID.');
+    return;
+  }
+
+  try {
+    // Use the callable (no fetch; no CORS)
+    const processSubscription = httpsCallable(functions, 'processPayPalSubscription');
+
+    // IMPORTANT: send the raw enum, not a translated string
+    const payload = {
+      subscriptionID,                         // PayPal subscription id
+      planId: paypalPlanId,                   // your internal/PayPal plan name/id
+      frequency: subscriptionFrequency as 'weekly' | 'monthly',
+      price: (selectedOffering as any).price, // USD
+      credits: selectedOffering.credits,
+      referredBy: referredBy || undefined,
+    };
+
+    const res = await processSubscription(payload);
+    const data = (res?.data || {}) as { success?: boolean; message?: string; status?: string };
+
+    if (!data?.success) {
+      // bubble up a useful message if backend sent one
+      throw new Error(data?.message || t('unexpectedError'));
+    }
+
+    setMsg(
+      'success',
+      formatT(t, 'subscriptionActivated', {
+        name: nameLabel(t, selectedOffering.name),
+        frequency: t(subscriptionFrequency === 'weekly' ? 'weekly' : 'monthly'),
+      })
+    );
+
+    setSubStatus({
+      kind: 'paid',
+      planKey: selectedOffering.id,
+      planName: selectedOffering.name,
+      frequency: subscriptionFrequency,
+      paypalSubscriptionId: subscriptionID,
+      status: (data as any).status || 'ACTIVE',
+    });
+  } catch (e: any) {
+    console.error(e);
+    setMsg('error', e?.message || t('unexpectedError'));
+  }
+}
 
   /** Cancel active paid subscription (CALLABLE) */
   const cancelActiveSubscription = async () => {
