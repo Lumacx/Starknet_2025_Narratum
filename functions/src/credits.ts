@@ -493,6 +493,21 @@ export const processPayPalSubscription = functions
           const snap = await tx.get(userRef);
           if (!snap.exists) throw new functions.https.HttpsError('not-found', 'User not found.');
 
+          // Check for existing initial credit transaction to prevent double-crediting
+          // ✅ Build query from db, then read it via tx.get(query)
+          const txCol = db.collection('users').doc(userId).collection('transactions');
+          const q = txCol
+            .where('type', '==', 'subscription_initial')
+            .where('paypalSubscriptionId', '==', subscriptionID)
+            .limit(1);
+
+          const existingTransactionSnap = await tx.get(q);
+
+          if (!existingTransactionSnap.empty) {
+            functions.logger.info(`Initial credit for subscription ${subscriptionID} already granted to user ${userId}. Skipping.`);
+            return; // Exit transaction if already credited
+          }
+
           const currentCredits = Number(snap.data()?.credits || 0) || 0;
           tx.update(userRef, {
             credits: currentCredits + credits,
@@ -525,7 +540,7 @@ export const processPayPalSubscription = functions
         subscriptionId: subscriptionID,
         message: isActiveish
           ? 'Subscription verified and credited.'
-          : `Subscription recorded (status: ${status}). Will credit on activation webhook.`,
+          : `Subscription recorded (status: ${status}). Will credit on activation webhook.`
       };
     } catch (err: any) {
       functions.logger.error('processPayPalSubscription error:', err);
