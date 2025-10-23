@@ -37,7 +37,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.propagateUserProfileToStories = exports.createPayPalOrder = exports.initiateHostedCreditPurchase = exports.redeemPromoCode = exports.processPayPalSubscription = exports.grantMonthlyFreeCredits = exports.sendTipToWriter = exports.deductCreditsForRead = exports.processPayPalOneTimePayment = exports.downloadStoryPdf = exports.generateWithImagen = exports.generateWithGemini = exports.removeIndexOnDelete = exports.indexAssetOnFinalize = exports.incrementCommentCount = exports.createuserprofile = exports.generateNarratumImage = exports.deductCreditsForCreation = void 0;
+exports.propagateUserProfileToStories = exports.initiateHostedCreditPurchase = exports.redeemPromoCode = exports.processPayPalSubscription = exports.grantMonthlyFreeCredits = exports.sendTipToWriter = exports.deductCreditsForRead = exports.createPayPalOrder = exports.processPayPalOneTimePayment = exports.downloadStoryPdf = exports.generateWithImagen = exports.generateWithGemini = exports.removeIndexOnDelete = exports.indexAssetOnFinalize = exports.incrementCommentCount = exports.createuserprofile = exports.generateNarratumImage = exports.deductCreditsForCreation = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 // Ensure Admin is initialized exactly once

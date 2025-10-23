@@ -34,14 +34,17 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.grantMonthlyFreeCredits = exports.processPayPalSubscription = exports.sendTipToWriter = exports.deductCreditsForReadHttp = exports.deductCreditsForRead = exports.processPayPalOneTimePayment = void 0;
+exports.grantMonthlyFreeCredits = exports.processPayPalSubscription = exports.sendTipToWriter = exports.deductCreditsForReadHttp = exports.deductCreditsForRead = exports.processPayPalOneTimePayment = exports.createPayPalOrder = void 0;
 // ────────────────────────────────────────────────────────────
-// Gen-1 Firebase Functions imports
+// Firebase Functions (Gen-1) & Admin wrappers
 // ────────────────────────────────────────────────────────────
 const functions = __importStar(require("firebase-functions"));
 const firebaseAdmin_1 = require("./firebaseAdmin");
+// PayPal utilities used by subscription flow
 const paypal_1 = require("./utils/paypal");
-// ✅ Re-export the single source of truth for the callable:
+// ✅ Re-export your one-time payment endpoints (single source of truth)
+var createPayPalOrder_1 = require("./createPayPalOrder");
+Object.defineProperty(exports, "createPayPalOrder", { enumerable: true, get: function () { return createPayPalOrder_1.createPayPalOrder; } });
 var processPayPalOneTimePayment_1 = require("./processPayPalOneTimePayment");
 Object.defineProperty(exports, "processPayPalOneTimePayment", { enumerable: true, get: function () { return processPayPalOneTimePayment_1.processPayPalOneTimePayment; } });
 // ────────────────────────────────────────────────────────────
@@ -95,7 +98,7 @@ function resolveStoryPricing(story) {
     const charging = (bucket === 'convai' || isPremiumFlag) ? 'pay-per-open' : 'one-time';
     return { cost, charging };
 }
-// CORS
+// CORS for HTTP mirrors
 function applyCors(res, origin) {
     const o = origin ?? '';
     if (ALLOWLIST.has(o)) {
@@ -288,7 +291,7 @@ async function performDeductCreditsForRead(uid, { storyId, checkOnly }) {
     });
 }
 // ────────────────────────────────────────────────────────────
-/** 2A) Callable — Deduct credits for reading (preferred) */
+/** Callable — Deduct credits for reading (preferred) */
 // ────────────────────────────────────────────────────────────
 exports.deductCreditsForRead = functions
     .region(REGION)
@@ -309,7 +312,7 @@ exports.deductCreditsForRead = functions
     }
 });
 // ────────────────────────────────────────────────────────────
-/** 2B) HTTP mirror — Deduct credits for reading with CORS */
+/** HTTP mirror — Deduct credits for reading with CORS */
 // ────────────────────────────────────────────────────────────
 exports.deductCreditsForReadHttp = functions
     .region(REGION)
@@ -410,7 +413,7 @@ exports.sendTipToWriter = functions
 });
 exports.processPayPalSubscription = functions
     .region(REGION)
-    .runWith({ secrets: ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET'] }) // ensure tokens are available
+    .runWith({ secrets: ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET'] })
     .https.onCall(async (raw, context) => {
     const userId = context.auth?.uid;
     if (!userId)
@@ -425,7 +428,7 @@ exports.processPayPalSubscription = functions
         if (!sub)
             throw new functions.https.HttpsError('not-found', 'Subscription not found at PayPal.');
         const status = sub.status; // APPROVAL_PENDING | APPROVED | ACTIVE | SUSPENDED | CANCELLED | EXPIRED
-        const isActiveish = status === 'ACTIVE' || status === 'APPROVED'; // some merchants see APPROVED briefly before ACTIVE
+        const isActiveish = status === 'ACTIVE' || status === 'APPROVED';
         // 2) Store/Update subscription doc (used by webhook later)
         const subRef = firebaseAdmin_1.db.collection('paypalSubscriptions').doc(subscriptionID);
         await subRef.set({
@@ -445,8 +448,7 @@ exports.processPayPalSubscription = functions
                 const snap = await tx.get(userRef);
                 if (!snap.exists)
                     throw new functions.https.HttpsError('not-found', 'User not found.');
-                // Check for existing initial credit transaction to prevent double-crediting
-                // ✅ Build query from db, then read it via tx.get(query)
+                // Prevent double-crediting initial grant
                 const txCol = firebaseAdmin_1.db.collection('users').doc(userId).collection('transactions');
                 const q = txCol
                     .where('type', '==', 'subscription_initial')
@@ -455,7 +457,7 @@ exports.processPayPalSubscription = functions
                 const existingTransactionSnap = await tx.get(q);
                 if (!existingTransactionSnap.empty) {
                     functions.logger.info(`Initial credit for subscription ${subscriptionID} already granted to user ${userId}. Skipping.`);
-                    return; // Exit transaction if already credited
+                    return;
                 }
                 const currentCredits = Number(snap.data()?.credits || 0) || 0;
                 tx.update(userRef, {
@@ -487,7 +489,7 @@ exports.processPayPalSubscription = functions
             subscriptionId: subscriptionID,
             message: isActiveish
                 ? 'Subscription verified and credited.'
-                : `Subscription recorded (status: ${status}). Will credit on activation webhook.`
+                : `Subscription recorded (status: ${status}). Will credit on activation webhook.`,
         };
     }
     catch (err) {
@@ -498,7 +500,7 @@ exports.processPayPalSubscription = functions
     }
 });
 // ────────────────────────────────────────────────────────────
-/** 6) Scheduled — Monthly free credits (2:00 AM CR, 1st) */
+/** Scheduled — Monthly free credits (2:00 AM CR, 1st) */
 // ────────────────────────────────────────────────────────────
 exports.grantMonthlyFreeCredits = functions
     .region(REGION)
