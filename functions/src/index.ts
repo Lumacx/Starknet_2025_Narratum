@@ -110,6 +110,7 @@ export {
   downloadStoryPdf,
   // Credits (creation deduction is the callable above)
   processPayPalOneTimePayment, // Renamed from processPayPalPayment
+  createPayPalOrder,
   deductCreditsForRead,
   sendTipToWriter,
   grantMonthlyFreeCredits,
@@ -118,7 +119,6 @@ export {
   redeemPromoCode,
   // Hosted Payments
   initiateHostedCreditPurchase,
-  createPayPalOrder,
 };
 
 export { propagateUserProfileToStories } from './propagateUserProfile';

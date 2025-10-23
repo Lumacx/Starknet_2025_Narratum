@@ -1,14 +1,16 @@
 /* eslint-disable no-console */
 
 // ────────────────────────────────────────────────────────────
-// Gen-1 Firebase Functions imports
+// Firebase Functions (Gen-1) & Admin wrappers
 // ────────────────────────────────────────────────────────────
 import * as functions from 'firebase-functions';
 import { db, adminAuth, FieldValue, Timestamp } from './firebaseAdmin';
-import { getPayPalOrderDetails } from './utils/paypal'; // still used by other flows if you keep it
+
+// PayPal utilities used by subscription flow
 import { getPayPalSubscriptionDetails } from './utils/paypal';
 
-// ✅ Re-export the single source of truth for the callable:
+// ✅ Re-export your one-time payment endpoints (single source of truth)
+export { createPayPalOrder } from './createPayPalOrder';
 export { processPayPalOneTimePayment } from './processPayPalOneTimePayment';
 
 // ────────────────────────────────────────────────────────────
@@ -16,7 +18,6 @@ export { processPayPalOneTimePayment } from './processPayPalOneTimePayment';
 // ────────────────────────────────────────────────────────────
 const REGION = 'us-central1';
 const NARRATUM_ADMIN_UID = 'bOKyhlO8sofk5O4dGRTZAIfdYSx2';
-
 
 const ALLOWLIST = new Set<string>([
   'https://storyreader.narratum.app',
@@ -74,7 +75,7 @@ function resolveStoryPricing(story: any): { cost: number; charging: ChargingMode
   return { cost, charging };
 }
 
-// CORS
+// CORS for HTTP mirrors
 function applyCors(res: functions.Response, origin?: string | null) {
   const o = origin ?? '';
   if (ALLOWLIST.has(o)) {
@@ -88,12 +89,7 @@ function applyCors(res: functions.Response, origin?: string | null) {
 }
 
 // ────────────────────────────────────────────────────────────
-// (1) REMOVED HERE — processPayPalOneTimePayment lives in its own file
-//     and is re-exported above to avoid duplicate symbols.
-// ────────────────────────────────────────────────────────────
-
-// ────────────────────────────────────────────────────────────
-/** 2) Shared core for “deduct credits for read” */
+/** Shared core for “deduct credits for read” */
 // ────────────────────────────────────────────────────────────
 type DeductInput = { storyId: string; checkOnly?: boolean };
 type DeductResult = {
@@ -305,7 +301,7 @@ async function performDeductCreditsForRead(
 }
 
 // ────────────────────────────────────────────────────────────
-/** 2A) Callable — Deduct credits for reading (preferred) */
+/** Callable — Deduct credits for reading (preferred) */
 // ────────────────────────────────────────────────────────────
 export const deductCreditsForRead = functions
   .region(REGION)
@@ -323,7 +319,7 @@ export const deductCreditsForRead = functions
   });
 
 // ────────────────────────────────────────────────────────────
-/** 2B) HTTP mirror — Deduct credits for reading with CORS */
+/** HTTP mirror — Deduct credits for reading with CORS */
 // ────────────────────────────────────────────────────────────
 export const deductCreditsForReadHttp = functions
   .region(REGION)
@@ -374,7 +370,7 @@ export const deductCreditsForReadHttp = functions
   });
 
 // ────────────────────────────────────────────────────────────
-/** 4) Callable — Send a tip */
+/** Callable — Send a tip */
 // ────────────────────────────────────────────────────────────
 type TipReq = { targetUid?: string; amount?: number };
 type TipRes = { success: boolean; message?: string };
@@ -436,7 +432,7 @@ export const sendTipToWriter = functions
   });
 
 // ────────────────────────────────────────────────────────────
-/** 5) Callable — Process PayPal subscription (via Next API) */
+/** Callable — Process PayPal subscription (server-side verify & credit) */
 // ────────────────────────────────────────────────────────────
 type SubReq = {
   subscriptionID?: string;
@@ -450,7 +446,7 @@ type SubRes = { success: boolean; message?: string; status?: string; subscriptio
 
 export const processPayPalSubscription = functions
   .region(REGION)
-  .runWith({ secrets: ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET'] }) // ensure tokens are available
+  .runWith({ secrets: ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET'] })
   .https.onCall(async (raw: SubReq, context): Promise<SubRes> => {
     const userId = context.auth?.uid;
     if (!userId) throw new functions.https.HttpsError('unauthenticated', 'Sign in first.');
@@ -469,7 +465,7 @@ export const processPayPalSubscription = functions
       if (!sub) throw new functions.https.HttpsError('not-found', 'Subscription not found at PayPal.');
 
       const status = sub.status; // APPROVAL_PENDING | APPROVED | ACTIVE | SUSPENDED | CANCELLED | EXPIRED
-      const isActiveish = status === 'ACTIVE' || status === 'APPROVED'; // some merchants see APPROVED briefly before ACTIVE
+      const isActiveish = status === 'ACTIVE' || status === 'APPROVED';
 
       // 2) Store/Update subscription doc (used by webhook later)
       const subRef = db.collection('paypalSubscriptions').doc(subscriptionID);
@@ -494,19 +490,16 @@ export const processPayPalSubscription = functions
           const snap = await tx.get(userRef);
           if (!snap.exists) throw new functions.https.HttpsError('not-found', 'User not found.');
 
-          // Check for existing initial credit transaction to prevent double-crediting
-          // ✅ Build query from db, then read it via tx.get(query)
+          // Prevent double-crediting initial grant
           const txCol = db.collection('users').doc(userId).collection('transactions');
           const q = txCol
             .where('type', '==', 'subscription_initial')
             .where('paypalSubscriptionId', '==', subscriptionID)
             .limit(1);
-
           const existingTransactionSnap = await tx.get(q);
-
           if (!existingTransactionSnap.empty) {
             functions.logger.info(`Initial credit for subscription ${subscriptionID} already granted to user ${userId}. Skipping.`);
-            return; // Exit transaction if already credited
+            return;
           }
 
           const currentCredits = Number(snap.data()?.credits || 0) || 0;
@@ -541,7 +534,7 @@ export const processPayPalSubscription = functions
         subscriptionId: subscriptionID,
         message: isActiveish
           ? 'Subscription verified and credited.'
-          : `Subscription recorded (status: ${status}). Will credit on activation webhook.`
+          : `Subscription recorded (status: ${status}). Will credit on activation webhook.`,
       };
     } catch (err: any) {
       functions.logger.error('processPayPalSubscription error:', err);
@@ -551,10 +544,10 @@ export const processPayPalSubscription = functions
   });
 
 // ────────────────────────────────────────────────────────────
-/** 6) Scheduled — Monthly free credits (2:00 AM CR, 1st) */
+/** Scheduled — Monthly free credits (2:00 AM CR, 1st) */
 // ────────────────────────────────────────────────────────────
 export const grantMonthlyFreeCredits = functions
-  .region(REGION) 
+  .region(REGION)
   .pubsub.schedule('0 2 1 * *') // 2:00 AM on the 1st of each month
   .timeZone('America/Costa_Rica')
   .onRun(async () => {

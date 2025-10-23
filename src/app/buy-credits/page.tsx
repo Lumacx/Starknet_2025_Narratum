@@ -9,7 +9,8 @@ import { functions } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import { usePayPalScriptReducer, type ReactPayPalScriptOptions } from '@paypal/react-paypal-js';
 import { useLocale } from '@/context/LocaleContext';
-import '@paypal/paypal-js'; // Import to ensure module augmentation is picked up
+import '@paypal/paypal-js'; // ensure window.paypal types are augmented
+import { getFirestore, doc, onSnapshot } from 'firebase/firestore';
 
 const PayPalButtons = dynamic(
   () => import('@paypal/react-paypal-js').then((m) => m.PayPalButtons),
@@ -17,17 +18,17 @@ const PayPalButtons = dynamic(
 );
 
 interface OneTimeCreditPackage {
-  id: string;
+  id: 'pkg_tester' | 'pkg_reader' | 'pkg_writer' | 'pkg_creator';
   name: 'Tester' | 'Reader' | 'Writer' | 'Creator';
   credits: number;
   price: number; // USD
   tag?: string;
-  paypalHostedButtonId: string;
+  paypalHostedButtonId: string; // legacy hosted buttons (optional)
 }
 
-/* ──────────────────────────────────────────────────────────────────
-   interpolation helper (since t(key) only takes 1 arg)
-   ────────────────────────────────────────────────────────────────── */
+/* ────────────────────────────────────────────────────────────
+   i18n helpers
+   ──────────────────────────────────────────────────────────── */
 function formatT(
   t: (k: string) => string,
   key: string,
@@ -41,24 +42,10 @@ function formatT(
   return out;
 }
 
-/* ──────────────────────────────────────────────────────────────────
-   Data
-   ────────────────────────────────────────────────────────────────── */
-const oneTimePackages: OneTimeCreditPackage[] = [
-  { id: 'ot_tester',  name: 'Tester',  credits: 25,  price: 5.0,  tag: 'Starter', paypalHostedButtonId: 'V2D9DHV8DQVCE' },
-  { id: 'ot_reader',  name: 'Reader',  credits: 75,  price: 15.0, tag: 'Popular', paypalHostedButtonId: 'CQ33GPF5623DU' },
-  { id: 'ot_writer',  name: 'Writer',  credits: 125, price: 25.0, tag: 'Most Popular', paypalHostedButtonId: '3YUKSD6AU4JH4' },
-  { id: 'ot_creator', name: 'Creator', credits: 250, price: 50.0, tag: 'Power user', paypalHostedButtonId: 'FRNPD2T8EBFVW' },
-];
-
-/** Pretty price */
 const prettyUSD = (n: number) =>
   n.toLocaleString(undefined, { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
 
-/* ──────────────────────────────────────────────────────────────────
-   Localized helpers
-   ────────────────────────────────────────────────────────────────── */
-function nameLabel(t: (k: string)=>string, name: OneTimeCreditPackage['name']) {
+function nameLabel(t: (k: string) => string, name: OneTimeCreditPackage['name']) {
   switch (name) {
     case 'Tester': return t('tierTester');
     case 'Reader': return t('tierReader');
@@ -67,7 +54,8 @@ function nameLabel(t: (k: string)=>string, name: OneTimeCreditPackage['name']) {
     default: return String(name);
   }
 }
-function tagLabel(t: (k: string)=>string, tag?: string) {
+
+function tagLabel(t: (k: string) => string, tag?: string) {
   switch (tag) {
     case 'Starter': return t('tagStarter');
     case 'Popular': return t('tagPopular');
@@ -77,59 +65,108 @@ function tagLabel(t: (k: string)=>string, tag?: string) {
   }
 }
 
-/* ──────────────────────────────────────────────────────────────────
+/* ────────────────────────────────────────────────────────────
+   Live credits hook
+   ──────────────────────────────────────────────────────────── */
+function useUserCredits(uid?: string) {
+  const [credits, setCredits] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!uid) { setCredits(null); return; }
+    const db = getFirestore();
+    const ref = doc(db, 'users', uid);
+    const unsub = onSnapshot(ref, (snap) => {
+      const val = Number(snap.get('credits') ?? 0);
+      setCredits(Number.isFinite(val) ? val : 0);
+    });
+    return () => unsub();
+  }, [uid]);
+
+  return credits;
+}
+
+/* ────────────────────────────────────────────────────────────
+   Data
+   ──────────────────────────────────────────────────────────── */
+const oneTimePackages: OneTimeCreditPackage[] = [
+  { id: 'pkg_tester',  name: 'Tester',  credits: 25,  price: 5.0,  tag: 'Starter',      paypalHostedButtonId: 'V2D9DHV8DQVCE' },
+  { id: 'pkg_reader',  name: 'Reader',  credits: 75,  price: 15.0, tag: 'Popular',      paypalHostedButtonId: 'CQ33GPF5623DU' },
+  { id: 'pkg_writer',  name: 'Writer',  credits: 125, price: 25.0, tag: 'Most Popular', paypalHostedButtonId: '3YUKSD6AU4JH4' },
+  { id: 'pkg_creator', name: 'Creator', credits: 250, price: 50.0, tag: 'Power user',   paypalHostedButtonId: 'FRNPD2T8EBFVW' },
+];
+
+/* ────────────────────────────────────────────────────────────
    PayPal Buttons – One-time (Dynamic Orders)
-   ────────────────────────────────────────────────────────────────── */
-   function PayButtonsOneTime({
-    packageId,
-    onSuccess,
-    onMessage,
-    user,
-  }: {
-    packageId: string;
-    onSuccess: (order: any) => void;
-    onMessage: (status: 'idle' | 'success' | 'error' | 'pending', msg: string) => void;
-    user: any;
-  }) {
-    const { t } = useLocale();
-    const [{ isPending, isRejected, isResolved }] = usePayPalScriptReducer();
+   ──────────────────────────────────────────────────────────── */
+function PayButtonsOneTime({
+  packageId,
+  onSuccess,
+  onMessage,
+  user,
+  referredBy,
+}: {
+  packageId: OneTimeCreditPackage['id'];
+  onSuccess: (data: any) => void;
+  onMessage: (status: 'idle' | 'success' | 'error' | 'pending', msg: string) => void;
+  user: { uid: string };
+  referredBy?: string;
+}) {
+  const { t } = useLocale();
+  const [{ isPending, isRejected, isResolved }] = usePayPalScriptReducer();
 
-    if (isPending) return <div className="text-center py-2">{t('loadingPaypal')}</div>;
-    if (isRejected) return <div className="p-4 rounded-lg border text-sm">{t('paypalSdkBlocked')}</div>;
-    if (!isResolved || typeof window === 'undefined' || !window.paypal) {
-      return <div className="p-4 rounded-lg border text-sm">{t('paymentModuleUnavailable')}</div>;
-    }
-
-    const createOrder = async () => {
-      const createPayPalOrder = httpsCallable(functions, 'createPayPalOrder');
-      const result = await createPayPalOrder({ packageId });
-      return (result.data as any).orderId;
-    };
-
-    const onApprove = async (data: any) => {
-      onMessage('pending', t('processingPayment'));
-      const processPayPalOneTimePayment = httpsCallable(functions, 'processPayPalOneTimePayment');
-      const result = await processPayPalOneTimePayment({ orderId: data.orderID, userId: user.uid });
-      onSuccess(result.data);
-    };
-
-    return (
-      <PayPalButtons
-        style={{ layout: 'vertical' }}
-        createOrder={createOrder}
-        onApprove={onApprove}
-        onCancel={() => onMessage('idle', t('paymentCancelled'))}
-        onError={(err) => {
-          console.error(err);
-          onMessage('error', t('paypalErrorTryAgain'));
-        }}
-      />
-    );
+  if (isPending) return <div className="text-center py-2">{t('loadingPaypal')}</div>;
+  if (isRejected) return <div className="p-4 rounded-lg border text-sm">{t('paypalSdkBlocked')}</div>;
+  if (!isResolved || typeof window === 'undefined' || !window.paypal) {
+    return <div className="p-4 rounded-lg border text-sm">{t('paymentModuleUnavailable')}</div>;
   }
 
-/* ──────────────────────────────────────────────────────────────────
-   PayPal Hosted Button Renderer
-   ────────────────────────────────────────────────────────────────── */
+  const createOrder = async () => {
+    try {
+      const createOrderCallable = httpsCallable(functions, 'createPayPalOrder');
+      const result = await createOrderCallable({ packageId });
+      const orderId = (result.data as any)?.orderId;
+      if (!orderId) throw new Error('Order creation returned no id');
+      return orderId;
+    } catch (e: any) {
+      console.error('createOrder failed:', e);
+      onMessage('error', t('paypalErrorTryAgain'));
+      throw e;
+    }
+  };
+
+  const onApprove = async (data: any) => {
+    onMessage('pending', t('processingPayment'));
+    try {
+      const processCallable = httpsCallable(functions, 'processPayPalOneTimePayment');
+      const result = await processCallable({
+        orderId: data.orderID,
+        userId: user.uid,
+        referredBy: referredBy || undefined,
+      });
+      onSuccess(result.data);
+    } catch (e: any) {
+      console.error('onApprove/process failed:', e);
+      onMessage('error', t('paypalErrorTryAgain'));
+    }
+  };
+
+  return (
+    <PayPalButtons
+      style={{ layout: 'vertical' }}
+      createOrder={createOrder}
+      onApprove={onApprove}
+      onCancel={() => onMessage('idle', t('paymentCancelled'))}
+      onError={(err) => {
+        console.error(err);
+        onMessage('error', t('paypalErrorTryAgain'));
+      }}
+    />
+  );
+}
+
+/* ────────────────────────────────────────────────────────────
+   Legacy Hosted Buttons (optional)
+   ──────────────────────────────────────────────────────────── */
 interface HostedPayPalButtonRendererProps {
   hostedButtonId: string;
   onSuccess: (data: { orderId: string; hostedButtonId: string; status: string }) => void;
@@ -146,18 +183,11 @@ const HostedPayPalButtonRenderer: FC<HostedPayPalButtonRendererProps> = ({
   const containerId = `paypal-container-${hostedButtonId}`;
 
   useEffect(() => {
-    // Check if paypal object and HostedButtons exist at runtime
     if (isResolved && window.paypal?.HostedButtons) {
       try {
         const container = document.getElementById(containerId);
-        if (container) {
-          container.innerHTML = '';
-        }
-
-        window.paypal.HostedButtons({
-          hostedButtonId: hostedButtonId,
-        }).render(`#${containerId}`);
-
+        if (container) container.innerHTML = '';
+        window.paypal.HostedButtons({ hostedButtonId }).render(`#${containerId}`);
         onMessage('idle', t('paypalHostedButtonReady'));
       } catch (err) {
         console.error('Error rendering PayPal Hosted Button:', err);
@@ -176,17 +206,19 @@ const HostedPayPalButtonRenderer: FC<HostedPayPalButtonRendererProps> = ({
   return <div id={containerId} className="w-full flex justify-center py-2" />;
 };
 
-/* ──────────────────────────────────────────────────────────────────
+/* ────────────────────────────────────────────────────────────
    Package Card
-   ────────────────────────────────────────────────────────────────── */
+   ──────────────────────────────────────────────────────────── */
 function PackageCard({
   offering,
   selected,
   onSelect,
+  disabled,
 }: {
   offering: OneTimeCreditPackage;
   selected: boolean;
   onSelect: () => void;
+  disabled?: boolean;
 }) {
   const { t } = useLocale();
   const unit = (n: number) => (n === 1 ? t('creditSingular') : t('creditsPlural'));
@@ -224,17 +256,19 @@ function PackageCard({
 
       <button
         onClick={onSelect}
-        className="mt-6 w-full rounded-full py-2 text-center font-semibold transition bg-[#A9834F] text-white hover:brightness-110"
+        disabled={disabled}
+        className={`mt-6 w-full rounded-full py-2 text-center font-semibold transition
+          ${disabled ? 'bg-[#A9834F]/60 text-white/80 cursor-not-allowed' : 'bg-[#A9834F] text-white hover:brightness-110'}`}
       >
-        {selected ? t('selected') : t('choosePackage')}
+        {disabled ? t('loadingPaypal') : (selected ? t('selected') : t('choosePackage'))}
       </button>
     </div>
   );
-};
+}
 
-/* ──────────────────────────────────────────────────────────────────
+/* ────────────────────────────────────────────────────────────
    Page
-   ────────────────────────────────────────────────────────────────── */
+   ──────────────────────────────────────────────────────────── */
 const BuyCreditsPage: FC = () => {
   const { t } = useLocale();
   const { user, loading: authLoading } = useAuth();
@@ -253,16 +287,23 @@ const BuyCreditsPage: FC = () => {
   const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
   const unusable = !clientId || clientId.trim().toLowerCase() === 'test';
 
-  // ✨ Load the SDK with the right intent/vault
+  // Live credits
+  const liveCredits = useUserCredits(user?.uid);
+
+  // PayPal SDK readiness (used to disable selection during load / processing)
+  const [{ isPending: sdkPending }] = usePayPalScriptReducer();
+
+  // PayPal SDK options (lock locale)
   const options: ReactPayPalScriptOptions = useMemo(() => {
     if (!clientId) return {} as any;
     return {
-      clientId: clientId!,
-      'client-id': clientId!,
+      clientId,
+      'client-id': clientId,
       currency: 'USD',
       components: 'buttons,hosted-buttons',
       intent: 'capture',
       vault: false,
+      locale: 'es_CR', // change to 'en_US' if you prefer English
     } as any;
   }, [clientId]);
 
@@ -271,16 +312,17 @@ const BuyCreditsPage: FC = () => {
     setMessage(msg);
   }
 
-  /** One-time approval */
+  /** One-time approval (callback from PayButtonsOneTime) */
   async function onApproveOneTime(data: any) {
-    if (data.success) {
+    if (data?.success) {
       setMsg('success', formatT(t, 'purchasedCreditsSuccess', { credits: selectedOffering!.credits }));
     } else {
-      setMsg('error', data.message || t('unexpectedError'));
+      setMsg('error', data?.message || t('unexpectedError'));
     }
   }
 
   const onSelectPackage = (offering: OneTimeCreditPackage) => {
+    if (sdkPending || paymentStatus === 'pending') return;
     setSelectedOffering(offering);
     setMsg('idle', '');
     requestAnimationFrame(() => confirmRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
@@ -299,7 +341,7 @@ const BuyCreditsPage: FC = () => {
         (result.data as any)?.message || (ok ? t('promoCodeRedeemed') : t('failedToRedeemPromo'))
       );
       if (ok) setPromoCodeInput('');
-    } catch (e:any) {
+    } catch (e: any) {
       console.error(e);
       setPromoCodeMessage(formatT(t, 'errorWithMessage', { message: e.message || 'Unexpected error' }));
     } finally {
@@ -342,6 +384,11 @@ const BuyCreditsPage: FC = () => {
         <header className="text-center mb-8 md:mb-12">
           <p className="font-['Lato'] text-base md:text-lg font-light tracking-widest mb-1">{t('purchaseCredits')}</p>
           <h1 className="font-['Georgia'] text-4xl md:text-5xl font-bold m-0">{t('fuelYourNarrative')}</h1>
+          {typeof liveCredits === 'number' && (
+            <p className="mt-2 opacity-80">
+              {formatT(t, 'yourBalanceIs', { credits: liveCredits })}
+            </p>
+          )}
         </header>
 
         {/* Packages with PayPal Buttons */}
@@ -352,6 +399,7 @@ const BuyCreditsPage: FC = () => {
               offering={off}
               selected={selectedOffering?.id === off.id}
               onSelect={() => onSelectPackage(off)}
+              disabled={sdkPending || paymentStatus === 'pending'}
             />
           ))}
         </section>
@@ -409,22 +457,33 @@ const BuyCreditsPage: FC = () => {
                   {formatT(t, 'setEnvVar', { envVar: 'NEXT_PUBLIC_PAYPAL_CLIENT_ID' })}
                 </div>
               ) : (
-                //<PayPalProviderClient key={selectedOffering?.id ?? 'none'} enabled options={options}>
                 <PayPalProviderClient
-                key={`pp-${clientId}-${selectedOffering?.id || 'none'}-capture`}
-                enabled
-                options={options}
-              >
-                <PayButtonsOneTime
-                  packageId={selectedOffering.id}
-                  onSuccess={onApproveOneTime}
-                  onMessage={setMsg}
-                  user={user}
-                />
-              </PayPalProviderClient>
-
+                  key={`pp-${clientId}-${selectedOffering?.id || 'none'}-capture`}
+                  enabled
+                  options={options}
+                >
+                  <PayButtonsOneTime
+                    packageId={selectedOffering.id}
+                    onSuccess={onApproveOneTime}
+                    onMessage={setMsg}
+                    user={user}
+                    referredBy={referredBy}
+                  />
+                </PayPalProviderClient>
               )}
             </div>
+
+            {/* Optional legacy hosted button (keep hidden or show with a label) */}
+            {/* <div className="mt-6">
+              <h4 className="text-sm opacity-80">{t('legacyCheckout')}</h4>
+              <PayPalProviderClient key={`pp-hosted-${clientId}`} enabled options={options}>
+                <HostedPayPalButtonRenderer
+                  hostedButtonId={selectedOffering.paypalHostedButtonId}
+                  onSuccess={() => {}}
+                  onMessage={setMsg}
+                />
+              </PayPalProviderClient>
+            </div> */}
           </section>
         )}
 
