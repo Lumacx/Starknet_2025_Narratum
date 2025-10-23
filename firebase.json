@@ -1,7 +1,18 @@
 {
   "hosting": {
     "public": "out",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"]
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Content-Security-Policy",
+            "value": "default-src 'self'; script-src 'self' https://www.paypal.com https://www.paypalobjects.com; frame-src 'self' https://www.paypal.com https://www.sandbox.paypal.com; img-src 'self' https://www.paypalobjects.com https://www.paypal.com data:; connect-src 'self' https://*.paypal.com https://*.paypalobjects.com https://www.paypalobjects.com https://us-central1-narratum.cloudfunctions.net; style-src 'self' 'unsafe-inline'"
+          }
+        ]
+      }
+    ]
   },
   "functions": {
     "source": "functions",
@@ -18,17 +29,17 @@
     "rules": "storage.rules"
   },
   "emulators": {
-    "hub":         { "host": "0.0.0.0", "port": 4400 },
-    "logging":     { "host": "0.0.0.0", "port": 4500 },
-    "apphosting":  { "host": "0.0.0.0", "port": 5002 },
-    "auth":        { "host": "0.0.0.0", "port": 9099 },
-    "firestore":   { "host": "0.0.0.0", "port": 8080 },
-    "functions":   { "host": "0.0.0.0", "port": 5001 },
-    "storage":     { "host": "0.0.0.0", "port": 9199 },
-    "eventarc":    { "host": "0.0.0.0", "port": 9299 },
-    "tasks":       { "host": "0.0.0.0", "port": 9499 },
-    "hosting":     { "host": "0.0.0.0", "port": 5000 },
-    "ui":          { "enabled": true, "host": "0.0.0.0", "port": 4005 },
+    "hub": { "host": "0.0.0.0", "port": 4400 },
+    "logging": { "host": "0.0.0.0", "port": 4500 },
+    "apphosting": { "host": "0.0.0.0", "port": 5002 },
+    "auth": { "host": "0.0.0.0", "port": 9099 },
+    "firestore": { "host": "0.0.0.0", "port": 8080 },
+    "functions": { "host": "0.0.0.0", "port": 5001 },
+    "storage": { "host": "0.0.0.0", "port": 9199 },
+    "eventarc": { "host": "0.0.0.0", "port": 9299 },
+    "tasks": { "host": "0.0.0.0", "port": 9499 },
+    "hosting": { "host": "0.0.0.0", "port": 5000 },
+    "ui": { "enabled": true, "host": "0.0.0.0", "port": 4005 },
     "dataconnect": { "host": "0.0.0.0", "port": 9399, "dataDir": "dataconnect/.dataconnect/pgliteData" }
   },
   "dataconnect": { "source": "dataconnect" },
