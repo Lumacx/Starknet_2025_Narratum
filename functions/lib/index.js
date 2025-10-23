@@ -37,7 +37,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.propagateUserProfileToStories = exports.initiateHostedCreditPurchase = exports.redeemPromoCode = exports.processPayPalSubscription = exports.grantMonthlyFreeCredits = exports.sendTipToWriter = exports.deductCreditsForRead = exports.processPayPalOneTimePayment = exports.downloadStoryPdf = exports.generateWithImagen = exports.generateWithGemini = exports.removeIndexOnDelete = exports.indexAssetOnFinalize = exports.incrementCommentCount = exports.createuserprofile = exports.generateNarratumImage = exports.deductCreditsForCreation = void 0;
+exports.propagateUserProfileToStories = exports.createPayPalOrder = exports.initiateHostedCreditPurchase = exports.redeemPromoCode = exports.processPayPalSubscription = exports.grantMonthlyFreeCredits = exports.sendTipToWriter = exports.deductCreditsForRead = exports.processPayPalOneTimePayment = exports.downloadStoryPdf = exports.generateWithImagen = exports.generateWithGemini = exports.removeIndexOnDelete = exports.indexAssetOnFinalize = exports.incrementCommentCount = exports.createuserprofile = exports.generateNarratumImage = exports.deductCreditsForCreation = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 // Ensure Admin is initialized exactly once
@@ -75,6 +75,8 @@ const promoCodes_1 = require("./promoCodes");
 Object.defineProperty(exports, "redeemPromoCode", { enumerable: true, get: function () { return promoCodes_1.redeemPromoCode; } });
 const hostedPayments_1 = require("./hostedPayments");
 Object.defineProperty(exports, "initiateHostedCreditPurchase", { enumerable: true, get: function () { return hostedPayments_1.initiateHostedCreditPurchase; } });
+const createPayPalOrder_1 = require("./createPayPalOrder");
+Object.defineProperty(exports, "createPayPalOrder", { enumerable: true, get: function () { return createPayPalOrder_1.createPayPalOrder; } });
 const CREATION_COSTS = {
     basic: 5, // short
     premium: 10, // novela
