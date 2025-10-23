@@ -81,56 +81,51 @@ function tagLabel(t: (k: string)=>string, tag?: string) {
    PayPal Buttons – One-time (Dynamic Orders)
    ────────────────────────────────────────────────────────────────── */
    function PayButtonsOneTime({
-    price,
-    description,
+    packageId,
     onSuccess,
     onMessage,
+    user,
   }: {
-    price: number;
-    description: string;
+    packageId: string;
     onSuccess: (order: any) => void;
     onMessage: (status: 'idle' | 'success' | 'error' | 'pending', msg: string) => void;
+    user: any;
   }) {
     const { t } = useLocale();
     const [{ isPending, isRejected, isResolved }] = usePayPalScriptReducer();
-  
+
     if (isPending) return <div className="text-center py-2">{t('loadingPaypal')}</div>;
     if (isRejected) return <div className="p-4 rounded-lg border text-sm">{t('paypalSdkBlocked')}</div>;
     if (!isResolved || typeof window === 'undefined' || !window.paypal) {
       return <div className="p-4 rounded-lg border text-sm">{t('paymentModuleUnavailable')}</div>;
     }
-  
+
+    const createOrder = async () => {
+      const createPayPalOrder = httpsCallable(functions, 'createPayPalOrder');
+      const result = await createPayPalOrder({ packageId });
+      return (result.data as any).orderId;
+    };
+
+    const onApprove = async (data: any) => {
+      onMessage('pending', t('processingPayment'));
+      const processPayPalOneTimePayment = httpsCallable(functions, 'processPayPalOneTimePayment');
+      const result = await processPayPalOneTimePayment({ orderId: data.orderID, userId: user.uid });
+      onSuccess(result.data);
+    };
+
     return (
       <PayPalButtons
-  style={{ layout: 'vertical' }}
-  createOrder={(_d, actions) =>
-    actions.order.create({
-      intent: 'CAPTURE', // <- requerido por los .d.ts de tu versión
-      purchase_units: [
-        {
-          amount: {
-            value: price.toFixed(2),
-            currency_code: 'USD',
-          },
-          description,
-        },
-      ],
-    })
-  }
-  onApprove={async (_d, actions) => {
-    onMessage('pending', t('processingPayment'));
-    const order = await actions.order!.capture();
-    onSuccess(order);
-  }}
-  onCancel={() => onMessage('idle', t('paymentCancelled'))}
-  onError={(err) => {
-    console.error(err);
-    onMessage('error', t('paypalErrorTryAgain'));
-  }}
-/>
-
+        style={{ layout: 'vertical' }}
+        createOrder={createOrder}
+        onApprove={onApprove}
+        onCancel={() => onMessage('idle', t('paymentCancelled'))}
+        onError={(err) => {
+          console.error(err);
+          onMessage('error', t('paypalErrorTryAgain'));
+        }}
+      />
     );
-  }  
+  }
 
 /* ──────────────────────────────────────────────────────────────────
    PayPal Hosted Button Renderer
@@ -152,11 +147,11 @@ const HostedPayPalButtonRenderer: FC<HostedPayPalButtonRendererProps> = ({
 
   useEffect(() => {
     // Check if paypal object and HostedButtons exist at runtime
-    if (isResolved && window.paypal?.HostedButtons) { 
+    if (isResolved && window.paypal?.HostedButtons) {
       try {
         const container = document.getElementById(containerId);
         if (container) {
-          container.innerHTML = ''; 
+          container.innerHTML = '';
         }
 
         window.paypal.HostedButtons({
@@ -277,32 +272,11 @@ const BuyCreditsPage: FC = () => {
   }
 
   /** One-time approval */
-  async function onApproveOneTime(order: any) { // order can now be { orderId, hostedButtonId, status } or standard PayPal order
-    if (!user?.uid || !selectedOffering) {
-      setMsg('error', t('mustBeLoggedInAndHaveSelection'));
-      return;
-    }
-    try {
-      if (order?.status === 'COMPLETED' || order?.status === 'APPROVED') {
-        const processPayment = httpsCallable(functions, 'processPayPalOneTimePayment');
-        await processPayment({
-          orderId: order.orderId || order.id, // Use order.orderId for hosted, order.id for dynamic
-          hostedButtonId: order.hostedButtonId, // Will be undefined for dynamic button
-          userId: user.uid,
-          amount: selectedOffering.credits,
-          pricePaid: selectedOffering.price,
-          packageId: selectedOffering.id,
-          type: 'one-time-purchase',
-          referredBy: referredBy || undefined,
-          promoCode: promoCodeInput || undefined,
-        });
-        setMsg('success', formatT(t, 'purchasedCreditsSuccess', { credits: selectedOffering.credits }));
-      } else {
-        setMsg('error', t('paypalPaymentNotCompleted'));
-      }
-    } catch (e: any) {
-      console.error(e);
-      setMsg('error', e.message || t('unexpectedError'));
+  async function onApproveOneTime(data: any) {
+    if (data.success) {
+      setMsg('success', formatT(t, 'purchasedCreditsSuccess', { credits: selectedOffering!.credits }));
+    } else {
+      setMsg('error', data.message || t('unexpectedError'));
     }
   }
 
@@ -442,13 +416,10 @@ const BuyCreditsPage: FC = () => {
                 options={options}
               >
                 <PayButtonsOneTime
-                  price={selectedOffering.price}
-                  description={formatT(t, 'paypalOneTimeDescription', {
-                    name: nameLabel(t, selectedOffering.name),
-                    ref: refSuffix,
-                  })}
+                  packageId={selectedOffering.id}
                   onSuccess={onApproveOneTime}
                   onMessage={setMsg}
+                  user={user}
                 />
               </PayPalProviderClient>
 

@@ -1,3 +1,4 @@
+
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { getPayPalAccessToken, resolvePayPalBase, PayPalOrderCaptureResponse } from './utils/paypal';
@@ -11,16 +12,14 @@ interface CreditPackage {
   tier: 'Tester' | 'Reader' | 'Writer' | 'Creator';
   credits: number;
   value: number; // USD
-  paypalHostedButtonId: string;
-  popular?: boolean;
 }
 
 // NOTE: Consider moving to Firestore/Config later to avoid drift with frontend.
 const creditPackages: CreditPackage[] = [
-  { id: 'pkg_tester',  tier: 'Tester',  credits: 25,  value: 5.0,  paypalHostedButtonId: 'V2D9DHV8DQVCE' },
-  { id: 'pkg_reader',  tier: 'Reader',  credits: 75,  value: 15.0, paypalHostedButtonId: 'CQ33GPF5623DU' },
-  { id: 'pkg_writer',  tier: 'Writer',  credits: 125, value: 25.0, paypalHostedButtonId: '3YUKSD6AU4JH4', popular: true },
-  { id: 'pkg_creator', tier: 'Creator', credits: 250, value: 50.0, paypalHostedButtonId: 'FRNPD2T8EBFVW' },
+  { id: 'pkg_tester',  tier: 'Tester',  credits: 25,  value: 5.0  },
+  { id: 'pkg_reader',  tier: 'Reader',  credits: 75,  value: 15.0 },
+  { id: 'pkg_writer',  tier: 'Writer',  credits: 125, value: 25.0 },
+  { id: 'pkg_creator', tier: 'Creator', credits: 250, value: 50.0 },
 ];
 
 function determineUserTier(totalCredits: number): 'Tester' | 'Reader' | 'Writer' | 'Creator' | null {
@@ -39,9 +38,9 @@ export const processPayPalOneTimePayment = functions
       throw new functions.https.HttpsError('unauthenticated', 'The function must be called while authenticated.');
     }
 
-    const { orderId, userId, amount, pricePaid, packageId, type, referredBy } = data || {};
+    const { orderId, userId, referredBy } = data || {};
 
-    if (!orderId || !userId || typeof amount !== 'number' || typeof pricePaid !== 'number' || !packageId) {
+    if (!orderId || !userId) {
       throw new functions.https.HttpsError('invalid-argument', 'Missing or invalid required payment data.');
     }
 
@@ -57,13 +56,13 @@ export const processPayPalOneTimePayment = functions
     // OAuth
     let accessToken: string;
     try {
-      accessToken = await getPayPalAccessToken(); // must read PAYPAL_* from secrets/env inside utils
+      accessToken = await getPayPalAccessToken();
     } catch (err: any) {
       functions.logger.error('Failed to get PayPal access token:', err);
       throw new functions.https.HttpsError('internal', 'Failed to authenticate with PayPal.');
     }
 
-    const base = resolvePayPalBase(); // chooses live vs sandbox
+    const base = resolvePayPalBase();
 
     try {
       // Capture order
@@ -73,7 +72,6 @@ export const processPayPalOneTimePayment = functions
           'Content-Type': 'application/json',
           Authorization: `Bearer ${accessToken}`,
         },
-        // Per PayPal docs: empty JSON body for capture
         body: '{}',
       });
 
@@ -93,6 +91,25 @@ export const processPayPalOneTimePayment = functions
       if (captureStatus !== 'COMPLETED') {
         throw new functions.https.HttpsError('cancelled', 'PayPal order not completed.', { paypalStatus: captureStatus });
       }
+
+      // Server-side validation of the amount
+      const purchaseUnit = captureResult.purchase_units?.[0];
+      const capturedAmount = purchaseUnit?.payments?.captures?.[0]?.amount;
+      const packageId = (purchaseUnit as any)?.custom_id;
+
+      if (!capturedAmount || !packageId) {
+          throw new functions.https.HttpsError('internal', 'Missing transaction details in PayPal response.');
+      }
+
+      const creditPackage = creditPackages.find(p => p.id === packageId);
+      if (!creditPackage) {
+          throw new functions.https.HttpsError('internal', `Invalid packageId ${packageId} found in transaction.`);
+      }
+
+      if (Number(capturedAmount.value) !== creditPackage.value || capturedAmount.currency_code !== 'USD') {
+          throw new functions.https.HttpsError('invalid-argument', 'Mismatched payment amount.');
+      }
+      const amount = creditPackage.credits;
 
       // Credit user (transaction)
       await db.runTransaction(async (transaction) => {
@@ -115,11 +132,11 @@ export const processPayPalOneTimePayment = functions
         const txRef = db.collection('creditTransactions').doc();
         transaction.set(txRef, {
           userId,
-          type,
+          type: 'one-time',
           packageId,
           creditsGranted: amount,
-          pricePaid,
-          currency: 'USD',
+          pricePaid: Number(capturedAmount.value),
+          currency: capturedAmount.currency_code,
           orderId,
           paypalCaptureId: captureResult.purchase_units?.[0]?.payments?.captures?.[0]?.id || null,
           referredBy: referredBy || null,

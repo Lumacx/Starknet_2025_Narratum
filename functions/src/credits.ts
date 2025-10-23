@@ -17,6 +17,7 @@ export { processPayPalOneTimePayment } from './processPayPalOneTimePayment';
 const REGION = 'us-central1';
 const NARRATUM_ADMIN_UID = 'bOKyhlO8sofk5O4dGRTZAIfdYSx2';
 
+
 const ALLOWLIST = new Set<string>([
   'https://storyreader.narratum.app',
   'https://narratum.app',

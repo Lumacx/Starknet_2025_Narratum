@@ -1,3 +1,4 @@
+
 // functions/src/index.ts
 
 import * as functions from 'firebase-functions';
@@ -34,6 +35,7 @@ import {
 // Promo Codes / Hosted Payments
 import { redeemPromoCode } from './promoCodes';
 import { initiateHostedCreditPurchase } from './hostedPayments';
+import { createPayPalOrder } from './createPayPalOrder';
 
 /* ──────────────────────────────────────────────────────────────────
    Callable: deductCreditsForCreation  (NO CORS NEEDED)
@@ -116,6 +118,7 @@ export {
   redeemPromoCode,
   // Hosted Payments
   initiateHostedCreditPurchase,
+  createPayPalOrder,
 };
 
 export { propagateUserProfileToStories } from './propagateUserProfile';
