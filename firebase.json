@@ -8,7 +8,19 @@
         "headers": [
           {
             "key": "Content-Security-Policy",
-            "value": "default-src 'self'; script-src 'self' https://www.paypal.com https://www.paypalobjects.com; frame-src 'self' https://www.paypal.com https://www.sandbox.paypal.com; img-src 'self' https://www.paypalobjects.com https://www.paypal.com data:; connect-src 'self' https://*.paypal.com https://*.paypalobjects.com https://www.paypalobjects.com https://us-central1-narratum.cloudfunctions.net; style-src 'self' 'unsafe-inline'"
+            "value": "default-src 'self'; base-uri 'self'; frame-ancestors 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' https://www.paypal.com https://www.paypalobjects.com https://www.gstatic.com https://accounts.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://www.paypalobjects.com https://www.paypal.com https://firebasestorage.googleapis.com https://lh3.googleusercontent.com https://i.ytimg.com https://img.youtube.com; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.paypal.com https://www.paypal.com https://api-m.paypal.com https://api-m.sandbox.paypal.com https://www.paypalobjects.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://firebasestorage.googleapis.com https://storage.googleapis.com https://us-central1-narratum.cloudfunctions.net https://api.elevenlabs.io https://*.elevenlabs.io; frame-src 'self' https://www.paypal.com https://www.sandbox.paypal.com https://www.youtube.com https://youtube.com https://youtu.be; media-src 'self' blob: data: https://firebasestorage.googleapis.com https://storage.googleapis.com https://api.elevenlabs.io https://*.elevenlabs.io https://www.youtube.com https://i.ytimg.com; worker-src 'self' blob:; upgrade-insecure-requests"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "strict-origin-when-cross-origin"
+          },
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "SAMEORIGIN"
           }
         ]
       }
@@ -40,9 +52,15 @@
     "tasks": { "host": "0.0.0.0", "port": 9499 },
     "hosting": { "host": "0.0.0.0", "port": 5000 },
     "ui": { "enabled": true, "host": "0.0.0.0", "port": 4005 },
-    "dataconnect": { "host": "0.0.0.0", "port": 9399, "dataDir": "dataconnect/.dataconnect/pgliteData" }
+    "dataconnect": {
+      "host": "0.0.0.0",
+      "port": 9399,
+      "dataDir": "dataconnect/.dataconnect/pgliteData"
+    }
   },
-  "dataconnect": { "source": "dataconnect" },
+  "dataconnect": {
+    "source": "dataconnect"
+  },
   "apphosting": [
     {
       "backendId": "studio",

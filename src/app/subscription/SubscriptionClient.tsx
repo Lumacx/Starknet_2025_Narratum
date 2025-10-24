@@ -2,14 +2,15 @@
 
 import React, { FC, useMemo, useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
-
-// Alias to avoid any clash with the server file's `dynamic` export
 import nextDynamic from 'next/dynamic';
-import PayPalProviderClient from '@/components/PayPalProviderClient';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
-import { usePayPalScriptReducer, type ReactPayPalScriptOptions } from '@paypal/react-paypal-js';
+import {
+  PayPalScriptProvider,
+  usePayPalScriptReducer,
+  type ReactPayPalScriptOptions,
+} from '@paypal/react-paypal-js';
 import { useLocale } from '@/context/LocaleContext';
 import '@paypal/paypal-js';
 
@@ -44,7 +45,6 @@ interface SubscriptionStatus {
   renewsAt?: string;
 }
 
-/* ---------- interpolation helper ---------- */
 function formatT(
   t: (k: string) => string,
   key: string,
@@ -60,9 +60,6 @@ function formatT(
   return out;
 }
 
-/* ──────────────────────────────────────────────────────────────────
-   Data
-   ────────────────────────────────────────────────────────────────── */
 const weeklyTiers: SubscriptionTier[] = [
   { id: 'sub_wk_og_free', name: 'OG Free', credits: 5,  price: 0.0,  tag: 'Free' },
   { id: 'sub_wk_tester',  name: 'Tester',  credits: 10, price: 1.99 },
@@ -79,7 +76,6 @@ const monthlyTiers: SubscriptionTier[] = [
   { id: 'sub_mo_creator', name: 'Creator', credits: 250, price: 36.99, tag: 'Best value' },
 ];
 
-/** Arrange subscription tiers so row1 = [Tester, OG Free, Reader], row2 = [Writer, Creator] */
 function reorderSubs(list: SubscriptionTier[]): SubscriptionTier[] {
   const byName = Object.fromEntries(list.map(o => [o.name.toLowerCase(), o]));
   const order = ['Tester', 'OG Free', 'Reader', 'Writer', 'Creator']
@@ -88,28 +84,25 @@ function reorderSubs(list: SubscriptionTier[]): SubscriptionTier[] {
   return order.length ? (order as SubscriptionTier[]) : list;
 }
 
-/** Pretty price */
 const prettyUSD = (n: number) =>
   n.toLocaleString(undefined, { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
 
-/* ──────────────────────────────────────────────────────────────────
-   PayPal PLAN IDs — LIVE ONLY
-   ────────────────────────────────────────────────────────────────── */
+/* LIVE plan IDs */
 const PAYPAL_PLAN_IDS: PlanMap = {
   weekly: {
-    'og free': 'P-59784833RN494424PNDLBX5Y', // not used with PayPal, kept for completeness
+    'og free': 'P-59784833RN494424PNDLBX5Y',
     'tester':  'P-5G020421VG335451VNDLCDAA',
     'reader':  'P-9P840869XW552833BNDLCEWI',
     'writer':  'P-6DV06426M8230392GNDLCFWQ',
-    'creator': 'P-5GR1157592296905UNDLCHXI',
+    'creator': 'P-5GR1157592296905UNDLCHXI'
   },
   monthly: {
-    'og free': 'P-25490973SC123773DNDLB5OY', // not used with PayPal, kept for completeness
+    'og free': 'P-25490973SC123773DNDLB5OY',
     'tester':  'P-6JF174267D2475636NDLCLZI',
     'reader':  'P-80H73039UX394851YNDLCMQQ',
     'writer':  'P-6R486885FS7556443NDLCO6Q',
-    'creator': 'P-7GH52876NN676341GNDLCPSY',
-  },
+    'creator': 'P-7GH52876NN676341GNDLCPSY'
+  }
 };
 
 const tierKey = (name: SubscriptionTier['name']): TierKey => {
@@ -122,9 +115,6 @@ const tierKey = (name: SubscriptionTier['name']): TierKey => {
   }
 };
 
-/* ──────────────────────────────────────────────────────────────────
-   Localized helpers
-   ────────────────────────────────────────────────────────────────── */
 function nameLabel(t: (k: string)=>string, name: BaseOffering['name']) {
   switch (name) {
     case 'OG Free': return t('tierOGFree');
@@ -147,9 +137,7 @@ function tagLabel(t: (k: string)=>string, tag?: string) {
   }
 }
 
-/* ──────────────────────────────────────────────────────────────────
-   PayPal Buttons – Subscription (paid plans)
-   ────────────────────────────────────────────────────────────────── */
+/* ── PayPal Buttons (Subscriptions) ─────────────────────────── */
 function PayButtonsSubscription({
   planId,
   description,
@@ -170,11 +158,7 @@ function PayButtonsSubscription({
     return <div className="p-4 rounded-lg border text-sm">{t('paymentModuleUnavailable')}</div>;
   }
   if (!planId) {
-    return (
-      <div className="p-4 rounded-lg border text-sm">
-        <strong>{t('planIdNotSet')}</strong>
-      </div>
-    );
+    return <div className="p-4 rounded-lg border text-sm"><strong>{t('planIdNotSet')}</strong></div>;
   }
 
   return (
@@ -184,7 +168,7 @@ function PayButtonsSubscription({
       createSubscription={(_, actions) => actions.subscription.create({ plan_id: planId })}
       onApprove={async (data) => {
         onMessage('pending', t('activatingSubscription'));
-        onSuccess({ id: data.subscriptionID, status: 'APPROVED' });
+        onSuccess({ id: data.subscriptionID, status: 'APPROVED', description });
       }}
       onCancel={() => onMessage('idle', t('subscriptionCancelled'))}
       onError={(err) => {
@@ -195,9 +179,7 @@ function PayButtonsSubscription({
   );
 }
 
-/* ──────────────────────────────────────────────────────────────────
-   Package Card
-   ────────────────────────────────────────────────────────────────── */
+/* ── Package Card ───────────────────────────────────────────── */
 function PackageCard({
   offering,
   selected,
@@ -251,9 +233,7 @@ function PackageCard({
   );
 }
 
-/* ──────────────────────────────────────────────────────────────────
-   Page (client)
-   ────────────────────────────────────────────────────────────────── */
+/* ── Page ───────────────────────────────────────────────────── */
 const SubscriptionClient: FC = () => {
   const { t } = useLocale();
   const { user, loading: authLoading } = useAuth();
@@ -284,25 +264,23 @@ const SubscriptionClient: FC = () => {
 
   const hasActivePaid = subStatus.kind === 'paid' && subStatus.status === 'ACTIVE';
 
-  // SDK options (subscriptions require intent: 'subscription' and vault: true)
-  const options: ReactPayPalScriptOptions = useMemo(
-    () => ({
-      clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID!,
-      'client-id': process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID!,
+  // Canonical PayPal SDK options for subscriptions
+  const options: ReactPayPalScriptOptions = useMemo(() => {
+    if (!clientId) return {} as any;
+    return {
+      'client-id': clientId,
       components: 'buttons',
       intent: 'subscription',
       vault: true,
-      currency: 'USD',
-    }),
-    []
-  );
+      currency: 'USD'
+    } as const;
+  }, [clientId]);
 
   function setMsg(status: 'idle' | 'success' | 'error' | 'pending', msg: string) {
     setPaymentStatus(status);
     setMessage(msg);
   }
 
-  // Fetch current subscription status (CALLABLE)
   useEffect(() => {
     if (!user?.uid) return;
     (async () => {
@@ -325,7 +303,6 @@ const SubscriptionClient: FC = () => {
     })();
   }, [user?.uid]);
 
-  /** Activate OG Free (in-app only, CALLABLE) */
   const activateFree = async () => {
     if (!user?.uid) {
       setMsg('error', t('mustBeLoggedInAndHaveSelection'));
@@ -361,19 +338,16 @@ const SubscriptionClient: FC = () => {
     }
   };
 
-  /** Approve paid subscription (CALLABLE to your verifier) */
   async function onApproveSubscription(sub: any, paypalPlanId?: string) {
     if (!user?.uid || !selectedOffering) {
       setMsg('error', t('mustBeLoggedInAndHaveSelection'));
       return;
     }
-
     const subscriptionID = sub?.id;
     if (!subscriptionID) {
       setMsg('error', t('paypalSubscriptionIdMissing') || 'Missing PayPal subscription ID.');
       return;
     }
-
     try {
       const processSubscription = httpsCallable(functions, 'processPayPalSubscription');
       const payload = {
@@ -384,12 +358,9 @@ const SubscriptionClient: FC = () => {
         credits: selectedOffering.credits,
         referredBy: referredBy || undefined,
       };
-
       const res = await processSubscription(payload);
       const data = (res?.data || {}) as { success?: boolean; message?: string; status?: string };
-
       if (!data?.success) throw new Error(data?.message || t('unexpectedError'));
-
       setMsg(
         'success',
         formatT(t, 'subscriptionActivated', {
@@ -397,7 +368,6 @@ const SubscriptionClient: FC = () => {
           frequency: t(subscriptionFrequency),
         })
       );
-
       setSubStatus({
         kind: 'paid',
         planKey: selectedOffering.id,
@@ -412,7 +382,6 @@ const SubscriptionClient: FC = () => {
     }
   }
 
-  /** Cancel active paid subscription (CALLABLE) */
   const cancelActiveSubscription = async () => {
     if (!user?.uid || !subStatus.paypalSubscriptionId) return;
     try {
@@ -698,11 +667,7 @@ const SubscriptionClient: FC = () => {
                   }
 
                   return (
-                    <PayPalProviderClient
-                      key={`pp-${process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID}-${subscriptionFrequency}-${selectedOffering?.id || 'none'}`}
-                      enabled
-                      options={options}
-                    >
+                    <PayPalScriptProvider options={options} deferLoading={false}>
                       <PayButtonsSubscription
                         planId={paypalPlanId!}
                         description={formatT(t, 'paypalSubscriptionDescription', {
@@ -713,7 +678,7 @@ const SubscriptionClient: FC = () => {
                         onSuccess={(sub) => onApproveSubscription(sub, paypalPlanId)}
                         onMessage={setMsg}
                       />
-                    </PayPalProviderClient>
+                    </PayPalScriptProvider>
                   );
                 })()
               )}
@@ -721,13 +686,11 @@ const SubscriptionClient: FC = () => {
           </section>
         )}
 
-        {/* Back link */}
         <div className="text-center mt-10">
           <Link href="/" className="text-sm underline opacity-80 hover:opacity-100">{t('backToLanding')}</Link>
         </div>
       </div>
 
-      {/* Glow keyframes to match Buy Credits */}
       <style jsx global>{`
         @keyframes pulseGlowLight { 0%,100% { box-shadow: 0 0 22px rgba(58,75,92,.25);} 50% { box-shadow: 0 0 44px rgba(58,75,92,.6);} }
         @keyframes pulseGlowDark { 0%,100% { box-shadow: 0 0 8px rgba(255,255,255,.25);} 50% { box-shadow: 0 0 16px rgba(255,255,255,.6);} }
