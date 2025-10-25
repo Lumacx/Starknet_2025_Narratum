@@ -39,7 +39,7 @@ type UserProfileDoc = {
   displayName?: string;
 };
 type TxStatus = 'confirmed' | 'pending' | 'failed';
-type TxType = 'purchase' | 'spend' | 'bonus';
+type TxType = 'purchase' | 'spend' | 'bonus'| 'one-time';
 type TxItem = {
   id: string;
   type: TxType;
@@ -49,6 +49,7 @@ type TxItem = {
   note?: string;
   status: TxStatus;
   createdAt?: any;
+  timestamp?: any; // ✅ add this
 };
 type RefUser = { id: string; displayName?: string; email?: string; createdAt?: any };
 
@@ -389,48 +390,66 @@ export default function ProfileClient() {
     return () => unsub();
   }, [user, t]);
 
-  /* =========================
-     TRANSACTIONS
-     ========================= */
-  useEffect(() => {
-    if (!user || activeTab !== 'transactions') {
-      setTxs([]);
+ /* =========================
+   TRANSACTIONS
+   ========================= */
+useEffect(() => {
+  if (!user || activeTab !== 'transactions') {
+    setTxs([]);
+    setTxLoading(false);
+    return;
+  }
+
+  setTxLoading(true);
+
+  // Try to order by the field we actually write in Cloud Functions (`timestamp`).
+  // If that field doesn't exist yet (older docs), Firestore still returns docs;
+  // they'll just be sorted as "null" and we’ll normalize below.
+  const qTx = query(
+    collection(db, 'users', user.uid, 'transactions'),
+    orderBy('timestamp', 'desc'),
+    limit(100)
+  );
+
+  const unsub = onSnapshot(
+    qTx,
+    (snap) => {
+      const items: TxItem[] = [];
+      snap.forEach((d) => {
+        const x = d.data() as any;
+
+        // Normalize the date for rendering:
+        // prefer Firestore Timestamp in `timestamp`, then `createdAt`,
+        // then RFC/ISO strings from `captureTime`.
+        const created =
+          x.timestamp ??
+          x.createdAt ??
+          (x.captureTime ? new Date(String(x.captureTime)) : undefined);
+
+        items.push({
+          id: d.id,
+          type: (x.type as TxType) ?? 'spend',
+          creditsDelta: Number(x.creditsDelta ?? 0),
+          amountUsd: typeof x.amountUsd === 'number' ? x.amountUsd : Number(x.pricePaid ?? 0),
+          storyId: x.storyId,
+          note: x.description || x.note || '',
+          status: (x.status as TxStatus) ?? 'confirmed',
+          // keep both so UI and future queries can use either
+          createdAt: created,
+          // ts-expect-error – we also stash the raw timestamp for display
+          timestamp: created,
+        } as any);
+      });
+
+      setTxs(items);
       setTxLoading(false);
-      return;
-    }
-    setTxLoading(true);
+    },
+    () => setTxLoading(false)
+  );
 
-    const qTx = query(
-      collection(db, 'users', user.uid, 'transactions'),
-      orderBy('createdAt', 'desc'),
-      limit(100),
-    );
+  return () => unsub();
+}, [user, activeTab]);
 
-    const unsub = onSnapshot(
-      qTx,
-      (snap) => {
-        const items: TxItem[] = [];
-        snap.forEach((d) => {
-          const x = d.data() as any;
-          items.push({
-            id: d.id,
-            type: x.type ?? 'spend',
-            creditsDelta: x.creditsDelta ?? 0,
-            amountUsd: x.amountUsd,
-            storyId: x.storyId,
-            note: x.note,
-            status: x.status ?? 'confirmed',
-            createdAt: x.createdAt,
-          });
-        });
-        setTxs(items);
-        setTxLoading(false);
-      },
-      () => setTxLoading(false),
-    );
-
-    return () => unsub();
-  }, [user, activeTab]);
 
   /* =========================
      REFERRAL LIST
@@ -946,7 +965,11 @@ export default function ProfileClient() {
                     <div className="col-span-3 px-3 py-2">{t('note')}</div>
                   </div>
                   {txs.map((tx) => {
-                    const ts = tx.createdAt?.toDate?.() as Date | undefined;
+                    const ts =
+                    (tx as any).timestamp?.toDate?.() ??
+                    tx.createdAt?.toDate?.() ??
+                    (typeof (tx as any).timestamp === 'string' ? new Date((tx as any).timestamp) : undefined) ??
+                    (typeof (tx as any).createdAt === 'string' ? new Date((tx as any).createdAt) : undefined);
                     const dateStr = ts ? ts.toLocaleString() : '—';
                     const sign = tx.creditsDelta >= 0 ? '+' : '';
                     const color =

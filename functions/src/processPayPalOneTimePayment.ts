@@ -11,6 +11,21 @@ import {
 if (admin.apps.length === 0) admin.initializeApp();
 const db = admin.firestore();
 
+/* ----------------------------- Config ----ready for later---------------- */
+
+// % of purchased credits that go to the referrer (e.g., 0.10 = 10%)
+const REFERRER_CREDITS_PCT = 0.00;
+// % bonus to the buyer when referred (set to 0.05 if you want 5% buyer bonus)
+const BUYER_BONUS_PCT = 0.00;
+// Minimum integer credits to award when a % is > 0 but very small
+const MIN_REFERRAL_CREDIT = 0;
+
+// If you store a human-friendly referralCode on users/{uid}.referralCode,
+// we’ll try to match referredBy against that first, then fall back to UID match.
+const USERS_COLLECTION = 'users';
+
+/* -------------------------- Credit Packages ----------------------- */
+
 interface CreditPackage {
   id: string;
   tier: 'Tester' | 'Reader' | 'Writer' | 'Creator';
@@ -75,6 +90,41 @@ async function tryReadBody(resp: Response) {
   try { return JSON.parse(text); } catch { return text; }
 }
 
+/** Resolve a referredBy string to a userId, or null if not found/invalid/self. */
+async function resolveReferrerUserId(buyerUid: string, referredBy?: string | null): Promise<string | null> {
+  if (!referredBy) return null;
+
+  // Trim common noise (spaces, zero-width)
+  const token = (referredBy || '').trim();
+  if (!token) return null;
+
+  try {
+    // 1) Try to match by referralCode field
+    const byCode = await db.collection(USERS_COLLECTION)
+      .where('referralCode', '==', token)
+      .limit(1)
+      .get();
+
+    if (!byCode.empty) {
+      const uid = byCode.docs[0].id;
+      if (uid !== buyerUid) return uid;
+      return null; // self-referral ignored
+    }
+
+    // 2) Fallback: treat token as a UID
+    const refSnap = await db.collection(USERS_COLLECTION).doc(token).get();
+    if (refSnap.exists && refSnap.id !== buyerUid) {
+      return refSnap.id;
+    }
+  } catch (e) {
+    functions.logger.warn('resolveReferrerUserId lookup failed (non-fatal):', (e as any)?.message || e);
+  }
+
+  return null;
+}
+
+/* ---------------------------- Callable ---------------------------- */
+
 export const processPayPalOneTimePayment = functions
   .region('us-central1')
   .runWith({ secrets: ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET'] })
@@ -126,7 +176,7 @@ export const processPayPalOneTimePayment = functions
 
     const base = resolvePayPalBase();
 
-    // ---- Attempt capture (retry-safe on ORDER_ALREADY_CAPTURED) ----
+    // ---- Attempt capture (with Prefer + robust fallback) ----
     let captureJson: PayPalOrderCaptureResponse | any;
     try {
       const captureRes = await fetch(`${base}/v2/checkout/orders/${orderId}/capture`, {
@@ -134,6 +184,8 @@ export const processPayPalOneTimePayment = functions
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${accessToken}`,
+          // Ask PayPal to include full representation right away
+          Prefer: 'return=representation',
         },
         body: '{}',
       });
@@ -145,7 +197,11 @@ export const processPayPalOneTimePayment = functions
         const alreadyCaptured =
           captureRes.status === 422 &&
           typeof body === 'object' &&
-          (body?.name === 'UNPROCESSABLE_ENTITY' || body?.name === 'ORDER_ALREADY_CAPTURED' || body?.details?.some?.((d: any) => d.issue === 'ORDER_ALREADY_CAPTURED'));
+          (
+            body?.name === 'UNPROCESSABLE_ENTITY' ||
+            body?.name === 'ORDER_ALREADY_CAPTURED' ||
+            (Array.isArray(body?.details) && body.details.some((d: any) => d?.issue === 'ORDER_ALREADY_CAPTURED'))
+          );
 
         if (!alreadyCaptured) {
           functions.logger.error('PayPal order capture failed:', captureRes.status, body);
@@ -179,7 +235,6 @@ export const processPayPalOneTimePayment = functions
     const status = (captureJson?.status || '').toUpperCase();
 
     if (status !== 'COMPLETED' && status !== 'APPROVED' && status !== 'CAPTURED') {
-      // In some flows, intermediate APPROVED/COMPLETED appear differently. We guard strictly above.
       throw new functions.https.HttpsError(
         'cancelled',
         `PayPal order not in a completed state (status=${status || 'unknown'}).`,
@@ -187,14 +242,36 @@ export const processPayPalOneTimePayment = functions
       );
     }
 
-    const { pu, cap } = firstCapture(captureJson);
-    // When we fetched via GET (already-captured fallback), capture object may not be present; check purchase_units amount.
-    const amountObj = cap?.amount ?? pu?.amount ?? pu?.payments?.captures?.[0]?.amount;
+    // Extract capture + amount carefully (fallbacks for inconsistent payloads)
+    let { pu, cap } = firstCapture(captureJson);
+    let amountObj =
+      cap?.amount ??
+      pu?.amount ??
+      pu?.payments?.captures?.[0]?.amount ??
+      null;
+
+    // If still missing, do a details fetch fallback
+    if (!amountObj || !pu) {
+      try {
+        const detailsRes = await fetch(`${base}/v2/checkout/orders/${orderId}`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const detailsJson = await detailsRes.json().catch(() => null as any);
+        const fc = firstCapture(detailsJson);
+        pu = fc.pu || pu;
+        cap = fc.cap || cap;
+        amountObj = amountObj || cap?.amount || pu?.amount || pu?.payments?.captures?.[0]?.amount || null;
+      } catch (e) {
+        functions.logger.warn('Fallback order details fetch failed (non-fatal):', (e as any)?.message || e);
+      }
+    }
 
     const packageId = (pu as any)?.custom_id;
     if (!amountObj || !packageId) {
-      throw new functions.https.HttpsError('internal', 'Missing transaction details in PayPal response.');
+      functions.logger.error('Missing transaction details. Raw capture/order payload:', JSON.stringify(captureJson).slice(0, 2000));
+      throw new functions.https.HttpsError('failed-precondition', 'Missing transaction details in PayPal response.');
     }
+
     const pkg = validateAmountAndPackage(packageId, amountObj);
     const amountCredits = pkg.credits;
 
@@ -207,11 +284,16 @@ export const processPayPalOneTimePayment = functions
         captureJson.purchase_units[0]?.payee?.email_address) ||
       null;
 
-    // ---- Credit the user (transaction) ----
+    // Resolve referrer UID (if any)
+    const referrerUid = await resolveReferrerUserId(userId, referredBy);
+
+    // ---- Credit the user (+ referral) atomically ----
     let remainingCredits: number | null = null;
+    let referrerAwarded: number | null = null;
+    let buyerBonusAwarded: number | null = null;
 
     await db.runTransaction(async (tx) => {
-      const userRef = db.collection('users').doc(userId);
+      const userRef = db.collection(USERS_COLLECTION).doc(userId);
       const userSnap = await tx.get(userRef);
       if (!userSnap.exists) throw new functions.https.HttpsError('not-found', 'User not found.');
 
@@ -233,22 +315,33 @@ export const processPayPalOneTimePayment = functions
         return;
       }
 
+      // --- Primary buyer credit ---
       const currentCredits = Number(userSnap.data()?.credits ?? 0) || 0;
-      const newCredits = currentCredits + amountCredits;
-      remainingCredits = newCredits;
+      const baseCredits = amountCredits;
+
+      // Optional buyer bonus when referred
+      const buyerBonus =
+        referrerUid && BUYER_BONUS_PCT > 0
+          ? Math.max(MIN_REFERRAL_CREDIT, Math.floor(baseCredits * BUYER_BONUS_PCT))
+          : 0;
+
+      const newBuyerCredits = currentCredits + baseCredits + buyerBonus;
+      remainingCredits = newBuyerCredits;
+      buyerBonusAwarded = buyerBonus || null;
 
       tx.update(userRef, {
-        credits: newCredits,
+        credits: newBuyerCredits,
         lastPayPalPayment: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      // Global credit log
+      // --- Global credit log ---
       const globalTxRef = db.collection('creditTransactions').doc();
       tx.set(globalTxRef, {
         userId,
         type: 'one-time',
         packageId,
-        creditsGranted: amountCredits,
+        creditsGranted: baseCredits,
+        buyerBonus: buyerBonus || 0,
         pricePaid: Number(pkg.value),
         currency: 'USD',
         orderId,
@@ -256,15 +349,16 @@ export const processPayPalOneTimePayment = functions
         paypalStatus: status,
         payerEmail,
         referredBy: referredBy || null,
+        referrerUid: referrerUid || null,
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
         captureTime: captureTime || null,
       });
 
-      // Per-user transaction mirror (great for account history UI)
+      // --- Per-user transaction mirror ---
       const userTxRef = userRef.collection('transactions').doc(globalTxRef.id);
       tx.set(userTxRef, {
         type: 'one-time',
-        creditsDelta: amountCredits,
+        creditsDelta: baseCredits + buyerBonus,
         amountUsd: Number(pkg.value),
         currency: 'USD',
         orderId,
@@ -272,17 +366,64 @@ export const processPayPalOneTimePayment = functions
         paypalStatus: status,
         payerEmail,
         referredBy: referredBy || null,
+        referrerUid: referrerUid || null,
         status: 'confirmed',
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        description: `Purchased ${amountCredits} credits via PayPal (package ${packageId}).`,
+        description: `Purchased ${baseCredits} credits via PayPal (package ${packageId}).${buyerBonus ? ` +${buyerBonus} referral bonus` : ''}`,
         captureTime: captureTime || null,
       });
+
+      // --- Referral split (credit the referrer) ---
+      if (referrerUid) {
+        const refUserRef = db.collection(USERS_COLLECTION).doc(referrerUid);
+        const refSnap = await tx.get(refUserRef);
+        if (refSnap.exists) {
+          const refCurr = Number(refSnap.data()?.credits ?? 0) || 0;
+          const refBonusRaw = Math.floor(baseCredits * REFERRER_CREDITS_PCT);
+          const refBonus = Math.max(MIN_REFERRAL_CREDIT, refBonusRaw);
+          const refNew = refCurr + refBonus;
+
+          referrerAwarded = refBonus;
+
+          tx.update(refUserRef, {
+            credits: refNew,
+            lastReferralCredit: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+          // Referral transaction record
+          const referralTxRef = db.collection('referralTransactions').doc();
+          tx.set(referralTxRef, {
+            orderId,
+            buyerUid: userId,
+            referrerUid,
+            packageId,
+            buyerCredits: baseCredits,
+            referrerCredits: refBonus,
+            buyerBonus,
+            currency: 'USD',
+            pricePaid: Number(pkg.value),
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            source: 'one-time',
+          });
+
+          // Optional: per-user mirror on referrer
+          const refUserTxRef = refUserRef.collection('transactions').doc(referralTxRef.id);
+          tx.set(refUserTxRef, {
+            type: 'referral-credit',
+            creditsDelta: refBonus,
+            sourceOrderId: orderId,
+            buyerUid: userId,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            description: `Referral reward from ${userId} purchase (${packageId}).`,
+          });
+        }
+      }
 
       // Mark processed (idempotency)
       tx.set(processedDocRef, { timestamp: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
     });
 
-    // ---- Update custom claims (outside TX) ----
+    // ---- Update buyer custom claims (outside TX) ----
     try {
       if (remainingCredits !== null) {
         const newTier = determineUserTier(remainingCredits);
@@ -296,7 +437,11 @@ export const processPayPalOneTimePayment = functions
       functions.logger.warn('Custom claims update failed (non-fatal):', (e as Error)?.message || e);
     }
 
-    functions.logger.info(`User ${userId} credited with ${amountCredits} credits for order ${orderId}.`);
+    functions.logger.info(
+      `User ${userId} credited with ${amountCredits} (+${buyerBonusAwarded || 0} bonus).` +
+      (referrerAwarded ? ` Referrer got +${referrerAwarded}.` : '')
+    );
+
     return {
       success: true,
       message: 'Payment processed successfully',
@@ -304,5 +449,10 @@ export const processPayPalOneTimePayment = functions
       captureId,
       status,
       remainingCredits,
+      referral: {
+        referrerUid: referrerAwarded ? (await resolveReferrerUserId(userId, referredBy)) : null,
+        referrerAwarded: referrerAwarded || 0,
+        buyerBonusAwarded: buyerBonusAwarded || 0,
+      },
     };
   });

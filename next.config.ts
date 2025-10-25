@@ -68,68 +68,128 @@ const nextConfig: NextConfig = {
   },
 
   async headers() {
-    const CSP = `
-  default-src 'self';
-  base-uri 'self';
-  object-src 'none';
-  frame-ancestors 'self';
+    const scriptSrc = [
+      "'self'",
+      "'unsafe-inline'",
+      ...(isDev ? ["'unsafe-eval'"] : []), // dev-only for Fast Refresh
+      'blob:',
+      // PayPal SDK
+      'https://www.paypal.com',
+      'https://www.sandbox.paypal.com',
+      'https://www.paypalobjects.com',
+      // Firebase + GSI
+      'https://*.firebaseio.com',
+      'https://www.gstatic.com',
+      'https://accounts.google.com',
+      'https://apis.google.com',
+      // YouTube (some SDKs touch these)
+      'https://www.youtube.com',
+      'https://s.ytimg.com',
+    ].join(' ');
 
-  script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:
-    https://www.paypal.com https://*.paypal.com https://*.paypalobjects.com
-    https://www.gstatic.com https://www.googletagmanager.com https://www.googleapis.com
-    https://accounts.google.com https://apis.google.com
-    https://www.youtube.com https://s.ytimg.com;
+    const scriptSrcElem = scriptSrc;
 
-  script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' blob:
-    https://www.paypal.com https://*.paypal.com https://*.paypalobjects.com
-    https://www.gstatic.com https://www.googletagmanager.com https://www.googleapis.com
-    https://accounts.google.com https://apis.google.com
-    https://www.youtube.com https://s.ytimg.com;
+    const connectSrc = [
+      "'self'",
+      // PayPal APIs
+      'https://api-m.paypal.com',
+      'https://api-m.sandbox.paypal.com',
+      'https://www.paypal.com',
+      'https://www.paypalobjects.com',
+      // Firebase / Google
+      'https://securetoken.googleapis.com',
+      'https://identitytoolkit.googleapis.com',
+      'https://firestore.googleapis.com',
+      'https://firebasestorage.googleapis.com',
+      'https://storage.googleapis.com',
+      'https://www.googleapis.com',
+      'https://*.googleapis.com',
+      'https://*.firebaseio.com',
+      'wss://*.firebaseio.com',
+      // Cloud Functions (narratum, us-central1)
+      'https://us-central1-narratum.cloudfunctions.net',
+      // ElevenLabs
+      'https://api.elevenlabs.io',
+      'https://*.elevenlabs.io',
+    ].join(' ');
 
-  connect-src 'self'
-    https://www.paypal.com https://*.paypal.com https://*.paypalobjects.com
-    https://securetoken.googleapis.com
-    https://identitytoolkit.googleapis.com
-    https://oauth2.googleapis.com
-    https://accounts.google.com https://apis.google.com
-    https://firestore.googleapis.com
-    https://firebasestorage.googleapis.com
-    https://www.googleapis.com https://*.googleapis.com
-    https://*.cloudfunctions.net
-    https://*.firebaseio.com
-    wss://*.firebaseio.com;
+    const imgSrc = [
+      "'self'",
+      'data:',
+      'blob:',
+      'https://www.paypal.com',
+      'https://www.paypalobjects.com',
+      'https://firebasestorage.googleapis.com',
+      'https://storage.googleapis.com',
+      'https://lh3.googleusercontent.com',
+      'https://lh4.googleusercontent.com',
+      'https://lh5.googleusercontent.com',
+      'https://img.youtube.com',
+      'https://i.ytimg.com',
+      'https://picsum.photos',
+      'https://placehold.co',
+      'https://accounts.google.com',
+    ].join(' ');
 
-  img-src 'self' data: blob:
-    https://*.paypal.com https://*.paypalobjects.com
-    https://firebasestorage.googleapis.com https://storage.googleapis.com
-    https://lh3.googleusercontent.com https://lh4.googleusercontent.com https://lh5.googleusercontent.com
-    https://picsum.photos https://placehold.co
-    https://accounts.google.com
-    https://img.youtube.com https://i.ytimg.com;
+    const frameSrc = [
+      "'self'",
+      // PayPal buttons/frames
+      'https://www.paypal.com',
+      'https://www.sandbox.paypal.com',
+      // YouTube embeds
+      'https://www.youtube.com',
+      'https://youtube.com',
+      'https://youtu.be',
+      // **Fix:** Firebase RTDB hidden iframe + GSI iframes
+      'https://*.firebaseio.com',
+      'https://accounts.google.com',
+    ].join(' ');
 
-  media-src 'self' data: blob:
-    https://firebasestorage.googleapis.com https://storage.googleapis.com;
+    const styleSrc = [
+      "'self'",
+      "'unsafe-inline'",
+      'https://fonts.googleapis.com',
+      'https://www.gstatic.com',
+      'https://accounts.google.com',
+      'https://apis.google.com',
+      'https://www.paypal.com',
+    ].join(' ');
 
-  frame-src 'self'
-    https://www.paypal.com https://*.paypal.com https://*.paypalobjects.com
-    https://accounts.google.com
-    https://*.firebaseio.com
-    https://www.youtube.com https://*.youtube.com https://youtu.be;
+    const csp = [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "object-src 'none'",
+      "frame-ancestors 'self'",
+      `script-src ${scriptSrc}`,
+      `script-src-elem ${scriptSrcElem}`,
+      `connect-src ${connectSrc}`,
+      `img-src ${imgSrc}`,
+      "media-src 'self' data: blob: https://firebasestorage.googleapis.com https://storage.googleapis.com",
+      `frame-src ${frameSrc}`,
+      `style-src ${styleSrc}`,
+      "font-src 'self' https://fonts.gstatic.com",
+      "worker-src 'self' blob:",
+      "form-action 'self' https://www.paypal.com https://www.sandbox.paypal.com",
+      'upgrade-insecure-requests',
+    ].join('; ');
 
-  style-src 'self' 'unsafe-inline' https://*.paypal.com https://fonts.googleapis.com
-   https://accounts.google.com https://apis.google.com https://www.gstatic.com;
-  font-src 'self' https://fonts.gstatic.com;
-
-  worker-src 'self' blob:;
-  form-action 'self' https://www.paypal.com https://*.paypal.com;
-
-  block-all-mixed-content; upgrade-insecure-requests;
-`.replace(/\s{2,}/g, ' ').trim();
+    const permissions = [
+      'geolocation=()',
+      'camera=()',
+      'microphone=()',
+      'payment=(self "https://www.paypal.com" "https://www.sandbox.paypal.com")',
+    ].join(', ');
 
     return [
       {
-        source: '/(.*)',
-        headers: [{ key: 'Content-Security-Policy', value: CSP }],
+        source: '/:path*',
+        headers: [
+          { key: 'Content-Security-Policy', value: csp },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'Permissions-Policy', value: permissions },
+        ],
       },
     ];
   },
