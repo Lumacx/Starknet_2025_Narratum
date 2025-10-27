@@ -93,7 +93,14 @@ type GetStatusRes = {
   planName?: string;
   frequency?: Frequency;
   paypalSubscriptionId?: string;
-  status?: 'ACTIVE' | 'CANCELLED' | 'SUSPENDED' | 'APPROVAL_PENDING' | 'APPROVED' | 'EXPIRED' | 'UNKNOWN';
+  status?:
+    | 'ACTIVE'
+    | 'CANCELLED'
+    | 'SUSPENDED'
+    | 'APPROVAL_PENDING'
+    | 'APPROVED'
+    | 'EXPIRED'
+    | 'UNKNOWN';
   renewsAt?: string;
 };
 
@@ -163,6 +170,7 @@ type CancelRes = { success: boolean };
 
 export const cancelPayPalSubscription = functions
   .region(REGION)
+  .runWith({ secrets: ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET'] })
   .https.onCall(async (data: CancelReq, context): Promise<CancelRes> => {
     const callerUid = context.auth?.uid;
     if (!callerUid) throw new functions.https.HttpsError('unauthenticated', 'Sign in first.');

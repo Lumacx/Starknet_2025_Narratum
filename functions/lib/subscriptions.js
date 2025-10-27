@@ -141,6 +141,7 @@ exports.getSubscriptionStatus = functions
 });
 exports.cancelPayPalSubscription = functions
     .region(REGION)
+    .runWith({ secrets: ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET'] })
     .https.onCall(async (data, context) => {
     const callerUid = context.auth?.uid;
     if (!callerUid)

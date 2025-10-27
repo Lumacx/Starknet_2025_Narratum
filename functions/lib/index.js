@@ -1,5 +1,4 @@
 "use strict";
-// functions/src/index.ts
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -38,9 +37,9 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.propagateUserProfileToStories = exports.initiateHostedCreditPurchase = exports.redeemPromoCode = exports.processPayPalSubscription = exports.grantMonthlyFreeCredits = exports.sendTipToWriter = exports.deductCreditsForRead = exports.createPayPalOrder = exports.processPayPalOneTimePayment = exports.downloadStoryPdf = exports.generateWithImagen = exports.generateWithGemini = exports.removeIndexOnDelete = exports.indexAssetOnFinalize = exports.incrementCommentCount = exports.createuserprofile = exports.generateNarratumImage = exports.deductCreditsForCreation = void 0;
+// functions/src/index.ts
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
-// Ensure Admin is initialized exactly once
 if (!admin.apps.length) {
     admin.initializeApp();
 }
@@ -63,7 +62,7 @@ Object.defineProperty(exports, "generateWithImagen", { enumerable: true, get: fu
 // PDF generator (HTTP)
 const downloadStoryPdf_1 = require("./downloadStoryPdf");
 Object.defineProperty(exports, "downloadStoryPdf", { enumerable: true, get: function () { return downloadStoryPdf_1.downloadStoryPdf; } });
-// Credit System (NOTE: do NOT import `deductCreditsForCreation` here)
+// Credits & payments (callables + helpers)
 const credits_1 = require("./credits");
 Object.defineProperty(exports, "processPayPalOneTimePayment", { enumerable: true, get: function () { return credits_1.processPayPalOneTimePayment; } });
 Object.defineProperty(exports, "deductCreditsForRead", { enumerable: true, get: function () { return credits_1.deductCreditsForRead; } });
@@ -78,9 +77,9 @@ Object.defineProperty(exports, "initiateHostedCreditPurchase", { enumerable: tru
 const createPayPalOrder_1 = require("./createPayPalOrder");
 Object.defineProperty(exports, "createPayPalOrder", { enumerable: true, get: function () { return createPayPalOrder_1.createPayPalOrder; } });
 const CREATION_COSTS = {
-    basic: 5, // short
-    premium: 10, // novela
-    convai: 15, // campaign
+    basic: 5,
+    premium: 10,
+    convai: 15,
 };
 exports.deductCreditsForCreation = functions
     .region('us-central1')
@@ -94,7 +93,7 @@ exports.deductCreditsForCreation = functions
     if (!cost) {
         throw new functions.https.HttpsError('invalid-argument', 'Invalid storyType.');
     }
-    const userRef = admin.firestore().collection('users').doc(uid); // adjust path if needed
+    const userRef = admin.firestore().collection('users').doc(uid);
     try {
         const remaining = await admin.firestore().runTransaction(async (tx) => {
             const snap = await tx.get(userRef);
@@ -118,13 +117,12 @@ exports.deductCreditsForCreation = functions
         throw new functions.https.HttpsError('internal', 'Could not deduct credits.');
     }
 });
+// Keep these named re-exports
 var propagateUserProfile_1 = require("./propagateUserProfile");
 Object.defineProperty(exports, "propagateUserProfileToStories", { enumerable: true, get: function () { return propagateUserProfile_1.propagateUserProfileToStories; } });
-// Keep these, but DO NOT re-export everything from './credits'
+// Webhooks / HTTP utilities (distinct names, no collision with callables)
 __exportStar(require("./paypalWebhook"), exports);
 __exportStar(require("./hostedPayments"), exports);
+// Subscription utilities (free plan, get status, cancel)
 __exportStar(require("./subscriptions"), exports);
-// NOTE:
-// - Ensure `./credits.ts` does NOT export a symbol named `deductCreditsForCreation`.
-//   If you keep a legacy HTTP version for testing, rename it (e.g. `deductCreditsForCreationHttp`).
 //# sourceMappingURL=index.js.map

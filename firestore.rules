@@ -133,6 +133,26 @@ service cloud.firestore {
       match /favorites/{favId}     { allow read, write: if isOwner(uid); }
       match /reads/{storyId}       { allow read, write: if isOwner(uid); }
       match /ratings/{storyId}     { allow read, write: if isOwner(uid); }
+      
+      // Personal transaction history (owner can read, client cannot mutate)
+       match /transactions/{txId} {
+       allow read: if isOwner(uid);
+       allow create, update, delete: if false; // server (Admin SDK) writes only
+      }
+
+      // Collection-group access for referral earnings (read only)
+       match /{path=**}/transactions/{txId} {
+       allow read: if isSignedIn() && resource.data.referrerUid == request.auth.uid;
+       allow write: if false;
+      }
+
+        match /creditTransactions/{docId} {
+         allow read: if isSignedIn() &&
+         (resource.data.userId == request.auth.uid ||
+         resource.data.referrerUid == request.auth.uid);
+         allow write: if false;
+      }
+
 
       match /stories/{storyId} {
         allow read, write: if isOwner(uid);

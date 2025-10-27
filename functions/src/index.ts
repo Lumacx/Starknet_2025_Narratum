@@ -1,10 +1,7 @@
-
 // functions/src/index.ts
-
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 
-// Ensure Admin is initialized exactly once
 if (!admin.apps.length) {
   admin.initializeApp();
 }
@@ -23,13 +20,13 @@ import { generateWithGemini, generateWithImagen } from './smartGenerateImage';
 // PDF generator (HTTP)
 import { downloadStoryPdf } from './downloadStoryPdf';
 
-// Credit System (NOTE: do NOT import `deductCreditsForCreation` here)
+// Credits & payments (callables + helpers)
 import {
-  processPayPalOneTimePayment, // Renamed from processPayPalPayment
-  deductCreditsForRead,
-  sendTipToWriter,
-  grantMonthlyFreeCredits,
-  processPayPalSubscription,
+  processPayPalOneTimePayment,   // callable
+  deductCreditsForRead,          // callable
+  sendTipToWriter,               // callable
+  grantMonthlyFreeCredits,       // scheduled
+  processPayPalSubscription,     // callable (SUBSCRIPTIONS – from credits.ts)
 } from './credits';
 
 // Promo Codes / Hosted Payments
@@ -38,17 +35,13 @@ import { initiateHostedCreditPurchase } from './hostedPayments';
 import { createPayPalOrder } from './createPayPalOrder';
 
 /* ──────────────────────────────────────────────────────────────────
-   Callable: deductCreditsForCreation  (NO CORS NEEDED)
-   - Replaces any previous HTTP onRequest version.
-   - Frontend calls via httpsCallable('deductCreditsForCreation', { storyType })
-   - Returns: { success, message, remainingCredits }
+   Creation credit deduction (callable)
    ────────────────────────────────────────────────────────────────── */
-
-type StoryType = 'basic' | 'premium' | 'convai'; // short | novela | campaign
+type StoryType = 'basic' | 'premium' | 'convai';
 const CREATION_COSTS: Record<StoryType, number> = {
-  basic: 5,     // short
-  premium: 10,  // novela
-  convai: 15,   // campaign
+  basic: 5,
+  premium: 10,
+  convai: 15,
 };
 
 export const deductCreditsForCreation = functions
@@ -65,7 +58,7 @@ export const deductCreditsForCreation = functions
       throw new functions.https.HttpsError('invalid-argument', 'Invalid storyType.');
     }
 
-    const userRef = admin.firestore().collection('users').doc(uid); // adjust path if needed
+    const userRef = admin.firestore().collection('users').doc(uid);
 
     try {
       const remaining = await admin.firestore().runTransaction(async (tx) => {
@@ -97,9 +90,10 @@ export const deductCreditsForCreation = functions
   });
 
 /* ──────────────────────────────────────────────────────────────────
-   Named exports (no wildcard export from ./credits — avoid duplicate exports)
+   Export surface
    ────────────────────────────────────────────────────────────────── */
 export {
+  // General features
   generateNarratumImage,
   createuserprofile,
   incrementCommentCount,
@@ -108,25 +102,26 @@ export {
   generateWithGemini,
   generateWithImagen,
   downloadStoryPdf,
-  // Credits (creation deduction is the callable above)
-  processPayPalOneTimePayment, // Renamed from processPayPalPayment
+
+  // Payments / credits
+  processPayPalOneTimePayment,
   createPayPalOrder,
   deductCreditsForRead,
   sendTipToWriter,
   grantMonthlyFreeCredits,
   processPayPalSubscription,
-  // Promo Codes
+
+  // Promo codes & hosted flows
   redeemPromoCode,
-  // Hosted Payments
   initiateHostedCreditPurchase,
 };
 
+// Keep these named re-exports
 export { propagateUserProfileToStories } from './propagateUserProfile';
 
-// Keep these, but DO NOT re-export everything from './credits'
+// Webhooks / HTTP utilities (distinct names, no collision with callables)
 export * from './paypalWebhook';
 export * from './hostedPayments';
+
+// Subscription utilities (free plan, get status, cancel)
 export * from './subscriptions';
-// NOTE:
-// - Ensure `./credits.ts` does NOT export a symbol named `deductCreditsForCreation`.
-//   If you keep a legacy HTTP version for testing, rename it (e.g. `deductCreditsForCreationHttp`).

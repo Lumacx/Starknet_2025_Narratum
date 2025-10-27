@@ -3,8 +3,8 @@
 import React, { FC, useMemo, useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
 import nextDynamic from 'next/dynamic';
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '@/lib/firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+//import { functions } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import {
   PayPalScriptProvider,
@@ -18,6 +18,9 @@ const PayPalButtons = nextDynamic(
   () => import('@paypal/react-paypal-js').then((m) => m.PayPalButtons),
   { ssr: false }
 );
+
+// One regional Functions instance for all callables on this page
+const fns = useMemo(() => getFunctions(undefined, 'us-central1'), []);
 
 type SubscriptionFrequency = 'weekly' | 'monthly';
 
@@ -161,14 +164,50 @@ function PayButtonsSubscription({
     return <div className="p-4 rounded-lg border text-sm"><strong>{t('planIdNotSet')}</strong></div>;
   }
 
+  if (!planId || !planId.startsWith('P-')) {
+    console.error('Invalid PayPal plan ID:', planId);
+    return <div className="p-4 border rounded-lg">{t('invalidPlanId')}</div>;
+  }
+
+  console.log('Using PayPal plan:', planId);
+  console.log('Client ID:', process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID);
+
+
   return (
     <PayPalButtons
       fundingSource="paypal"
       style={{ layout: 'vertical' }}
-      createSubscription={(_, actions) => actions.subscription.create({ plan_id: planId })}
-      onApprove={async (data) => {
-        onMessage('pending', t('activatingSubscription'));
-        onSuccess({ id: data.subscriptionID, status: 'APPROVED', description });
+      createSubscription={(data, actions) => {
+        if (!planId) {
+          console.error('Missing PayPal plan ID');
+          throw new Error('Missing PayPal plan ID');
+        }
+        return actions.subscription.create({ plan_id: planId });
+      }}
+      onApprove={async (data, actions) => {
+        try {
+          // TS-safe way to retrieve a subscription id from any SDK variant
+          const getSubId = async (): Promise<string | null> => {
+            const d: any = data;
+            if (d?.subscriptionID) return d.subscriptionID as string;
+            if (d?.orderID)        return d.orderID as string; // some SDKs put it here
+            try {
+              const sub = await actions?.subscription?.get?.();
+              return sub?.id ?? null;
+            } catch {
+              return null;
+            }
+          };
+      
+          const subId = await getSubId();
+          if (!subId) throw new Error('Subscription ID not found in PayPal response');
+      
+          onMessage('pending', t('activatingSubscription'));
+          onSuccess({ id: subId, status: 'APPROVED', description });
+        } catch (err) {
+          console.error('PayPal onApprove error', err);
+          onMessage('error', t('paypalSubscriptionError'));
+        }
       }}
       onCancel={() => onMessage('idle', t('subscriptionCancelled'))}
       onError={(err) => {
@@ -285,7 +324,7 @@ const SubscriptionClient: FC = () => {
     if (!user?.uid) return;
     (async () => {
       try {
-        const getStatus = httpsCallable(functions, 'getSubscriptionStatus');
+        const getStatus = httpsCallable(fns, 'getSubscriptionStatus');
         const res = await getStatus({ userId: user.uid });
         const data = (res.data || {}) as any;
         setSubStatus({
@@ -310,7 +349,7 @@ const SubscriptionClient: FC = () => {
     }
     try {
       setMsg('pending', t('activatingSubscription'));
-      const activate = httpsCallable(functions, 'activateFreePlan');
+      const activate = httpsCallable(fns, 'activateFreePlan');
       await activate({
         userId: user.uid,
         planKey: selectedOffering?.id ?? (subscriptionFrequency === 'weekly' ? 'sub_wk_og_free' : 'sub_mo_og_free'),
@@ -349,7 +388,10 @@ const SubscriptionClient: FC = () => {
       return;
     }
     try {
-      const processSubscription = httpsCallable(functions, 'processPayPalSubscription');
+      // Always bind the region to avoid any cross-region/cors weirdness
+      const fns = getFunctions(undefined, 'us-central1');
+      const processSubscription = httpsCallable(fns, 'processPayPalSubscription');
+  
       const payload = {
         subscriptionID,
         planId: paypalPlanId,
@@ -358,9 +400,12 @@ const SubscriptionClient: FC = () => {
         credits: selectedOffering.credits,
         referredBy: referredBy || undefined,
       };
+  
       const res = await processSubscription(payload);
       const data = (res?.data || {}) as { success?: boolean; message?: string; status?: string };
+  
       if (!data?.success) throw new Error(data?.message || t('unexpectedError'));
+  
       setMsg(
         'success',
         formatT(t, 'subscriptionActivated', {
@@ -368,6 +413,7 @@ const SubscriptionClient: FC = () => {
           frequency: t(subscriptionFrequency),
         })
       );
+  
       setSubStatus({
         kind: 'paid',
         planKey: selectedOffering.id,
@@ -387,7 +433,7 @@ const SubscriptionClient: FC = () => {
     try {
       setIsCancelling(true);
       setMsg('pending', t('subscriptionCancelled'));
-      const cancelFn = httpsCallable(functions, 'cancelPayPalSubscription');
+      const cancelFn = httpsCallable(fns, 'cancelPayPalSubscription');
       await cancelFn({
         userId: user.uid,
         paypalSubscriptionId: subStatus.paypalSubscriptionId,
@@ -415,7 +461,7 @@ const SubscriptionClient: FC = () => {
     setIsRedeeming(true);
     setPromoCodeMessage(t('redeemingPromoCode'));
     try {
-      const redeemCode = httpsCallable(functions, 'redeemPromoCode');
+      const redeemCode = httpsCallable(fns, 'redeemPromoCode');
       const result = await redeemCode({ promoCode: promoCodeInput, userId: user.uid });
       const ok = (result.data as any)?.success;
       setPromoCodeMessage(
