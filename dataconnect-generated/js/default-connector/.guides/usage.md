@@ -12,28 +12,28 @@ For each operation, there is a wrapper hook that can be used to call the operati
 
 Here are all of the hooks that get generated:
 ```ts
-import { useGetUserProfile, useGetStoryWithContent, useGetAllStories, useGetAppSubscription, useGetTemplate, useGetAllTemplates, useGetAiGeneratedImage, useGetAiGeneratedGif, useGetPayment, useGetAdminAction } from '@firebasegen/default-connector/react';
+import { useCreateUserProfile, useCreateStory, useCreateStoryContent, useCreateTemplate, useCreateAiGeneratedImage, useCreateAiGeneratedGif, useCreatePayment, useCreateAdminAction, useCreateAnalyticsEntry, useLogLegalDisclaimerAcceptance } from '@firebasegen/default-connector/react';
 // The types of these hooks are available in react/index.d.ts
 
-const { data, isPending, isSuccess, isError, error } = useGetUserProfile(getUserProfileVars);
+const { data, isPending, isSuccess, isError, error } = useCreateUserProfile(createUserProfileVars);
 
-const { data, isPending, isSuccess, isError, error } = useGetStoryWithContent(getStoryWithContentVars);
+const { data, isPending, isSuccess, isError, error } = useCreateStory(createStoryVars);
 
-const { data, isPending, isSuccess, isError, error } = useGetAllStories();
+const { data, isPending, isSuccess, isError, error } = useCreateStoryContent(createStoryContentVars);
 
-const { data, isPending, isSuccess, isError, error } = useGetAppSubscription(getAppSubscriptionVars);
+const { data, isPending, isSuccess, isError, error } = useCreateTemplate(createTemplateVars);
 
-const { data, isPending, isSuccess, isError, error } = useGetTemplate(getTemplateVars);
+const { data, isPending, isSuccess, isError, error } = useCreateAiGeneratedImage(createAiGeneratedImageVars);
 
-const { data, isPending, isSuccess, isError, error } = useGetAllTemplates();
+const { data, isPending, isSuccess, isError, error } = useCreateAiGeneratedGif(createAiGeneratedGifVars);
 
-const { data, isPending, isSuccess, isError, error } = useGetAiGeneratedImage(getAiGeneratedImageVars);
+const { data, isPending, isSuccess, isError, error } = useCreatePayment(createPaymentVars);
 
-const { data, isPending, isSuccess, isError, error } = useGetAiGeneratedGif(getAiGeneratedGifVars);
+const { data, isPending, isSuccess, isError, error } = useCreateAdminAction(createAdminActionVars);
 
-const { data, isPending, isSuccess, isError, error } = useGetPayment(getPaymentVars);
+const { data, isPending, isSuccess, isError, error } = useCreateAnalyticsEntry(createAnalyticsEntryVars);
 
-const { data, isPending, isSuccess, isError, error } = useGetAdminAction(getAdminActionVars);
+const { data, isPending, isSuccess, isError, error } = useLogLegalDisclaimerAcceptance(logLegalDisclaimerAcceptanceVars);
 
 ```
 
@@ -72,38 +72,38 @@ If a user is not using a supported framework, they can use the generated SDK dir
 Here's an example of how to use it with the first 5 operations:
 
 ```js
-import { getUserProfile, getStoryWithContent, getAllStories, getAppSubscription, getTemplate, getAllTemplates, getAiGeneratedImage, getAiGeneratedGif, getPayment, getAdminAction } from '@firebasegen/default-connector';
+import { createUserProfile, createStory, createStoryContent, createTemplate, createAiGeneratedImage, createAiGeneratedGif, createPayment, createAdminAction, createAnalyticsEntry, logLegalDisclaimerAcceptance } from '@firebasegen/default-connector';
 
 
-// Operation GetUserProfile:  For variables, look at type GetUserProfileVars in ../index.d.ts
-const { data } = await GetUserProfile(dataConnect, getUserProfileVars);
+// Operation CreateUserProfile:  For variables, look at type CreateUserProfileVars in ../index.d.ts
+const { data } = await CreateUserProfile(dataConnect, createUserProfileVars);
 
-// Operation GetStoryWithContent:  For variables, look at type GetStoryWithContentVars in ../index.d.ts
-const { data } = await GetStoryWithContent(dataConnect, getStoryWithContentVars);
+// Operation CreateStory:  For variables, look at type CreateStoryVars in ../index.d.ts
+const { data } = await CreateStory(dataConnect, createStoryVars);
 
-// Operation GetAllStories: 
-const { data } = await GetAllStories(dataConnect);
+// Operation CreateStoryContent:  For variables, look at type CreateStoryContentVars in ../index.d.ts
+const { data } = await CreateStoryContent(dataConnect, createStoryContentVars);
 
-// Operation GetAppSubscription:  For variables, look at type GetAppSubscriptionVars in ../index.d.ts
-const { data } = await GetAppSubscription(dataConnect, getAppSubscriptionVars);
+// Operation CreateTemplate:  For variables, look at type CreateTemplateVars in ../index.d.ts
+const { data } = await CreateTemplate(dataConnect, createTemplateVars);
 
-// Operation GetTemplate:  For variables, look at type GetTemplateVars in ../index.d.ts
-const { data } = await GetTemplate(dataConnect, getTemplateVars);
+// Operation CreateAiGeneratedImage:  For variables, look at type CreateAiGeneratedImageVars in ../index.d.ts
+const { data } = await CreateAiGeneratedImage(dataConnect, createAiGeneratedImageVars);
 
-// Operation GetAllTemplates: 
-const { data } = await GetAllTemplates(dataConnect);
+// Operation CreateAiGeneratedGif:  For variables, look at type CreateAiGeneratedGifVars in ../index.d.ts
+const { data } = await CreateAiGeneratedGif(dataConnect, createAiGeneratedGifVars);
 
-// Operation GetAiGeneratedImage:  For variables, look at type GetAiGeneratedImageVars in ../index.d.ts
-const { data } = await GetAiGeneratedImage(dataConnect, getAiGeneratedImageVars);
+// Operation CreatePayment:  For variables, look at type CreatePaymentVars in ../index.d.ts
+const { data } = await CreatePayment(dataConnect, createPaymentVars);
 
-// Operation GetAiGeneratedGif:  For variables, look at type GetAiGeneratedGifVars in ../index.d.ts
-const { data } = await GetAiGeneratedGif(dataConnect, getAiGeneratedGifVars);
+// Operation CreateAdminAction:  For variables, look at type CreateAdminActionVars in ../index.d.ts
+const { data } = await CreateAdminAction(dataConnect, createAdminActionVars);
 
-// Operation GetPayment:  For variables, look at type GetPaymentVars in ../index.d.ts
-const { data } = await GetPayment(dataConnect, getPaymentVars);
+// Operation CreateAnalyticsEntry:  For variables, look at type CreateAnalyticsEntryVars in ../index.d.ts
+const { data } = await CreateAnalyticsEntry(dataConnect, createAnalyticsEntryVars);
 
-// Operation GetAdminAction:  For variables, look at type GetAdminActionVars in ../index.d.ts
-const { data } = await GetAdminAction(dataConnect, getAdminActionVars);
+// Operation LogLegalDisclaimerAcceptance:  For variables, look at type LogLegalDisclaimerAcceptanceVars in ../index.d.ts
+const { data } = await LogLegalDisclaimerAcceptance(dataConnect, logLegalDisclaimerAcceptanceVars);
 
 
 ```

@@ -4,7 +4,7 @@ import React, { FC, useMemo, useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
 import nextDynamic from 'next/dynamic';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-//import { functions } from '@/lib/firebase';
+import { Functions } from 'firebase/functions';
 import { useAuth } from '@/context/AuthContext';
 import {
   PayPalScriptProvider,
@@ -18,9 +18,6 @@ const PayPalButtons = nextDynamic(
   () => import('@paypal/react-paypal-js').then((m) => m.PayPalButtons),
   { ssr: false }
 );
-
-// One regional Functions instance for all callables on this page
-const fns = useMemo(() => getFunctions(undefined, 'us-central1'), []);
 
 type SubscriptionFrequency = 'weekly' | 'monthly';
 
@@ -48,6 +45,7 @@ interface SubscriptionStatus {
   renewsAt?: string;
 }
 
+/* ------------------------- i18n helper ------------------------- */
 function formatT(
   t: (k: string) => string,
   key: string,
@@ -63,6 +61,7 @@ function formatT(
   return out;
 }
 
+/* --------------------------- Data ----------------------------- */
 const weeklyTiers: SubscriptionTier[] = [
   { id: 'sub_wk_og_free', name: 'OG Free', credits: 5,  price: 0.0,  tag: 'Free' },
   { id: 'sub_wk_tester',  name: 'Tester',  credits: 10, price: 1.99 },
@@ -109,13 +108,8 @@ const PAYPAL_PLAN_IDS: PlanMap = {
 };
 
 const tierKey = (name: SubscriptionTier['name']): TierKey => {
-  switch (name) {
-    case 'OG Free': return 'og free';
-    case 'Tester':  return 'tester';
-    case 'Reader':  return 'reader';
-    case 'Writer':  return 'writer';
-    case 'Creator': return 'creator';
-  }
+  const k = (name || '').toLowerCase() as TierKey;
+  return (['og free','tester','reader','writer','creator'] as const).includes(k) ? k : 'reader';
 };
 
 function nameLabel(t: (k: string)=>string, name: BaseOffering['name']) {
@@ -160,37 +154,22 @@ function PayButtonsSubscription({
   if (!isResolved || typeof window === 'undefined' || !window.paypal) {
     return <div className="p-4 rounded-lg border text-sm">{t('paymentModuleUnavailable')}</div>;
   }
-  if (!planId) {
-    return <div className="p-4 rounded-lg border text-sm"><strong>{t('planIdNotSet')}</strong></div>;
-  }
-
   if (!planId || !planId.startsWith('P-')) {
     console.error('Invalid PayPal plan ID:', planId);
     return <div className="p-4 border rounded-lg">{t('invalidPlanId')}</div>;
   }
 
-  console.log('Using PayPal plan:', planId);
-  console.log('Client ID:', process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID);
-
-
   return (
     <PayPalButtons
       fundingSource="paypal"
       style={{ layout: 'vertical' }}
-      createSubscription={(data, actions) => {
-        if (!planId) {
-          console.error('Missing PayPal plan ID');
-          throw new Error('Missing PayPal plan ID');
-        }
-        return actions.subscription.create({ plan_id: planId });
-      }}
+      createSubscription={(data, actions) => actions.subscription.create({ plan_id: planId })}
       onApprove={async (data, actions) => {
         try {
-          // TS-safe way to retrieve a subscription id from any SDK variant
           const getSubId = async (): Promise<string | null> => {
             const d: any = data;
             if (d?.subscriptionID) return d.subscriptionID as string;
-            if (d?.orderID)        return d.orderID as string; // some SDKs put it here
+            if (d?.orderID)        return d.orderID as string;
             try {
               const sub = await actions?.subscription?.get?.();
               return sub?.id ?? null;
@@ -198,10 +177,9 @@ function PayButtonsSubscription({
               return null;
             }
           };
-      
           const subId = await getSubId();
           if (!subId) throw new Error('Subscription ID not found in PayPal response');
-      
+
           onMessage('pending', t('activatingSubscription'));
           onSuccess({ id: subId, status: 'APPROVED', description });
         } catch (err) {
@@ -277,6 +255,13 @@ const SubscriptionClient: FC = () => {
   const { t } = useLocale();
   const { user, loading: authLoading } = useAuth();
 
+  // ✅ Functions instance MUST be created on the CLIENT
+const [fns, setFns] = useState<Functions | null>(null);
+useEffect(() => {
+  // Esto solo se ejecuta en el navegador, después de que el componente se monta
+  setFns(getFunctions(undefined, 'us-central1'));
+}, []);
+
   const [subscriptionFrequency, setSubscriptionFrequency] = useState<SubscriptionFrequency>('monthly');
   const [selectedOffering, setSelectedOffering] = useState<SubscriptionTier | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'success' | 'error' | 'pending'>('idle');
@@ -294,7 +279,6 @@ const SubscriptionClient: FC = () => {
     () => reorderSubs(subscriptionFrequency === 'weekly' ? weeklyTiers : monthlyTiers),
     [subscriptionFrequency]
   );
-
   const firstRow = useMemo(() => currentOfferings.slice(0, 3), [currentOfferings]);
   const secondRow = useMemo(() => currentOfferings.slice(3), [currentOfferings]);
 
@@ -320,10 +304,14 @@ const SubscriptionClient: FC = () => {
     setMessage(msg);
   }
 
+  // Load subscription status
   useEffect(() => {
-    if (!user?.uid) return;
+    // Agrega la comprobación !fns
+    if (!user?.uid || !fns) return; 
+    
     (async () => {
       try {
+        // fns está garantizado que no es null aquí
         const getStatus = httpsCallable(fns, 'getSubscriptionStatus');
         const res = await getStatus({ userId: user.uid });
         const data = (res.data || {}) as any;
@@ -340,9 +328,10 @@ const SubscriptionClient: FC = () => {
         console.warn('getSubscriptionStatus failed', e);
       }
     })();
-  }, [user?.uid]);
+  }, [user?.uid, fns]);
 
   const activateFree = async () => {
+    if (!fns) return; // [SSR-FIX] 1. Añadir esta verificación
     if (!user?.uid) {
       setMsg('error', t('mustBeLoggedInAndHaveSelection'));
       return;
@@ -378,6 +367,7 @@ const SubscriptionClient: FC = () => {
   };
 
   async function onApproveSubscription(sub: any, paypalPlanId?: string) {
+    if (!fns) return; // [SSR-FIX] 2. Añadir esta verificación
     if (!user?.uid || !selectedOffering) {
       setMsg('error', t('mustBeLoggedInAndHaveSelection'));
       return;
@@ -388,10 +378,7 @@ const SubscriptionClient: FC = () => {
       return;
     }
     try {
-      // Always bind the region to avoid any cross-region/cors weirdness
-      const fns = getFunctions(undefined, 'us-central1');
       const processSubscription = httpsCallable(fns, 'processPayPalSubscription');
-  
       const payload = {
         subscriptionID,
         planId: paypalPlanId,
@@ -400,12 +387,10 @@ const SubscriptionClient: FC = () => {
         credits: selectedOffering.credits,
         referredBy: referredBy || undefined,
       };
-  
       const res = await processSubscription(payload);
       const data = (res?.data || {}) as { success?: boolean; message?: string; status?: string };
-  
       if (!data?.success) throw new Error(data?.message || t('unexpectedError'));
-  
+
       setMsg(
         'success',
         formatT(t, 'subscriptionActivated', {
@@ -413,7 +398,7 @@ const SubscriptionClient: FC = () => {
           frequency: t(subscriptionFrequency),
         })
       );
-  
+
       setSubStatus({
         kind: 'paid',
         planKey: selectedOffering.id,
@@ -429,6 +414,7 @@ const SubscriptionClient: FC = () => {
   }
 
   const cancelActiveSubscription = async () => {
+    if (!fns) return; // [SSR-FIX] 3. Añadir esta verificación
     if (!user?.uid || !subStatus.paypalSubscriptionId) return;
     try {
       setIsCancelling(true);
@@ -456,6 +442,7 @@ const SubscriptionClient: FC = () => {
   };
 
   const handleRedeemPromoCode = async () => {
+    if (!fns) return; // [SSR-FIX] 4. Añadir esta verificación
     if (!user) return setPromoCodeMessage(t('mustBeLoggedInToRedeem'));
     if (!promoCodeInput.trim()) return setPromoCodeMessage(t('pleaseEnterPromoCode'));
     setIsRedeeming(true);
@@ -713,7 +700,11 @@ const SubscriptionClient: FC = () => {
                   }
 
                   return (
-                    <PayPalScriptProvider options={options} deferLoading={false}>
+                    <PayPalScriptProvider
+                      key={paypalPlanId /* ← force remount when plan changes */}
+                      options={options}
+                      deferLoading={false}
+                    >
                       <PayButtonsSubscription
                         planId={paypalPlanId!}
                         description={formatT(t, 'paypalSubscriptionDescription', {
