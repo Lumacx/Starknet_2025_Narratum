@@ -431,11 +431,8 @@ export const sendTipToWriter = functions
     }
   });
 
-// ────────────────────────────────────────────────────────────
-// Callable — Process PayPal subscription (server-side verify & credit)
-// ────────────────────────────────────────────────────────────
+  // Canonical subscription types (used by callable + HTTP mirror)
 type SubReq = {
-  // accept both spellings and normalize:
   subscriptionId?: string;                 // preferred (lowercase d)
   subscriptionID?: string;                 // legacy (uppercase D)
   planId?: string;                         // PayPal plan P-XXXX (optional)
@@ -447,7 +444,17 @@ type SubReq = {
   referredBy?: string;
 };
 
-type SubRes = { success: boolean; message?: string; status?: string; subscriptionId?: string; nextBillingTime?: string | null };
+type SubRes = {
+  success: boolean;
+  message?: string;
+  status?: string;
+  subscriptionId?: string;
+  nextBillingTime?: string | null;
+};
+
+// ────────────────────────────────────────────────────────────
+// Callable — Process PayPal subscription (server-side verify & credit)
+// ────────────────────────────────────────────────────────────
 
 export const processPayPalSubscription = functions
   .region(REGION)
@@ -561,6 +568,119 @@ export const processPayPalSubscription = functions
     };
   });
 
+// ────────────────────────────────────────────────────────────
+// HTTP mirror — Process PayPal subscription with CORS + Bearer
+// ────────────────────────────────────────────────────────────
+
+export const processPayPalSubscriptionHttp = functions
+  .region(REGION)
+  .runWith({ secrets: ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET'] })
+  .https.onRequest(async (req, res) => {
+    applyCors(res, req.headers.origin as string | undefined);
+
+    if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
+    if (req.method !== 'POST')    { res.status(405).send('Method Not Allowed'); return; }
+
+    try {
+      // Require Firebase ID token
+      const m = (req.headers.authorization || '').toString().match(/^Bearer\s+(.+)$/i);
+      if (!m) { res.status(401).json({ success: false, message: 'Missing Authorization bearer token.' }); return; }
+      const decoded = await adminAuth.verifyIdToken(m[1]);
+      const uid = decoded.uid;
+
+      // Normalize input exactly like the callable
+      const raw = (req.body || {}) as SubReq;
+      const frequency = raw.frequency;
+      const subscriptionId = (raw.subscriptionId || raw.subscriptionID || '').toString();
+      const planId   = raw.planId;
+      const planKey  = raw.planKey;
+      const planName = raw.planName;
+      const price    = Number(raw.price ?? 0);
+      const credits  = Number(raw.credits ?? 0);
+      const referredBy = raw.referredBy || undefined;
+
+      if (!subscriptionId || !frequency) {
+        res.status(400).json({ success: false, message: 'subscriptionId and frequency are required.' });
+        return;
+      }
+
+      // Verify with PayPal
+      const sub = await getPayPalSubscriptionDetails(subscriptionId);
+      if (!sub) { res.status(404).json({ success: false, message: 'Subscription not found at PayPal.' }); return; }
+
+      const status = (sub as any)?.status || 'UNKNOWN';
+      const nextBillingTime =
+        (sub as any)?.billing_info?.next_billing_time ||
+        (sub as any)?.billing_info?.next_billing_date || null;
+      const paypalPlan = (sub as any)?.plan_id || planId || null;
+      const activeNow = status === 'ACTIVE' || status === 'APPROVED';
+
+      await db.runTransaction(async (tx) => {
+        const userRef = db.collection('users').doc(uid);
+        const snap = await tx.get(userRef);
+        if (!snap.exists) throw new functions.https.HttpsError('not-found', 'User not found.');
+
+        tx.set(userRef, {
+          paypalSubscriptionId: subscriptionId,
+          subscriptionStatus: activeNow ? 'paid' : 'pending',
+          billingCycle: frequency,
+          planKey: planKey || FieldValue.delete(),
+          planName: planName || FieldValue.delete(),
+          paypalSubscriptionDetails: { status, plan_id: paypalPlan, next_billing_time: nextBillingTime },
+          referredBy: referredBy || snap.data()?.referredBy || null,
+          lastSubscriptionUpdate: FieldValue.serverTimestamp(),
+        }, { merge: true });
+
+        const txCol = userRef.collection('transactions');
+
+        // Initial credit once
+        const existsQ = txCol.where('type','==','subscription_initial')
+                             .where('paypalSubscriptionId','==',subscriptionId).limit(1);
+        const exists = await tx.get(existsQ);
+        if (activeNow && credits > 0 && exists.empty) {
+          const current = Number(snap.data()?.credits || 0) || 0;
+          tx.update(userRef, { credits: current + credits });
+          tx.set(txCol.doc(), {
+            type: 'subscription_initial',
+            creditsDelta: credits,
+            amountUsd: price || null,
+            paypalSubscriptionId: subscriptionId,
+            status: 'confirmed',
+            timestamp: FieldValue.serverTimestamp(),
+            description: `Initial subscription credit (${frequency}).`,
+          });
+        }
+
+        tx.set(txCol.doc(), {
+          type: 'subscription',
+          paypalSubscriptionId: subscriptionId,
+          planId: paypalPlan,
+          planKey: planKey || null,
+          planName: planName || null,
+          frequency,
+          amountUsd: price || null,
+          creditsPerCycle: credits || null,
+          status,
+          nextBillingTime,
+          timestamp: FieldValue.serverTimestamp(),
+        });
+      });
+
+      res.status(200).json({
+        success: true,
+        status,
+        subscriptionId,
+        nextBillingTime,
+        message: activeNow
+          ? 'Subscription verified and credited.'
+          : `Subscription recorded (status: ${status}). Will credit when active.`,
+      } as SubRes);
+    } catch (error: any) {
+      console.error('processPayPalSubscriptionHttp error:', error);
+      const msg = error?.message || 'Internal Server Error';
+      res.status(500).json({ success: false, message: msg });
+    }
+  });
 
 // ────────────────────────────────────────────────────────────
 /** Scheduled — Monthly free credits (2:00 AM CR, 1st) */

@@ -370,7 +370,7 @@ useEffect(() => {
   };
 
   async function onApproveSubscription(sub: any, paypalPlanId?: string) {
-    if (!fns) return; // [SSR-FIX] 2. Añadir esta verificación
+    if (!fns) return;
     if (!user?.uid || !selectedOffering) {
       setMsg('error', t('mustBeLoggedInAndHaveSelection'));
       return;
@@ -380,28 +380,29 @@ useEffect(() => {
       setMsg('error', t('paypalSubscriptionIdMissing') || 'Missing PayPal subscription ID.');
       return;
     }
+  
+    const payload = {
+      subscriptionId: subscriptionID,
+      planId: paypalPlanId,
+      frequency: subscriptionFrequency,
+      price: (selectedOffering as any).price,
+      credits: selectedOffering.credits,
+      planKey: selectedOffering.id,
+      planName: selectedOffering.name,
+      referredBy: referredBy || undefined,
+    };
+  
     try {
+      // 1) Preferred: callable (no CORS config needed)
       const processSubscription = httpsCallable(fns, 'processPayPalSubscription');
-      const payload = {
-        subscriptionId: subscriptionID,       // ← lowercase “d” to match server
-        planId: paypalPlanId,
-        frequency: subscriptionFrequency,     // type already correct
-        price: (selectedOffering as any).price,
-        credits: selectedOffering.credits,
-        referredBy: referredBy || undefined,
-      };
       const res = await processSubscription(payload);
       const data = (res?.data || {}) as { success?: boolean; message?: string; status?: string };
       if (!data?.success) throw new Error(data?.message || t('unexpectedError'));
-
-      setMsg(
-        'success',
-        formatT(t, 'subscriptionActivated', {
-          name: nameLabel(t, selectedOffering.name),
-          frequency: t(subscriptionFrequency),
-        })
-      );
-
+  
+      setMsg('success', formatT(t, 'subscriptionActivated', {
+        name: nameLabel(t, selectedOffering.name),
+        frequency: t(subscriptionFrequency),
+      }));
       setSubStatus({
         kind: 'paid',
         planKey: selectedOffering.id,
@@ -410,11 +411,45 @@ useEffect(() => {
         paypalSubscriptionId: subscriptionID,
         status: (data as any).status || 'ACTIVE',
       });
-    } catch (e: any) {
-      console.error(e);
-      setMsg('error', e?.message || t('unexpectedError'));
+    } catch (err) {
+      console.warn('Callable failed, trying HTTP mirror…', err);
+      try {
+        // 2) Fallback: HTTP mirror with Bearer token (handles pesky CORS)
+        const token = await user.getIdToken();
+        const resp = await fetch(
+          'https://us-central1-narratum.cloudfunctions.net/processPayPalSubscriptionHttp',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(payload),
+          }
+        );
+        const json = await resp.json();
+        if (!resp.ok || !json?.success) {
+          throw new Error(json?.message || `HTTP ${resp.status}`);
+        }
+  
+        setMsg('success', formatT(t, 'subscriptionActivated', {
+          name: nameLabel(t, selectedOffering.name),
+          frequency: t(subscriptionFrequency),
+        }));
+        setSubStatus({
+          kind: 'paid',
+          planKey: selectedOffering.id,
+          planName: selectedOffering.name,
+          frequency: subscriptionFrequency,
+          paypalSubscriptionId: subscriptionID,
+          status: json.status || 'ACTIVE',
+        });
+      } catch (e: any) {
+        console.error('HTTP mirror failed:', e);
+        setMsg('error', e?.message || t('unexpectedError'));
+      }
     }
-  }
+  }  
 
   const cancelActiveSubscription = async () => {
     if (!fns) return; // [SSR-FIX] 3. Añadir esta verificación
