@@ -432,116 +432,135 @@ export const sendTipToWriter = functions
   });
 
 // ────────────────────────────────────────────────────────────
-/** Callable — Process PayPal subscription (server-side verify & credit) */
+// Callable — Process PayPal subscription (server-side verify & credit)
 // ────────────────────────────────────────────────────────────
 type SubReq = {
-  subscriptionID?: string;
-  planId?: string;                             // your plan label/name (optional but helpful)
+  // accept both spellings and normalize:
+  subscriptionId?: string;                 // preferred (lowercase d)
+  subscriptionID?: string;                 // legacy (uppercase D)
+  planId?: string;                         // PayPal plan P-XXXX (optional)
+  planKey?: string;                        // e.g. 'sub_mo_reader' (for UI)
+  planName?: string;                       // e.g. 'Reader' (for UI)
   frequency?: 'weekly' | 'monthly';
-  price?: number;                              // USD
-  credits?: number;                            // credits per cycle
+  price?: number;                          // USD
+  credits?: number;                        // credits per cycle
   referredBy?: string;
 };
-type SubRes = { success: boolean; message?: string; status?: string; subscriptionId?: string };
+
+type SubRes = { success: boolean; message?: string; status?: string; subscriptionId?: string; nextBillingTime?: string | null };
 
 export const processPayPalSubscription = functions
   .region(REGION)
   .runWith({ secrets: ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET'] })
   .https.onCall(async (raw: SubReq, context): Promise<SubRes> => {
-    const userId = context.auth?.uid;
-    if (!userId) throw new functions.https.HttpsError('unauthenticated', 'Sign in first.');
+    const uid = context.auth?.uid;
+    if (!uid) throw new functions.https.HttpsError('unauthenticated', 'Sign in first.');
 
-    const { subscriptionID, planId, frequency, price, credits, referredBy } = raw || {};
-    if (!subscriptionID || !frequency || !price || !credits) {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'Missing required fields: subscriptionID, frequency, price, credits.'
-      );
+    // 1) normalize inputs
+    const subscriptionId = (raw?.subscriptionId || raw?.subscriptionID || '').toString();
+    const frequency = raw?.frequency;
+    const planId = raw?.planId;
+    const planKey = raw?.planKey;
+    const planName = raw?.planName;
+    const price = Number(raw?.price ?? 0);
+    const credits = Number(raw?.credits ?? 0);
+    const referredBy = raw?.referredBy || undefined;
+
+    if (!subscriptionId || !frequency) {
+      throw new functions.https.HttpsError('invalid-argument', 'subscriptionId and frequency are required.');
     }
 
-    try {
-      // 1) Pull the latest state from PayPal
-      const sub = await getPayPalSubscriptionDetails(subscriptionID);
-      if (!sub) throw new functions.https.HttpsError('not-found', 'Subscription not found at PayPal.');
+    // 2) verify with PayPal
+    const sub = await getPayPalSubscriptionDetails(subscriptionId);
+    if (!sub) throw new functions.https.HttpsError('not-found', 'Subscription not found at PayPal.');
 
-      const status = sub.status; // APPROVAL_PENDING | APPROVED | ACTIVE | SUSPENDED | CANCELLED | EXPIRED
-      const isActiveish = status === 'ACTIVE' || status === 'APPROVED';
+    const status = (sub.status || 'UNKNOWN') as
+      | 'ACTIVE' | 'APPROVAL_PENDING' | 'APPROVED' | 'SUSPENDED' | 'CANCELLED' | 'EXPIRED' | 'UNKNOWN';
 
-      // 2) Store/Update subscription doc (used by webhook later)
-      const subRef = db.collection('paypalSubscriptions').doc(subscriptionID);
-      await subRef.set(
+    const nextBillingTime =
+      (sub as any)?.billing_info?.next_billing_time ||
+      (sub as any)?.billing_info?.next_billing_date ||
+      null;
+
+    const paypalPlan = (sub as any)?.plan_id || planId || null;
+    const activeNow = status === 'ACTIVE' || status === 'APPROVED';
+
+    // 3) persist a normalized subscription snapshot + (if ACTIVE) grant initial credits
+    await db.runTransaction(async (tx) => {
+      const userRef = db.collection('users').doc(uid);
+      const snap = await tx.get(userRef);
+      if (!snap.exists) throw new functions.https.HttpsError('not-found', 'User not found.');
+
+      // write a canonical subscription snapshot the status UI can read
+      tx.set(
+        userRef,
         {
-          userId,
-          planId: planId || sub.plan_id || null,
-          frequency,
-          price,
-          creditsPerCycle: credits,
-          status,
-          referredBy: referredBy || null,
-          lastSyncedAt: FieldValue.serverTimestamp(),
+          paypalSubscriptionId: subscriptionId,          // ← what getSubscriptionStatus expects
+          subscriptionStatus: activeNow ? 'paid' : 'pending',
+          billingCycle: frequency,                       // ← read by getSubscriptionStatus
+          planKey: planKey || FieldValue.delete(),
+          planName: planName || FieldValue.delete(),
+          paypalSubscriptionDetails: {
+            status,
+            plan_id: paypalPlan,
+            next_billing_time: nextBillingTime,
+          },
+          referredBy: referredBy || snap.data()?.referredBy || null,
+          lastSubscriptionUpdate: FieldValue.serverTimestamp(),
         },
         { merge: true }
       );
 
-      // 3) If active right now, credit immediately and mark user’s subscription
-      if (isActiveish) {
-        await db.runTransaction(async (tx) => {
-          const userRef = db.collection('users').doc(userId);
-          const snap = await tx.get(userRef);
-          if (!snap.exists) throw new functions.https.HttpsError('not-found', 'User not found.');
+      // prevent double initial credit
+      const txCol = userRef.collection('transactions');
+      const existsQ = txCol.where('type', '==', 'subscription_initial')
+                           .where('paypalSubscriptionId', '==', subscriptionId)
+                           .limit(1);
+      const exists = await tx.get(existsQ);
+      const alreadyCredited = !exists.empty;
 
-          // Prevent double-crediting initial grant
-          const txCol = db.collection('users').doc(userId).collection('transactions');
-          const q = txCol
-            .where('type', '==', 'subscription_initial')
-            .where('paypalSubscriptionId', '==', subscriptionID)
-            .limit(1);
-          const existingTransactionSnap = await tx.get(q);
-          if (!existingTransactionSnap.empty) {
-            functions.logger.info(`Initial credit for subscription ${subscriptionID} already granted to user ${userId}. Skipping.`);
-            return;
-          }
+      if (activeNow && credits > 0 && !alreadyCredited) {
+        const currentCredits = Number(snap.data()?.credits || 0) || 0;
+        tx.update(userRef, { credits: currentCredits + credits });
 
-          const currentCredits = Number(snap.data()?.credits || 0) || 0;
-          tx.update(userRef, {
-            credits: currentCredits + credits,
-            subscription: {
-              subscriptionId: subscriptionID,
-              planId: planId || sub.plan_id || null,
-              frequency,
-              price,
-              creditsPerCycle: credits,
-              status,
-              lastPaymentAt: FieldValue.serverTimestamp(),
-            },
-          });
-
-          tx.set(userRef.collection('transactions').doc(), {
-            type: 'subscription_initial',
-            creditsDelta: credits,
-            amountUsd: price,
-            paypalSubscriptionId: subscriptionID,
-            status: 'confirmed',
-            timestamp: FieldValue.serverTimestamp(),
-            description: `Initial subscription credit (${frequency}).`,
-          });
+        tx.set(txCol.doc(), {
+          type: 'subscription_initial',
+          creditsDelta: credits,
+          amountUsd: price || null,
+          paypalSubscriptionId: subscriptionId,
+          status: 'confirmed',
+          timestamp: FieldValue.serverTimestamp(),
+          description: `Initial subscription credit (${frequency}).`,
         });
       }
 
-      return {
-        success: true,
+      // ledger snapshot for the subscription itself
+      tx.set(txCol.doc(), {
+        type: 'subscription',
+        paypalSubscriptionId: subscriptionId,
+        planId: paypalPlan,
+        planKey: planKey || null,
+        planName: planName || null,
+        frequency,
+        amountUsd: price || null,
+        creditsPerCycle: credits || null,
         status,
-        subscriptionId: subscriptionID,
-        message: isActiveish
-          ? 'Subscription verified and credited.'
-          : `Subscription recorded (status: ${status}). Will credit on activation webhook.`,
-      };
-    } catch (err: any) {
-      functions.logger.error('processPayPalSubscription error:', err);
-      if (err instanceof functions.https.HttpsError) throw err;
-      throw new functions.https.HttpsError('internal', err?.message || 'Unknown error');
-    }
+        nextBillingTime,
+        timestamp: FieldValue.serverTimestamp(),
+      });
+    });
+
+    return {
+      success: true,
+      status,
+      subscriptionId,
+      nextBillingTime,
+      message: activeNow
+        ? 'Subscription verified and credited.'
+        : `Subscription recorded (status: ${status}). Will credit when active.`,
+    };
   });
+
 
 // ────────────────────────────────────────────────────────────
 /** Scheduled — Monthly free credits (2:00 AM CR, 1st) */

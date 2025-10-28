@@ -415,89 +415,96 @@ exports.processPayPalSubscription = functions
     .region(REGION)
     .runWith({ secrets: ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET'] })
     .https.onCall(async (raw, context) => {
-    const userId = context.auth?.uid;
-    if (!userId)
+    const uid = context.auth?.uid;
+    if (!uid)
         throw new functions.https.HttpsError('unauthenticated', 'Sign in first.');
-    const { subscriptionID, planId, frequency, price, credits, referredBy } = raw || {};
-    if (!subscriptionID || !frequency || !price || !credits) {
-        throw new functions.https.HttpsError('invalid-argument', 'Missing required fields: subscriptionID, frequency, price, credits.');
+    // 1) normalize inputs
+    const subscriptionId = (raw?.subscriptionId || raw?.subscriptionID || '').toString();
+    const frequency = raw?.frequency;
+    const planId = raw?.planId;
+    const planKey = raw?.planKey;
+    const planName = raw?.planName;
+    const price = Number(raw?.price ?? 0);
+    const credits = Number(raw?.credits ?? 0);
+    const referredBy = raw?.referredBy || undefined;
+    if (!subscriptionId || !frequency) {
+        throw new functions.https.HttpsError('invalid-argument', 'subscriptionId and frequency are required.');
     }
-    try {
-        // 1) Pull the latest state from PayPal
-        const sub = await (0, paypal_1.getPayPalSubscriptionDetails)(subscriptionID);
-        if (!sub)
-            throw new functions.https.HttpsError('not-found', 'Subscription not found at PayPal.');
-        const status = sub.status; // APPROVAL_PENDING | APPROVED | ACTIVE | SUSPENDED | CANCELLED | EXPIRED
-        const isActiveish = status === 'ACTIVE' || status === 'APPROVED';
-        // 2) Store/Update subscription doc (used by webhook later)
-        const subRef = firebaseAdmin_1.db.collection('paypalSubscriptions').doc(subscriptionID);
-        await subRef.set({
-            userId,
-            planId: planId || sub.plan_id || null,
-            frequency,
-            price,
-            creditsPerCycle: credits,
-            status,
-            referredBy: referredBy || null,
-            lastSyncedAt: firebaseAdmin_1.FieldValue.serverTimestamp(),
+    // 2) verify with PayPal
+    const sub = await (0, paypal_1.getPayPalSubscriptionDetails)(subscriptionId);
+    if (!sub)
+        throw new functions.https.HttpsError('not-found', 'Subscription not found at PayPal.');
+    const status = (sub.status || 'UNKNOWN');
+    const nextBillingTime = sub?.billing_info?.next_billing_time ||
+        sub?.billing_info?.next_billing_date ||
+        null;
+    const paypalPlan = sub?.plan_id || planId || null;
+    const activeNow = status === 'ACTIVE' || status === 'APPROVED';
+    // 3) persist a normalized subscription snapshot + (if ACTIVE) grant initial credits
+    await firebaseAdmin_1.db.runTransaction(async (tx) => {
+        const userRef = firebaseAdmin_1.db.collection('users').doc(uid);
+        const snap = await tx.get(userRef);
+        if (!snap.exists)
+            throw new functions.https.HttpsError('not-found', 'User not found.');
+        // write a canonical subscription snapshot the status UI can read
+        tx.set(userRef, {
+            paypalSubscriptionId: subscriptionId, // ← what getSubscriptionStatus expects
+            subscriptionStatus: activeNow ? 'paid' : 'pending',
+            billingCycle: frequency, // ← read by getSubscriptionStatus
+            planKey: planKey || firebaseAdmin_1.FieldValue.delete(),
+            planName: planName || firebaseAdmin_1.FieldValue.delete(),
+            paypalSubscriptionDetails: {
+                status,
+                plan_id: paypalPlan,
+                next_billing_time: nextBillingTime,
+            },
+            referredBy: referredBy || snap.data()?.referredBy || null,
+            lastSubscriptionUpdate: firebaseAdmin_1.FieldValue.serverTimestamp(),
         }, { merge: true });
-        // 3) If active right now, credit immediately and mark user’s subscription
-        if (isActiveish) {
-            await firebaseAdmin_1.db.runTransaction(async (tx) => {
-                const userRef = firebaseAdmin_1.db.collection('users').doc(userId);
-                const snap = await tx.get(userRef);
-                if (!snap.exists)
-                    throw new functions.https.HttpsError('not-found', 'User not found.');
-                // Prevent double-crediting initial grant
-                const txCol = firebaseAdmin_1.db.collection('users').doc(userId).collection('transactions');
-                const q = txCol
-                    .where('type', '==', 'subscription_initial')
-                    .where('paypalSubscriptionId', '==', subscriptionID)
-                    .limit(1);
-                const existingTransactionSnap = await tx.get(q);
-                if (!existingTransactionSnap.empty) {
-                    functions.logger.info(`Initial credit for subscription ${subscriptionID} already granted to user ${userId}. Skipping.`);
-                    return;
-                }
-                const currentCredits = Number(snap.data()?.credits || 0) || 0;
-                tx.update(userRef, {
-                    credits: currentCredits + credits,
-                    subscription: {
-                        subscriptionId: subscriptionID,
-                        planId: planId || sub.plan_id || null,
-                        frequency,
-                        price,
-                        creditsPerCycle: credits,
-                        status,
-                        lastPaymentAt: firebaseAdmin_1.FieldValue.serverTimestamp(),
-                    },
-                });
-                tx.set(userRef.collection('transactions').doc(), {
-                    type: 'subscription_initial',
-                    creditsDelta: credits,
-                    amountUsd: price,
-                    paypalSubscriptionId: subscriptionID,
-                    status: 'confirmed',
-                    timestamp: firebaseAdmin_1.FieldValue.serverTimestamp(),
-                    description: `Initial subscription credit (${frequency}).`,
-                });
+        // prevent double initial credit
+        const txCol = userRef.collection('transactions');
+        const existsQ = txCol.where('type', '==', 'subscription_initial')
+            .where('paypalSubscriptionId', '==', subscriptionId)
+            .limit(1);
+        const exists = await tx.get(existsQ);
+        const alreadyCredited = !exists.empty;
+        if (activeNow && credits > 0 && !alreadyCredited) {
+            const currentCredits = Number(snap.data()?.credits || 0) || 0;
+            tx.update(userRef, { credits: currentCredits + credits });
+            tx.set(txCol.doc(), {
+                type: 'subscription_initial',
+                creditsDelta: credits,
+                amountUsd: price || null,
+                paypalSubscriptionId: subscriptionId,
+                status: 'confirmed',
+                timestamp: firebaseAdmin_1.FieldValue.serverTimestamp(),
+                description: `Initial subscription credit (${frequency}).`,
             });
         }
-        return {
-            success: true,
+        // ledger snapshot for the subscription itself
+        tx.set(txCol.doc(), {
+            type: 'subscription',
+            paypalSubscriptionId: subscriptionId,
+            planId: paypalPlan,
+            planKey: planKey || null,
+            planName: planName || null,
+            frequency,
+            amountUsd: price || null,
+            creditsPerCycle: credits || null,
             status,
-            subscriptionId: subscriptionID,
-            message: isActiveish
-                ? 'Subscription verified and credited.'
-                : `Subscription recorded (status: ${status}). Will credit on activation webhook.`,
-        };
-    }
-    catch (err) {
-        functions.logger.error('processPayPalSubscription error:', err);
-        if (err instanceof functions.https.HttpsError)
-            throw err;
-        throw new functions.https.HttpsError('internal', err?.message || 'Unknown error');
-    }
+            nextBillingTime,
+            timestamp: firebaseAdmin_1.FieldValue.serverTimestamp(),
+        });
+    });
+    return {
+        success: true,
+        status,
+        subscriptionId,
+        nextBillingTime,
+        message: activeNow
+            ? 'Subscription verified and credited.'
+            : `Subscription recorded (status: ${status}). Will credit when active.`,
+    };
 });
 // ────────────────────────────────────────────────────────────
 /** Scheduled — Monthly free credits (2:00 AM CR, 1st) */

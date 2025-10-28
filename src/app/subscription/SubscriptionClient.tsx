@@ -169,12 +169,14 @@ function PayButtonsSubscription({
           const getSubId = async (): Promise<string | null> => {
             const d: any = data;
             if (d?.subscriptionID) return d.subscriptionID as string;
-            if (d?.orderID)        return d.orderID as string;
+            // The orderID is for one-time payments and should not be used here.
             try {
+              // As a fallback, try to get the subscription details from the API
               const sub = await actions?.subscription?.get?.();
-              return sub?.id ?? null;
+              return sub?.id ?? d?.subscriptionID ?? null;
             } catch {
-              return null;
+              // If the API call fails, still try to return the subscriptionID from the initial data
+              return d?.subscriptionID ?? null;
             }
           };
           const subId = await getSubId();
@@ -187,6 +189,7 @@ function PayButtonsSubscription({
           onMessage('error', t('paypalSubscriptionError'));
         }
       }}
+
       onCancel={() => onMessage('idle', t('subscriptionCancelled'))}
       onError={(err) => {
         console.error(err);
@@ -380,9 +383,9 @@ useEffect(() => {
     try {
       const processSubscription = httpsCallable(fns, 'processPayPalSubscription');
       const payload = {
-        subscriptionID,
+        subscriptionId: subscriptionID,       // ← lowercase “d” to match server
         planId: paypalPlanId,
-        frequency: subscriptionFrequency as 'weekly' | 'monthly',
+        frequency: subscriptionFrequency,     // type already correct
         price: (selectedOffering as any).price,
         credits: selectedOffering.credits,
         referredBy: referredBy || undefined,
