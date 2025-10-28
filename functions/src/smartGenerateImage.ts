@@ -1,6 +1,5 @@
 // functions/src/smartGenerateImage.ts
 import { onRequest } from "firebase-functions/v2/https";
-import type { Request, Response } from "express";
 import { defineSecret } from "firebase-functions/params";
 import { GoogleGenerativeAI, type Part, type Content } from "@google/generative-ai";
 import { GoogleAuth } from "google-auth-library";
@@ -19,7 +18,7 @@ const PROJECT_ID = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || "nar
 const SERVICE_ACCOUNT = "vertex-runner@narratum.iam.gserviceaccount.com";
 
 // Small helper to set CORS headers on all responses
-function setCors(res: Response) {
+function setCors(res: any) {
   res.set({
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -60,7 +59,7 @@ export const generateWithGemini = onRequest(
     invoker: "public",
     secrets: [GEMINI_API_KEY],
   },
-  async (req: Request, res: Response): Promise<void> => {
+  async (req, res): Promise<void> => {
     // CORS preflight
     if (req.method === "OPTIONS") {
       setCors(res);
@@ -142,7 +141,7 @@ export const generateWithImagen = onRequest(
     serviceAccount: SERVICE_ACCOUNT,
     invoker: "public",
   },
-  async (req: Request, res: Response): Promise<void> => {
+  async (req, res): Promise<void> => {
     // CORS preflight
     if (req.method === "OPTIONS") {
       setCors(res);

@@ -34,7 +34,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.grantMonthlyFreeCredits = exports.processPayPalSubscription = exports.sendTipToWriter = exports.deductCreditsForReadHttp = exports.deductCreditsForRead = exports.processPayPalOneTimePayment = exports.createPayPalOrder = void 0;
+exports.grantMonthlyFreeCredits = exports.processPayPalSubscriptionHttp = exports.processPayPalSubscription = exports.sendTipToWriter = exports.deductCreditsForReadHttp = exports.deductCreditsForRead = exports.processPayPalOneTimePayment = exports.createPayPalOrder = void 0;
 // ────────────────────────────────────────────────────────────
 // Firebase Functions (Gen-1) & Admin wrappers
 // ────────────────────────────────────────────────────────────
@@ -411,6 +411,9 @@ exports.sendTipToWriter = functions
         throw new functions.https.HttpsError('internal', 'Failed to send tip.', extractMessage(error, 'Unknown error'));
     }
 });
+// ────────────────────────────────────────────────────────────
+// Callable — Process PayPal subscription (server-side verify & credit)
+// ────────────────────────────────────────────────────────────
 exports.processPayPalSubscription = functions
     .region(REGION)
     .runWith({ secrets: ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET'] })
@@ -505,6 +508,119 @@ exports.processPayPalSubscription = functions
             ? 'Subscription verified and credited.'
             : `Subscription recorded (status: ${status}). Will credit when active.`,
     };
+});
+// ────────────────────────────────────────────────────────────
+// HTTP mirror — Process PayPal subscription with CORS + Bearer
+// ────────────────────────────────────────────────────────────
+exports.processPayPalSubscriptionHttp = functions
+    .region(REGION)
+    .runWith({ secrets: ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET'] })
+    .https.onRequest(async (req, res) => {
+    applyCors(res, req.headers.origin);
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+    }
+    if (req.method !== 'POST') {
+        res.status(405).send('Method Not Allowed');
+        return;
+    }
+    try {
+        // Require Firebase ID token
+        const m = (req.headers.authorization || '').toString().match(/^Bearer\s+(.+)$/i);
+        if (!m) {
+            res.status(401).json({ success: false, message: 'Missing Authorization bearer token.' });
+            return;
+        }
+        const decoded = await firebaseAdmin_1.adminAuth.verifyIdToken(m[1]);
+        const uid = decoded.uid;
+        // Normalize input exactly like the callable
+        const raw = (req.body || {});
+        const frequency = raw.frequency;
+        const subscriptionId = (raw.subscriptionId || raw.subscriptionID || '').toString();
+        const planId = raw.planId;
+        const planKey = raw.planKey;
+        const planName = raw.planName;
+        const price = Number(raw.price ?? 0);
+        const credits = Number(raw.credits ?? 0);
+        const referredBy = raw.referredBy || undefined;
+        if (!subscriptionId || !frequency) {
+            res.status(400).json({ success: false, message: 'subscriptionId and frequency are required.' });
+            return;
+        }
+        // Verify with PayPal
+        const sub = await (0, paypal_1.getPayPalSubscriptionDetails)(subscriptionId);
+        if (!sub) {
+            res.status(404).json({ success: false, message: 'Subscription not found at PayPal.' });
+            return;
+        }
+        const status = sub?.status || 'UNKNOWN';
+        const nextBillingTime = sub?.billing_info?.next_billing_time ||
+            sub?.billing_info?.next_billing_date || null;
+        const paypalPlan = sub?.plan_id || planId || null;
+        const activeNow = status === 'ACTIVE' || status === 'APPROVED';
+        await firebaseAdmin_1.db.runTransaction(async (tx) => {
+            const userRef = firebaseAdmin_1.db.collection('users').doc(uid);
+            const snap = await tx.get(userRef);
+            if (!snap.exists)
+                throw new functions.https.HttpsError('not-found', 'User not found.');
+            tx.set(userRef, {
+                paypalSubscriptionId: subscriptionId,
+                subscriptionStatus: activeNow ? 'paid' : 'pending',
+                billingCycle: frequency,
+                planKey: planKey || firebaseAdmin_1.FieldValue.delete(),
+                planName: planName || firebaseAdmin_1.FieldValue.delete(),
+                paypalSubscriptionDetails: { status, plan_id: paypalPlan, next_billing_time: nextBillingTime },
+                referredBy: referredBy || snap.data()?.referredBy || null,
+                lastSubscriptionUpdate: firebaseAdmin_1.FieldValue.serverTimestamp(),
+            }, { merge: true });
+            const txCol = userRef.collection('transactions');
+            // Initial credit once
+            const existsQ = txCol.where('type', '==', 'subscription_initial')
+                .where('paypalSubscriptionId', '==', subscriptionId).limit(1);
+            const exists = await tx.get(existsQ);
+            if (activeNow && credits > 0 && exists.empty) {
+                const current = Number(snap.data()?.credits || 0) || 0;
+                tx.update(userRef, { credits: current + credits });
+                tx.set(txCol.doc(), {
+                    type: 'subscription_initial',
+                    creditsDelta: credits,
+                    amountUsd: price || null,
+                    paypalSubscriptionId: subscriptionId,
+                    status: 'confirmed',
+                    timestamp: firebaseAdmin_1.FieldValue.serverTimestamp(),
+                    description: `Initial subscription credit (${frequency}).`,
+                });
+            }
+            tx.set(txCol.doc(), {
+                type: 'subscription',
+                paypalSubscriptionId: subscriptionId,
+                planId: paypalPlan,
+                planKey: planKey || null,
+                planName: planName || null,
+                frequency,
+                amountUsd: price || null,
+                creditsPerCycle: credits || null,
+                status,
+                nextBillingTime,
+                timestamp: firebaseAdmin_1.FieldValue.serverTimestamp(),
+            });
+        });
+        res.status(200).json({
+            success: true,
+            status,
+            subscriptionId,
+            nextBillingTime,
+            message: activeNow
+                ? 'Subscription verified and credited.'
+                : `Subscription recorded (status: ${status}). Will credit when active.`,
+        });
+    }
+    catch (error) {
+        console.error('processPayPalSubscriptionHttp error:', error);
+        const msg = error?.message || 'Internal Server Error';
+        res.status(500).json({ success: false, message: msg });
+    }
 });
 // ────────────────────────────────────────────────────────────
 /** Scheduled — Monthly free credits (2:00 AM CR, 1st) */
