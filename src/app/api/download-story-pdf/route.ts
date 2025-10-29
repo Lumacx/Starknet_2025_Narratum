@@ -187,15 +187,19 @@ function storyToHtml(
   .titlepage .cover img { width: 100%; height: auto; display: block; }
 
   .page {
-    page-break-after: always;
-    margin: 0 0 12px 0;
-    border-radius: 12px;
-    overflow: hidden;
-    position: relative;
-    background: var(--card);
-    box-shadow: 0 4px 18px rgba(0,0,0,.18);
-    min-height: 130mm; /* taller content area in landscape */
-  }
+  page-break-after: always;
+  margin: 0 0 12px 0;
+  border-radius: 12px;
+  position: relative;
+  background: var(--card);
+  box-shadow: 0 4px 18px rgba(0,0,0,.18);
+  height: 190mm;            /* lock height for landscape letter (~7.5in) */
+  max-height: 190mm;
+  overflow: hidden;         /* cut overflow instead of pushing to new page */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
   .page .bg {
     position: absolute; inset: 0;
     background-size: cover;
@@ -210,12 +214,19 @@ function storyToHtml(
     color: var(--fg); background: linear-gradient(90deg, var(--accent), var(--accent-2));
   }
   .page .inner {
-    position: relative; z-index: 1;
-    padding: 18px;
-    display: grid;
-    grid-template-columns: 3fr 2fr; /* bigger image column */
-    gap: 18px;
-  }
+  position: relative; 
+  z-index: 1;
+  padding: 18px;
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 18px;
+  flex: 1;              /* let it fill but not overflow */
+  overflow: hidden;     /* crop tall text/images */
+}
+.text {
+  overflow: hidden;     /* prevent long text from spilling */
+  text-overflow: ellipsis;
+}
   .card {
     background: rgba(255,255,255,0.05);
     border: 1px solid rgba(255,255,255,0.08);
