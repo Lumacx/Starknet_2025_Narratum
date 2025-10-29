@@ -1,44 +1,44 @@
-I1029 05:59:09.264939     578 load.go:31] Reloading schema and connectors...
-I1029 05:59:09.783136     578 control.go:94] [/emulator/studio-v0 a6d8] UpdateResources(): done
+I1029 18:30:28.291284     434 load.go:31] Reloading schema and connectors...
+I1029 18:30:28.825090     434 control.go:94] [/emulator/studio-v0 85ae] UpdateResources(): done
 Main schema: sources: schema/schema.gql [3721B] 
 Connector "default": sources: connector/mutations.gql [3182B] connector/queries.gql [2742B] 
-W1029 05:59:10.588077     578 parser.go:185] Type includes_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.588187     578 parser.go:185] Type excludes_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.588230     578 parser.go:185] Type includes_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.588239     578 parser.go:185] Type excludes_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.588392     578 parser.go:185] Type includes_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.588403     578 parser.go:185] Type excludes_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.588503     578 parser.go:185] Type eq_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.588513     578 parser.go:185] Type ne_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.588521     578 parser.go:185] Type gt_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.588528     578 parser.go:185] Type ge_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.588539     578 parser.go:185] Type lt_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.588546     578 parser.go:185] Type le_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.588620     578 parser.go:185] Type eq_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.588644     578 parser.go:185] Type ne_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.588659     578 parser.go:185] Type gt_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.588666     578 parser.go:185] Type ge_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.588673     578 parser.go:185] Type lt_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.588680     578 parser.go:185] Type le_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.588698     578 parser.go:185] Type eq_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.588705     578 parser.go:185] Type ne_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.588713     578 parser.go:185] Type gt_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.588720     578 parser.go:185] Type ge_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.588727     578 parser.go:185] Type lt_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.588775     578 parser.go:185] Type le_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.589137     578 parser.go:185] Type includes_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.589165     578 parser.go:185] Type excludes_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.589177     578 parser.go:185] Type eq_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.589187     578 parser.go:185] Type ne_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.589214     578 parser.go:185] Type gt_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.589235     578 parser.go:185] Type ge_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.589261     578 parser.go:185] Type lt_expr not found in full typeMap, possibly a CEL expression type
-W1029 05:59:10.589268     578 parser.go:185] Type le_expr not found in full typeMap, possibly a CEL expression type
-I1029 05:59:10.595466     578 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "/home/user/studio/dataconnect-generated/js/default-connector"
-I1029 05:59:12.209206     578 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
-Generated sources: main/relation.gql [50205B] main/query.gql [15655B] main/mutation.gql [41655B] main/implicit.gql [3267B] prelude.gql [73219B] main/input.gql [121564B] 
-I1029 05:59:12.363239     578 collector.go:107] connector "default" javascriptSdk wrote into "/home/user/studio/dataconnect-generated/js/default-connector"
-Generated sources: esm/index.esm.js [10374B] esm/package.json [17B] README.md [116341B] react/esm/package.json [17B] react/esm/index.esm.js [9027B] react/README.md [119856B] .guides/usage.md [4620B] .guides/setup.md [1690B] index.d.ts [24807B] index.cjs.js [12004B] package.json [871B] react/index.d.ts [12119B] react/package.json [468B] react/index.cjs.js [9597B] 
-I1029 05:59:12.436393     578 installsdk.go:55] Package @firebasegen/default-connector is already installed. Skipping installation
-I1029 05:59:12.436477     578 load.go:109] Finished reloading
-I1029 05:59:12.599895     578 dev.go:102] Listening on address (HTTP + gRPC): 127.0.0.1:50001
+W1029 18:30:29.383403     434 parser.go:185] Type eq_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.383497     434 parser.go:185] Type ne_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.383507     434 parser.go:185] Type gt_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.383515     434 parser.go:185] Type ge_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.383522     434 parser.go:185] Type lt_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.383528     434 parser.go:185] Type le_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.383674     434 parser.go:185] Type eq_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.383689     434 parser.go:185] Type ne_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.383696     434 parser.go:185] Type gt_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.383701     434 parser.go:185] Type ge_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.383708     434 parser.go:185] Type lt_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.383716     434 parser.go:185] Type le_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.383791     434 parser.go:185] Type includes_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.383799     434 parser.go:185] Type excludes_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.383895     434 parser.go:185] Type includes_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.383903     434 parser.go:185] Type excludes_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.383934     434 parser.go:185] Type includes_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.383942     434 parser.go:185] Type excludes_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.383994     434 parser.go:185] Type eq_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.384001     434 parser.go:185] Type ne_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.384007     434 parser.go:185] Type gt_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.384014     434 parser.go:185] Type ge_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.384021     434 parser.go:185] Type lt_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.384027     434 parser.go:185] Type le_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.384056     434 parser.go:185] Type includes_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.384063     434 parser.go:185] Type excludes_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.384145     434 parser.go:185] Type eq_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.384152     434 parser.go:185] Type ne_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.384161     434 parser.go:185] Type gt_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.384168     434 parser.go:185] Type ge_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.384175     434 parser.go:185] Type lt_expr not found in full typeMap, possibly a CEL expression type
+W1029 18:30:29.384181     434 parser.go:185] Type le_expr not found in full typeMap, possibly a CEL expression type
+I1029 18:30:29.384703     434 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "/home/user/studio/dataconnect-generated/js/default-connector"
+I1029 18:30:29.831099     434 collector.go:107] schema extensions wrote into "/home/user/studio/dataconnect/.dataconnect/schema"
+Generated sources: main/query.gql [15655B] main/mutation.gql [41655B] prelude.gql [73219B] main/implicit.gql [3267B] main/input.gql [121564B] main/relation.gql [50205B] 
+I1029 18:30:30.158643     434 collector.go:107] connector "default" javascriptSdk wrote into "/home/user/studio/dataconnect-generated/js/default-connector"
+Generated sources: README.md [116341B] react/index.cjs.js [9597B] react/esm/index.esm.js [9027B] react/README.md [119856B] .guides/setup.md [1690B] index.d.ts [24807B] esm/index.esm.js [10374B] esm/package.json [17B] package.json [871B] react/index.d.ts [12119B] react/package.json [468B] react/esm/package.json [17B] .guides/usage.md [4620B] index.cjs.js [12004B] 
+I1029 18:30:30.387488     434 installsdk.go:55] Package @firebasegen/default-connector is already installed. Skipping installation
+I1029 18:30:30.387878     434 load.go:109] Finished reloading
+I1029 18:30:30.415422     434 dev.go:102] Listening on address (HTTP + gRPC): 127.0.0.1:50001

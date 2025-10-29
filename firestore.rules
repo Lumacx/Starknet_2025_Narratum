@@ -1,4 +1,3 @@
-// firestore.rules
 rules_version = '2';
 
 service cloud.firestore {
@@ -52,14 +51,11 @@ service cloud.firestore {
     /* --------- Gallery index doc (flat lists shown in UploadImageReference) --------- */
     function validAssetIndexDoc(d, uid, storyId) {
       return
-        // Optional ownerUid: allow either absent or matching user
         ( !('ownerUid' in d) || d.ownerUid == uid ) &&
-        // Story scoping: null for uncategorized, exact match for story-scoped
         (
           (storyId == null && (!('storyId' in d) || d.storyId == null)) ||
           (storyId != null && d.storyId == storyId)
         ) &&
-        // Required basics used by your component
         (d.url is string) &&
         ( !('fileName' in d)    || (d.fileName is string) ) &&
         ( !('contentType' in d) || (d.contentType is string) ) &&
@@ -94,7 +90,7 @@ service cloud.firestore {
         ( !('tags' in d)        || (d.tags is list) );
     }
 
-   /* ===========================================================
+    /* ===========================================================
        TOP-LEVEL _meta
        ============================================================ */
     match /_meta/{docId} {
@@ -107,7 +103,7 @@ service cloud.firestore {
     match /users/{uid} {
 
       // READ: owner OR the referrer of this user (for “Referral Transactions” tab)
-       allow read: if isOwner(uid) || (isSignedIn() && resource.data.referredBy == request.auth.uid);
+      allow read: if isOwner(uid) || (isSignedIn() && resource.data.referredBy == request.auth.uid);
 
       allow create: if isOwner(uid)
         && !('plan' in request.resource.data)
@@ -133,26 +129,31 @@ service cloud.firestore {
       match /favorites/{favId}     { allow read, write: if isOwner(uid); }
       match /reads/{storyId}       { allow read, write: if isOwner(uid); }
       match /ratings/{storyId}     { allow read, write: if isOwner(uid); }
-      
+
+      // ✅ NEW: Owned purchases used by Discover/reader
+      match /purchases/{storyId} {
+        allow read: if isOwner(uid);       // owner can see what they own
+        allow create, update, delete: if false; // server/Admin only
+      }
+
       // Personal transaction history (owner can read, client cannot mutate)
-       match /transactions/{txId} {
-       allow read: if isOwner(uid);
-       allow create, update, delete: if false; // server (Admin SDK) writes only
+      match /transactions/{txId} {
+        allow read: if isOwner(uid);
+        allow create, update, delete: if false; // server (Admin SDK) writes only
       }
 
       // Collection-group access for referral earnings (read only)
-       match /{path=**}/transactions/{txId} {
-       allow read: if isSignedIn() && resource.data.referrerUid == request.auth.uid;
-       allow write: if false;
+      match /{path=**}/transactions/{txId} {
+        allow read: if isSignedIn() && resource.data.referrerUid == request.auth.uid;
+        allow write: if false;
       }
 
-        match /creditTransactions/{docId} {
-         allow read: if isSignedIn() &&
-         (resource.data.userId == request.auth.uid ||
-         resource.data.referrerUid == request.auth.uid);
-         allow write: if false;
+      match /creditTransactions/{docId} {
+        allow read: if isSignedIn() &&
+          (resource.data.userId == request.auth.uid ||
+           resource.data.referrerUid == request.auth.uid);
+        allow write: if false;
       }
-
 
       match /stories/{storyId} {
         allow read, write: if isOwner(uid);
@@ -160,9 +161,8 @@ service cloud.firestore {
         match /assets/{assetId} { allow read, write: if isOwner(uid); }
       }
 
-      // assetIndex subtree (kept as you had it) …
+      // assetIndex subtree …
       match /assetIndex/{docId} {
-        // [unchanged from your version]
         allow read, write: if isOwner(uid) && docId == 'default';
         match /stories/{storyId}/{category}/{docId2} {
           allow read: if isOwner(uid) || storyIsPublic(storyId);
@@ -202,9 +202,6 @@ service cloud.firestore {
        TOP-LEVEL STORIES
        ============================================================ */
     match /stories/{storyId} {
-      // ⬇️ Allow create when the user is the owner AND either:
-      // - provides a valid 'type' (basic|premium|convai), OR
-      // - provides a valid 'category' (short|novela|campaign).
       allow create: if isOwnerCreate()
         && (
              (('type' in request.resource.data) && isValidStoryType(request.resource.data.type))

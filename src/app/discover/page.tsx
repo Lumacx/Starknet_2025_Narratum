@@ -880,7 +880,7 @@ const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'narratum';
 const callDeductCreditsForReadHttp = React.useCallback(
   async (input: DeductInput): Promise<DeductResult> => {
     const token = await getAuth().currentUser?.getIdToken();
-    const url = `https://us-central1-${firebaseProjectId}.cloudfunctions.net/deductCreditsForReadHttp`;
+    const url = `https://us-central1-narratum.cloudfunctions.net/deductCreditsForReadHttp`;
     
     const resp = await fetch(url, {
       method: 'POST',
@@ -903,6 +903,7 @@ const callDeductCreditsForReadHttp = React.useCallback(
   []
 );
 
+
 // Unified call that prefers callable, falls back to HTTP on network/CORS
 async function deductCreditsForReadAny(input: DeductInput): Promise<DeductResult> {
   try {
@@ -923,7 +924,16 @@ async function deductCreditsForReadAny(input: DeductInput): Promise<DeductResult
       alert(t('pleaseSignInToReadPaidStories'));
       return;
     }
+    
+    const ownerId = getOwnerId(story);
 
+    // ⬇️ bypass for the owner (no credit check needed)
+    if (user?.uid && ownerId && user.uid === ownerId) {
+      await logRead((story as any).id!);
+      router.push(`/ereader?storyId=${encodeURIComponent((story as any).id!)}&back=%2Fdiscover`);
+      return;
+    }
+    
     try {
       // 1) Preflight (no charge)
       //const pre = await callDeductCreditsForRead({ storyId, checkOnly: true });

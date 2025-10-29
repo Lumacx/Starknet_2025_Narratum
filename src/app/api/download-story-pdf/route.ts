@@ -15,7 +15,6 @@ export const maxDuration = 60;
 function trimTrailingSlash(s: string) {
   return s.replace(/\/+$/, '');
 }
-
 function deriveFunctionsBase(): string {
   const explicit = process.env.FIREBASE_FUNCTIONS_BASE_URL;
   if (explicit && explicit.trim()) return trimTrailingSlash(explicit.trim());
@@ -34,7 +33,6 @@ function deriveFunctionsBase(): string {
   }
   return `https://${region}-${project}.cloudfunctions.net`;
 }
-
 const FUNCTIONS_BASE = deriveFunctionsBase();
 const PDF_FN = process.env.FIREBASE_PDF_FN || 'downloadStoryPdf';
 
@@ -45,11 +43,9 @@ function safeStr(x: unknown): string {
   if (x == null) return '';
   return (typeof x === 'string' ? x : String(x)).trim();
 }
-
 function slugify(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '').slice(0, 80);
 }
-
 function escapeHtml(s: string): string {
   return s
     .replaceAll('&', '&amp;')
@@ -58,7 +54,6 @@ function escapeHtml(s: string): string {
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
 }
-
 /** Try to normalize a YouTube or short link; otherwise return the same URL. */
 function normalizeVideoUrl(url?: string | null): string {
   const u = safeStr(url);
@@ -102,8 +97,12 @@ type StoryLike = {
   reader?: { backgroundUrl?: string | null } | null; // for title page backdrop
 };
 
-/* Build the HTML with: Title cover, then pages (background + main image + text + video URL) */
-function storyToHtml(d: StoryLike, opts: { lang?: string; theme?: 'light'|'dark'; paper?: 'a4'|'letter' }) {
+/* Build the HTML with: Title cover, then pages (background + main image + text + video URL)
+   Now in LANDSCAPE with bigger content and a clickable brand link. */
+function storyToHtml(
+  d: StoryLike,
+  opts: { lang?: string; theme?: 'light' | 'dark'; paper?: 'a4' | 'letter' }
+) {
   const title = escapeHtml(safeStr(d?.title) || 'Story');
   const cover = safeStr(d?.coverImageUrl) || safeStr(d?.imageUrl) || '';
   const lang = opts.lang || 'en';
@@ -117,34 +116,21 @@ function storyToHtml(d: StoryLike, opts: { lang?: string; theme?: 'light'|'dark'
     .sort((a, b) => (a?.index ?? 0) - (b?.index ?? 0))
     .map((s, i) => {
       const background =
-        safeStr(s?.background) || // new
-        safeStr((s as any)?.backgroundImageUrl) || // possible variant
-        '';
-
+        safeStr(s?.background) || safeStr((s as any)?.backgroundImageUrl) || '';
       const mainImage =
-        safeStr(s?.mainImage) || // new
-        safeStr(s?.imageUrl) ||   // legacy
-        '';
-
+        safeStr(s?.mainImage) || safeStr(s?.imageUrl) || '';
       const text =
-        safeStr(s?.text) ||
-        safeStr(s?.content) ||
-        safeStr(s?.storyText) ||
-        '';
-
-      const videoUrl =
-        normalizeVideoUrl(s?.videoUrl || s?.youtubeVideoUrl || '');
-
+        safeStr(s?.text) || safeStr(s?.content) || safeStr(s?.storyText) || '';
+      const videoUrl = normalizeVideoUrl(s?.videoUrl || s?.youtubeVideoUrl || '');
       const title = safeStr(s?.title) || `Page ${i + 1}`;
-
       return { background, mainImage, text, videoUrl, title };
     });
 
-  // styles: print-friendly, background cover, content card, visible video button
+  // LANDSCAPE: use landscape page size, reduce margins, enlarge grid and fonts.
   const css = `
   @page { 
-    ${paper === 'a4' ? 'size: A4;' : 'size: Letter;'} 
-    margin: 16mm; 
+    ${paper === 'a4' ? 'size: A4 landscape;' : 'size: Letter landscape;'} 
+    margin: 10mm; 
   }
   :root {
     --bg: ${theme === 'dark' ? '#0a0b0e' : '#ffffff'};
@@ -161,6 +147,7 @@ function storyToHtml(d: StoryLike, opts: { lang?: string; theme?: 'light'|'dark'
     background: var(--bg);
   }
   h1, h2 { margin: 0 0 12px 0; }
+
   .titlepage {
     text-align: center; 
     page-break-after: always; 
@@ -181,13 +168,14 @@ function storyToHtml(d: StoryLike, opts: { lang?: string; theme?: 'light'|'dark'
     background-position: center;
     filter: blur(12px) brightness(0.7);
     transform: scale(1.1);
+    z-index: 0;
   }
   .titlepage .content {
     position: relative; z-index: 1;
     padding: 24px 16px;
   }
   .titlepage h1 {
-    font-size: 28px; letter-spacing: .5px; margin-bottom: 12px;
+    font-size: 32px; letter-spacing: .5px; margin-bottom: 12px;
   }
   .titlepage .cover {
     margin: 16px auto 0 auto; 
@@ -196,31 +184,37 @@ function storyToHtml(d: StoryLike, opts: { lang?: string; theme?: 'light'|'dark'
     overflow: hidden;
     box-shadow: 0 8px 30px rgba(0,0,0,.35);
   }
-  .titlepage .cover img {
-    width: 100%; height: auto; display: block;
-  }
+  .titlepage .cover img { width: 100%; height: auto; display: block; }
+
   .page {
     page-break-after: always;
-    margin: 0 0 18px 0;
+    margin: 0 0 12px 0;
     border-radius: 12px;
     overflow: hidden;
     position: relative;
     background: var(--card);
     box-shadow: 0 4px 18px rgba(0,0,0,.18);
-    min-height: 100mm; /* keep some height */
+    min-height: 130mm; /* taller content area in landscape */
   }
   .page .bg {
     position: absolute; inset: 0;
     background-size: cover;
     background-position: center;
-    opacity: 0.25; /* faint backdrop for readability */
+    opacity: 0.22; /* faint backdrop for readability */
+    z-index: 0; /* ensure links are above this layer */
+  }
+  .header {
+    position: relative; z-index: 1;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; font-weight: 600; font-size: 15px;
+    color: var(--fg); background: linear-gradient(90deg, var(--accent), var(--accent-2));
   }
   .page .inner {
     position: relative; z-index: 1;
-    padding: 16px;
+    padding: 18px;
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
+    grid-template-columns: 3fr 2fr; /* bigger image column */
+    gap: 18px;
   }
   .card {
     background: rgba(255,255,255,0.05);
@@ -228,29 +222,28 @@ function storyToHtml(d: StoryLike, opts: { lang?: string; theme?: 'light'|'dark'
     border-radius: 10px;
     overflow: hidden;
   }
-  .card img {
-    width: 100%; height: auto; display: block;
-  }
+  .card img { width: 100%; height: auto; display: block; }
   .text {
-    padding: 14px 16px; line-height: 1.6; font-size: 13.5px; color: var(--fg);
+    padding: 16px 18px; line-height: 1.7; font-size: 14.5px; color: var(--fg);
     white-space: pre-wrap;
-  }
-  .header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 12px 16px; font-weight: 600; font-size: 14px;
-    color: var(--fg); background: linear-gradient(90deg, var(--accent), var(--accent-2));
   }
   .videolink {
     display: inline-flex; align-items: center; gap: 8px;
-    text-decoration: none; font-weight: 600; font-size: 12.5px;
+    text-decoration: none; font-weight: 700; font-size: 12.5px;
     color: #fff; background: var(--accent-2);
     padding: 6px 10px; border-radius: 999px;
   }
   .videolink .icon { font-size: 12px; line-height: 1; }
+
   .footer {
-    display: flex; justify-content: center; gap: 16px;
-    font-size: 11.5px; color: var(--muted);
+    position: relative; z-index: 1;
+    display: flex; justify-content: center; gap: 20px;
+    font-size: 12.5px; color: var(--muted);
     padding: 12px 0 14px 0;
+  }
+  .brandlink {
+    color: var(--fg);
+    text-decoration: underline;
   }
   `;
 
@@ -291,7 +284,7 @@ function storyToHtml(d: StoryLike, opts: { lang?: string; theme?: 'light'|'dark'
         </div>
         <div class="footer">
           <div>Page ${i + 1}</div>
-          <div>narratum.app</div>
+          <div><a class="brandlink" href="https://storyreader.narratum.app/" target="_blank" rel="noopener noreferrer">Build on Narratum.app</a></div>
         </div>
       </section>`;
     })
@@ -353,8 +346,12 @@ export async function GET(req: NextRequest) {
     // Build HTML with background + main image + text + video url
     const html = storyToHtml(data, { lang, theme, paper });
 
-    // You can choose paper or any other options your CF supports
-    const buf = await callPdfFn(html, { format: paper === 'a4' ? 'A4' : 'Letter', printBackground: true });
+    // LANDSCAPE enabled both in CSS (@page) and here in the function options:
+    const buf = await callPdfFn(html, {
+      format: paper === 'a4' ? 'A4' : 'Letter',
+      printBackground: true,
+      landscape: true
+    });
 
     const baseName = slugify(safeStr(data.title)) || `story-${storyId}`;
     return new NextResponse(Buffer.from(buf), {
@@ -378,7 +375,7 @@ export async function POST(req: NextRequest) {
     // If HTML provided, passthrough:
     const htmlDirect = safeStr(body?.html);
     if (htmlDirect) {
-      const buf = await callPdfFn(htmlDirect, body?.pdfOptions);
+      const buf = await callPdfFn(htmlDirect, { ...(body?.pdfOptions || {}), landscape: true, printBackground: true });
       return new NextResponse(Buffer.from(buf), {
         headers: {
           'Content-Type': 'application/pdf',
@@ -393,7 +390,7 @@ export async function POST(req: NextRequest) {
     const lang = safeStr(body?.lang) || 'en';
     const theme = (safeStr(body?.theme) || 'dark') as 'light'|'dark';
     const paper = (safeStr(body?.paper) || 'letter') as 'a4'|'letter';
-    const pages = Array.isArray(body?.pages) ? body.pages as RawScene[] : [];
+    const pages = Array.isArray(body?.pages) ? (body.pages as RawScene[]) : [];
 
     const data: StoryLike = {
       title,
@@ -408,7 +405,11 @@ export async function POST(req: NextRequest) {
     };
 
     const html = storyToHtml(data, { lang, theme, paper });
-    const buf = await callPdfFn(html, { format: paper === 'a4' ? 'A4' : 'Letter', printBackground: true });
+    const buf = await callPdfFn(html, {
+      format: paper === 'a4' ? 'A4' : 'Letter',
+      printBackground: true,
+      landscape: true
+    });
 
     const baseName = slugify(title) || 'page-weaver-book';
     return new NextResponse(Buffer.from(buf), {

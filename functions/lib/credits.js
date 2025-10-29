@@ -101,9 +101,14 @@ function resolveStoryPricing(story) {
 // CORS for HTTP mirrors
 function applyCors(res, origin) {
     const o = origin ?? '';
-    if (ALLOWLIST.has(o)) {
+    // allow listed origins; also allow localhost during development
+    const allow = ALLOWLIST.has(o) ||
+        o.includes('localhost') ||
+        o.includes('127.0.0.1');
+    if (allow && o)
         res.setHeader('Access-Control-Allow-Origin', o);
-    }
+    else
+        res.setHeader('Access-Control-Allow-Origin', 'null'); // explicit, avoids wildcard+credentials mismatch
     res.setHeader('Vary', 'Origin');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -130,9 +135,32 @@ async function performDeductCreditsForRead(uid, { storyId, checkOnly }) {
             throw new functions.https.HttpsError('not-found', `Admin user ${NARRATUM_ADMIN_UID} not found.`);
         const story = storyDoc.data() || {};
         const { cost, charging } = resolveStoryPricing(story);
+        const ownerUid = (story.ownerUid || story.ownerId || story.creatorUid || story.userId);
+        // ⛳ OWNER BYPASS: owner always reads free (and we log the read)
+        if (ownerUid && ownerUid === uid) {
+            // log read event for analytics/UX
+            tx.set(readerRef.collection('reads').doc(), {
+                type: 'access_owner',
+                storyId,
+                timestamp: firebaseAdmin_1.FieldValue.serverTimestamp(),
+                description: `Owner access to "${story.title || storyId}".`,
+            });
+            const currentCredits = Number(readerDoc.data()?.credits || 0) || 0;
+            return {
+                success: true,
+                storyId,
+                chargingModel: 'one-time',
+                price: 0,
+                alreadyOwned: true,
+                needsPayment: false,
+                charged: 0,
+                remainingCredits: currentCredits,
+            };
+        }
         const alreadyOwned = charging === 'one-time' && priorPurchaseDoc.exists;
         const needsPayment = charging === 'pay-per-open' ? true : !alreadyOwned;
         const currentCredits = Number(readerDoc.data()?.credits || 0) || 0;
+        // Preflight
         if (checkOnly) {
             return {
                 success: true,
@@ -144,7 +172,9 @@ async function performDeductCreditsForRead(uid, { storyId, checkOnly }) {
                 remainingCredits: currentCredits,
             };
         }
+        // Free path (already owned)
         if (!needsPayment) {
+            // log read access when already owned
             tx.set(readerRef.collection('reads').doc(), {
                 type: 'access',
                 storyId,
@@ -162,6 +192,7 @@ async function performDeductCreditsForRead(uid, { storyId, checkOnly }) {
                 remainingCredits: currentCredits,
             };
         }
+        // Insufficient funds
         if (currentCredits < cost) {
             throw new functions.https.HttpsError('failed-precondition', 'Insufficient credits.', {
                 remainingCredits: currentCredits,
@@ -181,6 +212,13 @@ async function performDeductCreditsForRead(uid, { storyId, checkOnly }) {
             description: `Deducted ${cost} credits for reading "${story.title || storyId}".`,
             status: 'confirmed',
             chargingModel: charging,
+        });
+        // Read log on charged path too
+        tx.set(readerRef.collection('reads').doc(), {
+            type: 'access_charged',
+            storyId,
+            timestamp: firebaseAdmin_1.FieldValue.serverTimestamp(),
+            description: `Charged read for "${story.title || storyId}".`,
         });
         // Mark purchase for one-time
         if (charging === 'one-time') {
@@ -212,7 +250,6 @@ async function performDeductCreditsForRead(uid, { storyId, checkOnly }) {
             });
             distributed += adminTotal;
         }
-        const ownerUid = (story.ownerUid || story.ownerId || story.creatorUid || story.userId);
         if (ownerUid && ownerUid !== uid) {
             const royaltyAmount = Math.floor(cost * split.ROYALTY);
             if (royaltyAmount > 0) {
@@ -319,11 +356,12 @@ exports.deductCreditsForReadHttp = functions
     .https.onRequest(async (req, res) => {
     applyCors(res, req.headers.origin);
     if (req.method === 'OPTIONS') {
+        // preflight
         res.status(204).send('');
         return;
     }
     if (req.method !== 'POST') {
-        res.status(405).send('Method Not Allowed');
+        res.status(405).json({ error: 'Method Not Allowed' });
         return;
     }
     try {
@@ -411,9 +449,6 @@ exports.sendTipToWriter = functions
         throw new functions.https.HttpsError('internal', 'Failed to send tip.', extractMessage(error, 'Unknown error'));
     }
 });
-// ────────────────────────────────────────────────────────────
-// Callable — Process PayPal subscription (server-side verify & credit)
-// ────────────────────────────────────────────────────────────
 exports.processPayPalSubscription = functions
     .region(REGION)
     .runWith({ secrets: ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET'] })
@@ -421,7 +456,6 @@ exports.processPayPalSubscription = functions
     const uid = context.auth?.uid;
     if (!uid)
         throw new functions.https.HttpsError('unauthenticated', 'Sign in first.');
-    // 1) normalize inputs
     const subscriptionId = (raw?.subscriptionId || raw?.subscriptionID || '').toString();
     const frequency = raw?.frequency;
     const planId = raw?.planId;
@@ -433,7 +467,6 @@ exports.processPayPalSubscription = functions
     if (!subscriptionId || !frequency) {
         throw new functions.https.HttpsError('invalid-argument', 'subscriptionId and frequency are required.');
     }
-    // 2) verify with PayPal
     const sub = await (0, paypal_1.getPayPalSubscriptionDetails)(subscriptionId);
     if (!sub)
         throw new functions.https.HttpsError('not-found', 'Subscription not found at PayPal.');
@@ -443,17 +476,15 @@ exports.processPayPalSubscription = functions
         null;
     const paypalPlan = sub?.plan_id || planId || null;
     const activeNow = status === 'ACTIVE' || status === 'APPROVED';
-    // 3) persist a normalized subscription snapshot + (if ACTIVE) grant initial credits
     await firebaseAdmin_1.db.runTransaction(async (tx) => {
         const userRef = firebaseAdmin_1.db.collection('users').doc(uid);
         const snap = await tx.get(userRef);
         if (!snap.exists)
             throw new functions.https.HttpsError('not-found', 'User not found.');
-        // write a canonical subscription snapshot the status UI can read
         tx.set(userRef, {
-            paypalSubscriptionId: subscriptionId, // ← what getSubscriptionStatus expects
+            paypalSubscriptionId: subscriptionId,
             subscriptionStatus: activeNow ? 'paid' : 'pending',
-            billingCycle: frequency, // ← read by getSubscriptionStatus
+            billingCycle: frequency,
             planKey: planKey || firebaseAdmin_1.FieldValue.delete(),
             planName: planName || firebaseAdmin_1.FieldValue.delete(),
             paypalSubscriptionDetails: {
@@ -464,7 +495,6 @@ exports.processPayPalSubscription = functions
             referredBy: referredBy || snap.data()?.referredBy || null,
             lastSubscriptionUpdate: firebaseAdmin_1.FieldValue.serverTimestamp(),
         }, { merge: true });
-        // prevent double initial credit
         const txCol = userRef.collection('transactions');
         const existsQ = txCol.where('type', '==', 'subscription_initial')
             .where('paypalSubscriptionId', '==', subscriptionId)
@@ -484,7 +514,6 @@ exports.processPayPalSubscription = functions
                 description: `Initial subscription credit (${frequency}).`,
             });
         }
-        // ledger snapshot for the subscription itself
         tx.set(txCol.doc(), {
             type: 'subscription',
             paypalSubscriptionId: subscriptionId,
@@ -509,9 +538,7 @@ exports.processPayPalSubscription = functions
             : `Subscription recorded (status: ${status}). Will credit when active.`,
     };
 });
-// ────────────────────────────────────────────────────────────
-// HTTP mirror — Process PayPal subscription with CORS + Bearer
-// ────────────────────────────────────────────────────────────
+// HTTP mirror with CORS + Bearer
 exports.processPayPalSubscriptionHttp = functions
     .region(REGION)
     .runWith({ secrets: ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET'] })
@@ -522,11 +549,10 @@ exports.processPayPalSubscriptionHttp = functions
         return;
     }
     if (req.method !== 'POST') {
-        res.status(405).send('Method Not Allowed');
+        res.status(405).json({ success: false, message: 'Method Not Allowed' });
         return;
     }
     try {
-        // Require Firebase ID token
         const m = (req.headers.authorization || '').toString().match(/^Bearer\s+(.+)$/i);
         if (!m) {
             res.status(401).json({ success: false, message: 'Missing Authorization bearer token.' });
@@ -534,7 +560,6 @@ exports.processPayPalSubscriptionHttp = functions
         }
         const decoded = await firebaseAdmin_1.adminAuth.verifyIdToken(m[1]);
         const uid = decoded.uid;
-        // Normalize input exactly like the callable
         const raw = (req.body || {});
         const frequency = raw.frequency;
         const subscriptionId = (raw.subscriptionId || raw.subscriptionID || '').toString();
@@ -548,7 +573,6 @@ exports.processPayPalSubscriptionHttp = functions
             res.status(400).json({ success: false, message: 'subscriptionId and frequency are required.' });
             return;
         }
-        // Verify with PayPal
         const sub = await (0, paypal_1.getPayPalSubscriptionDetails)(subscriptionId);
         if (!sub) {
             res.status(404).json({ success: false, message: 'Subscription not found at PayPal.' });
@@ -575,7 +599,6 @@ exports.processPayPalSubscriptionHttp = functions
                 lastSubscriptionUpdate: firebaseAdmin_1.FieldValue.serverTimestamp(),
             }, { merge: true });
             const txCol = userRef.collection('transactions');
-            // Initial credit once
             const existsQ = txCol.where('type', '==', 'subscription_initial')
                 .where('paypalSubscriptionId', '==', subscriptionId).limit(1);
             const exists = await tx.get(existsQ);
@@ -613,7 +636,7 @@ exports.processPayPalSubscriptionHttp = functions
             nextBillingTime,
             message: activeNow
                 ? 'Subscription verified and credited.'
-                : `Subscription recorded (status: ${status}). Will credit when active.`,
+                : `Subscription recorded (status: ${status}). Will credit when active).`,
         });
     }
     catch (error) {
