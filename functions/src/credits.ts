@@ -504,7 +504,7 @@ export const processPayPalSubscription = functions
     const uid = context.auth?.uid;
     if (!uid) throw new functions.https.HttpsError('unauthenticated', 'Sign in first.');
 
-    const subscriptionId = (raw?.subscriptionId || raw?.subscriptionID || '').toString();
+    const subscriptionId = (raw?.subscriptionId || '').toString();
     const frequency = raw?.frequency;
     const planId = raw?.planId;
     const planKey = raw?.planKey;
@@ -621,7 +621,7 @@ export const processPayPalSubscriptionHttp = functions
 
       const raw = (req.body || {}) as SubReq;
       const frequency = raw.frequency;
-      const subscriptionId = (raw.subscriptionId || raw.subscriptionID || '').toString();
+      const subscriptionId = (raw.subscriptionId || '').toString();
       const planId   = raw.planId;
       const planKey  = raw.planKey;
       const planName = raw.planName;

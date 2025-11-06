@@ -33,7 +33,11 @@ interface SubscriptionTier extends BaseOffering {}
 type TierKey = 'og free' | 'tester' | 'reader' | 'writer' | 'creator';
 type PlanMap = Record<SubscriptionFrequency, Record<TierKey, string>>;
 
-type PaidStatus = 'ACTIVE' | 'CANCELLED' | 'SUSPENDED' | 'PENDING' | 'UNKNOWN';
+type PaidStatus = 'ACTIVE' | 'APPROVED' | 'CANCELLED' | 'SUSPENDED' | 'EXPIRED' | 'PENDING' | 'UNKNOWN';
+
+// ✅ Helper function to detect “pending activation” states
+const isPendingActivation = (s?: PaidStatus) =>
+  s === 'APPROVED' || s === 'PENDING';
 
 interface SubscriptionStatus {
   kind: 'none' | 'free' | 'paid';
@@ -183,7 +187,7 @@ function PayButtonsSubscription({
           if (!subId) throw new Error('Subscription ID not found in PayPal response');
 
           onMessage('pending', t('activatingSubscription'));
-          onSuccess({ id: subId, status: 'APPROVED', description });
+          onSuccess({ subscriptionId: subId, status: 'APPROVED', description });
         } catch (err) {
           console.error('PayPal onApprove error', err);
           onMessage('error', t('paypalSubscriptionError'));
@@ -191,10 +195,17 @@ function PayButtonsSubscription({
       }}
 
       onCancel={() => onMessage('idle', t('subscriptionCancelled'))}
-      onError={(err) => {
-        console.error(err);
-        onMessage('error', t('paypalSubscriptionError'));
+      onError={(err: any) => {
+        const debugId = err?.response?.headers?.get?.('paypal-debug-id') || err?.data?.debug_id;
+        console.error('PayPal error', { err, debugId });
+        onMessage(
+          'error',
+          debugId
+            ? `${t('paypalSubscriptionError')} (debug_id: ${debugId})`
+            : t('paypalSubscriptionError')
+        );
       }}
+      
     />
   );
 }
@@ -375,7 +386,7 @@ useEffect(() => {
       setMsg('error', t('mustBeLoggedInAndHaveSelection'));
       return;
     }
-    const subscriptionID = sub?.id;
+    const subscriptionID = sub?.subscriptionId;
     if (!subscriptionID) {
       setMsg('error', t('paypalSubscriptionIdMissing') || 'Missing PayPal subscription ID.');
       return;
@@ -385,8 +396,8 @@ useEffect(() => {
       subscriptionId: subscriptionID,
       planId: paypalPlanId,
       frequency: subscriptionFrequency,
-      price: (selectedOffering as any).price,
-      credits: selectedOffering.credits,
+      //price: (selectedOffering as any).price,
+      //credits: selectedOffering.credits,
       planKey: selectedOffering.id,
       planName: selectedOffering.name,
       referredBy: referredBy || undefined,
@@ -398,21 +409,41 @@ useEffect(() => {
       const res = await processSubscription(payload);
       const data = (res?.data || {}) as { success?: boolean; message?: string; status?: string };
       if (!data?.success) throw new Error(data?.message || t('unexpectedError'));
-  
-      setMsg('success', formatT(t, 'subscriptionActivated', {
-        name: nameLabel(t, selectedOffering.name),
-        frequency: t(subscriptionFrequency),
-      }));
+
+      // ✅ NEW LOGIC: distinguish between ACTIVE vs APPROVED
+      const status = (data as any).status || 'UNKNOWN';
+      const isActive = status === 'ACTIVE';
+
+      setMsg(
+        isActive ? 'success' : 'pending',
+        isActive
+          ? formatT(t, 'subscriptionActivated', {
+              name: nameLabel(t, selectedOffering.name),
+              frequency: t(subscriptionFrequency),
+            })
+          : t('subscriptionPendingActivation') // ← add this key to your i18n files
+      );
+
       setSubStatus({
         kind: 'paid',
         planKey: selectedOffering.id,
         planName: selectedOffering.name,
         frequency: subscriptionFrequency,
         paypalSubscriptionId: subscriptionID,
-        status: (data as any).status || 'ACTIVE',
+        status,
       });
-    } catch (err) {
-      console.warn('Callable failed, trying HTTP mirror…', err);
+
+    } catch (err: any) {
+      console.warn('Callable failed, evaluating fallback…', err);
+    
+      // ✅ SOLO usar fallback si el error es de red / indisponibilidad
+      const isNetwork = err?.code === 'unavailable' || /fetch/i.test(err?.message || '');
+      if (!isNetwork) {
+        setMsg('error', err?.message || t('unexpectedError'));
+        return; // ⛔ Evita llamar el fallback si el error no fue de red
+      }
+    
+      console.warn('Callable unavailable, trying HTTP mirror…');
       try {
         // 2) Fallback: HTTP mirror with Bearer token (handles pesky CORS)
         const token = await user.getIdToken();
@@ -432,18 +463,28 @@ useEffect(() => {
           throw new Error(json?.message || `HTTP ${resp.status}`);
         }
   
-        setMsg('success', formatT(t, 'subscriptionActivated', {
-          name: nameLabel(t, selectedOffering.name),
-          frequency: t(subscriptionFrequency),
-        }));
+        const status = json.status || 'UNKNOWN';
+        const isActive = status === 'ACTIVE';
+
+        setMsg(
+          isActive ? 'success' : 'pending',
+          isActive
+            ? formatT(t, 'subscriptionActivated', {
+                name: nameLabel(t, selectedOffering.name),
+                frequency: t(subscriptionFrequency),
+              })
+            : t('subscriptionPendingActivation')
+        );
+
         setSubStatus({
           kind: 'paid',
           planKey: selectedOffering.id,
           planName: selectedOffering.name,
           frequency: subscriptionFrequency,
           paypalSubscriptionId: subscriptionID,
-          status: json.status || 'ACTIVE',
+          status,
         });
+        
       } catch (e: any) {
         console.error('HTTP mirror failed:', e);
         setMsg('error', e?.message || t('unexpectedError'));
@@ -573,6 +614,14 @@ useEffect(() => {
               </button>
             </div>
           )}
+
+            {subStatus.kind === 'paid' && isPendingActivation(subStatus.status) && (
+              <div className="rounded-xl border-2 p-4 bg-yellow-50 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 mt-4">
+                {t('subscriptionPendingActivationHint') || 'Your subscription is pending activation. Please wait a moment while PayPal finalizes it.'}
+              </div>
+            )}
+
+
         </section>
 
         {/* Subscription Tiers */}

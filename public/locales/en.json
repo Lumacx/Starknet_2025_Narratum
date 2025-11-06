@@ -910,6 +910,10 @@
   "storyCreation.subtitle": "Bring your stories to life with our guided templates and AI-powered writing assistance.",
   "storyCreation.editorTitle": "Story Editor",
   "storyCreation.editorDescription": "This is where you'll select a template and write your story. Content fields for text, images, and choices will appear based on the chosen template.",
-  "storyCreation.editorPlaceholder": "Story Editor Interface Placeholder"
+  "storyCreation.editorPlaceholder": "Story Editor Interface Placeholder",
+
+  "subscriptionPendingActivation": "Subscription Pending Activation",
+  "subscriptionPendingActivationHint": "Your subscription is pending activation. Please wait a few moments while PayPal finalizes the billing."
+
 
 }

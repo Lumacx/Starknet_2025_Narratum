@@ -898,6 +898,9 @@
   "storyCreation.subtitle": "Da vida a tus historias con nuestras plantillas guiadas y la asistencia de escritura con IA.",
   "storyCreation.editorTitle": "Editor de historias",
   "storyCreation.editorDescription": "Aquí seleccionarás una plantilla y escribirás tu historia. Los campos de contenido para texto, imágenes y opciones aparecerán según la plantilla elegida.",
-  "storyCreation.editorPlaceholder": "Marcador de posición de la interfaz del editor de historias"
+  "storyCreation.editorPlaceholder": "Marcador de posición de la interfaz del editor de historias",
+
+  "subscriptionPendingActivation": "Suscripción Pendiente de Activación",
+  "subscriptionPendingActivationHint": "Tu suscripción está pendiente de activación. Espera unos minutos mientras PayPal la confirma."
 
 }
