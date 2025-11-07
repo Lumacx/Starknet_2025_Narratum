@@ -13,6 +13,8 @@ import { generateNarratumImage } from './imageGeneration';
 import { createuserprofile } from './authTriggers';
 import { incrementCommentCount } from './commentCounter';
 import { indexAssetOnFinalize, removeIndexOnDelete } from './assetsIndex';
+import { suggestScene } from './sceneSuggestions';
+import { describeImage } from './describeImage';
 
 // HTTP v2 image generators
 import { generateWithGemini, generateWithImagen } from './smartGenerateImage';
@@ -102,6 +104,8 @@ export {
   generateWithGemini,
   generateWithImagen,
   downloadStoryPdf,
+  suggestScene,
+  describeImage,
 
   // Payments / credits
   processPayPalOneTimePayment,

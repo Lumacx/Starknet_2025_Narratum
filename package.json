@@ -136,7 +136,7 @@
     "autoprefixer": "^10.4.21",
     "eslint": "^9.35.0",
     "eslint-plugin-react-hooks": "^5.2.0",
-    "firebase-admin": "^12.1.0",
+    "firebase-admin": "^13.6.0",
     "genkit-cli": "^1.6.1",
     "install": "^0.13.0",
     "postcss": "^8.5.3",
